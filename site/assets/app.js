@@ -83,14 +83,12 @@
       return `<a class="card topic" href="#/topic/${i}"><div class="head"><span>${esc(topicShort(t.name))}</span><span class="chip">${t.weight}% of exam</span></div>
         <div class="small">${done}/${qs.length} solved alone</div><div class="bar"><i style="width:${Math.round(100 * done / qs.length)}%"></i></div></a>`;
     }).join('');
-    const refs = D.refs.map((r, i) => i === 0 ? '' : `<li><a href="#/ref/${i}"><span class="num">${i}</span>${esc(r.title.replace(/^\d[A-Z]?\. /, ''))}</a></li>`).join('');
     app.innerHTML = `
       <section class="card hero"><h1>Pass the CKA</h1><p class="sub">${solo}/40 tasks solved alone. Practise each task, then sit 3 full mock exams.</p>
         <a class="btn block" href="#/q/${next.n}">Continue: ${next.n}. ${esc(next.title)}</a></section>
       ${install}
       <h2>Mock exams</h2>${mocks}
-      <h2>Practise by topic</h2>${topics}
-      <h2>Cheat sheet</h2><div class="card"><ul class="qlist">${refs}</ul></div>`;
+      <h2>Practise by topic</h2>${topics}`;
     if ($('#installBtn')) $('#installBtn').onclick = async () => { installEvt.prompt(); await installEvt.userChoice; installEvt = null; render(); };
   }
 
@@ -99,7 +97,7 @@
     const qs = D.questions.filter(q => q.topic === t.name);
     app.innerHTML = `<a href="#/" class="small">← Home</a><h1>${esc(topicShort(t.name))}</h1><p class="sub">${t.weight}% of the exam · ${qs.length} tasks</p>
       <div class="card"><ul class="qlist">${qs.map(q => `<li><a href="#/q/${q.n}"><span class="num">${q.n}</span><span>${esc(q.title)} ${q.star ? '<span class="chip star">often in exam</span>' : ''}</span><span class="st ${statusOf(q.n)}">${ST[statusOf(q.n)] || ''}</span></a></li>`).join('')}</ul></div>
-      <details class="step"><summary>How to solve this topic</summary><div class="body">${t.intro}</div></details>`;
+      `;
   }
 
   // the "dissect" game: tap the words that matter in the exam question
@@ -126,58 +124,153 @@
     };
   }
 
+  // ================= LEARN: question page · ▶ animated explainer · in-app terminal · split-screen guide =================
+  const plain = h => String(h || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+  const short = h => { const t = plain(h); if (t.length <= 170) return t; const two = (t.match(/^(.*?[.!?])\s.*?[.!?](\s|$)/) || [])[0] || t; return two.length > 170 ? (t.match(/^.*?[.!?](\s|$)/) || [t])[0].slice(0, 170).trim() : two.trim(); };
+  const shortH = h => plain(h).length <= 170 ? String(h) : esc(short(h));
+  const cmdsOf = q => q.steps.flatMap((s, si) => s.flow.map((f, fi) => ({ ...f, si, fi }))).filter(f => f.k === 'cmd' && !f.skip);
+  const PARTS = [
+    ['you', 'You · kubectl'], ['api', 'API server'], ['etcd', 'etcd'],
+    ['sched', 'Scheduler'], ['cm', 'Controllers'], ['access', 'RBAC'],
+    ['kubelet', 'Node · kubelet'], ['pod', 'Pod'], ['svc', 'Service'],
+    ['net', 'Network'], ['dns', 'DNS'], ['store', 'Storage'], ['tools', 'Helm · CRD'],
+  ];
+  const picture = q => `<div class="pic ${q.pic.mode}">${PARTS.map(([k, l], i) => `<div class="part p-${k} ${q.pic.parts.includes(k) ? 'on' : ''}" style="--i:${i}">${l}</div>`).join('')}</div>`;
+
+  let watchGen = 0;
+  const useful = f => f.k === 'say' && !/:\s*$/.test(short(f.h));
   function practice(n) {
     const q = Q(n); if (!q) return home();
     const p = prog()[n] || {};
-    const hints = [
-      { t: 'Hint 1 · the words you need', h: q.words },
-      { t: 'Hint 2 · what the question is really saying', h: q.meaning },
-      ...q.steps.map((s, i) => ({ t: `Hint ${i + 3} · ${s.title}`, h: s.html })),
-    ];
     app.innerHTML = `<a href="#/topic/${D.topics.findIndex(t => t.name === q.topic)}" class="small">← ${esc(topicShort(q.topic))}</a>
-      <h1>${q.n}. ${esc(q.title)} ${q.star ? '<span class="chip star">often in exam</span>' : ''}</h1>
-      <p class="sub">Target time ${q.target} min ${p.st ? '· last result: ' + ST[p.st] : ''}</p>
-      <section class="card exam"><div class="label">Exam question</div><p class="q" id="q"></p>
-        <p class="small" id="dhelp">Tap the words you must not get wrong (names, namespace, numbers, "do not…").</p>
-        <button class="btn ghost block" id="dcheck">Check my picks</button><div class="keys" id="keys" hidden></div></section>
-      <h2>1 · Build it in Killercoda</h2>
-      <div class="card">${q.setup ? `<p class="small">Open the free CKA playground, then paste this. In the real exam this is already done.</p>
-        <a class="btn block" href="${KILLERCODA}" target="_blank" rel="noopener">Open Killercoda CKA playground</a>${codeBlock(q.setup)}` : `<p>${q.setupNote || 'This one cannot be built in a playground. Learn the steps; practise in killer.sh.'}</p>`}</div>
-      <h2>2 · Solve it</h2>
-      <div class="card"><div class="clock" id="clock">0:00</div><div class="row"><button class="btn" id="go">Start timer</button><a class="btn ghost" href="${DOCS}" target="_blank" rel="noopener">Docs</a></div></div>
-      <div id="hints"></div><button class="btn ghost block" id="more">Show a hint</button>
-      <details class="step"><summary>If something goes wrong</summary><div class="body">${q.wrong}</div></details>
-      <details class="step"><summary>Mug this up: the whole answer</summary><div class="body">${q.mug}</div></details>
-      <h2>3 · How did it go?</h2>
-      <div class="row"><button class="btn good" data-r="solo">Solved alone</button><button class="btn warn" data-r="help">With hints</button><button class="btn bad" data-r="fail">Not yet</button></div>
+      <h1>${q.n}. ${esc(q.title)}</h1>
+      <p class="sub">${q.star ? '<span class="chip star">often in exam</span> ' : ''}${q.target} min ${p.st ? '· ' + ST[p.st] : ''}</p>
+      <section class="card exam"><div class="label">Exam question</div><p class="q">${inline(q.question)}</p></section>
+      <a class="btn block big" href="#/watch/${n}">▶ Watch how to solve it</a>
+      <div class="row" style="margin-top:10px"><a class="btn ghost" href="#/do/${n}">Practise here</a><a class="btn ghost" href="#/guide/${n}/0">Real cluster</a></div>
+      <h2>How did it go?</h2>
+      <div class="row"><button class="btn good" data-r="solo">Alone</button><button class="btn warn" data-r="help">With help</button><button class="btn bad" data-r="fail">Not yet</button></div>
       <div class="pager">${n > 1 ? `<a class="btn ghost" href="#/q/${n - 1}">← ${n - 1}</a>` : ''}${n < 40 ? `<a class="btn ghost" href="#/q/${n + 1}">${n + 1} →</a>` : ''}</div>`;
-    const check = dissect(q, $('#q'));
-    $('#dcheck').onclick = () => {
-      const r = check();
-      $('#keys').innerHTML = q.keys.map(k => `<span class="chip">${inline(k)}</span>`).join('');
-      $('#keys').hidden = false; $('#dcheck').hidden = true;
-      $('#dhelp').textContent = r.miss ? `You found ${r.hit}. Missed ${r.miss} (red). Write these down before you type anything:` : `Perfect, you found all ${r.hit}. Write them down:`;
-    };
-    let shown = 0, t0 = 0, iv = 0;
-    $('#more').onclick = () => {
-      if (shown >= hints.length) return;
-      const h = hints[shown++];
-      $('#hints').insertAdjacentHTML('beforeend', `<details class="step" open><summary>${esc(h.t)}</summary><div class="body">${h.h}</div></details>`);
-      $('#more').textContent = shown >= hints.length ? 'All hints shown' : 'Show the next hint';
-      if (shown >= hints.length) $('#more').disabled = true;
-    };
-    $('#go').onclick = () => {
-      if (iv) { clearInterval(iv); iv = 0; $('#go').textContent = 'Start timer'; return; }
-      t0 = Date.now(); $('#go').textContent = 'Stop';
-      iv = setInterval(() => { const s = Math.floor((Date.now() - t0) / 1000); $('#clock').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; $('#clock').style.color = s > q.target * 60 ? 'var(--bad)' : ''; }, 500);
-    };
     $$('[data-r]').forEach(b => b.onclick = () => {
-      const all = prog(), secs = t0 ? Math.round((Date.now() - t0) / 1000) : null;
-      all[n] = { st: b.dataset.r, hints: shown, secs, at: Date.now() };
-      store.set('progress', all); clearInterval(iv);
-      toast(b.dataset.r === 'solo' ? 'Great. Marked as solved alone.' : b.dataset.r === 'help' ? 'Saved. Try it again tomorrow without hints.' : 'Saved. It comes back in your weak list.');
+      const all = prog(); all[n] = { st: b.dataset.r, at: Date.now() }; store.set('progress', all);
+      toast(b.dataset.r === 'solo' ? 'Saved ✓' : 'Saved. It comes back later.');
       location.hash = `#/q/${n < 40 ? n + 1 : n}`;
     });
+  }
+
+  // ---------- ▶ the explainer: a short animation built from the question's own steps ----------
+  function watch(n) {
+    const q = Q(n); if (!q) return home();
+    const scenes = [];
+    scenes.push({ t: 'What is going on', run: async (st, a) => {
+      st.innerHTML = picture(q) + `<p class="cap" id="cap"></p>`;
+      await a.wait(1600); st.querySelector('.pic').classList.add('lit');
+      await a.wait(900); await a.type($('#cap', st), q.pic.say); await a.wait(1800);
+    } });
+    scenes.push({ t: 'Read the question like this', run: async (st, a) => {
+      st.innerHTML = `<p class="q" id="dq"></p><div class="keys" id="dk"></div>`;
+      const get = dissect(q, $('#dq', st)); get();
+      $$('.tok', st).forEach(t => t.classList.remove('hit', 'miss'));
+      await a.wait(1200);
+      for (const k of q.keys) {
+        const words = (k.split('=')[1] || k).replace(/`/g, '').toLowerCase().split(/[^a-z0-9.\-/:]+/).filter(w => w.length > 1);
+        $$('.tok', st).filter(t => words.includes(t.dataset.w)).forEach(t => t.classList.add('hit'));
+        $('#dk', st).insertAdjacentHTML('beforeend', `<span class="chip pop">${inline(k)}</span>`);
+        await a.wait(1300);
+      }
+      await a.wait(1200);
+    } });
+    q.steps.forEach((s, si) => scenes.push({ t: s.title.replace(/^Step \d+\.\s*/, '').replace('Closing routine', 'Check it works'), run: async (st, a) => {
+      st.innerHTML = `<div class="term" id="tm"></div><p class="cap" id="cap"></p>`;
+      const tm = $('#tm', st);
+      const items = s.flow.filter(f => !f.skip);
+      for (let i = 0; i < items.length; i++) {
+        const f = items[i];
+        if (f.k === 'cmd') { const line = document.createElement('div'); line.className = 'ln'; line.innerHTML = '<span class="pr">$</span> '; tm.append(line); const sp = document.createElement('span'); line.append(sp); await a.type(sp, f.t, 32); await a.wait(500); }
+        else if (f.k === 'out') { const o = document.createElement('pre'); o.className = 'out'; o.textContent = f.t; tm.append(o); tm.scrollTop = 1e6; await a.wait(1400); }
+        else if (useful(f)) { $('#cap', st).innerHTML = shortH(f.h); $('#cap', st).classList.remove('pop'); void st.offsetWidth; $('#cap', st).classList.add('pop'); await a.wait(Math.min(4200, 1400 + short(f.h).length * 28)); }
+      }
+      await a.wait(900);
+    } }));
+    scenes.push({ t: 'The whole answer', run: async (st, a) => { st.innerHTML = `<div class="mug">${q.mug}</div>`; await a.wait(6000); } });
+
+    app.innerHTML = `<a href="#/q/${n}" class="small">← ${q.n}. ${esc(q.title)}</a>
+      <div class="player"><div class="ptitle" id="pt"></div><div class="stage" id="stage"></div>
+        <div class="dots">${scenes.map((_, i) => `<i data-i="${i}"></i>`).join('')}</div>
+        <div class="pctl"><button class="iconbtn" id="pv" aria-label="Back">⏮</button><button class="btn" id="pp">❚❚ Pause</button><button class="iconbtn" id="nx" aria-label="Next">⏭</button><button class="iconbtn" id="sp" aria-label="Speed">1×</button></div></div>
+      <div class="row" style="margin-top:12px"><a class="btn" href="#/do/${n}">Now practise it</a></div>`;
+    let idx = 0, paused = false, token = 0, speed = 1; const gen = ++watchGen;
+    const api = tk => ({
+      wait: ms => new Promise((res, rej) => { let left = ms; const step = () => { if (tk !== token || gen !== watchGen) return rej(0); if (!paused) left -= 50 * speed; if (left <= 0) res(); else setTimeout(step, 50); }; step(); }),
+      async type(el, text, cps = 30) { for (const ch of text) { await this.wait(cps); el.textContent += ch; } },
+    });
+    const show = async i => {
+      idx = Math.max(0, Math.min(scenes.length - 1, i)); const tk = ++token;
+      $('#pt').textContent = `${idx + 1}/${scenes.length} · ${scenes[idx].t}`;
+      $$('.dots i').forEach((d, j) => d.className = j < idx ? 'done' : j === idx ? 'now' : '');
+      try { await scenes[idx].run($('#stage'), api(tk)); if (tk === token && idx < scenes.length - 1) show(idx + 1); else if (tk === token) { $('#pp').textContent = '↺ Replay'; paused = true; } } catch {}
+    };
+    $('#pp').onclick = () => { if ($('#pp').textContent.includes('Replay')) { paused = false; $('#pp').textContent = '❚❚ Pause'; return show(0); } paused = !paused; $('#pp').textContent = paused ? '▶ Play' : '❚❚ Pause'; $('#stage').classList.toggle('paused', paused); };
+    $('#pv').onclick = () => show(idx - 1);
+    $('#nx').onclick = () => show(idx + 1);
+    $('#sp').onclick = () => { speed = speed === 1 ? 1.5 : speed === 1.5 ? 2 : 1; $('#sp').textContent = speed + '×'; };
+    $$('.dots i').forEach(d => d.onclick = () => show(+d.dataset.i));
+    show(0);
+  }
+
+  // ---------- practise in the app: type each command, the terminal answers like the real one ----------
+  const norm = s => s.replace(/^kubectl\s/, 'k ').replace(/\s+/g, ' ').trim();
+  const matches = (typed, want) => {
+    const re = new RegExp('^' + norm(want).split(/(<[^>]+>|NAME|NS|POD)/).map((p, i) => i % 2 ? '\\S+' : p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('') + '$');
+    return re.test(norm(typed));
+  };
+  function doIt(n) {
+    const q = Q(n); if (!q) return home();
+    const cmds = cmdsOf(q);
+    let at = 0;
+    app.innerHTML = `<a href="#/q/${n}" class="small">← ${q.n}. ${esc(q.title)}</a>
+      <div class="sim"><div class="term tall" id="tm"><div class="ln dim">${esc(q.question.replace(/`/g, ''))}</div></div>
+        <form class="cmdline" id="f"><span class="pr">$</span><input id="in" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="type the command"><button class="btn" aria-label="Run">⏎</button></form>
+        <div class="coach" id="coach"></div></div>`;
+    const tm = $('#tm'), coach = $('#coach'), input = $('#in');
+    const print = (cls, txt) => { const d = document.createElement(cls === 'out' ? 'pre' : 'div'); d.className = cls; d.textContent = txt; tm.append(d); tm.scrollTop = 1e6; };
+    const explain = c => { const s = q.steps[c.si].flow; const after = []; for (let i = c.fi + 1; i < s.length && s[i].k !== 'cmd'; i++) after.push(s[i]); return after; };
+    const showCoach = (just = '') => {
+      if (at >= cmds.length) { coach.innerHTML = `${just}<div class="now done">✓ Solved. Next: once more without help, then on a real cluster.</div><div class="row"><a class="btn good" href="#/q/${n}">Done</a><button class="btn ghost" id="again">Again</button></div>`; $('#again').onclick = () => doIt(n); return; }
+      const c = cmds[at], st = q.steps[c.si];
+      coach.innerHTML = `${just}<div class="now"><b>${esc(st.title.replace(/^Step \d+\.\s*/, '').replace('Closing routine', 'Check it works'))}</b><span class="small"> · ${at + 1}/${cmds.length}</span></div>
+        <div class="row"><button class="btn ghost" id="hint">Hint</button><button class="btn ghost" id="show">Show command</button></div>`;
+      let h = 0;
+      $('#hint').onclick = () => { h++; $('#hint').textContent = h === 1 ? c.t.split(' ').slice(0, 2).join(' ') + ' …' : c.t.replace(/\s\S+$/, ' …'); };
+      $('#show').onclick = () => { input.value = c.t; input.focus(); };
+    };
+    $('#f').onsubmit = e => {
+      e.preventDefault();
+      const typed = input.value.trim(); if (!typed || at >= cmds.length) return;
+      print('ln', '$ ' + typed); input.value = '';
+      const c = cmds[at];
+      if (!matches(typed, c.t)) { print('err', / -n /.test(c.t) && /^(kubectl|k) /.test(typed) && !/ -n | -A/.test(typed) ? 'No resources found in default namespace.   ← you forgot -n' : '✗ not this step. Tap Hint.'); return; }
+      const after = explain(c), outs = after.filter(f => f.k === 'out'), say = after.find(useful);
+      if (/^vim? /.test(c.t)) print('dim', '[file opens in vim]');
+      outs.forEach(o => print('out', o.t));
+      if (!outs.length) print('dim', '✓');
+      at++;
+      showCoach(say ? `<div class="just">${shortH(say.h)}</div>` : '');
+    };
+    showCoach('');
+    setTimeout(() => input.focus(), 100);
+  }
+
+  // ---------- real cluster: one step per screen, for Android split screen next to Killercoda ----------
+  function guide(n, i) {
+    const q = Q(n); if (!q) return home();
+    const pages = [{ title: 'Build it', body: q.setup ? `<a class="btn block" href="${KILLERCODA}" target="_blank" rel="noopener">Open Killercoda</a>${codeBlock(q.setup)}<p class="small">Split screen: Recent apps → tap this app's icon → <b>Open in split screen</b>.</p>` : `<p>Can't be built in a playground. Practise in killer.sh.</p>` },
+      ...q.steps.map(s => { const say = s.flow.find(useful); return { title: s.title.replace(/^Step \d+\.\s*/, '').replace('Closing routine', 'Check it works'),
+        body: s.flow.filter(f => !f.skip).map(f => f.k === 'cmd' ? codeBlock(f.t) : f.k === 'out' ? `<pre class="out">${esc(f.t)}</pre>` : '').join('') + (say ? `<p class="just">${shortH(say.h)}</p>` : '') }; })];
+    i = Math.max(0, Math.min(pages.length - 1, i));
+    app.innerHTML = `<a href="#/q/${n}" class="small">← ${q.n}. ${esc(q.title)}</a>
+      <div class="gstep"><div class="small">${i + 1}/${pages.length}</div><h2>${esc(pages[i].title)}</h2>${pages[i].body}</div>
+      <div class="pager">${i > 0 ? `<a class="btn ghost" href="#/guide/${n}/${i - 1}">←</a>` : ''}${i < pages.length - 1 ? `<a class="btn" href="#/guide/${n}/${i + 1}">Next →</a>` : `<a class="btn good" href="#/q/${n}">Done</a>`}</div>`;
   }
 
   // ---------- mock exams ----------
@@ -255,9 +348,13 @@
   // ---------- router ----------
   function render() {
     if (!D) return;
+    watchGen++;
     const h = location.hash.replace(/^#\/?/, '').split('/');
     scrollTo(0, 0);
     if (h[0] === 'q') practice(+h[1]);
+    else if (h[0] === 'watch') watch(+h[1]);
+    else if (h[0] === 'do') doIt(+h[1]);
+    else if (h[0] === 'guide') guide(+h[1], +h[2] || 0);
     else if (h[0] === 'topic') topicView(+h[1]);
     else if (h[0] === 'ref') refView(+h[1]);
     else if (h[0] === 'mock' && h[2] === 'grade') mockGrade(+h[1]);

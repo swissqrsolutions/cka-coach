@@ -50,15 +50,48 @@ const sec = (raw, re) => {
   const hit = parts.find(p => re.test(p.split('\n')[0]));
   return hit ? hit.split('\n').slice(1).join('\n').replace(/\n---\s*$/, '').trim() : '';
 };
+// A step as a sequence: say (explanation), cmd (one command line to type), out (what the screen shows).
+// A code block is OUTPUT when the text right before it ends with ":" ("You see:", "for example:", "Change:"), else COMMANDS.
+function flowOf(body) {
+  const items = [], text = [];
+  const flushText = () => { const t = text.join('\n').trim(); text.length = 0; if (t) items.push({ k: 'say', h: marked.parseInline(t.replace(/\n(?!\n)/g, ' ')) }); };
+  const ls = body.split('\n');
+  for (let i = 0; i < ls.length; i++) {
+    if (!ls[i].startsWith('```')) { if (ls[i].trim() !== '---') text.push(ls[i]); continue; }
+    const block = []; i++;
+    while (i < ls.length && !ls[i].startsWith('```')) block.push(ls[i++]);
+    const before = text.join('\n').trim();
+    const lastLine = before.split('\n').pop() || '';
+    const isOut = /:\s*$/.test(lastLine) && !/^\s*$/.test(lastLine);
+    flushText();
+    if (isOut) { items.push({ k: 'out', t: block.join('\n') }); continue; }
+    for (const line of block) {
+      if (!line.trim()) continue;
+      const exam = /exam only/i.test(line) || /^ssh <host/.test(line.trim());
+      const cmd = line.replace(/\s+#(\s.*)?$/, '').trim();
+      const note = (line.match(/\s+#\s(.*)$/) || [])[1] || '';
+      if (!cmd) continue;
+      items.push({ k: 'cmd', t: cmd, note, skip: exam || undefined });
+    }
+  }
+  flushText();
+  return items;
+}
+const dmap = JSON.parse(fs.readFileSync(path.join(ROOT, 'content', 'diagram-map.json'), 'utf8'));
+
 for (const x of questions) {
   const r = x.raw;
+  x.pic = dmap[x.n] || { mode: 'fix', parts: [], say: '' };
   const partA = sec(r, /PART A/);
   const partB = sec(r, /PART B/);
   const block = (partA.match(/```\n([\s\S]*?)```/) || [])[1] || '';
   const examQ = (partB.match(/^> ([\s\S]*?)(?:\n\n|$)/m) || [])[1] || '';
   const meaning = (partB.match(/\*\*What the question is really saying:\*\*\s*\n\n([\s\S]*?)(?=\n\n\*\*Write down)/) || [])[1] || '';
   const write = (partB.match(/\*\*Write down from the question:\*\*\s*(.+)/) || [])[1] || '';
-  const steps = r.split(/\n(?=### )/).filter(p => /^### (Step|Closing)/.test(p)).map(p => ({ title: p.split('\n')[0].replace(/^### /, '').replace(/\s*\(same.*\)$/, ''), html: html(p.split('\n').slice(1).join('\n').replace(/\n---\s*$/, '')) }));
+  const steps = r.split(/\n(?=### )/).filter(p => /^### (Step|Closing)/.test(p)).map(p => {
+    const body = p.split('\n').slice(1).join('\n').replace(/\n---\s*$/, '');
+    return { title: p.split('\n')[0].replace(/^### /, '').replace(/\s*\(same.*\)$/, ''), html: html(body), flow: flowOf(body) };
+  });
   const wrong = sec(r, /If something goes wrong|The same question with other causes/);
   const mug = sec(r, /Mug this up/);
   const tt = (r.match(/\*\*Target time:\*\*\s*(\d+)/) || [])[1];
