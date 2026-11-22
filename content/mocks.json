@@ -1,0 +1,2734 @@
+{
+ "generated": "2026-11-22",
+ "sources": [
+  "https://training.linuxfoundation.org/certification/certified-kubernetes-administrator-cka/",
+  "https://github.com/cncf/curriculum",
+  "https://blog.prateekjain.dev/cka-exam-experience-2026-how-i-passed-with-88-770d3c473af7",
+  "https://www.reddit.com/r/devops/comments/1v9n87e/passed_cka_with_88_sharing_my_prep_notes_and_exam/",
+  "https://dev.to/suzuki0430/cka-certified-kubernetes-administrator-exam-report-2026-dont-rely-on-old-guides-mastering-the-534m",
+  "https://medium.com/@m0hamed.nass01r0/how-to-pass-the-cka-2025-exam-questions-tips-18dc90edd65c",
+  "https://github.com/techwithmohamed/CKA-Certified-Kubernetes-Administrator",
+  "https://kodekloud.com/community/t/cka-2025-exam-syllabus-tips-and-feedback-request/474245",
+  "https://kodekloud.com/community/t/cka-exam-2025-few-thoughts-after-taking-killer-sh-exams/482003",
+  "https://kodekloud.com/community/t/just-took-the-latest-version-of-the-cka-exam-failed-miserably-need-some-advice/474751",
+  "https://aws.plainenglish.io/cka-2025-isnt-harder-here-s-my-3-attempt-story-to-prove-it-44a0a04757b3",
+  "https://www.sailor.sh/blog/cka-exam-changes-2025-2026",
+  "https://killercoda.com/playgrounds/scenario/cka"
+ ],
+ "mocks": [
+  {
+   "n": 1,
+   "tasks": [
+    {
+     "topic": "TROUBLESHOOTING",
+     "weight": 7,
+     "title": "Node NotReady: kubelet stopped",
+     "reported": "very common 2025-26 (node/kubelet troubleshooting)",
+     "question": "ssh cka01001\nThe worker node node01 is reported as NotReady. Investigate the cause and bring node01 back to the Ready state. Your fix must survive a reboot of node01.",
+     "keys": [
+      "node = node01",
+      "fix must survive reboot (enable the service)",
+      "do NOT reinstall Kubernetes"
+     ],
+     "setup": "ssh node01 'systemctl stop kubelet; systemctl disable kubelet' 2>/dev/null\nsleep 45\nclear",
+     "steps": [
+      {
+       "title": "See which node is sick",
+       "cmds": [
+        "kubectl get nodes"
+       ],
+       "see": "node01   NotReady",
+       "why": "NotReady usually means the kubelet on that node is not talking."
+      },
+      {
+       "title": "Log in to node01",
+       "cmds": [
+        "ssh node01"
+       ],
+       "see": "",
+       "why": "The kubelet runs on the node itself, not as a pod."
+      },
+      {
+       "title": "Check the kubelet service",
+       "cmds": [
+        "systemctl status kubelet --no-pager"
+       ],
+       "see": "Active: inactive (dead) ... disabled",
+       "why": "Shows the kubelet is stopped and will not start at boot."
+      },
+      {
+       "title": "Start it and enable it at boot",
+       "cmds": [
+        "systemctl enable --now kubelet",
+        "systemctl is-enabled kubelet"
+       ],
+       "see": "enabled",
+       "why": "enable = survives reboot, --now = start right away."
+      },
+      {
+       "title": "Go back and check",
+       "cmds": [
+        "exit",
+        "kubectl get nodes"
+       ],
+       "see": "node01   Ready",
+       "why": "Wait up to 30s for the node to report Ready."
+      }
+     ],
+     "verify": [
+      "kubectl get nodes",
+      "ssh node01 systemctl is-enabled kubelet"
+     ],
+     "docs": "",
+     "beginner": "The kubelet program on node01 is switched off; turn it on and make it start automatically."
+    },
+    {
+     "topic": "TROUBLESHOOTING",
+     "weight": 6,
+     "title": "Service has no endpoints",
+     "reported": "common 2025-26 (service/endpoint troubleshooting)",
+     "question": "ssh cka01002\nIn namespace shop the Service cart does not forward traffic to the Pods of Deployment cart. Fix the Service so that it routes to the Deployment's Pods. Do not modify the Deployment.",
+     "keys": [
+      "namespace = shop",
+      "service = cart",
+      "do NOT change deployment cart"
+     ],
+     "setup": "kubectl create namespace shop --dry-run=client -o yaml | kubectl apply -f -\ncat <<'EOF' | kubectl apply -f -\napiVersion: apps/v1\nkind: Deployment\nmetadata: {name: cart, namespace: shop}\nspec:\n  replicas: 2\n  selector: {matchLabels: {app: cart}}\n  template:\n    metadata: {labels: {app: cart}}\n    spec:\n      containers:\n      - {name: nginx, image: nginx:1.27-alpine, ports: [{containerPort: 80}]}\n---\napiVersion: v1\nkind: Service\nmetadata: {name: cart, namespace: shop}\nspec:\n  selector: {app: carts}\n  ports: [{port: 80, targetPort: 80}]\nEOF\nclear",
+     "steps": [
+      {
+       "title": "See the empty endpoints",
+       "cmds": [
+        "kubectl -n shop get endpointslices -l kubernetes.io/service-name=cart"
+       ],
+       "see": "ENDPOINTS   <unset>",
+       "why": "No endpoints = the Service selector matches no Pod."
+      },
+      {
+       "title": "Compare labels and selector",
+       "cmds": [
+        "kubectl -n shop get pods --show-labels",
+        "kubectl -n shop get svc cart -o wide"
+       ],
+       "see": "pods app=cart, selector app=carts",
+       "why": "One letter typo in the selector."
+      },
+      {
+       "title": "Fix the selector",
+       "cmds": [
+        "kubectl -n shop patch svc cart -p '{\"spec\":{\"selector\":{\"app\":\"cart\"}}}'"
+       ],
+       "see": "service/cart patched",
+       "why": "Point the Service at the real Pod label."
+      },
+      {
+       "title": "Test from inside the cluster",
+       "cmds": [
+        "kubectl -n shop run tmp --rm -it --restart=Never --image=busybox:1.36 -- wget -qO- -T3 cart"
+       ],
+       "see": "<title>Welcome to nginx!</title>",
+       "why": "A real request proves traffic flows."
+      }
+     ],
+     "verify": [
+      "kubectl -n shop get endpointslices -l kubernetes.io/service-name=cart"
+     ],
+     "docs": "",
+     "beginner": "The Service is looking for the wrong Pod label; correct its selector."
+    },
+    {
+     "topic": "TROUBLESHOOTING",
+     "weight": 5,
+     "title": "Pods stuck Pending (requests too big)",
+     "reported": "common 2025-26 (Pending pod is the classic)",
+     "question": "ssh cka01003\nThe Pods of Deployment reporter in namespace batch stay Pending. Find the reason and fix it so that all replicas are Running. Set the memory request of the container to 128Mi. Keep the number of replicas unchanged.",
+     "keys": [
+      "namespace = batch",
+      "deployment = reporter",
+      "memory request = 128Mi",
+      "keep replicas"
+     ],
+     "setup": "kubectl create namespace batch --dry-run=client -o yaml | kubectl apply -f -\ncat <<'EOF' | kubectl apply -f -\napiVersion: apps/v1\nkind: Deployment\nmetadata: {name: reporter, namespace: batch}\nspec:\n  replicas: 2\n  selector: {matchLabels: {app: reporter}}\n  template:\n    metadata: {labels: {app: reporter}}\n    spec:\n      containers:\n      - name: reporter\n        image: busybox:1.36\n        command: [\"sh\",\"-c\",\"sleep 3600\"]\n        resources: {requests: {memory: 64Gi}}\nEOF\nclear",
+     "steps": [
+      {
+       "title": "See Pending pods",
+       "cmds": [
+        "kubectl -n batch get pods"
+       ],
+       "see": "reporter-xxx   0/1   Pending",
+       "why": "Pending = scheduler cannot find a node."
+      },
+      {
+       "title": "Read the reason",
+       "cmds": [
+        "kubectl -n batch describe pod -l app=reporter | grep -A3 Events"
+       ],
+       "see": "Insufficient memory",
+       "why": "Events always tell why a pod is not scheduled."
+      },
+      {
+       "title": "Lower the request",
+       "cmds": [
+        "kubectl -n batch set resources deploy reporter --requests=memory=128Mi"
+       ],
+       "see": "deployment.apps/reporter resource requirements updated",
+       "why": "Asks for less memory so a node fits."
+      },
+      {
+       "title": "Check",
+       "cmds": [
+        "kubectl -n batch get pods"
+       ],
+       "see": "2 pods Running",
+       "why": "New pods replace the old Pending ones."
+      }
+     ],
+     "verify": [
+      "kubectl -n batch get deploy reporter -o jsonpath=\"{.spec.template.spec.containers[0].resources}\"",
+      "kubectl -n batch get pods"
+     ],
+     "docs": "",
+     "beginner": "The pods ask for more memory than any node has; ask for less."
+    },
+    {
+     "topic": "TROUBLESHOOTING",
+     "weight": 6,
+     "title": "CrashLoop / restarts: wrong liveness probe",
+     "reported": "common 2025-26",
+     "question": "ssh cka01004\nDeployment api in namespace web keeps restarting its Pods. Identify the cause and fix it. The nginx container listens on port 80. Do not delete the Deployment.",
+     "keys": [
+      "namespace = web",
+      "deployment = api",
+      "container port = 80",
+      "do NOT delete the deployment"
+     ],
+     "setup": "kubectl create namespace web --dry-run=client -o yaml | kubectl apply -f -\ncat <<'EOF' | kubectl apply -f -\napiVersion: apps/v1\nkind: Deployment\nmetadata: {name: api, namespace: web}\nspec:\n  replicas: 1\n  selector: {matchLabels: {app: api}}\n  template:\n    metadata: {labels: {app: api}}\n    spec:\n      containers:\n      - name: nginx\n        image: nginx:1.27-alpine\n        ports: [{containerPort: 80}]\n        livenessProbe:\n          httpGet: {path: /, port: 8080}\n          initialDelaySeconds: 3\n          periodSeconds: 3\n          failureThreshold: 2\nEOF\nclear",
+     "steps": [
+      {
+       "title": "See restarts",
+       "cmds": [
+        "kubectl -n web get pods"
+       ],
+       "see": "RESTARTS 3 (or CrashLoopBackOff)",
+       "why": "Growing RESTARTS = something kills the container."
+      },
+      {
+       "title": "Read events",
+       "cmds": [
+        "kubectl -n web describe pod -l app=api | grep -i -A2 liveness"
+       ],
+       "see": "Liveness probe failed: ... :8080 ... connection refused",
+       "why": "Probe checks port 8080 but nginx uses 80."
+      },
+      {
+       "title": "Fix the probe port",
+       "cmds": [
+        "kubectl -n web patch deploy api --type=json -p='[{\"op\":\"replace\",\"path\":\"/spec/template/spec/containers/0/livenessProbe/httpGet/port\",\"value\":80}]'"
+       ],
+       "see": "deployment.apps/api patched",
+       "why": "Probe now checks the right port."
+      },
+      {
+       "title": "Check",
+       "cmds": [
+        "kubectl -n web rollout status deploy api",
+        "kubectl -n web get pods"
+       ],
+       "see": "RESTARTS 0",
+       "why": "New pod stays healthy."
+      }
+     ],
+     "verify": [
+      "kubectl -n web get deploy api -o jsonpath=\"{.spec.template.spec.containers[0].livenessProbe.httpGet.port}\""
+     ],
+     "docs": "Configure Liveness, Readiness and Startup Probes (search: livenessProbe httpGet)",
+     "beginner": "The health check knocks on the wrong door (8080) so Kubernetes keeps restarting the pod."
+    },
+    {
+     "topic": "TROUBLESHOOTING",
+     "weight": 6,
+     "title": "Extract error lines from pod logs",
+     "reported": "occasional 2025-26",
+     "question": "ssh cka01005\nPod legacy-app in namespace ops writes log lines to stdout. Write all log lines that contain the string ERROR into the file /opt/course/5/errors.txt on the controlplane node.",
+     "keys": [
+      "namespace = ops",
+      "pod = legacy-app",
+      "file = /opt/course/5/errors.txt",
+      "only lines with ERROR"
+     ],
+     "setup": "kubectl create namespace ops --dry-run=client -o yaml | kubectl apply -f -\ncat <<'EOF' | kubectl apply -f -\napiVersion: v1\nkind: Pod\nmetadata: {name: legacy-app, namespace: ops}\nspec:\n  containers:\n  - name: app\n    image: busybox:1.36\n    command: [\"sh\",\"-c\",\"i=0; while true; do echo \\\"INFO tick $i\\\"; [ $((i%3)) -eq 0 ] && echo \\\"ERROR disk slow $i\\\"; i=$((i+1)); sleep 2; done\"]\nEOF\nclear",
+     "steps": [
+      {
+       "title": "Look at the logs",
+       "cmds": [
+        "kubectl -n ops logs legacy-app --tail=6"
+       ],
+       "see": "INFO tick 4\nERROR disk slow 3",
+       "why": "See what the lines look like."
+      },
+      {
+       "title": "Save only ERROR lines",
+       "cmds": [
+        "mkdir -p /opt/course/5",
+        "kubectl -n ops logs legacy-app | grep ERROR > /opt/course/5/errors.txt"
+       ],
+       "see": "",
+       "why": "grep keeps only matching lines."
+      },
+      {
+       "title": "Check the file",
+       "cmds": [
+        "head -3 /opt/course/5/errors.txt"
+       ],
+       "see": "ERROR disk slow 0",
+       "why": "File must hold only ERROR lines."
+      }
+     ],
+     "verify": [
+      "grep -vc ERROR /opt/course/5/errors.txt  # should print 0"
+     ],
+     "docs": "",
+     "beginner": "Copy the error lines from a pod log into a file."
+    },
+    {
+     "topic": "CLUSTER ARCHITECTURE",
+     "weight": 7,
+     "title": "Helm: template Argo CD without CRDs",
+     "reported": "very common 2025-26",
+     "question": "ssh cka01006\nInstall Argo CD in the cluster using Helm:\n- Add the official Argo CD Helm repository with the name argocd (https://argoproj.github.io/argo-helm).\n- Generate a Helm template of the Argo CD chart version 7.7.3 for namespace argocd and save it to /root/argo-helm.yaml. Configure the chart so that it does NOT install CRDs (the CRDs are already installed in the cluster).\n- Install Argo CD with Helm as release argocd, same version and configuration, in namespace argocd.",
+     "keys": [
+      "repo name = argocd",
+      "chart version = 7.7.3",
+      "namespace = argocd",
+      "file = /root/argo-helm.yaml",
+      "CRDs NOT installed (crds.install=false)"
+     ],
+     "setup": "command -v helm >/dev/null || curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash\nkubectl apply -k \"https://github.com/argoproj/argo-cd/manifests/crds?ref=v2.13.2\"\nkubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -\nclear",
+     "steps": [
+      {
+       "title": "Add the repo",
+       "cmds": [
+        "helm repo add argocd https://argoproj.github.io/argo-helm",
+        "helm repo update"
+       ],
+       "see": "\"argocd\" has been added",
+       "why": "Tells Helm where the chart lives."
+      },
+      {
+       "title": "Find the chart and version",
+       "cmds": [
+        "helm search repo argocd/argo-cd --versions | head -5"
+       ],
+       "see": "argocd/argo-cd  7.7.3 ...",
+       "why": "Confirm the exact version exists."
+      },
+      {
+       "title": "Find the CRD switch",
+       "cmds": [
+        "helm show values argocd/argo-cd --version 7.7.3 | grep -A3 \"^crds\""
+       ],
+       "see": "crds:\n  install: true",
+       "why": "The chart value that controls CRDs."
+      },
+      {
+       "title": "Write the template",
+       "cmds": [
+        "helm template argocd argocd/argo-cd --version 7.7.3 --namespace argocd --set crds.install=false > /root/argo-helm.yaml"
+       ],
+       "see": "",
+       "why": "template = render YAML only, nothing installed."
+      },
+      {
+       "title": "Prove no CRDs inside",
+       "cmds": [
+        "grep -c \"kind: CustomResourceDefinition\" /root/argo-helm.yaml"
+       ],
+       "see": "0",
+       "why": "Zero CRDs means the switch worked."
+      },
+      {
+       "title": "Install the release",
+       "cmds": [
+        "helm install argocd argocd/argo-cd --version 7.7.3 --namespace argocd --set crds.install=false",
+        "helm -n argocd list"
+       ],
+       "see": "argocd  argocd  1  deployed  argo-cd-7.7.3",
+       "why": "Real install with the same settings."
+      }
+     ],
+     "verify": [
+      "helm -n argocd list",
+      "grep -c \"kind: CustomResourceDefinition\" /root/argo-helm.yaml",
+      "kubectl -n argocd get pods"
+     ],
+     "docs": "helm.sh docs: helm template / helm install (search: helm template --set); kubernetes.io not needed",
+     "beginner": "Use Helm to print Argo CD YAML into a file and install it, telling the chart not to add CRDs."
+    },
+    {
+     "topic": "CLUSTER ARCHITECTURE",
+     "weight": 6,
+     "title": "Install cri-dockerd + kernel sysctl",
+     "reported": "very common 2025-26",
+     "question": "ssh cka01007\nPrepare this node for a Docker-based container runtime:\n- Install the Debian package /root/cri-dockerd.deb using dpkg.\n- Enable and start the cri-docker service.\n- Configure these kernel parameters so they persist across reboots (file /etc/sysctl.d/k8s.conf):\n  net.bridge.bridge-nf-call-iptables = 1\n  net.ipv4.ip_forward = 1\n  net.ipv6.conf.all.forwarding = 1\n  net.netfilter.nf_conntrack_max = 131072",
+     "keys": [
+      "package = /root/cri-dockerd.deb",
+      "use dpkg",
+      "service = cri-docker",
+      "persistent sysctl file /etc/sysctl.d/k8s.conf"
+     ],
+     "setup": "test -f /root/cri-dockerd.deb || curl -fsSLo /root/cri-dockerd.deb https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.16/cri-dockerd_0.3.16.3-0.ubuntu-jammy_amd64.deb || echo \"download failed - check release page\"\nclear",
+     "steps": [
+      {
+       "title": "Install the package",
+       "cmds": [
+        "dpkg -i /root/cri-dockerd.deb"
+       ],
+       "see": "Setting up cri-dockerd ...",
+       "why": "dpkg installs a local .deb file."
+      },
+      {
+       "title": "Enable and start the service",
+       "cmds": [
+        "systemctl enable --now cri-docker.service",
+        "systemctl status cri-docker --no-pager | head -5"
+       ],
+       "see": "Loaded: ... enabled",
+       "why": "enable = at boot, --now = start now."
+      },
+      {
+       "title": "Write the sysctl file",
+       "cmds": [
+        "cat <<'EOF' > /etc/sysctl.d/k8s.conf\nnet.bridge.bridge-nf-call-iptables = 1\nnet.ipv4.ip_forward = 1\nnet.ipv6.conf.all.forwarding = 1\nnet.netfilter.nf_conntrack_max = 131072\nEOF"
+       ],
+       "see": "",
+       "why": "Files in /etc/sysctl.d survive reboots."
+      },
+      {
+       "title": "Load the settings now",
+       "cmds": [
+        "modprobe br_netfilter",
+        "sysctl --system | grep -E \"bridge-nf-call-iptables|ip_forward|all.forwarding|conntrack_max\""
+       ],
+       "see": "net.ipv4.ip_forward = 1 ...",
+       "why": "Applies the file without rebooting."
+      }
+     ],
+     "verify": [
+      "dpkg -l | grep cri-dockerd",
+      "systemctl is-enabled cri-docker",
+      "sysctl net.ipv4.ip_forward net.netfilter.nf_conntrack_max"
+     ],
+     "docs": "kubernetes.io: Container Runtimes (search: cri-dockerd, sysctl ip_forward)",
+     "beginner": "Install a runtime package and turn on 4 Linux network settings permanently. On Killercoda Docker is absent, so cri-docker may not stay \"active\"; dpkg, enable and sysctl still practise."
+    },
+    {
+     "topic": "CLUSTER ARCHITECTURE",
+     "weight": 6,
+     "title": "CRDs: list cert-manager CRDs + explain a field",
+     "reported": "very common 2025-26",
+     "question": "ssh cka01008\ncert-manager CRDs are installed in the cluster.\n- Create a list of all cert-manager Custom Resource Definitions and save it to /root/resources.yaml. Use kubectl's default output format; do not set an output format.\n- Using kubectl, extract the documentation for the subject specification field of the Certificate custom resource and save it to /root/subject.yaml.",
+     "keys": [
+      "file1 = /root/resources.yaml (default output)",
+      "file2 = /root/subject.yaml",
+      "field = Certificate spec.subject"
+     ],
+     "setup": "kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.2/cert-manager.crds.yaml\nclear",
+     "steps": [
+      {
+       "title": "List cert-manager CRDs",
+       "cmds": [
+        "kubectl get crd | grep cert-manager"
+       ],
+       "see": "certificates.cert-manager.io ...",
+       "why": "Default output = plain table, no -o flag."
+      },
+      {
+       "title": "Save the list",
+       "cmds": [
+        "kubectl get crd | grep cert-manager > /root/resources.yaml"
+       ],
+       "see": "",
+       "why": "Redirect the same output into the file."
+      },
+      {
+       "title": "Save the field docs",
+       "cmds": [
+        "kubectl explain certificate.spec.subject > /root/subject.yaml"
+       ],
+       "see": "",
+       "why": "explain prints built-in docs for any field."
+      },
+      {
+       "title": "Check",
+       "cmds": [
+        "head -5 /root/subject.yaml"
+       ],
+       "see": "GROUP: cert-manager.io  KIND: Certificate  FIELD: subject",
+       "why": "Confirms the right field was saved."
+      }
+     ],
+     "verify": [
+      "wc -l /root/resources.yaml",
+      "grep -i subject /root/subject.yaml | head -2"
+     ],
+     "docs": "",
+     "beginner": "Show installed custom resource types in a file, and save the help text for one field."
+    },
+    {
+     "topic": "CLUSTER ARCHITECTURE",
+     "weight": 6,
+     "title": "RBAC: ServiceAccount, Role, RoleBinding",
+     "reported": "common 2025-26",
+     "question": "ssh cka01009\nIn namespace finance create a ServiceAccount named reporter. Create a Role named pod-reader that allows only get, list and watch on pods. Bind the Role to the ServiceAccount with a RoleBinding named reporter-binding.",
+     "keys": [
+      "namespace = finance",
+      "sa = reporter",
+      "role = pod-reader (get,list,watch pods)",
+      "rolebinding = reporter-binding"
+     ],
+     "setup": "kubectl create namespace finance --dry-run=client -o yaml | kubectl apply -f -\nclear",
+     "steps": [
+      {
+       "title": "Create the ServiceAccount",
+       "cmds": [
+        "kubectl -n finance create serviceaccount reporter"
+       ],
+       "see": "serviceaccount/reporter created",
+       "why": "An identity for pods/tools."
+      },
+      {
+       "title": "Create the Role",
+       "cmds": [
+        "kubectl -n finance create role pod-reader --verb=get,list,watch --resource=pods"
+       ],
+       "see": "role.rbac.authorization.k8s.io/pod-reader created",
+       "why": "Role = list of allowed actions."
+      },
+      {
+       "title": "Bind it",
+       "cmds": [
+        "kubectl -n finance create rolebinding reporter-binding --role=pod-reader --serviceaccount=finance:reporter"
+       ],
+       "see": "rolebinding... created",
+       "why": "Binding gives the role to the account."
+      },
+      {
+       "title": "Test permissions",
+       "cmds": [
+        "kubectl -n finance auth can-i list pods --as=system:serviceaccount:finance:reporter",
+        "kubectl -n finance auth can-i delete pods --as=system:serviceaccount:finance:reporter"
+       ],
+       "see": "yes\nno",
+       "why": "Allowed actions yes, everything else no."
+      }
+     ],
+     "verify": [
+      "kubectl -n finance auth can-i watch pods --as=system:serviceaccount:finance:reporter"
+     ],
+     "docs": "",
+     "beginner": "Give a robot account read-only access to pods in one namespace."
+    },
+    {
+     "topic": "SERVICES & NETWORKING",
+     "weight": 6,
+     "title": "Expose container port + NodePort Service",
+     "reported": "very common 2025-26",
+     "question": "ssh cka01010\nReconfigure the existing Deployment front-end in namespace front: add a port specification named http exposing port 80/tcp of the existing container nginx.\nCreate a new Service named front-end-svc of type NodePort exposing the container port http, with nodePort 30080. The Service must reach the Pods of the Deployment.",
+     "keys": [
+      "namespace = front",
+      "deployment = front-end",
+      "port name = http, 80/TCP",
+      "service = front-end-svc, NodePort 30080"
+     ],
+     "setup": "kubectl create namespace front --dry-run=client -o yaml | kubectl apply -f -\ncat <<'EOF' | kubectl apply -f -\napiVersion: apps/v1\nkind: Deployment\nmetadata: {name: front-end, namespace: front}\nspec:\n  replicas: 2\n  selector: {matchLabels: {app: front-end}}\n  template:\n    metadata: {labels: {app: front-end}}\n    spec:\n      containers:\n      - {name: nginx, image: nginx:1.27-alpine}\nEOF\nclear",
+     "steps": [
+      {
+       "title": "Add the container port",
+       "cmds": [
+        "kubectl -n front patch deploy front-end --type=json -p='[{\"op\":\"add\",\"path\":\"/spec/template/spec/containers/0/ports\",\"value\":[{\"name\":\"http\",\"containerPort\":80,\"protocol\":\"TCP\"}]}]'"
+       ],
+       "see": "deployment.apps/front-end patched",
+       "why": "Names port 80 \"http\" on the container."
+      },
+      {
+       "title": "Create the NodePort Service",
+       "cmds": [
+        "cat <<'EOF' | kubectl apply -f -\napiVersion: v1\nkind: Service\nmetadata: {name: front-end-svc, namespace: front}\nspec:\n  type: NodePort\n  selector: {app: front-end}\n  ports:\n  - {name: http, port: 80, targetPort: http, protocol: TCP, nodePort: 30080}\nEOF"
+       ],
+       "see": "service/front-end-svc created",
+       "why": "NodePort opens the same port on every node."
+      },
+      {
+       "title": "Test from outside the pod network",
+       "cmds": [
+        "curl -s http://$(kubectl get node node01 -o jsonpath=\"{.status.addresses[0].address}\"):30080 | head -4"
+       ],
+       "see": "<title>Welcome to nginx!</title>",
+       "why": "Node IP + 30080 reaches the pods."
+      }
+     ],
+     "verify": [
+      "kubectl -n front get svc front-end-svc",
+      "kubectl -n front get endpointslices -l kubernetes.io/service-name=front-end-svc"
+     ],
+     "docs": "kubernetes.io: Service (search: type NodePort nodePort)",
+     "beginner": "Name the container port and open it to the outside on port 30080 of every node."
+    },
+    {
+     "topic": "SERVICES & NETWORKING",
+     "weight": 8,
+     "title": "Gateway API: migrate Ingress to Gateway + HTTPRoute",
+     "reported": "very common 2025-26",
+     "question": "ssh cka01011\nMigrate the existing Ingress web in namespace web-app to the Gateway API, keeping HTTPS:\n- Create a Gateway named web-gateway using GatewayClass nginx, with an HTTPS listener on port 443 for hostname gateway.web.example. Use the TLS Secret web-tls already referenced by the Ingress.\n- Create an HTTPRoute named web-route bound to web-gateway that sends all paths (/) for gateway.web.example to Service web on port 80.\n- Delete the Ingress web when done.",
+     "keys": [
+      "namespace = web-app",
+      "gateway = web-gateway, class nginx",
+      "listener HTTPS 443, host gateway.web.example, secret web-tls",
+      "route = web-route -> svc web:80",
+      "delete ingress web at the end"
+     ],
+     "setup": "kubectl get crd gateways.gateway.networking.k8s.io >/dev/null 2>&1 || kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml\nkubectl create namespace web-app --dry-run=client -o yaml | kubectl apply -f -\nopenssl req -x509 -nodes -newkey rsa:2048 -days 365 -subj \"/CN=gateway.web.example\" -keyout /tmp/web-tls.key -out /tmp/web-tls.crt 2>/dev/null\nkubectl -n web-app create secret tls web-tls --cert=/tmp/web-tls.crt --key=/tmp/web-tls.key --dry-run=client -o yaml | kubectl apply -f -\ncat <<'EOF' | kubectl apply -f -\napiVersion: gateway.networking.k8s.io/v1\nkind: GatewayClass\nmetadata: {name: nginx}\nspec: {controllerName: example.net/gateway-controller}\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata: {name: web, namespace: web-app}\nspec:\n  replicas: 1\n  selector: {matchLabels: {app: web}}\n  template:\n    metadata: {labels: {app: web}}\n    spec:\n      containers: [{name: nginx, image: nginx:1.27-alpine, ports: [{containerPort: 80}]}]\n---\napiVersion: v1\nkind: Service\nmetadata: {name: web, namespace: web-app}\nspec: {selector: {app: web}, ports: [{port: 80, targetPort: 80}]}\n---\napiVersion: networking.k8s.io/v1\nkind: Ingress\nmetadata: {name: web, namespace: web-app}\nspec:\n  tls: [{hosts: [gateway.web.example], secretName: web-tls}]\n  rules:\n  - host: gateway.web.example\n    http:\n      paths:\n      - {path: /, pathType: Prefix, backend: {service: {name: web, port: {number: 80}}}}\nEOF\nclear",
+     "steps": [
+      {
+       "title": "Read the Ingress you must copy",
+       "cmds": [
+        "kubectl -n web-app get ingress web -o yaml | grep -A12 \"^spec\""
+       ],
+       "see": "host gateway.web.example, secretName web-tls",
+       "why": "Host, TLS secret and backend move to the new objects."
+      },
+      {
+       "title": "Check the GatewayClass",
+       "cmds": [
+        "kubectl get gatewayclass"
+       ],
+       "see": "nginx  example.net/gateway-controller",
+       "why": "Gateway must use an existing class."
+      },
+      {
+       "title": "Create the Gateway",
+       "cmds": [
+        "cat <<'EOF' | kubectl apply -f -\napiVersion: gateway.networking.k8s.io/v1\nkind: Gateway\nmetadata: {name: web-gateway, namespace: web-app}\nspec:\n  gatewayClassName: nginx\n  listeners:\n  - name: https\n    protocol: HTTPS\n    port: 443\n    hostname: gateway.web.example\n    tls:\n      mode: Terminate\n      certificateRefs:\n      - {kind: Secret, name: web-tls}\nEOF"
+       ],
+       "see": "gateway.../web-gateway created",
+       "why": "Gateway = the entry door with TLS."
+      },
+      {
+       "title": "Create the HTTPRoute",
+       "cmds": [
+        "cat <<'EOF' | kubectl apply -f -\napiVersion: gateway.networking.k8s.io/v1\nkind: HTTPRoute\nmetadata: {name: web-route, namespace: web-app}\nspec:\n  parentRefs: [{name: web-gateway}]\n  hostnames: [gateway.web.example]\n  rules:\n  - matches: [{path: {type: PathPrefix, value: /}}]\n    backendRefs: [{name: web, port: 80}]\nEOF"
+       ],
+       "see": "httproute.../web-route created",
+       "why": "Route = which traffic goes to which Service."
+      },
+      {
+       "title": "Delete the old Ingress",
+       "cmds": [
+        "kubectl -n web-app delete ingress web",
+        "kubectl -n web-app get gateway,httproute"
+       ],
+       "see": "web-gateway  nginx ... / web-route",
+       "why": "Migration done; old object removed."
+      }
+     ],
+     "verify": [
+      "kubectl -n web-app get gateway web-gateway -o yaml | grep -A8 listeners",
+      "kubectl -n web-app get httproute web-route -o yaml | grep -A6 rules",
+      "kubectl -n web-app get ingress"
+     ],
+     "docs": "kubernetes.io: Gateway API (search: HTTPRoute, Gateway listener tls certificateRefs); gateway-api.sigs.k8s.io HTTPS guide",
+     "beginner": "Rebuild the HTTPS Ingress as a Gateway (door + certificate) and an HTTPRoute (path to service). No Gateway controller runs on Killercoda, so status stays Unknown - that is fine."
+    },
+    {
+     "topic": "SERVICES & NETWORKING",
+     "weight": 6,
+     "title": "NetworkPolicy: choose the least permissive",
+     "reported": "very common 2025-26",
+     "question": "ssh cka01012\nPods of Deployment frontend (namespace frontend) must be able to reach Pods of Deployment backend (namespace backend) on port 80. A deny-all policy already exists in namespace backend.\nReview the NetworkPolicy files in /root/netpol/ and apply the ONE that allows this traffic with the least permissions. Do not delete or modify the existing policies.",
+     "keys": [
+      "source = frontend ns, app=frontend",
+      "target = backend ns, app=backend, TCP 80",
+      "apply exactly one file from /root/netpol/",
+      "do NOT touch default-deny"
+     ],
+     "setup": "kubectl create namespace frontend --dry-run=client -o yaml | kubectl apply -f -\nkubectl create namespace backend --dry-run=client -o yaml | kubectl apply -f -\nmkdir -p /root/netpol\ncat <<'EOF' | kubectl apply -f -\napiVersion: apps/v1\nkind: Deployment\nmetadata: {name: frontend, namespace: frontend}\nspec:\n  selector: {matchLabels: {app: frontend}}\n  template:\n    metadata: {labels: {app: frontend}}\n    spec: {containers: [{name: c, image: nginx:1.27-alpine}]}\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata: {name: backend, namespace: backend}\nspec:\n  selector: {matchLabels: {app: backend}}\n  template:\n    metadata: {labels: {app: backend}}\n    spec: {containers: [{name: c, image: nginx:1.27-alpine, ports: [{containerPort: 80}]}]}\n---\napiVersion: v1\nkind: Service\nmetadata: {name: backend, namespace: backend}\nspec: {selector: {app: backend}, ports: [{port: 80}]}\n---\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata: {name: default-deny, namespace: backend}\nspec: {podSelector: {}, policyTypes: [Ingress]}\nEOF\ncat <<'EOF' > /root/netpol/policy-1.yaml\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata: {name: allow-all-in, namespace: backend}\nspec:\n  podSelector: {}\n  ingress: [{}]\nEOF\ncat <<'EOF' > /root/netpol/policy-2.yaml\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata: {name: allow-frontend, namespace: backend}\nspec:\n  podSelector: {matchLabels: {app: backend}}\n  policyTypes: [Ingress]\n  ingress:\n  - from:\n    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: frontend}}\n      podSelector: {matchLabels: {app: frontend}}\n    ports: [{protocol: TCP, port: 80}]\nEOF\ncat <<'EOF' > /root/netpol/policy-3.yaml\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata: {name: allow-any-ns, namespace: backend}\nspec:\n  podSelector: {matchLabels: {app: backend}}\n  ingress:\n  - from:\n    - namespaceSelector: {}\nEOF\nclear",
+     "steps": [
+      {
+       "title": "Prove traffic is blocked now",
+       "cmds": [
+        "kubectl -n frontend exec deploy/frontend -- wget -qO- -T2 backend.backend"
+       ],
+       "see": "download timed out",
+       "why": "Deny-all is in effect."
+      },
+      {
+       "title": "Read all three files",
+       "cmds": [
+        "cat /root/netpol/*.yaml"
+       ],
+       "see": "",
+       "why": "1 opens everything, 3 opens all namespaces, 2 is exact."
+      },
+      {
+       "title": "Apply the strictest correct one",
+       "cmds": [
+        "kubectl apply -f /root/netpol/policy-2.yaml"
+       ],
+       "see": "networkpolicy.../allow-frontend created",
+       "why": "Only frontend pods, only port 80."
+      },
+      {
+       "title": "Test again",
+       "cmds": [
+        "kubectl -n frontend exec deploy/frontend -- wget -qO- -T2 backend.backend | head -4"
+       ],
+       "see": "<title>Welcome to nginx!</title>",
+       "why": "Traffic now allowed."
+      }
+     ],
+     "verify": [
+      "kubectl -n backend get networkpolicy"
+     ],
+     "docs": "kubernetes.io: Network Policies (search: namespaceSelector podSelector)",
+     "beginner": "Pick the rule file that opens only the needed door, nothing more."
+    },
+    {
+     "topic": "WORKLOADS & SCHEDULING",
+     "weight": 7,
+     "title": "PriorityClass one below the highest",
+     "reported": "very common 2025-26",
+     "question": "ssh cka01013\nCreate a new PriorityClass named urgent for user workloads. Its value must be exactly one less than the highest existing user-defined PriorityClass value (ignore the system-* classes).\nPatch the existing Deployment busybox-logger in namespace priority to use PriorityClass urgent. Ensure the Deployment rolls out successfully.",
+     "keys": [
+      "priorityclass = urgent",
+      "value = highest user-defined - 1",
+      "deployment = busybox-logger (ns priority)"
+     ],
+     "setup": "kubectl create namespace priority --dry-run=client -o yaml | kubectl apply -f -\ncat <<'EOF' | kubectl apply -f -\napiVersion: scheduling.k8s.io/v1\nkind: PriorityClass\nmetadata: {name: low-priority}\nvalue: 1000\n---\napiVersion: scheduling.k8s.io/v1\nkind: PriorityClass\nmetadata: {name: high-priority}\nvalue: 5000\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata: {name: busybox-logger, namespace: priority}\nspec:\n  selector: {matchLabels: {app: busybox-logger}}\n  template:\n    metadata: {labels: {app: busybox-logger}}\n    spec: {containers: [{name: c, image: busybox:1.36, command: [sh, -c, \"while true; do date; sleep 5; done\"]}]}\nEOF\nclear",
+     "steps": [
+      {
+       "title": "List priority classes",
+       "cmds": [
+        "kubectl get priorityclass"
+       ],
+       "see": "high-priority 5000, low-priority 1000, system-... 2000000000",
+       "why": "Highest user-defined is 5000."
+      },
+      {
+       "title": "Create urgent = 4999",
+       "cmds": [
+        "kubectl create priorityclass urgent --value=4999 --description=\"user workloads\""
+       ],
+       "see": "priorityclass.scheduling.k8s.io/urgent created",
+       "why": "One less than 5000."
+      },
+      {
+       "title": "Use it in the Deployment",
+       "cmds": [
+        "kubectl -n priority patch deploy busybox-logger -p '{\"spec\":{\"template\":{\"spec\":{\"priorityClassName\":\"urgent\"}}}}'"
+       ],
+       "see": "deployment.apps/busybox-logger patched",
+       "why": "Pod template now carries the class."
+      },
+      {
+       "title": "Check rollout",
+       "cmds": [
+        "kubectl -n priority rollout status deploy busybox-logger",
+        "kubectl -n priority get pod -o jsonpath=\"{.items[*].spec.priority}\""
+       ],
+       "see": "4999",
+       "why": "Running pod has the new priority."
+      }
+     ],
+     "verify": [
+      "kubectl get pc urgent",
+      "kubectl -n priority get deploy busybox-logger -o jsonpath=\"{.spec.template.spec.priorityClassName}\""
+     ],
+     "docs": "kubernetes.io: Pod Priority and Preemption (search: PriorityClass value)",
+     "beginner": "Make a new priority level just under the top one and give it to a deployment."
+    },
+    {
+     "topic": "WORKLOADS & SCHEDULING",
+     "weight": 8,
+     "title": "HPA with scale-down behavior",
+     "reported": "very common 2025-26",
+     "question": "ssh cka01014\nCreate a HorizontalPodAutoscaler named apache-server in namespace autoscale for the existing Deployment apache-server. It must target 50% CPU utilisation per Pod, with a minimum of 1 and a maximum of 4 replicas. Set the scale-down stabilization window to 30 seconds.",
+     "keys": [
+      "namespace = autoscale",
+      "hpa = apache-server -> deployment apache-server",
+      "cpu 50%, min 1, max 4",
+      "scaleDown stabilizationWindowSeconds = 30"
+     ],
+     "setup": "kubectl create namespace autoscale --dry-run=client -o yaml | kubectl apply -f -\ncat <<'EOF' | kubectl apply -f -\napiVersion: apps/v1\nkind: Deployment\nmetadata: {name: apache-server, namespace: autoscale}\nspec:\n  selector: {matchLabels: {app: apache-server}}\n  template:\n    metadata: {labels: {app: apache-server}}\n    spec:\n      containers:\n      - {name: httpd, image: httpd:2.4-alpine, resources: {requests: {cpu: 100m}}}\nEOF\nclear",
+     "steps": [
+      {
+       "title": "Create the HPA (autoscaling/v2)",
+       "cmds": [
+        "cat <<'EOF' | kubectl apply -f -\napiVersion: autoscaling/v2\nkind: HorizontalPodAutoscaler\nmetadata: {name: apache-server, namespace: autoscale}\nspec:\n  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: apache-server}\n  minReplicas: 1\n  maxReplicas: 4\n  metrics:\n  - type: Resource\n    resource: {name: cpu, target: {type: Utilization, averageUtilization: 50}}\n  behavior:\n    scaleDown:\n      stabilizationWindowSeconds: 30\nEOF"
+       ],
+       "see": "horizontalpodautoscaler.../apache-server created",
+       "why": "behavior only exists in v2 YAML."
+      },
+      {
+       "title": "Check it",
+       "cmds": [
+        "kubectl -n autoscale get hpa apache-server"
+       ],
+       "see": "TARGETS cpu: <unknown>/50%  MINPODS 1  MAXPODS 4",
+       "why": "<unknown> just means no metrics-server; fine."
+      },
+      {
+       "title": "Check the window",
+       "cmds": [
+        "kubectl -n autoscale get hpa apache-server -o jsonpath=\"{.spec.behavior.scaleDown}\""
+       ],
+       "see": "{\"stabilizationWindowSeconds\":30...}",
+       "why": "Proves behavior was saved."
+      }
+     ],
+     "verify": [
+      "kubectl -n autoscale get hpa apache-server -o yaml | grep -A4 behavior"
+     ],
+     "docs": "kubernetes.io: Horizontal Pod Autoscaling (search: stabilizationWindowSeconds behavior)",
+     "beginner": "Auto-add pods when CPU > 50%, and wait 30 s before removing them."
+    },
+    {
+     "topic": "STORAGE",
+     "weight": 5,
+     "title": "Default StorageClass with WaitForFirstConsumer",
+     "reported": "very common 2025-26",
+     "question": "ssh cka01015\nCreate a StorageClass named local-fast with provisioner rancher.io/local-path and volume binding mode WaitForFirstConsumer. Make it the default StorageClass; it must be the ONLY default. Do not modify existing PersistentVolumeClaims.",
+     "keys": [
+      "storageclass = local-fast",
+      "provisioner = rancher.io/local-path",
+      "volumeBindingMode = WaitForFirstConsumer",
+      "only one default"
+     ],
+     "setup": "kubectl get deploy -A | grep -q local-path-provisioner || kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.30/deploy/local-path-storage.yaml\nclear",
+     "steps": [
+      {
+       "title": "See current classes",
+       "cmds": [
+        "kubectl get storageclass"
+       ],
+       "see": "local-path (default) ...",
+       "why": "\"(default)\" marks the current default."
+      },
+      {
+       "title": "Create the new class",
+       "cmds": [
+        "cat <<'EOF' | kubectl apply -f -\napiVersion: storage.k8s.io/v1\nkind: StorageClass\nmetadata:\n  name: local-fast\n  annotations: {storageclass.kubernetes.io/is-default-class: \"true\"}\nprovisioner: rancher.io/local-path\nvolumeBindingMode: WaitForFirstConsumer\nEOF"
+       ],
+       "see": "storageclass.../local-fast created",
+       "why": "Annotation makes it default."
+      },
+      {
+       "title": "Remove default from the others",
+       "cmds": [
+        "for sc in $(kubectl get sc -o name | grep -v local-fast); do kubectl patch $sc -p '{\"metadata\":{\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"false\"}}}'; done"
+       ],
+       "see": "patched",
+       "why": "Two defaults confuse new PVCs."
+      },
+      {
+       "title": "Check",
+       "cmds": [
+        "kubectl get storageclass"
+       ],
+       "see": "local-fast (default) only",
+       "why": "Exactly one \"(default)\"."
+      }
+     ],
+     "verify": [
+      "kubectl get sc"
+     ],
+     "docs": "kubernetes.io: Change the default StorageClass; Storage Classes (search: is-default-class)",
+     "beginner": "Add a storage type and make it the only automatic choice."
+    },
+    {
+     "topic": "STORAGE",
+     "weight": 5,
+     "title": "Reuse a retained PV for MariaDB",
+     "reported": "very common 2025-26",
+     "question": "ssh cka01016\nA MariaDB Deployment in namespace mariadb was deleted by mistake, but its PersistentVolume mariadb-pv was kept.\n- Create a PersistentVolumeClaim named mariadb in namespace mariadb: access mode ReadWriteOnce, storage 250Mi, so that it binds to the existing PV.\n- Edit /root/mariadb-deploy.yaml so the Deployment uses this PVC, then apply it. Ensure the Pod is Running.",
+     "keys": [
+      "namespace = mariadb",
+      "pvc = mariadb, RWO, 250Mi",
+      "must bind to PV mariadb-pv",
+      "file = /root/mariadb-deploy.yaml"
+     ],
+     "setup": "kubectl create namespace mariadb --dry-run=client -o yaml | kubectl apply -f -\ncat <<'EOF' | kubectl apply -f -\napiVersion: v1\nkind: PersistentVolume\nmetadata: {name: mariadb-pv}\nspec:\n  capacity: {storage: 250Mi}\n  accessModes: [ReadWriteOnce]\n  persistentVolumeReclaimPolicy: Retain\n  storageClassName: \"\"\n  hostPath: {path: /mnt/data/mariadb, type: DirectoryOrCreate}\nEOF\ncat <<'EOF' > /root/mariadb-deploy.yaml\napiVersion: apps/v1\nkind: Deployment\nmetadata: {name: mariadb, namespace: mariadb}\nspec:\n  selector: {matchLabels: {app: mariadb}}\n  template:\n    metadata: {labels: {app: mariadb}}\n    spec:\n      containers:\n      - name: mariadb\n        image: mariadb:11\n        env: [{name: MARIADB_ROOT_PASSWORD, value: cka}]\n        volumeMounts: [{name: data, mountPath: /var/lib/mysql}]\n      volumes:\n      - name: data\n        persistentVolumeClaim:\n          claimName: \"\"\nEOF\nclear",
+     "steps": [
+      {
+       "title": "Look at the PV",
+       "cmds": [
+        "kubectl get pv mariadb-pv"
+       ],
+       "see": "mariadb-pv  250Mi  RWO  Retain  Available",
+       "why": "Note size, mode and empty class."
+      },
+      {
+       "title": "Create the matching PVC",
+       "cmds": [
+        "cat <<'EOF' | kubectl apply -f -\napiVersion: v1\nkind: PersistentVolumeClaim\nmetadata: {name: mariadb, namespace: mariadb}\nspec:\n  accessModes: [ReadWriteOnce]\n  storageClassName: \"\"\n  resources: {requests: {storage: 250Mi}}\nEOF"
+       ],
+       "see": "persistentvolumeclaim/mariadb created",
+       "why": "Empty class \"\" stops the default class grabbing it."
+      },
+      {
+       "title": "Check it is Bound",
+       "cmds": [
+        "kubectl -n mariadb get pvc mariadb"
+       ],
+       "see": "Bound   mariadb-pv",
+       "why": "Bound to the old PV = old data kept."
+      },
+      {
+       "title": "Point the Deployment to the PVC",
+       "cmds": [
+        "sed -i 's/claimName: \"\"/claimName: mariadb/' /root/mariadb-deploy.yaml",
+        "kubectl apply -f /root/mariadb-deploy.yaml"
+       ],
+       "see": "deployment.apps/mariadb created",
+       "why": "Fill in the claim name and apply."
+      },
+      {
+       "title": "Check the Pod",
+       "cmds": [
+        "kubectl -n mariadb get pods"
+       ],
+       "see": "mariadb-xxx  1/1  Running",
+       "why": "Database runs on the kept disk."
+      }
+     ],
+     "verify": [
+      "kubectl -n mariadb get pvc mariadb",
+      "kubectl -n mariadb get pods"
+     ],
+     "docs": "kubernetes.io: Configure a Pod to Use a PersistentVolume for Storage (search: PersistentVolumeClaim storageClassName)",
+     "beginner": "Make a storage claim that grabs the old disk, then plug it into the database deployment."
+    }
+   ]
+  },
+  {
+   "n": 2,
+   "tasks": [
+    {
+     "topic": "TROUBLESHOOTING",
+     "weight": 7,
+     "title": "Kubelet fails: broken systemd drop-in",
+     "reported": "very common 2025-26",
+     "question": "ssh cka02001\nNode node01 is NotReady after a maintenance change. Find out why the kubelet does not start on node01 and fix it. Do not reinstall any packages.",
+     "keys": [
+      "node = node01",
+      "do NOT reinstall packages"
+     ],
+     "setup": "ssh node01 \"sed -i 's#/usr/bin/kubelet #/usr/local/bin/kubelet #' /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf /etc/systemd/system/kubelet.service.d/10-kubeadm.conf 2>/dev/null; systemctl daemon-reload; systemctl restart kubelet\"\nsleep 45\nclear",
+     "steps": [
+      {
+       "title": "See the node",
+       "cmds": [
+        "kubectl get nodes"
+       ],
+       "see": "node01 NotReady",
+       "why": "Start from the symptom."
+      },
+      {
+       "title": "Log in and check kubelet",
+       "cmds": [
+        "ssh node01",
+        "systemctl status kubelet --no-pager | head -12"
+       ],
+       "see": "activating (auto-restart) ... status=203/EXEC",
+       "why": "203/EXEC = binary path not found."
+      },
+      {
+       "title": "Read the logs",
+       "cmds": [
+        "journalctl -u kubelet --no-pager | tail -5"
+       ],
+       "see": "Failed at step EXEC ... /usr/local/bin/kubelet: No such file",
+       "why": "Logs show the wrong path."
+      },
+      {
+       "title": "Find the real binary and the config",
+       "cmds": [
+        "which kubelet",
+        "systemctl cat kubelet | grep ExecStart="
+       ],
+       "see": "/usr/bin/kubelet",
+       "why": "Drop-in file points to the wrong place."
+      },
+      {
+       "title": "Fix the drop-in and restart",
+       "cmds": [
+        "sed -i 's#/usr/local/bin/kubelet #/usr/bin/kubelet #' $(systemctl cat kubelet | grep -o '^# /.*10-kubeadm.conf' | cut -c3-)",
+        "systemctl daemon-reload",
+        "systemctl restart kubelet",
+        "exit"
+       ],
+       "see": "",
+       "why": "daemon-reload re-reads unit files."
+      },
+      {
+       "title": "Check",
+       "cmds": [
+        "kubectl get nodes"
+       ],
+       "see": "node01 Ready",
+       "why": "Allow ~30s."
+      }
+     ],
+     "verify": [
+      "kubectl get nodes",
+      "ssh node01 systemctl is-active kubelet"
+     ],
+     "docs": "",
+     "beginner": "The kubelet service file points to a program path that does not exist; correct it."
+    },
+    {
+     "topic": "TROUBLESHOOTING",
+     "weight": 7,
+     "title": "Scheduler down: Pods stay Pending",
+     "reported": "common 2025-26 (control plane troubleshooting)",
+     "question": "ssh cka02002\nA new Pod named stuck in namespace default stays Pending, even though nodes have free resources. Diagnose and repair the cluster component responsible so that the Pod is scheduled.",
+     "keys": [
+      "pod = stuck (default ns)",
+      "fix the control plane component, not the pod"
+     ],
+     "setup": "sed -i 's#^    - kube-scheduler$#    - kube-schedulerr#' /etc/kubernetes/manifests/kube-scheduler.yaml\nsleep 20\nkubectl run stuck --image=nginx:1.27-alpine --dry-run=client -o yaml | kubectl apply -f -\nclear",
+     "steps": [
+      {
+       "title": "See the pod has no node",
+       "cmds": [
+        "kubectl get pod stuck -o wide"
+       ],
+       "see": "Pending   <none>",
+       "why": "No events at all = nobody is scheduling."
+      },
+      {
+       "title": "Check the scheduler pod",
+       "cmds": [
+        "kubectl -n kube-system get pods | grep scheduler"
+       ],
+       "see": "kube-scheduler-controlplane  0/1  CrashLoopBackOff",
+       "why": "Scheduler is a static pod on controlplane."
+      },
+      {
+       "title": "Read its container log",
+       "cmds": [
+        "crictl ps -a | grep scheduler",
+        "crictl logs $(crictl ps -a --name kube-scheduler -q | head -1) 2>&1 | tail -3"
+       ],
+       "see": "exec: \"kube-schedulerr\": executable file not found",
+       "why": "Typo in the command."
+      },
+      {
+       "title": "Fix the static pod manifest",
+       "cmds": [
+        "sed -i 's#- kube-schedulerr$#- kube-scheduler#' /etc/kubernetes/manifests/kube-scheduler.yaml",
+        "grep -n \"kube-scheduler$\" /etc/kubernetes/manifests/kube-scheduler.yaml"
+       ],
+       "see": "    - kube-scheduler",
+       "why": "kubelet restarts it when the file changes."
+      },
+      {
+       "title": "Check",
+       "cmds": [
+        "kubectl -n kube-system get pods | grep scheduler",
+        "kubectl get pod stuck -o wide"
+       ],
+       "see": "Running ... node01",
+       "why": "Pod gets a node once scheduler is back."
+      }
+     ],
+     "verify": [
+      "kubectl get pod stuck -o wide"
+     ],
+     "docs": "kubernetes.io: Troubleshooting Clusters; Static Pods (search: /etc/kubernetes/manifests)",
+     "beginner": "The scheduler program is broken by a typo in its file; fix the file."
+    },
+    {
+     "topic": "TROUBLESHOOTING",
+     "weight": 5,
+     "title": "DNS not resolving: CoreDNS down",
+     "reported": "common 2025-26",
+     "question": "ssh cka02003\nPods can no longer resolve Service names. Fix cluster DNS so that, from Pod dns-test in namespace lookup, the name kubernetes.default resolves. Save the output of that nslookup to /root/dns.txt.",
+     "keys": [
+      "pod = dns-test (ns lookup)",
+      "file = /root/dns.txt",
+      "fix DNS, do not edit the pod"
+     ],
+     "setup": "kubectl -n kube-system scale deploy coredns --replicas=0\nkubectl create namespace lookup --dry-run=client -o yaml | kubectl apply -f -\nkubectl -n lookup run dns-test --image=busybox:1.36 --restart=Never --dry-run=client -o yaml -- sleep 36000 | kubectl apply -f -\nclear",
+     "steps": [
+      {
+       "title": "Try a lookup",
+       "cmds": [
+        "kubectl -n lookup exec dns-test -- nslookup -timeout=2 kubernetes.default"
+       ],
+       "see": "connection timed out; no servers could be reached",
+       "why": "DNS service does not answer."
+      },
+      {
+       "title": "Check CoreDNS",
+       "cmds": [
+        "kubectl -n kube-system get deploy coredns"
+       ],
+       "see": "READY 0/0",
+       "why": "Somebody scaled it to zero."
+      },
+      {
+       "title": "Scale it back",
+       "cmds": [
+        "kubectl -n kube-system scale deploy coredns --replicas=2",
+        "kubectl -n kube-system rollout status deploy coredns"
+       ],
+       "see": "successfully rolled out",
+       "why": "Two DNS pods again."
+      },
+      {
+       "title": "Save the lookup",
+       "cmds": [
+        "kubectl -n lookup exec dns-test -- nslookup kubernetes.default > /root/dns.txt; cat /root/dns.txt"
+       ],
+       "see": "Name: kubernetes.default.svc.cluster.local  Address: 10.96.0.1",
+       "why": "Proves DNS works."
+      }
+     ],
+     "verify": [
+      "cat /root/dns.txt"
+     ],
+     "docs": "kubernetes.io: Debugging DNS Resolution",
+     "beginner": "Cluster DNS was switched off; switch it on and prove it works."
+    },
+    {
+     "topic": "TROUBLESHOOTING",
+     "weight": 5,
+     "title": "Pending: nodeSelector matches no node",
+     "reported": "common 2025-26",
+     "question": "ssh cka02004\nPods of Deployment analytics in namespace data are Pending. Make them run on node01 WITHOUT changing the Deployment.",
+     "keys": [
+      "namespace = data",
+      "deployment = analytics",
+      "do NOT edit the deployment",
+      "target node = node01"
+     ],
+     "setup": "kubectl create namespace data --dry-run=client -o yaml | kubectl apply -f -\ncat <<'EOF' | kubectl apply -f -\napiVersion: apps/v1\nkind: Deployment\nmetadata: {name: analytics, namespace: data}\nspec:\n  replicas: 2\n  selector: {matchLabels: {app: analytics}}\n  template:\n    metadata: {labels: {app: analytics}}\n    spec:\n      nodeSelector: {disktype: ssd}\n      containers: [{name: c, image: busybox:1.36, command: [sleep, \"3600\"]}]\nEOF\nclear",
+     "steps": [
+      {
+       "title": "Read the reason",
+       "cmds": [
+        "kubectl -n data describe pod -l app=analytics | grep -A3 Events"
+       ],
+       "see": "didn't match Pod's node affinity/selector",
+       "why": "Pod wants a label no node has."
+      },
+      {
+       "title": "See the required label",
+       "cmds": [
+        "kubectl -n data get deploy analytics -o jsonpath=\"{.spec.template.spec.nodeSelector}\""
+       ],
+       "see": "{\"disktype\":\"ssd\"}",
+       "why": "This is the label to add."
+      },
+      {
+       "title": "Label node01",
+       "cmds": [
+        "kubectl label node node01 disktype=ssd --overwrite"
+       ],
+       "see": "node/node01 labeled",
+       "why": "Now node01 matches."
+      },
+      {
+       "title": "Check",
+       "cmds": [
+        "kubectl -n data get pods -o wide"
+       ],
+       "see": "Running ... node01",
+       "why": "Pending pods get scheduled automatically."
+      }
+     ],
+     "verify": [
+      "kubectl get node node01 --show-labels | grep -o disktype=ssd",
+      "kubectl -n data get pods -o wide"
+     ],
+     "docs": "kubernetes.io: Assign Pods to Nodes (search: nodeSelector)",
+     "beginner": "Pods want a node with a sticker \"disktype=ssd\"; put that sticker on node01."
+    },
+    {
+     "topic": "TROUBLESHOOTING",
+     "weight": 6,
+     "title": "Init container blocked by missing ConfigMap",
+     "reported": "occasional 2025-26",
+     "question": "ssh cka02005\nDeployment inventory in namespace stock never becomes ready. Investigate and fix it. The application expects a ConfigMap named inventory-config with key ready and value yes. Do not modify the Deployment.",
+     "keys": [
+      "namespace = stock",
+      "deployment = inventory",
+      "configmap = inventory-config, ready=yes",
+      "do NOT edit deployment"
+     ],
+     "setup": "kubectl create namespace stock --dry-run=client -o yaml | kubectl apply -f -\ncat <<'EOF' | kubectl apply -f -\napiVersion: apps/v1\nkind: Deployment\nmetadata: {name: inventory, namespace: stock}\nspec:\n  selector: {matchLabels: {app: inventory}}\n  template:\n    metadata: {labels: {app: inventory}}\n    spec:\n      initContainers:\n      - {name: wait-config, image: busybox:1.36, command: [sh, -c, \"test -f /config/ready\"], volumeMounts: [{name: cfg, mountPath: /config}]}\n      containers:\n      - {name: app, image: nginx:1.27-alpine}\n      volumes:\n      - {name: cfg, configMap: {name: inventory-config}}\nEOF\nclear",
+     "steps": [
+      {
+       "title": "See the status",
+       "cmds": [
+        "kubectl -n stock get pods"
+       ],
+       "see": "Init:0/1 (or ContainerCreating)",
+       "why": "Stuck before the main container starts."
+      },
+      {
+       "title": "Read events",
+       "cmds": [
+        "kubectl -n stock describe pod -l app=inventory | tail -5"
+       ],
+       "see": "configmap \"inventory-config\" not found",
+       "why": "Volume source is missing."
+      },
+      {
+       "title": "Create the ConfigMap",
+       "cmds": [
+        "kubectl -n stock create configmap inventory-config --from-literal=ready=yes"
+       ],
+       "see": "configmap/inventory-config created",
+       "why": "Key \"ready\" becomes file /config/ready."
+      },
+      {
+       "title": "Check",
+       "cmds": [
+        "kubectl -n stock rollout status deploy inventory --timeout=120s"
+       ],
+       "see": "successfully rolled out",
+       "why": "Kubelet retries and the init container passes."
+      }
+     ],
+     "verify": [
+      "kubectl -n stock get deploy inventory"
+     ],
+     "docs": "kubernetes.io: Configure a Pod to Use a ConfigMap",
+     "beginner": "The pod waits for a config file that was never created; create it."
+    },
+    {
+     "topic": "CLUSTER ARCHITECTURE",
+     "weight": 7,
+     "title": "Install Calico CNI with the tigera operator",
+     "reported": "very common 2025-26",
+     "question": "ssh cka02006\nInstall and configure a CNI of your choice that supports NetworkPolicy enforcement. Use Calico v3.29.2:\n- Operator manifest: https://raw.githubusercontent.com/projectcalico/calico/v3.29.2/manifests/tigera-operator.yaml\n- Custom resources: https://raw.githubusercontent.com/projectcalico/calico/v3.29.2/manifests/custom-resources.yaml\nThe Pod CIDR must match the cluster's configured pod subnet.",
+     "keys": [
+      "calico v3.29.2",
+      "operator via kubectl create (not apply)",
+      "pod CIDR = cluster podSubnet"
+     ],
+     "setup": "",
+     "steps": [
+      {
+       "title": "Find the cluster pod CIDR",
+       "cmds": [
+        "kubectl -n kube-system get cm kubeadm-config -o yaml | grep podSubnet"
+       ],
+       "see": "podSubnet: 192.168.0.0/16 (example)",
+       "why": "Calico must use the same range."
+      },
+      {
+       "title": "Install the operator",
+       "cmds": [
+        "kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.2/manifests/tigera-operator.yaml"
+       ],
+       "see": "namespace/tigera-operator created ...",
+       "why": "create, because the CRDs are too big for apply."
+      },
+      {
+       "title": "Download and set the CIDR",
+       "cmds": [
+        "curl -fsSLO https://raw.githubusercontent.com/projectcalico/calico/v3.29.2/manifests/custom-resources.yaml",
+        "grep cidr custom-resources.yaml",
+        "sed -i \"s#cidr: 192.168.0.0/16#cidr: <YOUR-podSubnet>#\" custom-resources.yaml"
+       ],
+       "see": "cidr: 192.168.0.0/16",
+       "why": "Change only if your podSubnet differs."
+      },
+      {
+       "title": "Create the Installation",
+       "cmds": [
+        "kubectl create -f custom-resources.yaml",
+        "kubectl get tigerastatus"
+       ],
+       "see": "calico  True",
+       "why": "Wait a few minutes for calico pods."
+      }
+     ],
+     "verify": [
+      "kubectl get pods -n calico-system",
+      "kubectl get nodes"
+     ],
+     "docs": "docs.tigera.io: Quickstart for Calico on Kubernetes (kubernetes.io: Network Plugins)",
+     "beginner": "Install a network plugin that understands NetworkPolicies. Killercoda already has a CNI, so DO NOT run this there (setup empty) - only rehearse reading podSubnet and the commands."
+    },
+    {
+     "topic": "CLUSTER ARCHITECTURE",
+     "weight": 6,
+     "title": "etcd snapshot backup",
+     "reported": "common 2025-26",
+     "question": "ssh cka02007\nCreate a snapshot of the etcd instance running at https://127.0.0.1:2379 and save it to /opt/backup/etcd-snap.db.\nUse: CA /etc/kubernetes/pki/etcd/ca.crt, cert /etc/kubernetes/pki/etcd/server.crt, key /etc/kubernetes/pki/etcd/server.key.",
+     "keys": [
+      "file = /opt/backup/etcd-snap.db",
+      "endpoint https://127.0.0.1:2379",
+      "use the given certs"
+     ],
+     "setup": "command -v etcdctl >/dev/null || (apt-get update -qq && apt-get install -y -qq etcd-client)\nmkdir -p /opt/backup\nclear",
+     "steps": [
+      {
+       "title": "Confirm cert paths in the etcd manifest",
+       "cmds": [
+        "grep -E \"cert-file|key-file|trusted-ca|listen-client\" /etc/kubernetes/manifests/etcd.yaml"
+       ],
+       "see": "--cert-file=/etc/kubernetes/pki/etcd/server.crt ...",
+       "why": "Never guess paths; read them."
+      },
+      {
+       "title": "Take the snapshot",
+       "cmds": [
+        "ETCDCTL_API=3 etcdctl --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key snapshot save /opt/backup/etcd-snap.db"
+       ],
+       "see": "Snapshot saved at /opt/backup/etcd-snap.db",
+       "why": "Copies the whole cluster state."
+      },
+      {
+       "title": "Check the file",
+       "cmds": [
+        "ETCDCTL_API=3 etcdctl --write-out=table snapshot status /opt/backup/etcd-snap.db"
+       ],
+       "see": "HASH | REVISION | TOTAL KEYS | SIZE",
+       "why": "A table means the file is valid."
+      }
+     ],
+     "verify": [
+      "ls -l /opt/backup/etcd-snap.db"
+     ],
+     "docs": "kubernetes.io: Operating etcd clusters for Kubernetes (search: snapshot save)",
+     "beginner": "Save a backup copy of the cluster database into a file."
+    },
+    {
+     "topic": "CLUSTER ARCHITECTURE",
+     "weight": 6,
+     "title": "Kustomize overlay",
+     "reported": "common 2025-26",
+     "question": "ssh cka02008\nA Kustomize base exists in /root/shop-kustomize/base. Create an overlay in /root/shop-kustomize/overlays/prod that:\n- uses the base,\n- puts all resources in namespace shop-prod,\n- adds the name prefix prod-,\n- sets the replicas of Deployment shop to 3.\nApply the overlay with kubectl.",
+     "keys": [
+      "overlay dir = /root/shop-kustomize/overlays/prod",
+      "namespace = shop-prod",
+      "namePrefix = prod-",
+      "replicas shop = 3"
+     ],
+     "setup": "mkdir -p /root/shop-kustomize/base\ncat <<'EOF' > /root/shop-kustomize/base/deployment.yaml\napiVersion: apps/v1\nkind: Deployment\nmetadata: {name: shop}\nspec:\n  replicas: 1\n  selector: {matchLabels: {app: shop}}\n  template:\n    metadata: {labels: {app: shop}}\n    spec: {containers: [{name: shop, image: nginx:1.27-alpine}]}\nEOF\ncat <<'EOF' > /root/shop-kustomize/base/kustomization.yaml\nresources:\n- deployment.yaml\nEOF\nclear",
+     "steps": [
+      {
+       "title": "Look at the base",
+       "cmds": [
+        "cat /root/shop-kustomize/base/*.yaml"
+       ],
+       "see": "",
+       "why": "Know what you are changing."
+      },
+      {
+       "title": "Write the overlay",
+       "cmds": [
+        "mkdir -p /root/shop-kustomize/overlays/prod",
+        "cat <<'EOF' > /root/shop-kustomize/overlays/prod/kustomization.yaml\nresources:\n- ../../base\nnamespace: shop-prod\nnamePrefix: prod-\nreplicas:\n- name: shop\n  count: 3\nEOF"
+       ],
+       "see": "",
+       "why": "replicas uses the ORIGINAL name, without prefix."
+      },
+      {
+       "title": "Preview",
+       "cmds": [
+        "kubectl kustomize /root/shop-kustomize/overlays/prod"
+       ],
+       "see": "name: prod-shop  namespace: shop-prod  replicas: 3",
+       "why": "Check output before applying."
+      },
+      {
+       "title": "Apply",
+       "cmds": [
+        "kubectl create namespace shop-prod",
+        "kubectl apply -k /root/shop-kustomize/overlays/prod",
+        "kubectl -n shop-prod get deploy"
+       ],
+       "see": "prod-shop  3/3",
+       "why": "-k = apply a kustomization folder."
+      }
+     ],
+     "verify": [
+      "kubectl -n shop-prod get deploy prod-shop"
+     ],
+     "docs": "kubernetes.io: Declarative Management of Kubernetes Objects Using Kustomize (search: namePrefix replicas)",
+     "beginner": "Make a \"prod\" version of some YAML with a different namespace, name prefix and replica count."
+    },
+    {
+     "topic": "CLUSTER ARCHITECTURE",
+     "weight": 6,
+     "title": "Helm install + upgrade with values",
+     "reported": "common 2025-26",
+     "question": "ssh cka02009\nAdd the Helm repository podinfo (https://stefanprodan.github.io/podinfo). Install chart podinfo/podinfo version 6.7.1 as release web in namespace helm-web (create it) with 2 replicas.\nThen upgrade the release, keeping the same chart version, so that the UI message is \"hello cka\" (value ui.message). Write the current revision number of the release to /root/helm-rev.txt.",
+     "keys": [
+      "repo = podinfo",
+      "release = web, ns helm-web",
+      "version 6.7.1, replicaCount=2",
+      "upgrade: ui.message=\"hello cka\"",
+      "file = /root/helm-rev.txt"
+     ],
+     "setup": "command -v helm >/dev/null || curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash\nclear",
+     "steps": [
+      {
+       "title": "Add the repo",
+       "cmds": [
+        "helm repo add podinfo https://stefanprodan.github.io/podinfo",
+        "helm repo update"
+       ],
+       "see": "\"podinfo\" has been added",
+       "why": "Repo = chart catalogue."
+      },
+      {
+       "title": "Install",
+       "cmds": [
+        "helm install web podinfo/podinfo --version 6.7.1 -n helm-web --create-namespace --set replicaCount=2"
+       ],
+       "see": "STATUS: deployed  REVISION: 1",
+       "why": "--create-namespace makes helm-web."
+      },
+      {
+       "title": "Upgrade with a new value",
+       "cmds": [
+        "helm upgrade web podinfo/podinfo --version 6.7.1 -n helm-web --reuse-values --set ui.message=\"hello cka\""
+       ],
+       "see": "REVISION: 2",
+       "why": "--reuse-values keeps replicaCount=2."
+      },
+      {
+       "title": "Save revision",
+       "cmds": [
+        "helm -n helm-web list",
+        "helm -n helm-web list -o json | grep -o '\"revision\":\"[0-9]*\"' | grep -o '[0-9]*' > /root/helm-rev.txt; cat /root/helm-rev.txt"
+       ],
+       "see": "2",
+       "why": "Revision counts installs + upgrades."
+      }
+     ],
+     "verify": [
+      "helm -n helm-web get values web",
+      "kubectl -n helm-web get deploy"
+     ],
+     "docs": "helm.sh docs: helm upgrade (search: --reuse-values --set)",
+     "beginner": "Install an app from a Helm chart, then change one setting with an upgrade."
+    },
+    {
+     "topic": "SERVICES & NETWORKING",
+     "weight": 6,
+     "title": "Create an Ingress with path routing",
+     "reported": "common 2025-26",
+     "question": "ssh cka02010\nCreate an Ingress named echo in namespace echo-sound that exposes Service echo on port 8080 at http://example.org/echo using ingressClassName nginx and pathType Prefix.",
+     "keys": [
+      "namespace = echo-sound",
+      "ingress = echo",
+      "host example.org, path /echo, Prefix",
+      "backend echo:8080",
+      "ingressClassName nginx"
+     ],
+     "setup": "kubectl create namespace echo-sound --dry-run=client -o yaml | kubectl apply -f -\ncat <<'EOF' | kubectl apply -f -\napiVersion: apps/v1\nkind: Deployment\nmetadata: {name: echo, namespace: echo-sound}\nspec:\n  selector: {matchLabels: {app: echo}}\n  template:\n    metadata: {labels: {app: echo}}\n    spec: {containers: [{name: c, image: nginx:1.27-alpine}]}\n---\napiVersion: v1\nkind: Service\nmetadata: {name: echo, namespace: echo-sound}\nspec: {selector: {app: echo}, ports: [{port: 8080, targetPort: 80}]}\nEOF\nclear",
+     "steps": [
+      {
+       "title": "Check the Service port",
+       "cmds": [
+        "kubectl -n echo-sound get svc echo"
+       ],
+       "see": "8080/TCP",
+       "why": "Ingress must use the Service port, not the pod port."
+      },
+      {
+       "title": "Create the Ingress",
+       "cmds": [
+        "kubectl -n echo-sound create ingress echo --class=nginx --rule=\"example.org/echo*=echo:8080\""
+       ],
+       "see": "ingress.networking.k8s.io/echo created",
+       "why": "The * at the end means pathType Prefix."
+      },
+      {
+       "title": "Check",
+       "cmds": [
+        "kubectl -n echo-sound describe ingress echo | grep -A3 Rules"
+       ],
+       "see": "example.org  /echo  echo:8080",
+       "why": "Host, path and backend are right."
+      }
+     ],
+     "verify": [
+      "kubectl -n echo-sound get ingress echo -o jsonpath=\"{.spec.rules[0].http.paths[0].pathType}\""
+     ],
+     "docs": "kubernetes.io: Ingress (search: pathType Prefix ingressClassName)",
+     "beginner": "Publish a service under the web address example.org/echo. No ingress controller on Killercoda, so ADDRESS stays empty."
+    },
+    {
+     "topic": "SERVICES & NETWORKING",
+     "weight": 7,
+     "title": "TLS ConfigMap: allow only TLSv1.3",
+     "reported": "very common 2025-26",
+     "question": "ssh cka02011\nDeployment nginx-static in namespace nginx-static serves HTTPS using configuration from ConfigMap nginx-config. It currently allows TLSv1.2 and TLSv1.3.\nChange the configuration so that ONLY TLSv1.3 is accepted, then make the ConfigMap immutable. Make sure the running Pods use the new configuration.",
+     "keys": [
+      "namespace = nginx-static",
+      "configmap = nginx-config",
+      "only TLSv1.3",
+      "configmap immutable",
+      "pods must pick up the change"
+     ],
+     "setup": "kubectl create namespace nginx-static --dry-run=client -o yaml | kubectl apply -f -\nopenssl req -x509 -nodes -newkey rsa:2048 -days 365 -subj \"/CN=web.example.com\" -keyout /tmp/nginx-tls.key -out /tmp/nginx-tls.crt 2>/dev/null\nkubectl -n nginx-static create secret tls nginx-tls --cert=/tmp/nginx-tls.crt --key=/tmp/nginx-tls.key --dry-run=client -o yaml | kubectl apply -f -\nkubectl -n nginx-static get cm nginx-config -o jsonpath='{.immutable}' 2>/dev/null | grep -q true && kubectl -n nginx-static delete cm nginx-config\ncat <<'EOF' | kubectl apply -f -\napiVersion: v1\nkind: ConfigMap\nmetadata: {name: nginx-config, namespace: nginx-static}\ndata:\n  nginx.conf: |\n    events {}\n    http {\n      server {\n        listen 443 ssl;\n        server_name web.example.com;\n        ssl_certificate /etc/nginx/tls/tls.crt;\n        ssl_certificate_key /etc/nginx/tls/tls.key;\n        ssl_protocols TLSv1.2 TLSv1.3;\n        location / { return 200 \"ok\\n\"; }\n      }\n    }\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata: {name: nginx-static, namespace: nginx-static}\nspec:\n  selector: {matchLabels: {app: nginx-static}}\n  template:\n    metadata: {labels: {app: nginx-static}}\n    spec:\n      containers:\n      - name: nginx\n        image: nginx:1.27-alpine\n        volumeMounts:\n        - {name: conf, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf}\n        - {name: tls, mountPath: /etc/nginx/tls}\n      volumes:\n      - {name: conf, configMap: {name: nginx-config}}\n      - {name: tls, secret: {secretName: nginx-tls}}\n---\napiVersion: v1\nkind: Service\nmetadata: {name: nginx-static, namespace: nginx-static}\nspec: {selector: {app: nginx-static}, ports: [{port: 443}]}\nEOF\nclear",
+     "steps": [
+      {
+       "title": "Test TLS 1.2 works now",
+       "cmds": [
+        "curl -sk --tls-max 1.2 https://$(kubectl -n nginx-static get svc nginx-static -o jsonpath=\"{.spec.clusterIP}\")"
+       ],
+       "see": "ok",
+       "why": "Baseline: 1.2 still accepted."
+      },
+      {
+       "title": "Edit the ConfigMap",
+       "cmds": [
+        "kubectl -n nginx-static get cm nginx-config -o yaml > /root/nginx-config.yaml",
+        "sed -i 's/ssl_protocols TLSv1.2 TLSv1.3;/ssl_protocols TLSv1.3;/' /root/nginx-config.yaml",
+        "kubectl apply -f /root/nginx-config.yaml"
+       ],
+       "see": "configmap/nginx-config configured",
+       "why": "Change content BEFORE making it immutable."
+      },
+      {
+       "title": "Make it immutable",
+       "cmds": [
+        "kubectl -n nginx-static patch cm nginx-config -p '{\"immutable\":true}'"
+       ],
+       "see": "configmap/nginx-config patched",
+       "why": "Immutable = no more edits allowed."
+      },
+      {
+       "title": "Restart the pods",
+       "cmds": [
+        "kubectl -n nginx-static rollout restart deploy nginx-static && kubectl -n nginx-static rollout status deploy nginx-static"
+       ],
+       "see": "successfully rolled out",
+       "why": "subPath files only change on pod restart."
+      },
+      {
+       "title": "Prove 1.2 is refused",
+       "cmds": [
+        "curl -sk --tls-max 1.2 https://$(kubectl -n nginx-static get svc nginx-static -o jsonpath=\"{.spec.clusterIP}\") || echo refused"
+       ],
+       "see": "refused",
+       "why": "Only TLS 1.3 clients get in now."
+      }
+     ],
+     "verify": [
+      "kubectl -n nginx-static get cm nginx-config -o jsonpath=\"{.immutable}\"",
+      "kubectl -n nginx-static get cm nginx-config -o yaml | grep ssl_protocols"
+     ],
+     "docs": "kubernetes.io: ConfigMaps (search: immutable)",
+     "beginner": "Edit nginx settings stored in a ConfigMap to allow only TLS 1.3, lock the ConfigMap, restart nginx."
+    },
+    {
+     "topic": "SERVICES & NETWORKING",
+     "weight": 7,
+     "title": "Write a NetworkPolicy: namespace AND pod selector",
+     "reported": "very common 2025-26",
+     "question": "ssh cka02012\nIn namespace db create a NetworkPolicy named db-allow-api that allows incoming traffic to Pods labelled app=db ONLY from Pods labelled role=api in namespace api, on TCP port 80. All other incoming traffic to app=db Pods must be denied.",
+     "keys": [
+      "namespace = db",
+      "policy = db-allow-api",
+      "from: ns api AND role=api",
+      "port TCP 80"
+     ],
+     "setup": "kubectl create namespace db --dry-run=client -o yaml | kubectl apply -f -\nkubectl create namespace api --dry-run=client -o yaml | kubectl apply -f -\ncat <<'EOF' | kubectl apply -f -\napiVersion: v1\nkind: Pod\nmetadata: {name: db, namespace: db, labels: {app: db}}\nspec: {containers: [{name: c, image: nginx:1.27-alpine}]}\n---\napiVersion: v1\nkind: Service\nmetadata: {name: db, namespace: db}\nspec: {selector: {app: db}, ports: [{port: 80}]}\n---\napiVersion: v1\nkind: Pod\nmetadata: {name: api, namespace: api, labels: {role: api}}\nspec: {containers: [{name: c, image: busybox:1.36, command: [sleep, \"36000\"]}]}\n---\napiVersion: v1\nkind: Pod\nmetadata: {name: web, namespace: api, labels: {role: web}}\nspec: {containers: [{name: c, image: busybox:1.36, command: [sleep, \"36000\"]}]}\nEOF\nclear",
+     "steps": [
+      {
+       "title": "Create the policy",
+       "cmds": [
+        "cat <<'EOF' | kubectl apply -f -\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata: {name: db-allow-api, namespace: db}\nspec:\n  podSelector: {matchLabels: {app: db}}\n  policyTypes: [Ingress]\n  ingress:\n  - from:\n    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: api}}\n      podSelector: {matchLabels: {role: api}}\n    ports: [{protocol: TCP, port: 80}]\nEOF"
+       ],
+       "see": "networkpolicy.../db-allow-api created",
+       "why": "Same list item (no 2nd dash) = AND."
+      },
+      {
+       "title": "Allowed pod works",
+       "cmds": [
+        "kubectl -n api exec api -- wget -qO- -T2 db.db | head -2"
+       ],
+       "see": "<!DOCTYPE html>",
+       "why": "role=api in ns api passes."
+      },
+      {
+       "title": "Other pod is blocked",
+       "cmds": [
+        "kubectl -n api exec web -- wget -qO- -T2 db.db"
+       ],
+       "see": "download timed out",
+       "why": "role=web is denied."
+      }
+     ],
+     "verify": [
+      "kubectl -n db describe networkpolicy db-allow-api"
+     ],
+     "docs": "kubernetes.io: Network Policies (search: namespaceSelector and podSelector)",
+     "beginner": "Let only the api pods from the api namespace talk to the database on port 80."
+    },
+    {
+     "topic": "WORKLOADS & SCHEDULING",
+     "weight": 8,
+     "title": "Native sidecar container (restartPolicy Always)",
+     "reported": "very common 2025-26",
+     "question": "ssh cka02013\nUpdate Deployment order-app in namespace logging: add a sidecar container named log-shipper using image busybox:1.36 that runs: tail -n+1 -F /var/log/order.log\nUse the native sidecar pattern (an init container with restartPolicy: Always). Share the log directory using a volume named logs mounted at /var/log in both containers. Do not change the existing container's command.",
+     "keys": [
+      "namespace = logging",
+      "deployment = order-app",
+      "sidecar = log-shipper, busybox:1.36",
+      "initContainer + restartPolicy: Always",
+      "volume logs at /var/log"
+     ],
+     "setup": "kubectl create namespace logging --dry-run=client -o yaml | kubectl apply -f -\ncat <<'EOF' | kubectl apply -f -\napiVersion: apps/v1\nkind: Deployment\nmetadata: {name: order-app, namespace: logging}\nspec:\n  selector: {matchLabels: {app: order-app}}\n  template:\n    metadata: {labels: {app: order-app}}\n    spec:\n      containers:\n      - name: app\n        image: busybox:1.36\n        command: [sh, -c, \"while true; do echo order $(date) >> /var/log/order.log; sleep 3; done\"]\nEOF\nclear",
+     "steps": [
+      {
+       "title": "Save the current YAML",
+       "cmds": [
+        "kubectl -n logging get deploy order-app -o yaml > /root/order-app.yaml"
+       ],
+       "see": "",
+       "why": "Backup before big edits."
+      },
+      {
+       "title": "Apply the new spec",
+       "cmds": [
+        "cat <<'EOF' | kubectl apply -f -\napiVersion: apps/v1\nkind: Deployment\nmetadata: {name: order-app, namespace: logging}\nspec:\n  selector: {matchLabels: {app: order-app}}\n  template:\n    metadata: {labels: {app: order-app}}\n    spec:\n      initContainers:\n      - name: log-shipper\n        image: busybox:1.36\n        restartPolicy: Always\n        command: [sh, -c, \"tail -n+1 -F /var/log/order.log\"]\n        volumeMounts: [{name: logs, mountPath: /var/log}]\n      containers:\n      - name: app\n        image: busybox:1.36\n        command: [sh, -c, \"while true; do echo order $(date) >> /var/log/order.log; sleep 3; done\"]\n        volumeMounts: [{name: logs, mountPath: /var/log}]\n      volumes:\n      - {name: logs, emptyDir: {}}\nEOF"
+       ],
+       "see": "deployment.apps/order-app configured",
+       "why": "restartPolicy Always turns the init container into a sidecar."
+      },
+      {
+       "title": "Check both run",
+       "cmds": [
+        "kubectl -n logging get pods"
+       ],
+       "see": "2/2 Running",
+       "why": "Sidecar counts as a running container."
+      },
+      {
+       "title": "Read sidecar logs",
+       "cmds": [
+        "kubectl -n logging logs deploy/order-app -c log-shipper --tail=3"
+       ],
+       "see": "order Sat Nov ...",
+       "why": "Sidecar sees the app log file."
+      }
+     ],
+     "verify": [
+      "kubectl -n logging get deploy order-app -o jsonpath=\"{.spec.template.spec.initContainers[0].restartPolicy}\""
+     ],
+     "docs": "kubernetes.io: Sidecar Containers (search: initContainers restartPolicy Always)",
+     "beginner": "Add a helper container that keeps reading the app log file through a shared folder."
+    },
+    {
+     "topic": "WORKLOADS & SCHEDULING",
+     "weight": 7,
+     "title": "Split node resources evenly across replicas",
+     "reported": "very common 2025-26",
+     "question": "ssh cka02014\nDeployment wordpress in namespace wp runs 3 replicas on node01 (it has an init container). Some Pods cannot start.\nScale the Deployment to 0. Then give each Pod an equal share of node01's remaining CPU and memory: take node01's allocatable minus what is already requested by other Pods, keep 10% as headroom, and divide the rest by 3. Use identical requests for the init container and the main container. Scale back to 3 and ensure all Pods are Running.",
+     "keys": [
+      "namespace = wp",
+      "deployment = wordpress",
+      "scale 0 -> edit -> 3",
+      "init + main same requests",
+      "all 3 pods Running on node01"
+     ],
+     "setup": "kubectl create namespace wp --dry-run=client -o yaml | kubectl apply -f -\ncat <<'EOF' | kubectl apply -f -\napiVersion: apps/v1\nkind: Deployment\nmetadata: {name: wordpress, namespace: wp}\nspec:\n  replicas: 3\n  selector: {matchLabels: {app: wordpress}}\n  template:\n    metadata: {labels: {app: wordpress}}\n    spec:\n      nodeSelector: {kubernetes.io/hostname: node01}\n      initContainers:\n      - {name: init, image: busybox:1.36, command: [sh, -c, \"sleep 2\"], resources: {requests: {cpu: \"1\", memory: 1Gi}}}\n      containers:\n      - {name: wordpress, image: nginx:1.27-alpine, resources: {requests: {cpu: \"1\", memory: 1Gi}}}\nEOF\nclear",
+     "steps": [
+      {
+       "title": "Scale to 0",
+       "cmds": [
+        "kubectl -n wp scale deploy wordpress --replicas=0"
+       ],
+       "see": "deployment.apps/wordpress scaled",
+       "why": "Free the node while you calculate."
+      },
+      {
+       "title": "Read node01 numbers",
+       "cmds": [
+        "kubectl describe node node01 | grep -A6 Allocatable",
+        "kubectl describe node node01 | grep -A5 \"Allocated resources\""
+       ],
+       "see": "cpu 1 / memory ~1.9Gi; requests cpu 250m ...",
+       "why": "Allocatable minus already requested = free."
+      },
+      {
+       "title": "Calculate (example)",
+       "cmds": [
+        "echo \"free cpu 1000m-250m=750m, *0.9=675m, /3=225m; free mem 1900Mi-150Mi=1750Mi, *0.9=1575Mi, /3=525Mi\""
+       ],
+       "see": "",
+       "why": "Use YOUR numbers; round down."
+      },
+      {
+       "title": "Set requests on both containers",
+       "cmds": [
+        "kubectl -n wp set resources deploy wordpress -c init --requests=cpu=225m,memory=525Mi",
+        "kubectl -n wp set resources deploy wordpress -c wordpress --requests=cpu=225m,memory=525Mi"
+       ],
+       "see": "resource requirements updated",
+       "why": "-c picks the container (init too)."
+      },
+      {
+       "title": "Scale back and check",
+       "cmds": [
+        "kubectl -n wp scale deploy wordpress --replicas=3",
+        "kubectl -n wp get pods -o wide"
+       ],
+       "see": "3 x Running on node01",
+       "why": "All three fit now."
+      }
+     ],
+     "verify": [
+      "kubectl -n wp get deploy wordpress",
+      "kubectl -n wp get deploy wordpress -o jsonpath=\"{.spec.template.spec.initContainers[0].resources}\"",
+      "kubectl -n wp get deploy wordpress -o jsonpath=\"{.spec.template.spec.containers[0].resources}\""
+     ],
+     "docs": "kubernetes.io: Resource Management for Pods and Containers (search: requests init containers)",
+     "beginner": "Share what is free on node01 fairly between 3 pods so all of them fit."
+    },
+    {
+     "topic": "STORAGE",
+     "weight": 5,
+     "title": "PVC Pending: wrong StorageClass",
+     "reported": "common 2025-26",
+     "question": "ssh cka02015\nPVC logs-pvc in namespace storage-fix stays Pending and Pod log-writer cannot start. Fix it so the PVC is Bound using StorageClass local-path (same name, size 200Mi, ReadWriteOnce) and the Pod is Running.",
+     "keys": [
+      "namespace = storage-fix",
+      "pvc = logs-pvc, 200Mi, RWO",
+      "storageclass = local-path",
+      "pod log-writer Running"
+     ],
+     "setup": "kubectl get deploy -A | grep -q local-path-provisioner || kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.30/deploy/local-path-storage.yaml\nkubectl create namespace storage-fix --dry-run=client -o yaml | kubectl apply -f -\ncat <<'EOF' | kubectl apply -f -\napiVersion: v1\nkind: PersistentVolumeClaim\nmetadata: {name: logs-pvc, namespace: storage-fix}\nspec:\n  accessModes: [ReadWriteOnce]\n  storageClassName: fast-ssd\n  resources: {requests: {storage: 200Mi}}\n---\napiVersion: v1\nkind: Pod\nmetadata: {name: log-writer, namespace: storage-fix}\nspec:\n  containers:\n  - {name: c, image: busybox:1.36, command: [sh, -c, \"while true; do date >> /data/log; sleep 5; done\"], volumeMounts: [{name: d, mountPath: /data}]}\n  volumes: [{name: d, persistentVolumeClaim: {claimName: logs-pvc}}]\nEOF\nclear",
+     "steps": [
+      {
+       "title": "Read the reason",
+       "cmds": [
+        "kubectl -n storage-fix describe pvc logs-pvc | tail -3"
+       ],
+       "see": "storageclass.storage.k8s.io \"fast-ssd\" not found",
+       "why": "The class does not exist."
+      },
+      {
+       "title": "Save, delete, recreate the PVC",
+       "cmds": [
+        "kubectl -n storage-fix get pvc logs-pvc -o yaml > /root/logs-pvc.yaml",
+        "kubectl -n storage-fix delete pod log-writer --force --grace-period=0",
+        "kubectl -n storage-fix delete pvc logs-pvc"
+       ],
+       "see": "",
+       "why": "storageClassName cannot be edited on a PVC."
+      },
+      {
+       "title": "Create the fixed PVC",
+       "cmds": [
+        "cat <<'EOF' | kubectl apply -f -\napiVersion: v1\nkind: PersistentVolumeClaim\nmetadata: {name: logs-pvc, namespace: storage-fix}\nspec:\n  accessModes: [ReadWriteOnce]\n  storageClassName: local-path\n  resources: {requests: {storage: 200Mi}}\nEOF"
+       ],
+       "see": "persistentvolumeclaim/logs-pvc created",
+       "why": "Same name, right class."
+      },
+      {
+       "title": "Recreate the Pod",
+       "cmds": [
+        "cat <<'EOF' | kubectl apply -f -\napiVersion: v1\nkind: Pod\nmetadata: {name: log-writer, namespace: storage-fix}\nspec:\n  containers:\n  - {name: c, image: busybox:1.36, command: [sh, -c, \"while true; do date >> /data/log; sleep 5; done\"], volumeMounts: [{name: d, mountPath: /data}]}\n  volumes: [{name: d, persistentVolumeClaim: {claimName: logs-pvc}}]\nEOF"
+       ],
+       "see": "pod/log-writer created",
+       "why": "Same pod spec as before."
+      },
+      {
+       "title": "Check",
+       "cmds": [
+        "kubectl -n storage-fix get pvc,pod"
+       ],
+       "see": "Bound / Running",
+       "why": "local-path binds when the pod starts."
+      }
+     ],
+     "verify": [
+      "kubectl -n storage-fix get pvc logs-pvc",
+      "kubectl -n storage-fix get pod log-writer"
+     ],
+     "docs": "kubernetes.io: Persistent Volumes (search: storageClassName Pending)",
+     "beginner": "The storage request names a storage type that does not exist; recreate it with the right type."
+    },
+    {
+     "topic": "STORAGE",
+     "weight": 5,
+     "title": "Static PV + PVC + Pod (hostPath)",
+     "reported": "common 2025-26",
+     "question": "ssh cka02016\nCreate a PersistentVolume app-pv: 1Gi, ReadWriteOnce, hostPath /srv/app-data, storageClassName manual.\nCreate a PersistentVolumeClaim app-pvc in namespace app-store requesting 500Mi from class manual.\nCreate a Pod app-writer (image busybox:1.36, command sleep 3600) in namespace app-store mounting the claim at /data.",
+     "keys": [
+      "pv = app-pv 1Gi RWO hostPath /srv/app-data",
+      "pvc = app-pvc 500Mi class manual (ns app-store)",
+      "pod = app-writer mount /data"
+     ],
+     "setup": "kubectl create namespace app-store --dry-run=client -o yaml | kubectl apply -f -\nclear",
+     "steps": [
+      {
+       "title": "Create PV, PVC and Pod",
+       "cmds": [
+        "cat <<'EOF' | kubectl apply -f -\napiVersion: v1\nkind: PersistentVolume\nmetadata: {name: app-pv}\nspec:\n  capacity: {storage: 1Gi}\n  accessModes: [ReadWriteOnce]\n  storageClassName: manual\n  hostPath: {path: /srv/app-data}\n---\napiVersion: v1\nkind: PersistentVolumeClaim\nmetadata: {name: app-pvc, namespace: app-store}\nspec:\n  accessModes: [ReadWriteOnce]\n  storageClassName: manual\n  resources: {requests: {storage: 500Mi}}\n---\napiVersion: v1\nkind: Pod\nmetadata: {name: app-writer, namespace: app-store}\nspec:\n  containers:\n  - {name: c, image: busybox:1.36, command: [sleep, \"3600\"], volumeMounts: [{name: d, mountPath: /data}]}\n  volumes: [{name: d, persistentVolumeClaim: {claimName: app-pvc}}]\nEOF"
+       ],
+       "see": "created x3",
+       "why": "PV = disk, PVC = request, Pod = user."
+      },
+      {
+       "title": "Check binding",
+       "cmds": [
+        "kubectl get pv app-pv; kubectl -n app-store get pvc,pod"
+       ],
+       "see": "Bound ... app-store/app-pvc; Running",
+       "why": "PVC gets the 1Gi PV (bigger is OK)."
+      },
+      {
+       "title": "Write a test file",
+       "cmds": [
+        "kubectl -n app-store exec app-writer -- sh -c \"echo hi > /data/t && cat /data/t\""
+       ],
+       "see": "hi",
+       "why": "Proves the mount is writable."
+      }
+     ],
+     "verify": [
+      "kubectl get pv app-pv",
+      "kubectl -n app-store get pvc app-pvc"
+     ],
+     "docs": "kubernetes.io: Configure a Pod to Use a PersistentVolume for Storage",
+     "beginner": "Make a disk, request it, and mount it into a pod."
+    }
+   ]
+  },
+  {
+   "n": 3,
+   "tasks": [
+    {
+     "topic": "TROUBLESHOOTING",
+     "weight": 8,
+     "title": "API server down after etcd change",
+     "reported": "very common 2025-26",
+     "question": "ssh cka03001\nAfter a migration, kubectl on the controlplane can no longer reach the cluster (\"connection refused\"). The kube-apiserver is configured incorrectly. Find the problem and repair the cluster. Do not restore any backup.",
+     "keys": [
+      "component = kube-apiserver (static pod)",
+      "etcd client port is 2379 (peer port is 2380)",
+      "do NOT restore etcd"
+     ],
+     "setup": "sed -i \"s#--etcd-servers=https://127.0.0.1:2379#--etcd-servers=https://127.0.0.1:2380#\" /etc/kubernetes/manifests/kube-apiserver.yaml\nsleep 30\nclear",
+     "steps": [
+      {
+       "title": "See the symptom",
+       "cmds": [
+        "kubectl get nodes"
+       ],
+       "see": "connection to the server ... refused",
+       "why": "API server is down; use crictl instead."
+      },
+      {
+       "title": "Find the apiserver container",
+       "cmds": [
+        "crictl ps -a | grep kube-apiserver"
+       ],
+       "see": "Exited ... kube-apiserver",
+       "why": "kubelet keeps restarting it."
+      },
+      {
+       "title": "Read its logs",
+       "cmds": [
+        "crictl logs $(crictl ps -a --name kube-apiserver -q | head -1) 2>&1 | tail -5"
+       ],
+       "see": "dial tcp 127.0.0.1:2380 ... / context deadline exceeded",
+       "why": "It talks to the etcd PEER port."
+      },
+      {
+       "title": "Compare with etcd",
+       "cmds": [
+        "grep -E \"listen-client-urls|listen-peer-urls\" /etc/kubernetes/manifests/etcd.yaml",
+        "grep etcd-servers /etc/kubernetes/manifests/kube-apiserver.yaml"
+       ],
+       "see": "client :2379, peer :2380; apiserver uses :2380",
+       "why": "2379 is for clients like the apiserver."
+      },
+      {
+       "title": "Fix the manifest",
+       "cmds": [
+        "sed -i 's#--etcd-servers=https://127.0.0.1:2380#--etcd-servers=https://127.0.0.1:2379#' /etc/kubernetes/manifests/kube-apiserver.yaml"
+       ],
+       "see": "",
+       "why": "kubelet notices the change and restarts the pod."
+      },
+      {
+       "title": "Wait and check",
+       "cmds": [
+        "watch -n3 crictl ps --name kube-apiserver",
+        "kubectl get nodes"
+       ],
+       "see": "Running ... / Ready",
+       "why": "Takes ~1 minute."
+      }
+     ],
+     "verify": [
+      "kubectl get nodes",
+      "kubectl -n kube-system get pods"
+     ],
+     "docs": "kubernetes.io: Troubleshooting Clusters (search: crictl logs static pod)",
+     "beginner": "The API server dials the wrong etcd port; change 2380 back to 2379."
+    },
+    {
+     "topic": "TROUBLESHOOTING",
+     "weight": 6,
+     "title": "Controller-manager broken: Deployment does not scale",
+     "reported": "common 2025-26",
+     "question": "ssh cka03002\nDeployment scale-test in namespace cm-test was scaled to 3 replicas, but only 1 Pod exists and no new ReplicaSet activity happens. Find the responsible control plane component and fix it.",
+     "keys": [
+      "namespace = cm-test",
+      "deployment = scale-test must reach 3/3",
+      "fix the component, not the deployment"
+     ],
+     "setup": "kubectl create namespace cm-test --dry-run=client -o yaml | kubectl apply -f -\nkubectl -n cm-test create deployment scale-test --image=nginx:1.27-alpine --dry-run=client -o yaml | kubectl apply -f -\nsleep 5\nsed -i \"s#--kubeconfig=/etc/kubernetes/controller-manager.conf#--kubeconfig=/etc/kubernetes/controller-manager.cfg#\" /etc/kubernetes/manifests/kube-controller-manager.yaml\nsleep 20\nkubectl -n cm-test scale deploy scale-test --replicas=3\nclear",
+     "steps": [
+      {
+       "title": "See the symptom",
+       "cmds": [
+        "kubectl -n cm-test get deploy scale-test"
+       ],
+       "see": "READY 1/3",
+       "why": "Nothing creates the missing pods."
+      },
+      {
+       "title": "Check the controller-manager",
+       "cmds": [
+        "kubectl -n kube-system get pods | grep controller-manager"
+       ],
+       "see": "CrashLoopBackOff",
+       "why": "Controllers create pods for Deployments."
+      },
+      {
+       "title": "Read logs",
+       "cmds": [
+        "kubectl -n kube-system logs kube-controller-manager-controlplane | tail -3"
+       ],
+       "see": "stat /etc/kubernetes/controller-manager.cfg: no such file",
+       "why": "Wrong kubeconfig file name."
+      },
+      {
+       "title": "Fix the manifest",
+       "cmds": [
+        "sed -i 's#controller-manager.cfg#controller-manager.conf#' /etc/kubernetes/manifests/kube-controller-manager.yaml",
+        "ls /etc/kubernetes/*.conf"
+       ],
+       "see": "controller-manager.conf exists",
+       "why": "Point to the file that really exists."
+      },
+      {
+       "title": "Check",
+       "cmds": [
+        "kubectl -n cm-test get deploy scale-test"
+       ],
+       "see": "READY 3/3",
+       "why": "Controller catches up automatically."
+      }
+     ],
+     "verify": [
+      "kubectl -n cm-test get deploy scale-test",
+      "kubectl -n kube-system get pods | grep controller-manager"
+     ],
+     "docs": "kubernetes.io: kube-controller-manager; Troubleshooting Clusters",
+     "beginner": "The program that creates pods for deployments has a wrong file path; correct it."
+    },
+    {
+     "topic": "TROUBLESHOOTING",
+     "weight": 6,
+     "title": "Kubelet config: wrong client CA file",
+     "reported": "common 2025-26",
+     "question": "ssh cka03003\nnode01 is NotReady. The kubelet service fails to start. Repair the kubelet configuration on node01 so that the node becomes Ready. Do not re-join the node.",
+     "keys": [
+      "node = node01",
+      "config = /var/lib/kubelet/config.yaml",
+      "do NOT kubeadm reset/join"
+     ],
+     "setup": "ssh node01 \"sed -i 's#clientCAFile: /etc/kubernetes/pki/ca.crt#clientCAFile: /etc/kubernetes/pki/ca-wrong.crt#' /var/lib/kubelet/config.yaml; systemctl restart kubelet\"\nsleep 45\nclear",
+     "steps": [
+      {
+       "title": "Log in and check status",
+       "cmds": [
+        "ssh node01",
+        "systemctl status kubelet --no-pager | head -5"
+       ],
+       "see": "activating (auto-restart)",
+       "why": "Starts then crashes."
+      },
+      {
+       "title": "Read the error",
+       "cmds": [
+        "journalctl -u kubelet --no-pager | grep -i -m2 \"ca-wrong\\|client-ca\\|error\""
+       ],
+       "see": "unable to load client CA file /etc/kubernetes/pki/ca-wrong.crt",
+       "why": "File does not exist."
+      },
+      {
+       "title": "Find the right file",
+       "cmds": [
+        "ls /etc/kubernetes/pki/",
+        "grep clientCAFile /var/lib/kubelet/config.yaml"
+       ],
+       "see": "ca.crt",
+       "why": "Worker nodes have only ca.crt."
+      },
+      {
+       "title": "Fix and restart",
+       "cmds": [
+        "sed -i 's#ca-wrong.crt#ca.crt#' /var/lib/kubelet/config.yaml",
+        "systemctl restart kubelet",
+        "systemctl is-active kubelet",
+        "exit"
+       ],
+       "see": "active",
+       "why": "kubelet reads config.yaml at start."
+      },
+      {
+       "title": "Check",
+       "cmds": [
+        "kubectl get nodes"
+       ],
+       "see": "node01 Ready",
+       "why": "Allow ~30s."
+      }
+     ],
+     "verify": [
+      "kubectl get nodes",
+      "ssh node01 grep clientCAFile /var/lib/kubelet/config.yaml"
+     ],
+     "docs": "kubernetes.io: Set Kubelet Parameters Via A Configuration File",
+     "beginner": "The kubelet settings file names a certificate that does not exist; fix the name."
+    },
+    {
+     "topic": "TROUBLESHOOTING",
+     "weight": 5,
+     "title": "NetworkPolicy blocks DNS egress",
+     "reported": "occasional 2025-26",
+     "question": "ssh cka03004\nIn namespace secure, Pod client can reach Service backend by IP but not by name. Existing NetworkPolicies must stay unchanged. Create an additional NetworkPolicy named allow-dns in namespace secure that allows all Pods in the namespace to send DNS queries (UDP and TCP 53) to the cluster DNS Pods in kube-system.",
+     "keys": [
+      "namespace = secure",
+      "new policy = allow-dns",
+      "egress UDP+TCP 53 to kube-system k8s-app=kube-dns",
+      "do NOT edit/delete existing policies"
+     ],
+     "setup": "kubectl create namespace secure --dry-run=client -o yaml | kubectl apply -f -\ncat <<'EOF' | kubectl apply -f -\napiVersion: v1\nkind: Pod\nmetadata: {name: backend, namespace: secure, labels: {app: backend}}\nspec: {containers: [{name: c, image: nginx:1.27-alpine}]}\n---\napiVersion: v1\nkind: Service\nmetadata: {name: backend, namespace: secure}\nspec: {selector: {app: backend}, ports: [{port: 80}]}\n---\napiVersion: v1\nkind: Pod\nmetadata: {name: client, namespace: secure, labels: {app: client}}\nspec: {containers: [{name: c, image: busybox:1.36, command: [sleep, \"36000\"]}]}\n---\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata: {name: default-deny-egress, namespace: secure}\nspec: {podSelector: {}, policyTypes: [Egress]}\n---\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata: {name: allow-backend, namespace: secure}\nspec:\n  podSelector: {}\n  policyTypes: [Egress]\n  egress: [{to: [{podSelector: {matchLabels: {app: backend}}}], ports: [{protocol: TCP, port: 80}]}]\nEOF\nclear",
+     "steps": [
+      {
+       "title": "Name fails, IP works",
+       "cmds": [
+        "kubectl -n secure exec client -- wget -qO- -T2 backend",
+        "kubectl -n secure exec client -- wget -qO- -T2 $(kubectl -n secure get pod backend -o jsonpath=\"{.status.podIP}\") | head -2"
+       ],
+       "see": "bad address 'backend' / <!DOCTYPE html>",
+       "why": "Classic sign: DNS (port 53) is blocked."
+      },
+      {
+       "title": "Check DNS pod labels",
+       "cmds": [
+        "kubectl -n kube-system get pods -l k8s-app=kube-dns --show-labels"
+       ],
+       "see": "coredns-... k8s-app=kube-dns",
+       "why": "Target for the new rule."
+      },
+      {
+       "title": "Create allow-dns",
+       "cmds": [
+        "cat <<'EOF' | kubectl apply -f -\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata: {name: allow-dns, namespace: secure}\nspec:\n  podSelector: {}\n  policyTypes: [Egress]\n  egress:\n  - to:\n    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}\n      podSelector: {matchLabels: {k8s-app: kube-dns}}\n    ports:\n    - {protocol: UDP, port: 53}\n    - {protocol: TCP, port: 53}\nEOF"
+       ],
+       "see": "networkpolicy.../allow-dns created",
+       "why": "Policies add up; this opens only DNS."
+      },
+      {
+       "title": "Test by name",
+       "cmds": [
+        "kubectl -n secure exec client -- wget -qO- -T3 backend | head -2"
+       ],
+       "see": "<!DOCTYPE html>",
+       "why": "Name resolves and connects."
+      }
+     ],
+     "verify": [
+      "kubectl -n secure get networkpolicy"
+     ],
+     "docs": "kubernetes.io: Network Policies (search: egress port 53)",
+     "beginner": "A firewall rule blocks name lookups; add a rule that allows DNS only."
+    },
+    {
+     "topic": "TROUBLESHOOTING",
+     "weight": 5,
+     "title": "Bad rollout: roll back and record image",
+     "reported": "common 2025-26",
+     "question": "ssh cka03005\nA recent update of Deployment checkout in namespace release left it unavailable. Roll the Deployment back to the last working revision. Then write the image used by the running Pods to /root/checkout-image.txt.",
+     "keys": [
+      "namespace = release",
+      "deployment = checkout",
+      "roll back (do not recreate)",
+      "file = /root/checkout-image.txt"
+     ],
+     "setup": "kubectl create namespace release --dry-run=client -o yaml | kubectl apply -f -\nkubectl -n release create deployment checkout --image=nginx:1.27-alpine --replicas=2 --dry-run=client -o yaml | kubectl apply -f -\nkubectl -n release rollout status deploy checkout --timeout=90s\nkubectl -n release set image deploy/checkout nginx=nginx:1.27-doesnotexist\nclear",
+     "steps": [
+      {
+       "title": "See the problem",
+       "cmds": [
+        "kubectl -n release get pods"
+       ],
+       "see": "ImagePullBackOff",
+       "why": "New image tag does not exist."
+      },
+      {
+       "title": "See history",
+       "cmds": [
+        "kubectl -n release rollout history deploy checkout"
+       ],
+       "see": "REVISION 1, 2",
+       "why": "Revision 1 was healthy."
+      },
+      {
+       "title": "Roll back",
+       "cmds": [
+        "kubectl -n release rollout undo deploy checkout",
+        "kubectl -n release rollout status deploy checkout"
+       ],
+       "see": "successfully rolled out",
+       "why": "undo = go to previous revision."
+      },
+      {
+       "title": "Save the image",
+       "cmds": [
+        "kubectl -n release get deploy checkout -o jsonpath=\"{.spec.template.spec.containers[0].image}\" > /root/checkout-image.txt",
+        "cat /root/checkout-image.txt"
+       ],
+       "see": "nginx:1.27-alpine",
+       "why": "jsonpath pulls one field."
+      }
+     ],
+     "verify": [
+      "kubectl -n release get deploy checkout",
+      "cat /root/checkout-image.txt"
+     ],
+     "docs": "kubernetes.io: Deployments (search: rollout undo)",
+     "beginner": "An update broke the app; undo it and note which image works."
+    },
+    {
+     "topic": "CLUSTER ARCHITECTURE",
+     "weight": 6,
+     "title": "cri-dockerd + sysctl (persist + verify)",
+     "reported": "very common 2025-26",
+     "question": "ssh cka03006\nSet up cri-dockerd on this node:\n- Install /root/cri-dockerd.deb with dpkg.\n- Enable and start the cri-docker socket and service so they start on boot.\n- Persist these kernel settings in /etc/sysctl.d/99-cri.conf and load them now:\n  net.bridge.bridge-nf-call-iptables = 1, net.ipv6.conf.all.forwarding = 1, net.ipv4.ip_forward = 1, net.netfilter.nf_conntrack_max = 131072\n- Make sure the br_netfilter module is loaded at boot (/etc/modules-load.d/cri.conf).",
+     "keys": [
+      "dpkg -i",
+      "cri-docker.socket + cri-docker.service enabled",
+      "file /etc/sysctl.d/99-cri.conf",
+      "br_netfilter in /etc/modules-load.d/cri.conf"
+     ],
+     "setup": "test -f /root/cri-dockerd.deb || curl -fsSLo /root/cri-dockerd.deb https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.16/cri-dockerd_0.3.16.3-0.ubuntu-jammy_amd64.deb || echo \"download failed - check release page\"\nclear",
+     "steps": [
+      {
+       "title": "Install",
+       "cmds": [
+        "dpkg -i /root/cri-dockerd.deb"
+       ],
+       "see": "Setting up cri-dockerd",
+       "why": "Local package install."
+      },
+      {
+       "title": "Enable socket and service",
+       "cmds": [
+        "systemctl daemon-reload",
+        "systemctl enable --now cri-docker.socket cri-docker.service",
+        "systemctl is-enabled cri-docker.socket cri-docker.service"
+       ],
+       "see": "enabled\nenabled",
+       "why": "Both units start on boot."
+      },
+      {
+       "title": "Module at boot",
+       "cmds": [
+        "echo br_netfilter > /etc/modules-load.d/cri.conf",
+        "modprobe br_netfilter"
+       ],
+       "see": "",
+       "why": "bridge sysctl needs this module."
+      },
+      {
+       "title": "Persist sysctl",
+       "cmds": [
+        "cat <<'EOF' > /etc/sysctl.d/99-cri.conf\nnet.bridge.bridge-nf-call-iptables = 1\nnet.ipv6.conf.all.forwarding = 1\nnet.ipv4.ip_forward = 1\nnet.netfilter.nf_conntrack_max = 131072\nEOF"
+       ],
+       "see": "",
+       "why": "One setting per line."
+      },
+      {
+       "title": "Load and verify",
+       "cmds": [
+        "sysctl --system >/dev/null",
+        "sysctl net.bridge.bridge-nf-call-iptables net.ipv6.conf.all.forwarding net.ipv4.ip_forward net.netfilter.nf_conntrack_max"
+       ],
+       "see": "= 1, = 1, = 1, = 131072",
+       "why": "Values active now and after reboot."
+      }
+     ],
+     "verify": [
+      "dpkg -s cri-dockerd | grep Status",
+      "sysctl net.netfilter.nf_conntrack_max"
+     ],
+     "docs": "kubernetes.io: Container Runtimes (search: Forwarding IPv4 and letting iptables see bridged traffic)",
+     "beginner": "Install a runtime package, make it start at boot, and set 4 kernel network switches permanently. Docker is absent on Killercoda, so the service may fail to stay active; the rest still practises."
+    },
+    {
+     "topic": "CLUSTER ARCHITECTURE",
+     "weight": 7,
+     "title": "Helm template Argo CD and apply with kubectl",
+     "reported": "very common 2025-26",
+     "question": "ssh cka03007\nUsing the Helm repository argocd (https://argoproj.github.io/argo-helm), render chart argo-cd version 7.7.3 as release argo for namespace gitops:\n- CRDs must NOT be part of the output (they are pre-installed).\n- The argocd-server Service must be of type NodePort.\nSave the rendered manifests to /root/argocd-template.yaml and deploy them with kubectl (not helm install) into namespace gitops.",
+     "keys": [
+      "repo = argocd",
+      "chart argo-cd 7.7.3, release argo",
+      "ns = gitops",
+      "no CRDs, server.service.type=NodePort",
+      "file = /root/argocd-template.yaml",
+      "deploy with kubectl apply"
+     ],
+     "setup": "command -v helm >/dev/null || curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash\nkubectl apply -k \"https://github.com/argoproj/argo-cd/manifests/crds?ref=v2.13.2\"\nclear",
+     "steps": [
+      {
+       "title": "Add repo",
+       "cmds": [
+        "helm repo add argocd https://argoproj.github.io/argo-helm",
+        "helm repo update"
+       ],
+       "see": "",
+       "why": "Same repo as the docs."
+      },
+      {
+       "title": "Find value names",
+       "cmds": [
+        "helm show values argocd/argo-cd --version 7.7.3 | grep -n -A3 -E \"^crds:|^  service:\" | head -20"
+       ],
+       "see": "crds.install / server.service.type",
+       "why": "Look up keys, never guess."
+      },
+      {
+       "title": "Render",
+       "cmds": [
+        "helm template argo argocd/argo-cd --version 7.7.3 --namespace gitops --set crds.install=false --set server.service.type=NodePort > /root/argocd-template.yaml"
+       ],
+       "see": "",
+       "why": "Render only; nothing is installed."
+      },
+      {
+       "title": "Check content",
+       "cmds": [
+        "grep -c \"kind: CustomResourceDefinition\" /root/argocd-template.yaml",
+        "grep -B2 -A3 \"type: NodePort\" /root/argocd-template.yaml | head"
+       ],
+       "see": "0 / type: NodePort",
+       "why": "Both requirements visible in the file."
+      },
+      {
+       "title": "Apply with kubectl",
+       "cmds": [
+        "kubectl create namespace gitops",
+        "kubectl apply -n gitops -f /root/argocd-template.yaml",
+        "kubectl -n gitops get svc argo-argocd-server"
+       ],
+       "see": "TYPE NodePort",
+       "why": "kubectl applies the rendered YAML."
+      }
+     ],
+     "verify": [
+      "kubectl -n gitops get pods",
+      "kubectl -n gitops get svc"
+     ],
+     "docs": "helm.sh docs: helm template (search: --set --namespace)",
+     "beginner": "Print Argo CD YAML with Helm using two settings, save it, and apply it with kubectl."
+    },
+    {
+     "topic": "CLUSTER ARCHITECTURE",
+     "weight": 6,
+     "title": "CRDs: filter by group + create a custom resource",
+     "reported": "common 2025-26",
+     "question": "ssh cka03008\ncert-manager CRDs are installed.\n- Write the names of all CRDs belonging to API group cert-manager.io, one per line and sorted, to /root/cm-crds.txt.\n- Create a ClusterIssuer named selfsigned of kind cert-manager.io/v1 that uses the selfSigned issuer type.\n- Save the output of kubectl explain for clusterissuer.spec.selfSigned to /root/selfsigned.txt.",
+     "keys": [
+      "file1 = /root/cm-crds.txt (names only, sorted)",
+      "clusterissuer = selfsigned (selfSigned: {})",
+      "file2 = /root/selfsigned.txt"
+     ],
+     "setup": "kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.2/cert-manager.crds.yaml\nclear",
+     "steps": [
+      {
+       "title": "Names in group cert-manager.io",
+       "cmds": [
+        "kubectl get crd -o custom-columns=NAME:.metadata.name,GROUP:.spec.group --no-headers | awk '$2==\"cert-manager.io\"{print $1}' | sort > /root/cm-crds.txt; cat /root/cm-crds.txt"
+       ],
+       "see": "certificaterequests.cert-manager.io ...",
+       "why": "acme.cert-manager.io items are a different group."
+      },
+      {
+       "title": "Check the kind exists",
+       "cmds": [
+        "kubectl api-resources --api-group=cert-manager.io"
+       ],
+       "see": "clusterissuers  cert-manager.io/v1  false  ClusterIssuer",
+       "why": "NAMESPACED false = cluster-wide."
+      },
+      {
+       "title": "Create the ClusterIssuer",
+       "cmds": [
+        "cat <<'EOF' | kubectl apply -f -\napiVersion: cert-manager.io/v1\nkind: ClusterIssuer\nmetadata: {name: selfsigned}\nspec:\n  selfSigned: {}\nEOF"
+       ],
+       "see": "clusterissuer.cert-manager.io/selfsigned created",
+       "why": "A CRD lets you store new object kinds."
+      },
+      {
+       "title": "Save the field docs",
+       "cmds": [
+        "kubectl explain clusterissuer.spec.selfSigned > /root/selfsigned.txt"
+       ],
+       "see": "",
+       "why": "Docs come from the CRD schema."
+      }
+     ],
+     "verify": [
+      "cat /root/cm-crds.txt",
+      "kubectl get clusterissuer selfsigned"
+     ],
+     "docs": "kubernetes.io: Extend the Kubernetes API with CustomResourceDefinitions",
+     "beginner": "List custom types from one group, create one custom object, save its field help."
+    },
+    {
+     "topic": "CLUSTER ARCHITECTURE",
+     "weight": 6,
+     "title": "kubeadm: cert expiry, renew, join command",
+     "reported": "occasional 2025-26",
+     "question": "ssh cka03009\nOn the controlplane:\n- Save the certificate expiration overview of the cluster to /root/cert-expiry.txt.\n- Renew ONLY the kube-apiserver serving certificate and make the API server use it.\n- Save a complete kubeadm join command for a new worker node to /root/join.sh.",
+     "keys": [
+      "file1 = /root/cert-expiry.txt",
+      "renew only apiserver cert",
+      "file2 = /root/join.sh"
+     ],
+     "setup": "",
+     "steps": [
+      {
+       "title": "Save expiry overview",
+       "cmds": [
+        "kubeadm certs check-expiration > /root/cert-expiry.txt; head -8 /root/cert-expiry.txt"
+       ],
+       "see": "CERTIFICATE  EXPIRES  RESIDUAL TIME ...",
+       "why": "kubeadm reads all certs for you."
+      },
+      {
+       "title": "Renew apiserver cert",
+       "cmds": [
+        "kubeadm certs renew apiserver"
+       ],
+       "see": "certificate for serving the Kubernetes API renewed",
+       "why": "Only this one, as asked."
+      },
+      {
+       "title": "Restart the API server",
+       "cmds": [
+        "mv /etc/kubernetes/manifests/kube-apiserver.yaml /root/",
+        "sleep 20",
+        "mv /root/kube-apiserver.yaml /etc/kubernetes/manifests/",
+        "sleep 40; kubectl get nodes"
+       ],
+       "see": "Ready",
+       "why": "Static pod restarts and loads the new cert."
+      },
+      {
+       "title": "Create the join command",
+       "cmds": [
+        "kubeadm token create --print-join-command > /root/join.sh",
+        "cat /root/join.sh"
+       ],
+       "see": "kubeadm join 172.30.1.2:6443 --token ... --discovery-token-ca-cert-hash sha256:...",
+       "why": "New token + CA hash in one line."
+      }
+     ],
+     "verify": [
+      "openssl x509 -in /etc/kubernetes/pki/apiserver.crt -noout -enddate",
+      "cat /root/join.sh"
+     ],
+     "docs": "kubernetes.io: Certificate Management with kubeadm (search: certs renew check-expiration)",
+     "beginner": "Check certificate dates, renew the API server certificate, and print the command a new node would use to join. No setup needed: the cluster already has these."
+    },
+    {
+     "topic": "SERVICES & NETWORKING",
+     "weight": 7,
+     "title": "Gateway API: header match + weighted split",
+     "reported": "common 2025-26",
+     "question": "ssh cka03010\nIn namespace shop-gw a Gateway shop-gw (HTTP, port 80) and Services shop-v1 and shop-v2 exist.\nCreate an HTTPRoute named shop-route attached to shop-gw for hostname shop.example.com:\n- Requests with header x-version: v2 go 100% to shop-v2.\n- All other requests are split 80% shop-v1 and 20% shop-v2.\nBoth Services listen on port 80.",
+     "keys": [
+      "namespace = shop-gw",
+      "route = shop-route -> gateway shop-gw",
+      "host shop.example.com",
+      "header x-version=v2 -> shop-v2",
+      "else 80/20 v1/v2"
+     ],
+     "setup": "kubectl get crd gateways.gateway.networking.k8s.io >/dev/null 2>&1 || kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml\nkubectl create namespace shop-gw --dry-run=client -o yaml | kubectl apply -f -\ncat <<'EOF' | kubectl apply -f -\napiVersion: gateway.networking.k8s.io/v1\nkind: GatewayClass\nmetadata: {name: nginx}\nspec: {controllerName: example.net/gateway-controller}\n---\napiVersion: gateway.networking.k8s.io/v1\nkind: Gateway\nmetadata: {name: shop-gw, namespace: shop-gw}\nspec:\n  gatewayClassName: nginx\n  listeners: [{name: http, protocol: HTTP, port: 80}]\n---\napiVersion: v1\nkind: Service\nmetadata: {name: shop-v1, namespace: shop-gw}\nspec: {selector: {app: shop, v: \"1\"}, ports: [{port: 80}]}\n---\napiVersion: v1\nkind: Service\nmetadata: {name: shop-v2, namespace: shop-gw}\nspec: {selector: {app: shop, v: \"2\"}, ports: [{port: 80}]}\nEOF\nclear",
+     "steps": [
+      {
+       "title": "Check the Gateway",
+       "cmds": [
+        "kubectl -n shop-gw get gateway shop-gw -o yaml | grep -A3 listeners"
+       ],
+       "see": "name: http  port: 80",
+       "why": "Route will attach to this."
+      },
+      {
+       "title": "Create the HTTPRoute",
+       "cmds": [
+        "cat <<'EOF' | kubectl apply -f -\napiVersion: gateway.networking.k8s.io/v1\nkind: HTTPRoute\nmetadata: {name: shop-route, namespace: shop-gw}\nspec:\n  parentRefs: [{name: shop-gw}]\n  hostnames: [shop.example.com]\n  rules:\n  - matches:\n    - headers: [{name: x-version, value: v2}]\n    backendRefs: [{name: shop-v2, port: 80}]\n  - matches:\n    - path: {type: PathPrefix, value: /}\n    backendRefs:\n    - {name: shop-v1, port: 80, weight: 80}\n    - {name: shop-v2, port: 80, weight: 20}\nEOF"
+       ],
+       "see": "httproute.../shop-route created",
+       "why": "Header rule is more specific, so it wins."
+      },
+      {
+       "title": "Check",
+       "cmds": [
+        "kubectl -n shop-gw describe httproute shop-route | grep -A20 Rules"
+       ],
+       "see": "Weight: 80 / Weight: 20 / x-version",
+       "why": "Both rules stored correctly."
+      }
+     ],
+     "verify": [
+      "kubectl -n shop-gw get httproute shop-route -o yaml"
+     ],
+     "docs": "kubernetes.io: Gateway API; gateway-api.sigs.k8s.io: HTTP traffic splitting / header matching",
+     "beginner": "Send testers (header v2) to version 2 and split everyone else 80/20."
+    },
+    {
+     "topic": "SERVICES & NETWORKING",
+     "weight": 6,
+     "title": "NetworkPolicy pick: AND vs OR trap",
+     "reported": "very common 2025-26",
+     "question": "ssh cka03011\nPods labelled app=api in namespace payments must accept traffic ONLY from Pods labelled app=gateway in namespace edge, on TCP port 80. A default deny-ingress policy exists in payments.\nSeveral candidate policies are in /root/netpols-ex/. Apply the single file that meets the requirement with the least privilege. Do not modify any file or existing policy.",
+     "keys": [
+      "target = payments app=api",
+      "source = ns edge AND app=gateway",
+      "port TCP 80",
+      "apply one file only"
+     ],
+     "setup": "kubectl create namespace payments --dry-run=client -o yaml | kubectl apply -f -\nkubectl create namespace edge --dry-run=client -o yaml | kubectl apply -f -\nmkdir -p /root/netpols-ex\ncat <<'EOF' | kubectl apply -f -\napiVersion: v1\nkind: Pod\nmetadata: {name: api, namespace: payments, labels: {app: api}}\nspec: {containers: [{name: c, image: nginx:1.27-alpine}]}\n---\napiVersion: v1\nkind: Service\nmetadata: {name: api, namespace: payments}\nspec: {selector: {app: api}, ports: [{port: 80}]}\n---\napiVersion: v1\nkind: Pod\nmetadata: {name: gateway, namespace: edge, labels: {app: gateway}}\nspec: {containers: [{name: c, image: busybox:1.36, command: [sleep, \"36000\"]}]}\n---\napiVersion: v1\nkind: Pod\nmetadata: {name: intruder, namespace: edge, labels: {app: other}}\nspec: {containers: [{name: c, image: busybox:1.36, command: [sleep, \"36000\"]}]}\n---\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata: {name: deny-in, namespace: payments}\nspec: {podSelector: {}, policyTypes: [Ingress]}\nEOF\ncat <<'EOF' > /root/netpols-ex/a.yaml\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata: {name: np-a, namespace: payments}\nspec:\n  podSelector: {matchLabels: {app: api}}\n  ingress:\n  - from:\n    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: edge}}\n    - podSelector: {matchLabels: {app: gateway}}\n    ports: [{protocol: TCP, port: 80}]\nEOF\ncat <<'EOF' > /root/netpols-ex/b.yaml\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata: {name: np-b, namespace: payments}\nspec:\n  podSelector: {matchLabels: {app: api}}\n  ingress:\n  - from:\n    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: edge}}\n      podSelector: {matchLabels: {app: gateway}}\n    ports: [{protocol: TCP, port: 80}]\nEOF\ncat <<'EOF' > /root/netpols-ex/c.yaml\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata: {name: np-c, namespace: payments}\nspec:\n  podSelector: {matchLabels: {app: api}}\n  ingress:\n  - from:\n    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: edge}}\n      podSelector: {matchLabels: {app: gateway}}\nEOF\ncat <<'EOF' > /root/netpols-ex/d.yaml\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata: {name: np-d, namespace: payments}\nspec:\n  podSelector: {}\n  ingress:\n  - from:\n    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: edge}}\n    ports: [{protocol: TCP, port: 80}]\nEOF\nclear",
+     "steps": [
+      {
+       "title": "Read every file carefully",
+       "cmds": [
+        "for f in /root/netpols-ex/*.yaml; do echo \"== $f\"; cat $f; done"
+       ],
+       "see": "",
+       "why": "Look at dashes: each \"-\" under from is a separate OR."
+      },
+      {
+       "title": "Decide",
+       "cmds": [
+        "echo \"a=OR (any edge pod OR any gateway pod anywhere), b=AND+port, c=no port limit, d=all edge pods+all targets -> b\""
+       ],
+       "see": "",
+       "why": "b is the only exact match."
+      },
+      {
+       "title": "Apply b",
+       "cmds": [
+        "kubectl apply -f /root/netpols-ex/b.yaml"
+       ],
+       "see": "networkpolicy.../np-b created",
+       "why": "One file, no edits."
+      },
+      {
+       "title": "Test allowed and blocked",
+       "cmds": [
+        "kubectl -n edge exec gateway -- wget -qO- -T2 api.payments | head -2",
+        "kubectl -n edge exec intruder -- wget -qO- -T2 api.payments"
+       ],
+       "see": "<!DOCTYPE html> / download timed out",
+       "why": "Only the gateway pod gets in."
+      }
+     ],
+     "verify": [
+      "kubectl -n payments get networkpolicy"
+     ],
+     "docs": "kubernetes.io: Network Policies (search: behavior of to and from selectors)",
+     "beginner": "Pick the rule where namespace AND pod label must both match, on port 80 only."
+    },
+    {
+     "topic": "SERVICES & NETWORKING",
+     "weight": 7,
+     "title": "ClusterIP + headless Service and DNS records",
+     "reported": "common 2025-26",
+     "question": "ssh cka03012\nIn namespace dns-lab, Deployment catalog (2 replicas, nginx on port 80) exists.\n- Expose it with a ClusterIP Service catalog-svc on port 8080 targeting port 80.\n- Create a headless Service catalog-headless for the same Pods on port 80.\n- From a temporary busybox:1.36 Pod, save the nslookup output of catalog-svc.dns-lab.svc.cluster.local to /root/svc-dns.txt, and of catalog-headless.dns-lab.svc.cluster.local to /root/headless-dns.txt.",
+     "keys": [
+      "namespace = dns-lab",
+      "svc catalog-svc 8080->80",
+      "svc catalog-headless clusterIP None",
+      "files /root/svc-dns.txt, /root/headless-dns.txt"
+     ],
+     "setup": "kubectl create namespace dns-lab --dry-run=client -o yaml | kubectl apply -f -\nkubectl -n dns-lab create deployment catalog --image=nginx:1.27-alpine --replicas=2 --port=80 --dry-run=client -o yaml | kubectl apply -f -\nclear",
+     "steps": [
+      {
+       "title": "ClusterIP Service",
+       "cmds": [
+        "kubectl -n dns-lab expose deploy catalog --name=catalog-svc --port=8080 --target-port=80"
+       ],
+       "see": "service/catalog-svc exposed",
+       "why": "One virtual IP for both pods."
+      },
+      {
+       "title": "Headless Service",
+       "cmds": [
+        "kubectl -n dns-lab expose deploy catalog --name=catalog-headless --port=80 --cluster-ip=None"
+       ],
+       "see": "service/catalog-headless exposed",
+       "why": "clusterIP None = DNS returns pod IPs."
+      },
+      {
+       "title": "Lookups into files",
+       "cmds": [
+        "kubectl -n dns-lab run dnsq --rm -i --restart=Never --image=busybox:1.36 -- nslookup catalog-svc.dns-lab.svc.cluster.local > /root/svc-dns.txt",
+        "kubectl -n dns-lab run dnsq --rm -i --restart=Never --image=busybox:1.36 -- nslookup catalog-headless.dns-lab.svc.cluster.local > /root/headless-dns.txt"
+       ],
+       "see": "",
+       "why": "--rm -i prints output then deletes the pod."
+      },
+      {
+       "title": "Compare",
+       "cmds": [
+        "cat /root/svc-dns.txt /root/headless-dns.txt"
+       ],
+       "see": "svc: 1 address; headless: 2 addresses",
+       "why": "Headless shows each pod."
+      }
+     ],
+     "verify": [
+      "kubectl -n dns-lab get svc",
+      "grep -c Address /root/headless-dns.txt"
+     ],
+     "docs": "kubernetes.io: DNS for Services and Pods (search: headless service A records)",
+     "beginner": "Make a normal and a \"headless\" service and record what DNS answers for each."
+    },
+    {
+     "topic": "WORKLOADS & SCHEDULING",
+     "weight": 7,
+     "title": "HPA: CPU + memory, scaleUp and scaleDown behavior",
+     "reported": "very common 2025-26",
+     "question": "ssh cka03013\nCreate a HorizontalPodAutoscaler named worker-hpa in namespace metrics-app for Deployment worker:\n- min 2, max 6 replicas,\n- target 60% average CPU utilisation AND 70% average memory utilisation,\n- scale up by at most 2 Pods per 60 seconds,\n- scale-down stabilization window of 120 seconds.",
+     "keys": [
+      "namespace = metrics-app",
+      "hpa = worker-hpa -> deploy worker",
+      "min 2 max 6",
+      "cpu 60%, memory 70%",
+      "scaleUp Pods 2 / 60s",
+      "scaleDown window 120s"
+     ],
+     "setup": "kubectl create namespace metrics-app --dry-run=client -o yaml | kubectl apply -f -\ncat <<'EOF' | kubectl apply -f -\napiVersion: apps/v1\nkind: Deployment\nmetadata: {name: worker, namespace: metrics-app}\nspec:\n  selector: {matchLabels: {app: worker}}\n  template:\n    metadata: {labels: {app: worker}}\n    spec:\n      containers:\n      - {name: worker, image: nginx:1.27-alpine, resources: {requests: {cpu: 100m, memory: 64Mi}}}\nEOF\nclear",
+     "steps": [
+      {
+       "title": "Create the HPA",
+       "cmds": [
+        "cat <<'EOF' | kubectl apply -f -\napiVersion: autoscaling/v2\nkind: HorizontalPodAutoscaler\nmetadata: {name: worker-hpa, namespace: metrics-app}\nspec:\n  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: worker}\n  minReplicas: 2\n  maxReplicas: 6\n  metrics:\n  - type: Resource\n    resource: {name: cpu, target: {type: Utilization, averageUtilization: 60}}\n  - type: Resource\n    resource: {name: memory, target: {type: Utilization, averageUtilization: 70}}\n  behavior:\n    scaleUp:\n      policies:\n      - {type: Pods, value: 2, periodSeconds: 60}\n    scaleDown:\n      stabilizationWindowSeconds: 120\nEOF"
+       ],
+       "see": "horizontalpodautoscaler.../worker-hpa created",
+       "why": "Two metrics: HPA uses the higher demand."
+      },
+      {
+       "title": "Check",
+       "cmds": [
+        "kubectl -n metrics-app get hpa worker-hpa"
+       ],
+       "see": "cpu: <unknown>/60%, memory: <unknown>/70%  2  6",
+       "why": "<unknown> = no metrics-server; config is still right."
+      },
+      {
+       "title": "Check deployment followed min",
+       "cmds": [
+        "kubectl -n metrics-app get deploy worker"
+       ],
+       "see": "READY 2/2 (once metrics exist)",
+       "why": "Without metrics the HPA may wait."
+      }
+     ],
+     "verify": [
+      "kubectl -n metrics-app get hpa worker-hpa -o yaml | grep -A12 behavior"
+     ],
+     "docs": "kubernetes.io: Horizontal Pod Autoscaling (search: scaling policies behavior scaleUp)",
+     "beginner": "Autoscale on CPU and memory, add at most 2 pods a minute, remove pods only after 2 calm minutes."
+    },
+    {
+     "topic": "WORKLOADS & SCHEDULING",
+     "weight": 8,
+     "title": "PriorityClass with preemption policy",
+     "reported": "very common 2025-26",
+     "question": "ssh cka03014\nCreate a PriorityClass named critical-jobs:\n- value exactly one less than the highest existing user-defined PriorityClass (ignore system-*),\n- preemptionPolicy PreemptLowerPriority, not the global default,\n- description \"critical batch\".\nPatch Deployment payments-api in namespace prio to use it, and verify that the running Pods have the new priority value.",
+     "keys": [
+      "pc = critical-jobs",
+      "value = max user-defined - 1",
+      "preemptionPolicy PreemptLowerPriority, globalDefault false",
+      "deployment payments-api (ns prio)"
+     ],
+     "setup": "kubectl create namespace prio --dry-run=client -o yaml | kubectl apply -f -\ncat <<'EOF' | kubectl apply -f -\napiVersion: scheduling.k8s.io/v1\nkind: PriorityClass\nmetadata: {name: batch-low}\nvalue: 100\n---\napiVersion: scheduling.k8s.io/v1\nkind: PriorityClass\nmetadata: {name: team-a}\nvalue: 3000\n---\napiVersion: scheduling.k8s.io/v1\nkind: PriorityClass\nmetadata: {name: team-b}\nvalue: 7000\npreemptionPolicy: Never\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata: {name: payments-api, namespace: prio}\nspec:\n  replicas: 2\n  selector: {matchLabels: {app: payments-api}}\n  template:\n    metadata: {labels: {app: payments-api}}\n    spec:\n      priorityClassName: batch-low\n      containers: [{name: c, image: nginx:1.27-alpine}]\nEOF\nclear",
+     "steps": [
+      {
+       "title": "Find the highest user value",
+       "cmds": [
+        "kubectl get pc --sort-by=.value -o custom-columns=NAME:.metadata.name,VALUE:.value | grep -v system-"
+       ],
+       "see": "team-b 7000 (highest)",
+       "why": "Ignore system-* classes."
+      },
+      {
+       "title": "Create critical-jobs = 6999",
+       "cmds": [
+        "cat <<'EOF' | kubectl apply -f -\napiVersion: scheduling.k8s.io/v1\nkind: PriorityClass\nmetadata: {name: critical-jobs}\nvalue: 6999\nglobalDefault: false\npreemptionPolicy: PreemptLowerPriority\ndescription: \"critical batch\"\nEOF"
+       ],
+       "see": "priorityclass.../critical-jobs created",
+       "why": "YAML lets you set every field."
+      },
+      {
+       "title": "Patch the Deployment",
+       "cmds": [
+        "kubectl -n prio patch deploy payments-api -p '{\"spec\":{\"template\":{\"spec\":{\"priorityClassName\":\"critical-jobs\"}}}}'"
+       ],
+       "see": "patched",
+       "why": "Replaces batch-low."
+      },
+      {
+       "title": "Verify pods",
+       "cmds": [
+        "kubectl -n prio rollout status deploy payments-api",
+        "kubectl -n prio get pods -o custom-columns=NAME:.metadata.name,PRIO:.spec.priority,CLASS:.spec.priorityClassName"
+       ],
+       "see": "6999  critical-jobs",
+       "why": "Priority is copied into each new pod."
+      }
+     ],
+     "verify": [
+      "kubectl get pc critical-jobs -o yaml | grep -E \"value|preemption|globalDefault\""
+     ],
+     "docs": "kubernetes.io: Pod Priority and Preemption (search: preemptionPolicy)",
+     "beginner": "Create a priority just under the top one, allowed to push others out, and give it to a deployment."
+    },
+    {
+     "topic": "STORAGE",
+     "weight": 5,
+     "title": "StorageClass (Retain, expandable) + StatefulSet claims",
+     "reported": "common 2025-26",
+     "question": "ssh cka03015\nCreate a StorageClass named retain-local: provisioner rancher.io/local-path, reclaimPolicy Retain, volumeBindingMode WaitForFirstConsumer, allowVolumeExpansion true. It must NOT be the default.\nIn namespace cache create a StatefulSet cache (2 replicas, image redis:7-alpine, headless Service cache) with a volumeClaimTemplate named data requesting 100Mi from retain-local, mounted at /data.",
+     "keys": [
+      "sc = retain-local (Retain, WFFC, expandable, not default)",
+      "ns = cache",
+      "statefulset cache 2 replicas, redis:7-alpine",
+      "claim template data 100Mi -> /data"
+     ],
+     "setup": "kubectl get deploy -A | grep -q local-path-provisioner || kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.30/deploy/local-path-storage.yaml\nkubectl create namespace cache --dry-run=client -o yaml | kubectl apply -f -\nclear",
+     "steps": [
+      {
+       "title": "Create the StorageClass",
+       "cmds": [
+        "cat <<'EOF' | kubectl apply -f -\napiVersion: storage.k8s.io/v1\nkind: StorageClass\nmetadata: {name: retain-local}\nprovisioner: rancher.io/local-path\nreclaimPolicy: Retain\nvolumeBindingMode: WaitForFirstConsumer\nallowVolumeExpansion: true\nEOF"
+       ],
+       "see": "storageclass.../retain-local created",
+       "why": "No default annotation = not default."
+      },
+      {
+       "title": "Create Service + StatefulSet",
+       "cmds": [
+        "cat <<'EOF' | kubectl apply -f -\napiVersion: v1\nkind: Service\nmetadata: {name: cache, namespace: cache}\nspec: {clusterIP: None, selector: {app: cache}, ports: [{port: 6379}]}\n---\napiVersion: apps/v1\nkind: StatefulSet\nmetadata: {name: cache, namespace: cache}\nspec:\n  serviceName: cache\n  replicas: 2\n  selector: {matchLabels: {app: cache}}\n  template:\n    metadata: {labels: {app: cache}}\n    spec:\n      containers:\n      - {name: redis, image: redis:7-alpine, volumeMounts: [{name: data, mountPath: /data}]}\n  volumeClaimTemplates:\n  - metadata: {name: data}\n    spec:\n      accessModes: [ReadWriteOnce]\n      storageClassName: retain-local\n      resources: {requests: {storage: 100Mi}}\nEOF"
+       ],
+       "see": "service/cache created, statefulset.apps/cache created",
+       "why": "Each replica gets its own PVC."
+      },
+      {
+       "title": "Check",
+       "cmds": [
+        "kubectl -n cache get pods,pvc",
+        "kubectl get pv | grep retain-local"
+       ],
+       "see": "data-cache-0 / data-cache-1 Bound; RECLAIM Retain",
+       "why": "PVs keep the Retain policy."
+      }
+     ],
+     "verify": [
+      "kubectl get sc retain-local",
+      "kubectl -n cache get pvc"
+     ],
+     "docs": "kubernetes.io: Storage Classes; StatefulSets (search: volumeClaimTemplates)",
+     "beginner": "Make a storage type that keeps disks after delete, and a 2-pod database that gets one disk each."
+    },
+    {
+     "topic": "STORAGE",
+     "weight": 5,
+     "title": "Re-bind a Released PV (clear claimRef)",
+     "reported": "very common 2025-26 (PV reuse variant)",
+     "question": "ssh cka03016\nThe PostgreSQL data PersistentVolume pg-data-pv still holds data, but it is in Released state after its old claim was deleted.\n- Make the PV available again WITHOUT deleting it or its data.\n- Create PVC pg-data in namespace postgres (1Gi, ReadWriteOnce, storageClassName manual) that binds to it.\n- Deploy /root/pg-deploy.yaml (already uses claim pg-data) and make sure the Pod is Running.",
+     "keys": [
+      "pv = pg-data-pv (do NOT delete)",
+      "pvc = pg-data 1Gi RWO manual (ns postgres)",
+      "file = /root/pg-deploy.yaml"
+     ],
+     "setup": "kubectl create namespace postgres --dry-run=client -o yaml | kubectl apply -f -\nkubectl get pv pg-data-pv >/dev/null 2>&1 || cat <<'EOF' | kubectl apply -f -\napiVersion: v1\nkind: PersistentVolume\nmetadata: {name: pg-data-pv}\nspec:\n  capacity: {storage: 1Gi}\n  accessModes: [ReadWriteOnce]\n  persistentVolumeReclaimPolicy: Retain\n  storageClassName: manual\n  hostPath: {path: /mnt/pg-data, type: DirectoryOrCreate}\n  claimRef: {namespace: postgres, name: old-pg-claim, uid: 00000000-0000-0000-0000-000000000001}\nEOF\ncat <<'EOF' > /root/pg-deploy.yaml\napiVersion: apps/v1\nkind: Deployment\nmetadata: {name: postgres, namespace: postgres}\nspec:\n  selector: {matchLabels: {app: postgres}}\n  template:\n    metadata: {labels: {app: postgres}}\n    spec:\n      containers:\n      - name: postgres\n        image: postgres:17-alpine\n        env:\n        - {name: POSTGRES_PASSWORD, value: cka}\n        - {name: PGDATA, value: /var/lib/postgresql/data/pgdata}\n        volumeMounts: [{name: data, mountPath: /var/lib/postgresql/data}]\n      volumes:\n      - {name: data, persistentVolumeClaim: {claimName: pg-data}}\nEOF\nsleep 5\nclear",
+     "steps": [
+      {
+       "title": "See the PV state",
+       "cmds": [
+        "kubectl get pv pg-data-pv"
+       ],
+       "see": "Released   postgres/old-pg-claim",
+       "why": "Released PVs never bind again by themselves."
+      },
+      {
+       "title": "Remove the old claimRef",
+       "cmds": [
+        "kubectl patch pv pg-data-pv --type=json -p='[{\"op\":\"remove\",\"path\":\"/spec/claimRef\"}]'"
+       ],
+       "see": "persistentvolume/pg-data-pv patched",
+       "why": "Frees the PV; data stays on disk."
+      },
+      {
+       "title": "Check Available",
+       "cmds": [
+        "kubectl get pv pg-data-pv"
+       ],
+       "see": "Available",
+       "why": "Ready for a new claim."
+      },
+      {
+       "title": "Create the PVC",
+       "cmds": [
+        "cat <<'EOF' | kubectl apply -f -\napiVersion: v1\nkind: PersistentVolumeClaim\nmetadata: {name: pg-data, namespace: postgres}\nspec:\n  accessModes: [ReadWriteOnce]\n  storageClassName: manual\n  resources: {requests: {storage: 1Gi}}\nEOF"
+       ],
+       "see": "persistentvolumeclaim/pg-data created",
+       "why": "Class + size + mode match the PV."
+      },
+      {
+       "title": "Deploy and check",
+       "cmds": [
+        "kubectl apply -f /root/pg-deploy.yaml",
+        "kubectl -n postgres get pvc,pods"
+       ],
+       "see": "Bound pg-data-pv / Running",
+       "why": "Database runs on the old disk."
+      }
+     ],
+     "verify": [
+      "kubectl get pv pg-data-pv",
+      "kubectl -n postgres get pods"
+     ],
+     "docs": "kubernetes.io: Persistent Volumes (search: Retain reclaim policy Released claimRef)",
+     "beginner": "An old disk is \"locked\" to a deleted claim; unlock it, claim it again, start the database."
+    }
+   ]
+  }
+ ]
+}

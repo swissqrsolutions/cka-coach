@@ -110,11 +110,12 @@ for (const x of questions) {
   delete x.raw;
 }
 
+let data_sources = [];
 // ---- three mock exams, weighted like the real exam (17 tasks, 120 minutes)
 const per = { 'TROUBLESHOOTING': 5, 'CLUSTER ARCHITECTURE': 4, 'SERVICES & NETWORKING': 4, 'WORKLOADS & SCHEDULING': 3, 'STORAGE': 1 };
 const byTopic = {};
 for (const x of questions) (byTopic[x.topic] ||= []).push(x.n);
-const mocks = [0, 1, 2].map(m => {
+let mocks = [0, 1, 2].map(m => {
   const pick = [];
   for (const [t, k] of Object.entries(per)) {
     const pool = byTopic[t] || [];
@@ -125,7 +126,35 @@ const mocks = [0, 1, 2].map(m => {
   return [...new Set(pick)];
 });
 
-const data = { built: new Date().toISOString(), topics: topics.map(t => ({ name: t.name, weight: t.weight, intro: html(t.intro) })), refs: refs.map(r => ({ title: r.title, html: html(r.body) })), questions, mocks };
+// ---- the researched mock exams (content/mocks.json) become questions 101-116, 201-216, 301-316
+const PIC_BY_TOPIC = { 'TROUBLESHOOTING': ['kubelet'], 'CLUSTER ARCHITECTURE': ['api'], 'SERVICES & NETWORKING': ['svc', 'net'], 'WORKLOADS & SCHEDULING': ['sched', 'pod'], 'STORAGE': ['store'] };
+const mockFile = path.join(ROOT, 'content', 'mocks.json');
+if (fs.existsSync(mockFile)) {
+  const M = JSON.parse(fs.readFileSync(mockFile, 'utf8'));
+  mocks.length = 0;
+  for (const mk of M.mocks) {
+    const ids = [];
+    mk.tasks.forEach((t, i) => {
+      const n = mk.n * 100 + i + 1; ids.push(n);
+      const steps = t.steps.map(s => ({ title: s.title, html: '', flow: [
+        ...s.cmds.flatMap(c => c.includes('\n') ? [{ k: 'cmd', t: c, multi: true }] : [{ k: 'cmd', t: c }]),
+        ...(s.see ? [{ k: 'out', t: s.see }] : []),
+        ...(s.why ? [{ k: 'say', h: marked.parseInline(s.why) }] : []),
+      ] }));
+      steps.push({ title: 'Check it works', html: '', flow: (t.verify || []).map(c => ({ k: 'cmd', t: c })) });
+      const allCmds = t.steps.flatMap(s => s.cmds).concat(t.verify || []);
+      questions.push({ n, mock: mk.n, star: /very common/i.test(t.reported || ''), title: t.title, topic: t.topic, weight: t.weight,
+        question: t.question, keys: t.keys || [], setup: (t.setup || '').replace(/\nclear\s*$/, '').trim(), setupNote: t.setup ? '' : html(t.beginner || ''),
+        meaning: html(t.beginner || ''), words: '', steps, wrong: '', mug: html('```\n' + allCmds.join('\n') + '\n```'), target: Math.max(3, Math.round(t.weight * 1.1)),
+        docs: t.docs || '', reported: t.reported || '',
+        pic: { mode: /TROUBLESHOOT/.test(t.topic) ? 'fix' : 'build', parts: PIC_BY_TOPIC[t.topic] || [], say: t.beginner || '' } });
+    });
+    mocks.push(ids);
+  }
+  data_sources = M.sources || [];
+}
+
+const data = { sources: data_sources, built: new Date().toISOString(), topics: topics.map(t => ({ name: t.name, weight: t.weight, intro: html(t.intro) })), refs: refs.map(r => ({ title: r.title, html: html(r.body) })), questions, mocks };
 fs.writeFileSync(path.join(ROOT, 'site', 'data.json'), JSON.stringify(data));
 
 // ---- version stamps + offline file list

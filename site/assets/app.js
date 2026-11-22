@@ -47,7 +47,8 @@
     b.textContent = 'Copied'; b.classList.add('done'); setTimeout(() => { b.textContent = 'Copy'; b.classList.remove('done'); }, 1500);
   });
   const codeBlock = txt => `<div class="code"><button class="copy" type="button">Copy</button><pre><code>${esc(txt)}</code></pre></div>`;
-  const Q = n => D.questions[n - 1];
+  const Q = n => D.questions.find(x => x.n === n);
+  const PQ = () => D.questions.filter(x => x.n <= 40);
   const prog = () => store.get('progress', {});
   const statusOf = n => (prog()[n] || {}).st || '';
   const ST = { solo: '✓ alone', help: '✓ with hints', fail: '✗ not yet' };
@@ -73,8 +74,8 @@
 
   // ---------- views ----------
   function home() {
-    const p = prog(), solo = D.questions.filter(q => (p[q.n] || {}).st === 'solo').length;
-    const next = D.questions.find(q => (p[q.n] || {}).st !== 'solo') || D.questions[0];
+    const p = prog(), solo = PQ().filter(q => (p[q.n] || {}).st === 'solo').length;
+    const next = PQ().find(q => (p[q.n] || {}).st !== 'solo') || PQ()[0];
     const install = isInstalled() ? '' : installEvt
       ? `<div class="card install"><p><b>Install CKA Coach</b><br><span class="small">Open it from your home screen, works offline.</span></p><button class="btn" id="installBtn">Install</button></div>`
       : isIOS ? `<div class="card install"><p><b>Install:</b> tap Share, then <b>Add to Home Screen</b>.</p></div>`
@@ -82,10 +83,10 @@
     const mocks = [1, 2, 3].map(m => {
       const s = store.get('mock' + m, null);
       const state = !s ? 'Not started' : s.finished ? `Score ${s.score}% · ${s.score >= 66 ? 'PASS' : 'below 66%'}` : 'In progress';
-      return `<a class="card mock" href="#/mock/${m}"><span><b>Mock exam ${m}</b><br><span class="small">17 tasks · 2 hours · ${state}</span></span><span class="chip ${s && s.finished && s.score >= 66 ? 'good' : ''}">${s && s.finished ? s.score + '%' : 'Start'}</span></a>`;
+      return `<a class="card mock" href="#/mock/${m}"><span><b>Mock exam ${m}</b><br><span class="small">16 tasks · 2 hours · ${state}</span></span><span class="chip ${s && s.finished && s.score >= 66 ? 'good' : ''}">${s && s.finished ? s.score + '%' : 'Start'}</span></a>`;
     }).join('');
     const topics = D.topics.map((t, i) => {
-      const qs = D.questions.filter(q => q.topic === t.name), done = qs.filter(q => (p[q.n] || {}).st === 'solo').length;
+      const qs = PQ().filter(q => q.topic === t.name), done = qs.filter(q => (p[q.n] || {}).st === 'solo').length;
       return `<a class="card topic" href="#/topic/${i}"><div class="head"><span>${esc(topicShort(t.name))}</span><span class="chip">${t.weight}% of exam</span></div>
         <div class="small">${done}/${qs.length} solved alone</div><div class="bar"><i style="width:${Math.round(100 * done / qs.length)}%"></i></div></a>`;
     }).join('');
@@ -100,7 +101,7 @@
 
   function topicView(i) {
     const t = D.topics[i], p = prog();
-    const qs = D.questions.filter(q => q.topic === t.name);
+    const qs = PQ().filter(q => q.topic === t.name);
     app.innerHTML = `<a href="#/" class="small">← Home</a><h1>${esc(topicShort(t.name))}</h1><p class="sub">${t.weight}% of the exam · ${qs.length} tasks</p>
       <div class="card"><ul class="qlist">${qs.map(q => `<li><a href="#/q/${q.n}"><span class="num">${q.n}</span><span>${esc(q.title)} ${q.star ? '<span class="chip star">often in exam</span>' : ''}</span><span class="st ${statusOf(q.n)}">${ST[statusOf(q.n)] || ''}</span></a></li>`).join('')}</ul></div>
       `;
@@ -148,19 +149,21 @@
   function practice(n) {
     const q = Q(n); if (!q) return home();
     const p = prog()[n] || {};
-    app.innerHTML = `<a href="#/topic/${D.topics.findIndex(t => t.name === q.topic)}" class="small">← ${esc(topicShort(q.topic))}</a>
-      <h1>${q.n}. ${esc(q.title)}</h1>
+    const back = q.mock ? `<a href="#/mock/${q.mock}" class="small">← Mock exam ${q.mock}</a>` : `<a href="#/topic/${D.topics.findIndex(t => t.name === q.topic)}" class="small">← ${esc(topicShort(q.topic))}</a>`;
+    const label = q.mock ? `Mock ${q.mock} · task ${q.n % 100}` : q.n;
+    app.innerHTML = `${back}
+      <h1>${label}. ${esc(q.title)}</h1>
       <p class="sub">${q.star ? '<span class="chip star">often in exam</span> ' : ''}${q.target} min ${p.st ? '· ' + ST[p.st] : ''}</p>
       <section class="card exam"><div class="label">Exam question</div><p class="q">${inline(q.question)}</p></section>
       <a class="btn block big" href="#/watch/${n}">▶ Watch how to solve it</a>
       <div class="row" style="margin-top:10px"><a class="btn ghost" href="#/do/${n}">Practise here</a><a class="btn ghost" href="#/guide/${n}/0">Real cluster</a></div>
       <h2>How did it go?</h2>
       <div class="row"><button class="btn good" data-r="solo">Alone</button><button class="btn warn" data-r="help">With help</button><button class="btn bad" data-r="fail">Not yet</button></div>
-      <div class="pager">${n > 1 ? `<a class="btn ghost" href="#/q/${n - 1}">← ${n - 1}</a>` : ''}${n < 40 ? `<a class="btn ghost" href="#/q/${n + 1}">${n + 1} →</a>` : ''}</div>`;
+      <div class="pager">${q.mock ? '' : n > 1 ? `<a class="btn ghost" href="#/q/${n - 1}">← ${n - 1}</a>` : ''}${!q.mock && n < 40 ? `<a class="btn ghost" href="#/q/${n + 1}">${n + 1} →</a>` : ''}</div>`;
     $$('[data-r]').forEach(b => b.onclick = () => {
       const all = prog(); all[n] = { st: b.dataset.r, at: Date.now() }; store.set('progress', all);
       toast(b.dataset.r === 'solo' ? 'Saved ✓' : 'Saved. It comes back later.');
-      location.hash = `#/q/${n < 40 ? n + 1 : n}`;
+      location.hash = q.mock ? `#/mock/${q.mock}` : `#/q/${n < 40 ? n + 1 : n}`;
     });
   }
 
@@ -244,6 +247,7 @@
     const showCoach = (just = '') => {
       if (at >= cmds.length) { coach.innerHTML = `${just}<div class="now done">✓ Solved. Next: once more without help, then on a real cluster.</div><div class="row"><a class="btn good" href="#/q/${n}">Done</a><button class="btn ghost" id="again">Again</button></div>`; $('#again').onclick = () => doIt(n); return; }
       const c = cmds[at], st = q.steps[c.si];
+      if (c.multi) { coach.innerHTML = `${just}<div class="now"><b>${esc(st.title)}</b><span class="small"> · ${at + 1}/${cmds.length} · paste this YAML</span></div>${codeBlock(c.t)}<button class="btn block" id="applied">Done ✓</button>`; $("#applied").onclick = () => { print("ln", "$ " + c.t.split("\n")[0] + " …"); const after = explain(c), say = after.find(useful); after.filter(f => f.k === "out").forEach(o => print("out", o.t)); at++; showCoach(say ? `<div class="just">${shortH(say.h)}</div>` : ""); }; return; }
       coach.innerHTML = `${just}<div class="now"><b>${esc(st.title.replace(/^Step \d+\.\s*/, '').replace('Closing routine', 'Check it works'))}</b><span class="small"> · ${at + 1}/${cmds.length}</span></div>
         <div class="row"><button class="btn ghost" id="hint">Hint</button><button class="btn ghost" id="show">Show command</button></div>`;
       let h = 0;
@@ -281,14 +285,14 @@
 
   // ---------- mock exams ----------
   const mockState = m => store.get('mock' + m, { started: 0, deadline: 0, done: {}, flag: {}, grade: {}, finished: false });
-  const weightOf = (m, n) => { const t = Q(n).topic, inMock = D.mocks[m - 1].filter(x => Q(x).topic === t).length; return D.topics.find(x => x.name === t).weight / inMock; };
+  const weightOf = (m, n) => { if (Q(n).weight) return Q(n).weight; const t = Q(n).topic, inMock = D.mocks[m - 1].filter(x => Q(x).topic === t).length; return D.topics.find(x => x.name === t).weight / inMock; };
 
   function mockView(m) {
     const ids = D.mocks[m - 1], s = mockState(m);
     if (s.finished) return mockResult(m);
     if (!s.started) {
       app.innerHTML = `<a href="#/" class="small">← Home</a><h1>Mock exam ${m}</h1>
-        <div class="card"><p><b>Like the real CKA:</b> 17 tasks, 2 hours, pass at 66%. Tasks are weighted like the exam (troubleshooting 30%, architecture 25%, networking 20%, workloads 15%, storage 10%).</p>
+        <div class="card"><p><b>Like the real CKA:</b> 16 tasks, 2 hours, pass at 66%. Tasks are weighted like the exam (troubleshooting 30%, architecture 25%, networking 20%, workloads 15%, storage 10%).</p>
         <p><b>How it works:</b> open the Killercoda CKA playground. For each task, paste its setup, then solve it there. Use only the kubernetes.io docs. No hints during the exam.</p>
         <p><b>Time plan:</b> first 80 minutes all tasks in order; stuck more than 8 minutes → flag it and move on. Last 40 minutes: flagged tasks, then check everything.</p>
         <p class="small">At the end you check each task with its verify steps and mark it passed, partly or failed. Your score is weighted like the real exam.</p></div>
@@ -298,7 +302,7 @@
     }
     const left = Math.max(0, s.deadline - Date.now());
     app.innerHTML = `<a href="#/" class="small">← Home (the timer keeps running)</a><h1>Mock exam ${m}</h1>
-      <p class="sub">${Object.keys(s.done).length}/17 done · ${Object.keys(s.flag).length} flagged · ${Math.ceil(left / 60000)} min left</p>
+      <p class="sub">${Object.keys(s.done).length}/${ids.length} done · ${Object.keys(s.flag).length} flagged · ${Math.ceil(left / 60000)} min left</p>
       <a class="btn ghost block" href="${KILLERCODA}" target="_blank" rel="noopener">Open Killercoda CKA playground</a>
       <div class="card"><div class="grid">${ids.map((n, i) => `<a href="#/mock/${m}/${i + 1}" class="${s.done[n] ? 'done' : ''} ${s.flag[n] ? 'flag' : ''}">${i + 1}</a>`).join('')}</div></div>
       <button class="btn block" id="finish">Finish and check my answers</button>`;
@@ -309,21 +313,21 @@
     const ids = D.mocks[m - 1], n = ids[i - 1], q = Q(n), s = mockState(m);
     if (!s.started) return mockView(m);
     app.innerHTML = `<a href="#/mock/${m}" class="small">← All tasks</a>
-      <h1>Task ${i} of 17</h1><p class="sub">Weight ${weightOf(m, n).toFixed(1)}% · ${esc(topicShort(q.topic))}</p>
+      <h1>Task ${i} of ${ids.length}</h1><p class="sub">Weight ${weightOf(m, n).toFixed(1)}% · ${esc(topicShort(q.topic))}</p>
       <section class="card exam"><div class="label">Task</div><p class="q">${inline(q.question)}</p></section>
       ${q.setup ? `<details class="step"><summary>Setup for Killercoda (paste first)</summary><div class="body">${codeBlock(q.setup)}<p class="small">In the real exam this is already there.</p></div></details>` : `<div class="card small">This task can't be built in a playground. Write down the steps you would run; check them at the end.</div>`}
       <div class="row"><a class="btn ghost" href="${KILLERCODA}" target="_blank" rel="noopener">Terminal</a><a class="btn ghost" href="${DOCS}" target="_blank" rel="noopener">Docs</a></div>
       <div class="row" style="margin-top:10px"><button class="btn ${s.flag[n] ? 'warn' : 'ghost'}" id="flag">${s.flag[n] ? 'Flagged' : 'Flag'}</button><button class="btn ${s.done[n] ? 'good' : ''}" id="done">${s.done[n] ? 'Done ✓' : 'Mark done'}</button></div>
-      <div class="pager">${i > 1 ? `<a class="btn ghost" href="#/mock/${m}/${i - 1}">← ${i - 1}</a>` : ''}${i < 17 ? `<a class="btn ghost" href="#/mock/${m}/${i + 1}">${i + 1} →</a>` : `<a class="btn ghost" href="#/mock/${m}">All tasks</a>`}</div>`;
+      <div class="pager">${i > 1 ? `<a class="btn ghost" href="#/mock/${m}/${i - 1}">← ${i - 1}</a>` : ''}${i < ids.length ? `<a class="btn ghost" href="#/mock/${m}/${i + 1}">${i + 1} →</a>` : `<a class="btn ghost" href="#/mock/${m}">All tasks</a>`}</div>`;
     $('#flag').onclick = () => { const st = mockState(m); st.flag[n] ? delete st.flag[n] : st.flag[n] = 1; store.set('mock' + m, st); mockTask(m, i); };
-    $('#done').onclick = () => { const st = mockState(m); st.done[n] = 1; store.set('mock' + m, st); location.hash = i < 17 ? `#/mock/${m}/${i + 1}` : `#/mock/${m}`; };
+    $('#done').onclick = () => { const st = mockState(m); st.done[n] = 1; store.set('mock' + m, st); location.hash = i < ids.length ? `#/mock/${m}/${i + 1}` : `#/mock/${m}`; };
   }
 
   function mockGrade(m) {
     const ids = D.mocks[m - 1], s = mockState(m);
     app.innerHTML = `<h1>Check your answers</h1><p class="sub">For each task run its verify steps in the terminal. Be honest: a fix that does not verify scores zero in the real exam.</p>
-      ${ids.map((n, i) => { const q = Q(n), v = q.steps.find(x => /Closing/.test(x.title)); return `<details class="step"><summary>${i + 1}. ${esc(q.title)} <span class="chip" id="g${n}">${s.grade[n] ?? '–'}</span></summary><div class="body">
-        <p>${inline(q.question)}</p>${v ? v.html : q.mug}
+      ${ids.map((n, i) => { const q = Q(n), v = q.steps.find(x => /Closing|Check it works/.test(x.title)); return `<details class="step"><summary>${i + 1}. ${esc(q.title)} <span class="chip" id="g${n}">${s.grade[n] ?? '–'}</span></summary><div class="body">
+        <p>${inline(q.question)}</p>${v && v.html ? v.html : v ? v.flow.filter(f => f.k === "cmd").map(f => codeBlock(f.t)).join("") : q.mug}
         <div class="row"><button class="btn good" data-n="${n}" data-g="1">Passed</button><button class="btn warn" data-n="${n}" data-g="0.5">Partly</button><button class="btn bad" data-n="${n}" data-g="0">Failed</button></div></div></details>`; }).join('')}
       <button class="btn block" id="score">See my score</button>`;
     $$('[data-g]').forEach(b => b.onclick = () => { const st = mockState(m); st.grade[b.dataset.n] = +b.dataset.g; store.set('mock' + m, st); $('#g' + b.dataset.n).textContent = { 1: 'passed', 0.5: 'partly', 0: 'failed' }[b.dataset.g]; b.closest('details').open = false; });
