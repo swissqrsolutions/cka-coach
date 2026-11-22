@@ -201,3 +201,21 @@ pre.out{background:var(--code);color:#b9c6dc;border-radius:12px;padding:10px;whi
 .cap.story{font-size:19px;line-height:1.55}
 .term .ln .typed::after{content:"▋";animation:blink 1s steps(1) infinite;color:#6fe39a;margin-left:2px}
 #auto.on{background:var(--accent);color:var(--accent-ink)}
+/* think before you type */
+.decode{display:flex;flex-direction:column;gap:10px}
+.dec{border:1px solid var(--line);border-radius:14px;padding:10px 12px;background:var(--bg)}
+.dec .from{font-size:14px;color:var(--muted)}
+.dec .arrow{color:var(--accent);font-weight:900;line-height:1}
+.dec .to b{display:block;font-size:17px}
+.dec .to span{font-size:14px;color:var(--muted)}
+.quiz{display:flex;flex-direction:column;gap:10px}
+.opt{min-height:54px;text-align:left;padding:10px 14px;border-radius:14px;border:2px solid var(--line);background:var(--surface);font-size:16px;display:flex;align-items:center;gap:10px}
+.opt .emo{font-size:26px}
+.opt.right{border-color:var(--good);background:var(--good-soft);animation:pop .4s}
+.opt.wrong{border-color:var(--bad);background:var(--bad-soft);animation:shake .4s}
+.cmdopt{font-size:15px;background:none}
+.lose{color:var(--bad)}
+.plan{display:flex;flex-direction:column;gap:8px}
+.pl{display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:14px;background:var(--bg);border:1px solid var(--line);font-weight:600}
+.pl .tag{min-width:96px;font-size:14px;color:var(--accent);font-weight:800}
+.hook{font-size:30px;font-weight:900;text-align:center;padding:10px;border-radius:14px;background:var(--accent-soft)}

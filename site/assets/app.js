@@ -196,6 +196,44 @@
       $$('.tok.hit', el).forEach((t, i) => { t.classList.toggle('hit', false); setTimeout(() => t.classList.add('hit'), 600 + i * 700); });
       $('#dk', el).innerHTML = q.keys.map((k, i) => `<span class="chip enter" style="animation-delay:${0.6 + i * 0.9}s">${inline(k)}</span>`).join('');
     } });
+    // ---- think before you type: decode the order, two guesses, the plan ----
+    const val = k => ((k.match(/`([^`]+)`/) || [])[1] || (k.split('=')[1] || '').trim());
+    const decode = k => {
+      const v = val(k), K = k.toLowerCase();
+      if (/namespace/.test(K)) return ['Add <code>-n ' + esc(v) + '</code> to every command', 'Forget it and you see "No resources found".'];
+      if (/not delete|do not|don't|never/.test(K)) return ['Change it, never delete it', 'Use <code>edit</code>, <code>set</code> or <code>patch</code>.'];
+      if (/reboot/.test(K)) return ['Make it survive a reboot', 'Use <code>systemctl enable</code>, or a file in /etc.'];
+      if (/^node\b|node =/.test(K)) return ['Work on that table: <code>ssh ' + esc(v || 'node01') + '</code>', 'Type <code>exit</code> when you are done.'];
+      if (/deploy/.test(K)) return ['The Deployment <code>' + esc(v) + '</code> is the owner', 'Fix the owner, not the dish (pod).'];
+      if (/file|path|\/opt|\/root|\/etc/.test(K)) return ['Write exactly to <code>' + esc(v || k) + '</code>', 'Wrong path = zero points.'];
+      if (/port/.test(K)) return ['Port <code>' + esc(v) + '</code>', 'Compare it with what the app really listens on.'];
+      if (/image/.test(K)) return ['Image <code>' + esc(v) + '</code>', 'Copy the name and tag exactly.'];
+      if (/service|svc/.test(K)) return ['Service <code>' + esc(v) + '</code>', 'Its selector must match the pod labels.'];
+      if (/command|run/.test(K)) return ['The container must run <code>' + esc(v) + '</code>', 'Copy it exactly.'];
+      return [inline(k), 'Copy this exactly from the question.'];
+    };
+    beats.push({ t: 'Decode the order', html: '<div class="decode">' + q.keys.map((k, i) => { const d = decode(k); return '<div class="dec enter" style="animation-delay:' + (i * 1.2) + 's"><div class="from">' + inline(k) + '</div><div class="arrow">↓</div><div class="to"><b>' + d[0] + '</b><span>' + d[1] + '</span></div></div>'; }).join('') + '</div>' });
+
+    const pick3 = (right, pool) => { const o = [right]; for (const p of pool.sort(() => Math.random() - 0.5)) { if (o.length >= 3) break; if (!o.includes(p)) o.push(p); } return o.sort(() => Math.random() - 0.5); };
+    const quiz = (title, ask, options, right, show, why) => ({ t: title, html: '<p class="cap story">' + ask + '</p><div class="quiz">' + options.map(o => '<button class="opt" data-o="' + esc(o) + '">' + show(o) + '</button>').join('') + '</div><p class="cap verdict"></p>', after: el => {
+      $$('.opt', el).forEach(b => b.onclick = e => { e.stopPropagation();
+        const ok = b.dataset.o === right;
+        $$('.opt', el).forEach(x => { x.disabled = true; if (x.dataset.o === right) x.classList.add('right'); });
+        if (!ok) b.classList.add('wrong');
+        $('.verdict', el).innerHTML = (ok ? '<b class="win">Yes!</b> ' : '<b class="lose">Not quite.</b> ') + why; $('.verdict', el).classList.add('enter');
+      });
+    } });
+    const others = Object.keys(CAST).filter(k => k !== 'you' && !st.cast.includes(k));
+    beats.push(quiz('You guess', build ? 'Which character does this task add or change?' : 'Who do you think is broken?', pick3(main, others), main,
+      k => '<span class="emo">' + CAST[k][0] + '</span> ' + CAST[k][1] + ' <code>' + CAST[k][2] + '</code>', esc(st.broken)));
+    const firstCmd = (cmdsOf(q)[0] || {}).t || '';
+    const POOL = ['k get nodes', 'k get pods -A', 'systemctl status kubelet', 'k get ep -n NS', 'k describe pod NAME -n NS', 'k logs NAME -n NS --previous', 'crictl ps -a', 'k get netpol -n NS', 'k get pvc -n NS', 'helm list -A', 'k get sc', 'k get svc -n NS'];
+    if (firstCmd) beats.push(quiz('You guess', 'What do you type first?', pick3(firstCmd, POOL.filter(p => p.split(' ')[1] !== firstCmd.split(' ')[1])), firstCmd,
+      c => '<code class="cmdopt">' + esc(c) + '</code>', 'Always look before you touch: <code>' + esc(firstCmd) + '</code>'));
+
+    const ICON = ['👀 Look', '🔍 Find why', '🔧 Fix', '✅ Prove'];
+    beats.push({ t: 'The plan', html: '<div class="plan">' + q.steps.map((s, i) => { const tag = i === q.steps.length - 1 ? ICON[3] : i === 0 ? ICON[0] : i === q.steps.length - 2 ? ICON[2] : ICON[1]; return '<div class="pl enter" style="animation-delay:' + (i * 0.9) + 's"><span class="tag">' + tag + '</span>' + esc(s.title.replace(/^Step \d+\.\s*/, '').replace('Closing routine', 'Prove it works')) + '</div>'; }).join('') + '</div><p class="cap">Now watch each command. Then you do it.</p>' });
+
     q.steps.forEach((s, si) => {
       const items = s.flow.filter(f => !f.skip);
       items.forEach((f, i) => {
@@ -215,8 +253,11 @@
       });
     });
     beats.push({ t: 'Fixed', html: `<div class="hero-card">${card(main, 'good big')}${badge(st.after, true)}</div><p class="cap story">${esc(st.fix || 'Done and verified.')}</p>` });
-    beats.push({ t: 'Remember', html: `<p class="cap story"><b>Broken:</b> ${esc(st.broken)}<br><b>Fix:</b> ${esc(st.fix)}</p><div class="mug">${q.mug}</div>` });
+    beats.push({ t: 'Remember', html: `<div class="hook">${CAST[main][0]} ${esc(st.before || '')} → ${esc(st.after || 'fixed')}</div><p class="cap story"><b>Broken:</b> ${esc(st.broken)}<br><b>Fix:</b> ${esc(st.fix)}</p><div class="mug">${q.mug}</div>` });
 
+    { // order for memory: cast, read, decode, GUESS who, then reveal what's broken, guess first command, plan, steps
+      const bi = beats.findIndex(b => /^What's (broken|missing)/.test(b.t)), [rev] = beats.splice(bi, 1);
+      beats.splice(beats.findIndex(b => b.t === 'You guess') + 1, 0, rev); }
     root.innerHTML = `<div class="player"><div class="ptitle" id="pt"></div><div class="stage" id="stage"></div>
         <div class="dots">${beats.map((_, i) => `<i data-i="${i}"></i>`).join('')}</div>
         <div class="pctl"><button class="iconbtn" id="pv" aria-label="Back">◀</button><button class="btn" id="nx">Next ▶</button><button class="iconbtn" id="auto" aria-label="Auto play">Auto</button></div></div>`;
