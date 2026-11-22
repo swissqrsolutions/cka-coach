@@ -156,6 +156,8 @@ if (fs.existsSync(mockFile)) {
 
 const storyFile = path.join(ROOT, 'content', 'stories.json');
 if (fs.existsSync(storyFile)) { const S = JSON.parse(fs.readFileSync(storyFile, 'utf8')); for (const x of questions) if (S[x.n]) x.story = S[x.n]; }
+const vdir = path.join(ROOT, 'content', 'videos');
+if (fs.existsSync(vdir)) for (const f of fs.readdirSync(vdir)) { const x = questions.find(q => q.n === +f.replace('.json', '')); if (x) x.video = JSON.parse(fs.readFileSync(path.join(vdir, f), 'utf8')); }
 const data = { sources: data_sources, built: new Date().toISOString(), topics: topics.map(t => ({ name: t.name, weight: t.weight, intro: html(t.intro) })), refs: refs.map(r => ({ title: r.title, html: html(r.body) })), questions, mocks };
 fs.writeFileSync(path.join(ROOT, 'site', 'data.json'), JSON.stringify(data));
 

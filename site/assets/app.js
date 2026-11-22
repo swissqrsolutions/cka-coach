@@ -163,7 +163,7 @@
       <h2>How did it go?</h2>
       <div class="row"><button class="btn good" data-r="solo">Alone</button><button class="btn warn" data-r="help">With help</button><button class="btn bad" data-r="fail">Not yet</button></div>
       <div class="pager">${q.mock ? '' : n > 1 ? `<a class="btn ghost" href="#/q/${n - 1}">← ${n - 1}</a>` : ''}${!q.mock && n < 40 ? `<a class="btn ghost" href="#/q/${n + 1}">${n + 1} →</a>` : ''}</div>`;
-    mountPlayer(n, $('#story'));
+    if (q.video) mountVideo(q, $('#story')); else mountPlayer(n, $('#story'));
     $$('[data-r]').forEach(b => b.onclick = () => {
       const all = prog(); all[n] = { st: b.dataset.r, at: Date.now() }; store.set('progress', all);
       toast(b.dataset.r === 'solo' ? 'Saved ✓' : 'Saved. It comes back later.');
@@ -282,6 +282,53 @@
     show(0);
   }
 
+  // ---------- ▶ story video: animated kitchen + voice, then a few exact steps ----------
+  function mountVideo(q, root) {
+    const v = q.video;
+    root.innerHTML = `<div class="vid">
+      <div class="kitchen" id="kit">
+        <div class="tbl cp"><div class="tlabel">controlplane</div><div class="chr desk"><i>🛎️</i><b>Front desk</b><small>API server</small></div></div>
+        <div class="tbl n1"><div class="tlabel">node01</div><div class="chr cook"><i>🧑‍🍳</i><b>Cook</b><small>kubelet</small></div><div class="nbadge"></div></div>
+        <div class="chr you"><i>🧑‍💼</i><b>You</b></div>
+        <div class="bubble">I'm here! Ready!</div>
+        <div class="taskcard">Bring node01 back to <b>Ready</b>.<br>Fix must <mark>survive a reboot</mark>.</div>
+        <pre class="vterm"></pre>
+        <div class="bigcheck">✓</div>
+        <button class="vplay" aria-label="Play">▶</button>
+      </div>
+      <div class="vsub"></div>
+      <div class="vbar"><i></i></div>
+    </div>
+    <h2>Do it in 3 steps</h2>
+    ${v.steps.map((s, i) => `<div class="vstep"><div class="vnum">${i + 1}</div><div class="vbody"><b>${esc(s.do)}</b>${codeBlock(s.cmds.join('\n'))}${s.see ? `<div class="vsee">You see: <code>${esc(s.see)}</code></div>` : ''}</div></div>`).join('')}`;
+    const kit = $('.kitchen', root), sub = $('.vsub', root), term = $('.vterm', root), bar = $('.vbar i', root), btn = $('.vplay', root);
+    let i = -1, audio = null, playing = false, gen = 0;
+    const acts = v.scenes.map(s => s.act);
+    const scene = async k => {
+      const my = ++gen; i = k;
+      if (k >= v.scenes.length) { playing = false; btn.textContent = '↺'; btn.hidden = false; kit.classList.add('ended'); return; }
+      const sc = v.scenes[k];
+      kit.className = 'kitchen ' + acts.slice(0, k + 1).map(a => 'act-' + a).join(' ');
+      sub.textContent = sc.sub; bar.style.width = ((k + 1) / v.scenes.length * 100) + '%';
+      if (audio) audio.pause();
+      audio = new Audio(`media/${q.n}/s${k + 1}.mp3`);
+      audio.onended = () => { if (my === gen && playing) setTimeout(() => my === gen && playing && scene(k + 1), 500); };
+      audio.play().catch(() => {});
+      if (sc.term) {
+        term.textContent = '';
+        for (const line of sc.term) {
+          if (my !== gen) return;
+          if (line.startsWith('$')) { for (const ch of line + '\n') { if (my !== gen) return; term.textContent += ch; await new Promise(r => setTimeout(r, 55)); } }
+          else { await new Promise(r => setTimeout(r, 500)); term.textContent += line + '\n'; }
+          await new Promise(r => setTimeout(r, 700));
+        }
+      }
+    };
+    btn.onclick = e => { e.stopPropagation(); playing = true; btn.hidden = true; kit.classList.remove('ended'); term.textContent = ''; scene(0); };
+    kit.onclick = () => { if (btn.hidden === false) return; playing = !playing; if (audio) playing ? audio.play() : audio.pause(); kit.classList.toggle('paused', !playing); if (playing && audio && audio.ended) scene(i + 1); };
+    addEventListener('hashchange', () => { gen++; playing = false; if (audio) audio.pause(); }, { once: true });
+  }
+
   // ---------- practise in the app: type each command, the terminal answers like the real one ----------
   const norm = s => s.replace(/^kubectl\s/, 'k ').replace(/\s+/g, ' ').trim();
   const matches = (typed, want) => {
@@ -370,12 +417,12 @@
     app.innerHTML = `<a href="#/mock/${m}" class="small">← All tasks</a>
       <h1>Task ${i} of ${ids.length}</h1><p class="sub">Weight ${weightOf(m, n).toFixed(1)}% · ${esc(topicShort(q.topic))}</p>
       <section class="card exam"><div class="label">Task</div>${(() => { const mm = q.question.match(/^(ssh \S+)\s*(.*)$/s); return mm ? `<div class="sshline">${codeBlock(mm[1])}</div><p class="q">${inline(mm[2])}</p>` : `<p class="q">${inline(q.question)}</p>`; })()}</section>
-      <a class="btn ghost block" id="help" href="#/q/${n}">▶ Stuck? See how to solve it${s.help && s.help[n] ? ' (used)' : ''}</a>
+      <details class="step" id="helpbox"><summary>▶ Stuck? See how to solve it${s.help && s.help[n] ? ' (used)' : ''}</summary><div class="body" id="helpbody"></div></details>
       ${q.setup ? `<details class="step"><summary>Setup for Killercoda (paste first)</summary><div class="body">${codeBlock(q.setup)}<p class="small">In the real exam this is already there.</p></div></details>` : `<div class="card small">This task can't be built in a playground. Write down the steps you would run; check them at the end.</div>`}
       <div class="row"><a class="btn ghost" href="${KILLERCODA}" target="_blank" rel="noopener">Terminal</a><a class="btn ghost" href="${DOCS}" target="_blank" rel="noopener">Docs</a></div>
       <div class="row" style="margin-top:10px"><button class="btn ${s.flag[n] ? 'warn' : 'ghost'}" id="flag">${s.flag[n] ? 'Flagged' : 'Flag'}</button><button class="btn ${s.done[n] ? 'good' : ''}" id="done">${s.done[n] ? 'Done ✓' : 'Mark done'}</button></div>
       <div class="pager">${i > 1 ? `<a class="btn ghost" href="#/mock/${m}/${i - 1}">← ${i - 1}</a>` : ''}${i < ids.length ? `<a class="btn ghost" href="#/mock/${m}/${i + 1}">${i + 1} →</a>` : `<a class="btn ghost" href="#/mock/${m}">All tasks</a>`}</div>`;
-    $('#help').onclick = () => { const st = mockState(m); (st.help ||= {})[n] = 1; store.set('mock' + m, st); };
+    $('#helpbox').ontoggle = () => { if (!$('#helpbox').open || $('#helpbody').children.length) return; const st = mockState(m); (st.help ||= {})[n] = 1; store.set('mock' + m, st); q.video ? mountVideo(q, $('#helpbody')) : mountPlayer(n, $('#helpbody')); };
     $('#flag').onclick = () => { const st = mockState(m); st.flag[n] ? delete st.flag[n] : st.flag[n] = 1; store.set('mock' + m, st); mockTask(m, i); };
     $('#done').onclick = () => { const st = mockState(m); st.done[n] = 1; store.set('mock' + m, st); location.hash = i < ids.length ? `#/mock/${m}/${i + 1}` : `#/mock/${m}`; };
   }

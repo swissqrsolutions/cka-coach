@@ -1,0 +1,78 @@
+{
+ "voice": "en-GB-SoniaNeural",
+ "scenes": [
+  {
+   "act": "tables",
+   "say": "This is our kitchen: the Kubernetes cluster. It has two tables. Control plane, where the front desk takes every order. And node zero one.",
+   "sub": "The cluster = a kitchen with two tables"
+  },
+  {
+   "act": "heartbeat",
+   "say": "At every table works a cook: the kubelet. Every few seconds the cook shouts to the front desk: I'm here, my table is ready!",
+   "sub": "kubelet = the cook. It reports: Ready!"
+  },
+  {
+   "act": "leave",
+   "say": "But today, the cook at node zero one went home. No more shouting. So the front desk writes: node zero one, Not Ready.",
+   "sub": "kubelet stopped → node01 NotReady"
+  },
+  {
+   "act": "task",
+   "say": "The exam says: bring node zero one back to Ready. And your fix must survive a reboot.",
+   "sub": "Goal: Ready + must survive a reboot"
+  },
+  {
+   "act": "walk",
+   "say": "So, first walk to that table. S S H node zero one. Then ask about the cook: system control status kubelet. It says: inactive, dead. The cook is gone.",
+   "sub": "ssh node01 → systemctl status kubelet → inactive (dead)",
+   "term": [
+    "$ ssh node01",
+    "$ systemctl status kubelet",
+    "  Active: inactive (dead)"
+   ]
+  },
+  {
+   "act": "back",
+   "say": "Call the cook back, for today and for every day: system control enable, dash dash now, kubelet. Enable means: it also comes back after a reboot.",
+   "sub": "systemctl enable --now kubelet",
+   "term": [
+    "$ systemctl enable --now kubelet"
+   ]
+  },
+  {
+   "act": "ready",
+   "say": "Walk back with exit, and check: k get nodes. Node zero one is Ready. Task done!",
+   "sub": "exit → k get nodes → node01 Ready ✓",
+   "term": [
+    "$ exit",
+    "$ k get nodes",
+    "node01   Ready"
+   ]
+  }
+ ],
+ "steps": [
+  {
+   "do": "Go to the node and look at the cook",
+   "cmds": [
+    "ssh node01",
+    "systemctl status kubelet"
+   ],
+   "see": "Active: inactive (dead)"
+  },
+  {
+   "do": "Start it now and after every reboot, then leave",
+   "cmds": [
+    "systemctl enable --now kubelet",
+    "exit"
+   ],
+   "see": ""
+  },
+  {
+   "do": "Check",
+   "cmds": [
+    "k get nodes"
+   ],
+   "see": "node01   Ready"
+  }
+ ]
+}
