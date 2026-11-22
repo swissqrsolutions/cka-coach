@@ -93,7 +93,8 @@ for (const x of questions) {
   const partA = sec(r, /PART A/);
   const partB = sec(r, /PART B/);
   const block = (partA.match(/```\n([\s\S]*?)```/) || [])[1] || '';
-  const examQ = (partB.match(/^> ([\s\S]*?)(?:\n\n|$)/m) || [])[1] || '';
+  const qLines = []; { let on = false; for (const l of partB.split('\n')) { if (/^>/.test(l)) { on = true; qLines.push(l.replace(/^> ?/, '')); } else if (on) break; } }
+  const examQ = qLines.join('\n').replace(/\n{2,}/g, '\n').trim();
   const meaning = (partB.match(/\*\*What the question is really saying:\*\*\s*\n\n([\s\S]*?)(?=\n\n\*\*Write down)/) || [])[1] || '';
   const write = (partB.match(/\*\*Write down from the question:\*\*\s*(.+)/) || [])[1] || '';
   const steps = r.split(/\n(?=### )/).filter(p => /^### (Step|Closing)/.test(p)).map(p => {
@@ -107,7 +108,7 @@ for (const x of questions) {
     words: html(sec(r, /Three words|words first/i)),
     setup: block.replace(/\nclear\s*$/, '').trim(),
     setupNote: html(partA.replace(/```[\s\S]*?```/, '').trim()),
-    question: examQ.replace(/\n> ?/g, ' ').trim(),
+    question: examQ,
     meaning: html(meaning),
     keys: write.split('·').map(s => s.trim()).filter(Boolean),
     steps,

@@ -577,6 +577,6 @@
     headerTimer();
   }
   addEventListener('hashchange', render);
-  fetch('data.json?v=' + (document.currentScript?.src.split('v=')[1] || ''), { cache: 'no-cache' }).then(r => r.json()).then(d => { D = d; render(); })
+  fetch(($('meta[name=datav]') || {}).content || 'data.json', { cache: 'no-cache' }).then(r => r.json()).then(d => { D = d; render(); })
     .catch(() => { app.innerHTML = '<p>Could not load. Open once with internet, then it works offline.</p>'; });
 })();

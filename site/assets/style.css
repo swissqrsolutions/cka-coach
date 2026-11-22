@@ -328,3 +328,4 @@ h2 .chip{vertical-align:middle;margin-left:6px}
 .bstep.routine{background:var(--accent-soft);border-color:transparent}
 .writedown{margin:10px 0;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 #app > .btn.ghost.block{margin:6px 0 10px}
+.exam .q{white-space:pre-line}
