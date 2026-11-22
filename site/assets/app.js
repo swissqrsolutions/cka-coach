@@ -465,11 +465,12 @@
     app.innerHTML = `<a href="#/mock/${m}" class="small">← All tasks</a>
       <h1>Task ${i} of ${ids.length}</h1><p class="sub">Weight ${weightOf(m, n).toFixed(1)}% · ${esc(topicShort(q.topic))}</p>
       <section class="card exam"><div class="label">Task</div>${(() => { const mm = q.question.match(/^(ssh \S+)\s*(.*)$/s); return mm ? `<div class="sshline">${codeBlock(mm[1])}</div><p class="q">${inline(mm[2])}</p>` : `<p class="q">${inline(q.question)}</p>`; })()}</section>
-      <details class="step" id="helpbox"><summary>▶ Stuck? See how to solve it${s.help && s.help[n] ? ' (used)' : ''}</summary><div class="body" id="helpbody"></div></details>
+      ${q.video ? '<div id="vidbox"></div>' : ''}<details class="step" id="helpbox" ${q.video ? 'hidden' : ''}><summary>▶ Stuck? See how to solve it${s.help && s.help[n] ? ' (used)' : ''}</summary><div class="body" id="helpbody"></div></details>
       ${q.setup ? `<details class="step"><summary>Setup for Killercoda (paste first)</summary><div class="body">${codeBlock(q.setup)}<p class="small">In the real exam this is already there.</p></div></details>` : `<div class="card small">This task can't be built in a playground. Write down the steps you would run; check them at the end.</div>`}
       <div class="row"><a class="btn ghost" href="${KILLERCODA}" target="_blank" rel="noopener">Terminal</a><a class="btn ghost" href="${DOCS}" target="_blank" rel="noopener">Docs</a></div>
       <div class="row" style="margin-top:10px"><button class="btn ${s.flag[n] ? 'warn' : 'ghost'}" id="flag">${s.flag[n] ? 'Flagged' : 'Flag'}</button><button class="btn ${s.done[n] ? 'good' : ''}" id="done">${s.done[n] ? 'Done ✓' : 'Mark done'}</button></div>
       <div class="pager">${i > 1 ? `<a class="btn ghost" href="#/mock/${m}/${i - 1}">← ${i - 1}</a>` : ''}${i < ids.length ? `<a class="btn ghost" href="#/mock/${m}/${i + 1}">${i + 1} →</a>` : `<a class="btn ghost" href="#/mock/${m}">All tasks</a>`}</div>`;
+    if (q.video) mountVideo(q, $('#vidbox'));
     $('#helpbox').ontoggle = () => { if (!$('#helpbox').open || $('#helpbody').children.length) return; const st = mockState(m); (st.help ||= {})[n] = 1; store.set('mock' + m, st); q.video ? mountVideo(q, $('#helpbody')) : mountPlayer(n, $('#helpbody')); };
     $('#flag').onclick = () => { const st = mockState(m); st.flag[n] ? delete st.flag[n] : st.flag[n] = 1; store.set('mock' + m, st); mockTask(m, i); };
     $('#done').onclick = () => { const st = mockState(m); st.done[n] = 1; store.set('mock' + m, st); location.hash = i < ids.length ? `#/mock/${m}/${i + 1}` : `#/mock/${m}`; };
