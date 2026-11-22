@@ -132,7 +132,7 @@
   }
 
   // ================= LEARN: question page · ▶ animated explainer · in-app terminal · split-screen guide =================
-  const plain = h => String(h || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+  const plain = h => { const d = document.createElement('div'); d.innerHTML = String(h || ''); return d.textContent.replace(/\s+/g, ' ').trim(); };
   const short = h => { const t = plain(h); if (t.length <= 170) return t; const two = (t.match(/^(.*?[.!?])\s.*?[.!?](\s|$)/) || [])[0] || t; return two.length > 170 ? (t.match(/^.*?[.!?](\s|$)/) || [t])[0].slice(0, 170).trim() : two.trim(); };
   const shortH = h => plain(h).length <= 170 ? String(h) : esc(short(h));
   const cmdsOf = q => q.steps.flatMap((s, si) => s.flow.map((f, fi) => ({ ...f, si, fi }))).filter(f => f.k === 'cmd' && !f.skip);
@@ -146,6 +146,9 @@
 
   let watchGen = 0;
   const useful = f => f.k === 'say' && !/:\s*$/.test(short(f.h));
+  const BAD = /(ImagePullBackOff|ErrImagePull|CrashLoopBackOff|CreateContainerConfigError|OOMKilled|Pending|NotReady|Unknown|inactive \(dead\)|auto-restart|refused|timed out|Exited|Error|Failed\w*|failed|Insufficient \w+|untolerated taint|&lt;none&gt;|No resources found|forbidden)/g;
+  const GOOD = /(\bRunning\b|\bReady\b|\bBound\b|\bAvailable\b|active \(running\)|Welcome to nginx!|\b1\/1\b|\b2\/2\b|\(default\)|\byes\b|edited|created|configured|rolled back)/g;
+  const paint = t => esc(t).replace(BAD, '<b class="bad">$1</b>').replace(GOOD, '<b class="good">$1</b>');
   function practice(n) {
     const q = Q(n); if (!q) return home();
     const p = prog()[n] || {};
@@ -173,8 +176,14 @@
     const scenes = [];
     scenes.push({ t: 'What is going on', run: async (st, a) => {
       st.innerHTML = picture(q) + `<p class="cap" id="cap"></p>`;
-      await a.wait(1600); st.querySelector('.pic').classList.add('lit');
-      await a.wait(900); await a.type($('#cap', st), q.pic.say); await a.wait(1800);
+      await a.wait(1300);
+      const parts = $$('.part', st);
+      // the request goes: you -> API server -> the part this task is about
+      const path = ['you', 'api', ...q.pic.parts].filter((k, i, a) => a.indexOf(k) === i).map(k => st.querySelector('.p-' + k)).filter(Boolean);
+      for (const p of path) { parts.forEach(x => x.classList.toggle('visit', false)); p.classList.add('visit'); await a.wait(520); }
+      parts.forEach(p => p.classList.toggle('visit', false));
+      st.querySelector('.pic').classList.add('lit');
+      await a.wait(700); await a.type($('#cap', st), q.pic.say); await a.wait(1800);
     } });
     scenes.push({ t: 'Read the question like this', run: async (st, a) => {
       st.innerHTML = `<p class="q" id="dq"></p><div class="keys" id="dk"></div>`;
@@ -190,15 +199,18 @@
       await a.wait(1200);
     } });
     q.steps.forEach((s, si) => scenes.push({ t: s.title.replace(/^Step \d+\.\s*/, '').replace('Closing routine', 'Check it works'), run: async (st, a) => {
-      st.innerHTML = `<div class="term" id="tm"></div><p class="cap" id="cap"></p>`;
+      const last = si === q.steps.length - 1;
+      st.innerHTML = `<div class="mini">${picture(q)}</div><div class="term" id="tm"></div><p class="cap" id="cap"></p>`;
+      st.querySelector('.pic').classList.add('lit');
       const tm = $('#tm', st);
       const items = s.flow.filter(f => !f.skip);
       for (let i = 0; i < items.length; i++) {
         const f = items[i];
         if (f.k === 'cmd') { const line = document.createElement('div'); line.className = 'ln'; line.innerHTML = '<span class="pr">$</span> '; tm.append(line); const sp = document.createElement('span'); line.append(sp); await a.type(sp, f.t, 32); await a.wait(500); }
-        else if (f.k === 'out') { const o = document.createElement('pre'); o.className = 'out'; o.textContent = f.t; tm.append(o); tm.scrollTop = 1e6; await a.wait(1400); }
+        else if (f.k === 'out') { const o = document.createElement('pre'); o.className = 'out'; o.innerHTML = paint(f.t); tm.append(o); tm.scrollTop = 1e6; await a.wait(1600); }
         else if (useful(f)) { $('#cap', st).innerHTML = shortH(f.h); $('#cap', st).classList.remove('pop'); void st.offsetWidth; $('#cap', st).classList.add('pop'); await a.wait(Math.min(4200, 1400 + short(f.h).length * 28)); }
       }
+      if (last) { st.querySelector('.pic').classList.add('healed'); $('#cap', st).innerHTML = '<b class="win">✓ Fixed and verified</b>'; await a.wait(2200); }
       await a.wait(900);
     } }));
     scenes.push({ t: 'The whole answer', run: async (st, a) => { st.innerHTML = `<div class="mug">${q.mug}</div>`; await a.wait(6000); } });
