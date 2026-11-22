@@ -1229,5 +1229,1096 @@
    "cat /root/dns.txt"
   ],
   "minutes": 2
+ },
+ "31": {
+  "pattern": "Add native sidecar (initContainer, restartPolicy Always) + shared emptyDir",
+  "clues": [
+   {
+    "q": "Add a sidecar container named `log-shipper`",
+    "means": "initContainers: entry with restartPolicy: Always (native sidecar)"
+   },
+   {
+    "q": "runs `tail -f /var/log/app.log`",
+    "means": "command: [\"sh\",\"-c\",\"tail -f /var/log/app.log\"]"
+   },
+   {
+    "q": "Use a shared volume named `logs` mounted at `/var/log` in both containers",
+    "means": "volumes: - name: logs emptyDir: {} + volumeMounts in BOTH containers"
+   },
+   {
+    "q": "Do not change the existing container's image or command",
+    "means": "Only add volumeMounts to the main container"
+   }
+  ],
+  "traps": [
+   "Mounting the volume only in the sidecar — the main app writes to its own /var/log",
+   "Putting volumes: under the container instead of at pod spec level",
+   "Forgetting restartPolicy: Always → it becomes a normal init container that blocks forever"
+  ],
+  "verify": [
+   {
+    "need": "both containers run",
+    "cmd": "k get pods -n work",
+    "see": "2/2 Running"
+   },
+   {
+    "need": "sidecar reads the log",
+    "cmd": "k logs deploy/app -c log-shipper -n work",
+    "see": "app log lines"
+   }
+  ],
+  "memorise": [
+   "k get deploy app -n work -o yaml > app.yaml",
+   "vim app.yaml   # volumes: - name: logs emptyDir: {}; main: volumeMounts logs → /var/log",
+   "initContainers: - name: log-shipper image: busybox:1.36 restartPolicy: Always command: [sh,-c,'tail -f /var/log/app.log'] volumeMounts logs → /var/log",
+   "k apply -f app.yaml; k get pods -n work"
+  ],
+  "minutes": 8
+ },
+ "32": {
+  "pattern": "HPA imperative, then edit behavior for stabilization window",
+  "clues": [
+   {
+    "q": "minimum `2` replicas, maximum `5` replicas",
+    "means": "--min=2 --max=5"
+   },
+   {
+    "q": "target average CPU utilization `70`%",
+    "means": "--cpu-percent=70"
+   },
+   {
+    "q": "scale-down stabilization window to `30` seconds",
+    "means": "k edit hpa: spec.behavior.scaleDown.stabilizationWindowSeconds: 30"
+   }
+  ],
+  "traps": [
+   "Putting stabilizationWindowSeconds under scaleUp",
+   "Putting behavior: inside metrics: instead of directly under spec:",
+   "Forgetting -n shop"
+  ],
+  "verify": [
+   {
+    "need": "min/max/target",
+    "cmd": "k get hpa -n shop",
+    "see": "web  cpu: …/70%  MINPODS 2  MAXPODS 5"
+   },
+   {
+    "need": "window 30 s",
+    "cmd": "k get hpa web -n shop -o yaml | grep -A2 scaleDown",
+    "see": "stabilizationWindowSeconds: 30"
+   }
+  ],
+  "memorise": [
+   "k autoscale deploy web --min=2 --max=5 --cpu-percent=70 -n shop",
+   "k edit hpa web -n shop   # spec: behavior: scaleDown: stabilizationWindowSeconds: 30",
+   "k get hpa -n shop"
+  ],
+  "minutes": 4
+ },
+ "33": {
+  "pattern": "PriorityClass value from existing ones, attach to deployment",
+  "clues": [
+   {
+    "q": "exactly ONE LESS than the highest existing user-defined PriorityClass",
+    "means": "k get pc; ignore system-* classes; value = highest − 1"
+   },
+   {
+    "q": "to use this PriorityClass",
+    "means": "k edit deploy: priorityClassName: high-priority in the pod spec"
+   }
+  ],
+  "traps": [
+   "Using system-cluster-critical / system-node-critical values",
+   "Putting priorityClassName in the container instead of the pod spec",
+   "Setting globalDefault: true (not asked)"
+  ],
+  "verify": [
+   {
+    "need": "value correct",
+    "cmd": "k get pc",
+    "see": "high-priority = highest user value − 1"
+   },
+   {
+    "need": "pods use it",
+    "cmd": "k get pods -n shop -o custom-columns=NAME:.metadata.name,CLASS:.spec.priorityClassName",
+    "see": "high-priority on new pods"
+   }
+  ],
+  "memorise": [
+   "k get pc",
+   "k create pc high-priority --value=<highest-1>",
+   "k edit deploy web -n shop   # priorityClassName: high-priority (above containers:)",
+   "k get pods -n shop -o custom-columns=NAME:.metadata.name,CLASS:.spec.priorityClassName"
+  ],
+  "minutes": 3
+ },
+ "34": {
+  "pattern": "Compute requests from node allocatable, split across replicas",
+  "clues": [
+   {
+    "q": "share the node's available resources equally",
+    "means": "(allocatable − already requested by others) ÷ 3"
+   },
+   {
+    "q": "Leave roughly 10% headroom",
+    "means": "Multiply the free amount by 0.9, round down"
+   },
+   {
+    "q": "All 3 pods must be Running afterwards",
+    "means": "Scale to 0 first, set requests, scale back to 3 and check"
+   }
+  ],
+  "traps": [
+   "Using Capacity instead of Allocatable",
+   "Counting web's own current requests as used (scale to 0 first)",
+   "Setting limits instead of requests"
+  ],
+  "verify": [
+   {
+    "need": "requests set",
+    "cmd": "k get deploy web -n shop -o jsonpath='{..resources}'",
+    "see": "requests cpu/memory"
+   },
+   {
+    "need": "all Running",
+    "cmd": "k get pods -n shop -o wide",
+    "see": "3 pods Running on node01"
+   }
+  ],
+  "memorise": [
+   "k scale deploy web --replicas=0 -n shop",
+   "k describe node node01 | grep -A7 'Allocatable:'",
+   "k describe node node01 | grep -A6 'Allocated resources:'",
+   "k set resources deploy web -n shop --requests=cpu=<X>m,memory=<Y>Mi   # (free × 0.9) ÷ 3",
+   "k scale deploy web --replicas=3 -n shop; k get pods -n shop"
+  ],
+  "minutes": 6
+ },
+ "35": {
+  "pattern": "ConfigMap as env (envFrom) + Secret as volume in a pod",
+  "clues": [
+   {
+    "q": "with the key `LOG_LEVEL` and value `debug`",
+    "means": "k create cm app-cfg --from-literal=LOG_LEVEL=debug"
+   },
+   {
+    "q": "All keys of the ConfigMap must be available as environment variables",
+    "means": "envFrom: - configMapRef: name: app-cfg"
+   },
+   {
+    "q": "The Secret must be mounted as files under `/etc/db`",
+    "means": "volumes: secret.secretName db-sec + volumeMounts mountPath /etc/db"
+   }
+  ],
+  "traps": [
+   "Using env/valueFrom for a single key instead of envFrom",
+   "secretName vs name: secret volumes use secretName",
+   "Forgetting -n app on cm/secret/pod"
+  ],
+  "verify": [
+   {
+    "need": "env set",
+    "cmd": "k exec api -n app -- env | grep LOG_LEVEL",
+    "see": "LOG_LEVEL=debug"
+   },
+   {
+    "need": "secret as file",
+    "cmd": "k exec api -n app -- cat /etc/db/password",
+    "see": "s3cret"
+   }
+  ],
+  "memorise": [
+   "k create cm app-cfg --from-literal=LOG_LEVEL=debug -n app",
+   "k create secret generic db-sec --from-literal=password=s3cret -n app",
+   "k run api --image=nginx:1.27 -n app --dry-run=client -o yaml > pod.yaml",
+   "vim pod.yaml   # envFrom: - configMapRef: name: app-cfg; volumeMounts /etc/db; volumes: secret: secretName: db-sec",
+   "k apply -f pod.yaml"
+  ],
+  "minutes": 6
+ },
+ "36": {
+  "pattern": "Taint + label node; pod with toleration + nodeSelector",
+  "clues": [
+   {
+    "q": "Taint node `node01` with `env=prod:NoSchedule`",
+    "means": "k taint node node01 env=prod:NoSchedule"
+   },
+   {
+    "q": "tolerates the taint",
+    "means": "tolerations: key env, operator Equal, value prod, effect NoSchedule"
+   },
+   {
+    "q": "is scheduled on `node01`",
+    "means": "nodeSelector: env: prod (a toleration alone doesn't force placement)"
+   }
+  ],
+  "traps": [
+   "Only adding the toleration — pod may land on another node",
+   "Putting tolerations under the container",
+   "Typo in effect (NoSchedule is case-sensitive)"
+  ],
+  "verify": [
+   {
+    "need": "taint + label",
+    "cmd": "k describe node node01 | grep -E 'Taints|env='",
+    "see": "env=prod:NoSchedule and env=prod"
+   },
+   {
+    "need": "pod on node01",
+    "cmd": "k get pod x -o wide",
+    "see": "Running, NODE node01"
+   }
+  ],
+  "memorise": [
+   "k taint node node01 env=prod:NoSchedule",
+   "k label node node01 env=prod",
+   "k run x --image=nginx:1.27 --dry-run=client -o yaml > x.yaml",
+   "vim x.yaml   # spec: nodeSelector: env: prod; tolerations: - key: env operator: Equal value: prod effect: NoSchedule",
+   "k apply -f x.yaml; k get pod x -o wide"
+  ],
+  "minutes": 5
+ },
+ "37": {
+  "pattern": "set image → rollout status → undo → record image",
+  "clues": [
+   {
+    "q": "wait until the rollout is complete",
+    "means": "k rollout status deploy/web -n shop"
+   },
+   {
+    "q": "roll the deployment back to the previous revision",
+    "means": "k rollout undo deploy/web -n shop"
+   },
+   {
+    "q": "Write the image that is in use after the rollback",
+    "means": "jsonpath of the container image > /root/image.txt"
+   }
+  ],
+  "traps": [
+   "Wrong container name in set image — check with -o wide first",
+   "Writing nginx:1.28 to the file (that's before rollback)",
+   "Forgetting -n shop"
+  ],
+  "verify": [
+   {
+    "need": "rolled back",
+    "cmd": "k rollout history deploy/web -n shop",
+    "see": "new top revision"
+   },
+   {
+    "need": "file correct",
+    "cmd": "cat /root/image.txt",
+    "see": "old image (not nginx:1.28)"
+   }
+  ],
+  "memorise": [
+   "k get deploy web -n shop -o wide   # container name",
+   "k set image deploy/web nginx=nginx:1.28 -n shop",
+   "k rollout status deploy/web -n shop",
+   "k rollout undo deploy/web -n shop",
+   "k get deploy web -n shop -o jsonpath='{.spec.template.spec.containers[0].image}' > /root/image.txt"
+  ],
+  "minutes": 3
+ },
+ "38": {
+  "pattern": "PV → PVC (Bound) → Pod mounting the claim",
+  "clues": [
+   {
+    "q": "hostPath `/mnt/data`, storage class `manual`",
+    "means": "PV: hostPath.path /mnt/data, storageClassName: manual"
+   },
+   {
+    "q": "requests `500Mi`, access mode `ReadWriteOnce`, storage class `manual`",
+    "means": "PVC must match class + mode to bind to pv-data"
+   },
+   {
+    "q": "mounts the claim at `/usr/share/nginx/html`",
+    "means": "volumes: persistentVolumeClaim.claimName pvc-data + volumeMounts"
+   }
+  ],
+  "traps": [
+   "Putting namespace on the PV (PVs are cluster-scoped)",
+   "PVC storageClassName missing → uses default class, stays Pending",
+   "Continuing before PVC shows Bound"
+  ],
+  "verify": [
+   {
+    "need": "PVC bound to PV",
+    "cmd": "k get pvc -n storage",
+    "see": "pvc-data Bound pv-data"
+   },
+   {
+    "need": "pod running",
+    "cmd": "k get pod web-store -n storage",
+    "see": "1/1 Running"
+   }
+  ],
+  "memorise": [
+   "docs: 'configure persistent volume storage' → 3 boxes: PV, PVC, Pod",
+   "pv.yaml: name pv-data, 1Gi, RWO, storageClassName manual, hostPath /mnt/data (no namespace)",
+   "pvc.yaml: name pvc-data, namespace storage, 500Mi, RWO, manual",
+   "pod.yaml: web-store, namespace storage, nginx:1.27, claimName pvc-data, mountPath /usr/share/nginx/html",
+   "k get pvc -n storage; k get pod -n storage"
+  ],
+  "minutes": 8
+ },
+ "39": {
+  "pattern": "New StorageClass as default; un-default the old one",
+  "clues": [
+   {
+    "q": "provisioner `rancher.io/local-path`",
+    "means": "provisioner: rancher.io/local-path"
+   },
+   {
+    "q": "volume binding mode `WaitForFirstConsumer`",
+    "means": "volumeBindingMode: WaitForFirstConsumer"
+   },
+   {
+    "q": "No other StorageClass may be marked as default",
+    "means": "Patch the old default: is-default-class \"false\""
+   }
+  ],
+  "traps": [
+   "Forgetting to un-default the old class → two (default)",
+   "Deleting the old StorageClass (forbidden)",
+   "Annotation value not quoted (must be the string \"true\")"
+  ],
+  "verify": [
+   {
+    "need": "fast exists correctly",
+    "cmd": "k get sc fast",
+    "see": "rancher.io/local-path WaitForFirstConsumer"
+   },
+   {
+    "need": "only fast default",
+    "cmd": "k get sc",
+    "see": "(default) only next to fast"
+   }
+  ],
+  "memorise": [
+   "k get sc   # note current (default)",
+   "docs: 'storage classes' → copy example; annotations: storageclass.kubernetes.io/is-default-class: \"true\"",
+   "name: fast; provisioner: rancher.io/local-path; volumeBindingMode: WaitForFirstConsumer",
+   "k apply -f sc.yaml",
+   "k patch sc <old> -p '{\"metadata\":{\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"false\"}}}'"
+  ],
+  "minutes": 5
+ },
+ "40": {
+  "pattern": "PVC that binds to an existing PV; point deployment at it",
+  "clues": [
+   {
+    "q": "It must bind to the existing PersistentVolume",
+    "means": "Copy storageClassName/accessMode from k get pv; size ≤ PV size"
+   },
+   {
+    "q": "so the deployment uses this PVC",
+    "means": "In the file set claimName: mariadb"
+   },
+   {
+    "q": "make sure the deployment is running",
+    "means": "k get pods -n mariadb → 1/1 Running"
+   }
+  ],
+  "traps": [
+   "storageClassName mismatch → PVC Pending",
+   "PV still Released with an old claimRef — check status before",
+   "Forgetting namespace: mariadb in the PVC"
+  ],
+  "verify": [
+   {
+    "need": "PVC bound to old PV",
+    "cmd": "k get pvc -n mariadb",
+    "see": "mariadb Bound <old PV name>"
+   },
+   {
+    "need": "deployment running",
+    "cmd": "k get pods -n mariadb",
+    "see": "1/1 Running"
+   }
+  ],
+  "memorise": [
+   "k get pv   # size, access mode, storage class",
+   "docs: 'persistent volumes' → PVC example → name mariadb, namespace mariadb, RWO, 250Mi, storageClassName <same as PV>",
+   "k apply -f pvc.yaml; k get pvc -n mariadb",
+   "vim /root/mariadb-deploy.yaml   # claimName: mariadb",
+   "k apply -f /root/mariadb-deploy.yaml; k get pods -n mariadb"
+  ],
+  "minutes": 7
+ },
+ "101": {
+  "pattern": "Node NotReady → ssh → kubelet stopped → enable --now",
+  "clues": [
+   {
+    "q": "ssh cka01001",
+    "means": "Run this first — every task is on its own host"
+   },
+   {
+    "q": "is reported as NotReady",
+    "means": "ssh node01, systemctl status kubelet"
+   },
+   {
+    "q": "Your fix must survive a reboot of node01",
+    "means": "systemctl enable (with --now to also start it)"
+   }
+  ],
+  "traps": [
+   "systemctl start only — not enabled after reboot",
+   "Skipping ssh cka01001 → you work on the wrong cluster",
+   "Forgetting to exit node01 before kubectl"
+  ],
+  "verify": [
+   {
+    "need": "node Ready",
+    "cmd": "k get nodes",
+    "see": "node01 Ready"
+   },
+   {
+    "need": "survives reboot",
+    "cmd": "ssh node01 systemctl is-enabled kubelet",
+    "see": "enabled"
+   }
+  ],
+  "memorise": [
+   "ssh cka01001; k get nodes",
+   "ssh node01; systemctl status kubelet --no-pager",
+   "systemctl enable --now kubelet",
+   "exit; k get nodes"
+  ],
+  "minutes": 3
+ },
+ "102": {
+  "pattern": "Service has no endpoints → fix selector to match pod labels",
+  "clues": [
+   {
+    "q": "does not forward traffic to the Pods",
+    "means": "Check EndpointSlices: empty = selector mismatch"
+   },
+   {
+    "q": "Fix the Service",
+    "means": "Patch/edit the Service selector"
+   },
+   {
+    "q": "Do not modify the Deployment",
+    "means": "Don't relabel pods — change the Service only"
+   }
+  ],
+  "traps": [
+   "Relabelling pods/deployment (forbidden)",
+   "Leaving the wrong selector key and adding a second one (selector is AND)",
+   "Forgetting -n shop"
+  ],
+  "verify": [
+   {
+    "need": "endpoints present",
+    "cmd": "k -n shop get endpointslices -l kubernetes.io/service-name=cart",
+    "see": "pod IPs listed"
+   },
+   {
+    "need": "traffic flows",
+    "cmd": "k -n shop run tmp --rm -it --restart=Never --image=busybox:1.36 -- wget -qO- -T3 cart",
+    "see": "HTML response"
+   }
+  ],
+  "memorise": [
+   "ssh cka01002",
+   "k -n shop get pods --show-labels",
+   "k -n shop get svc cart -o wide   # SELECTOR",
+   "k -n shop patch svc cart -p '{\"spec\":{\"selector\":{\"app\":\"cart\"}}}'",
+   "k -n shop get endpointslices -l kubernetes.io/service-name=cart"
+  ],
+  "minutes": 4
+ },
+ "103": {
+  "pattern": "Pod Pending → Insufficient memory → set smaller request",
+  "clues": [
+   {
+    "q": "stay Pending",
+    "means": "describe pod → Events: Insufficient memory"
+   },
+   {
+    "q": "Set the memory request of the container to 128Mi",
+    "means": "k set resources … --requests=memory=128Mi"
+   },
+   {
+    "q": "Keep the number of replicas unchanged",
+    "means": "Don't scale down to make it fit"
+   }
+  ],
+  "traps": [
+   "Scaling replicas down instead of fixing requests",
+   "Setting --limits instead of --requests",
+   "Leaving a limit lower than 128Mi → invalid spec"
+  ],
+  "verify": [
+   {
+    "need": "all Running",
+    "cmd": "k -n batch get pods",
+    "see": "all replicas Running"
+   },
+   {
+    "need": "request 128Mi",
+    "cmd": "k -n batch get deploy reporter -o jsonpath='{.spec.template.spec.containers[0].resources}'",
+    "see": "\"memory\":\"128Mi\""
+   }
+  ],
+  "memorise": [
+   "ssh cka01003",
+   "k -n batch get pods",
+   "k -n batch describe pod -l app=reporter | grep -A3 Events",
+   "k -n batch set resources deploy reporter --requests=memory=128Mi",
+   "k -n batch get pods"
+  ],
+  "minutes": 3
+ },
+ "104": {
+  "pattern": "Restarts with no app error → wrong livenessProbe port",
+  "clues": [
+   {
+    "q": "keeps restarting its Pods",
+    "means": "describe pod → Events: Liveness probe failed"
+   },
+   {
+    "q": "The nginx container listens on port 80",
+    "means": "livenessProbe.httpGet.port must be 80"
+   },
+   {
+    "q": "Do not delete the Deployment",
+    "means": "Fix with k edit / k patch on the deployment"
+   }
+  ],
+  "traps": [
+   "Changing containerPort instead of the probe port",
+   "Removing the probe entirely (changes behaviour, may fail the check)",
+   "Editing the pod instead of the deployment"
+  ],
+  "verify": [
+   {
+    "need": "no more restarts",
+    "cmd": "k -n web get pods",
+    "see": "new pods Running, RESTARTS 0"
+   },
+   {
+    "need": "probe on 80",
+    "cmd": "k -n web get deploy api -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.httpGet.port}'",
+    "see": "80"
+   }
+  ],
+  "memorise": [
+   "ssh cka01004",
+   "k -n web describe pod -l app=api | grep -i -A2 liveness",
+   "k -n web edit deploy api   # livenessProbe.httpGet.port: 80",
+   "k -n web rollout status deploy api"
+  ],
+  "minutes": 4
+ },
+ "105": {
+  "pattern": "Filter pod logs with grep into a file",
+  "clues": [
+   {
+    "q": "contain the string ERROR",
+    "means": "k logs … | grep ERROR"
+   },
+   {
+    "q": "into the file /opt/course/5/errors.txt on the controlplane node",
+    "means": "Redirect > on the control plane; mkdir -p the folder first"
+   }
+  ],
+  "traps": [
+   "Writing the file on the wrong host",
+   "Using grep -i (would also catch 'error' lowercase)",
+   "Folder missing → 'No such file or directory'"
+  ],
+  "verify": [
+   {
+    "need": "only ERROR lines",
+    "cmd": "grep -vc ERROR /opt/course/5/errors.txt",
+    "see": "0"
+   },
+   {
+    "need": "file not empty",
+    "cmd": "head -3 /opt/course/5/errors.txt",
+    "see": "ERROR lines"
+   }
+  ],
+  "memorise": [
+   "ssh cka01005",
+   "mkdir -p /opt/course/5",
+   "k -n ops logs legacy-app | grep ERROR > /opt/course/5/errors.txt",
+   "grep -vc ERROR /opt/course/5/errors.txt"
+  ],
+  "minutes": 2
+ },
+ "106": {
+  "pattern": "helm template + install with same --set (CRDs off)",
+  "clues": [
+   {
+    "q": "with the name argocd",
+    "means": "helm repo add argocd https://argoproj.github.io/argo-helm"
+   },
+   {
+    "q": "does NOT install CRDs",
+    "means": "--set crds.install=false (key found with helm show values)"
+   },
+   {
+    "q": "same version and configuration",
+    "means": "helm install uses the same --version 7.7.3 and --set crds.install=false"
+   }
+  ],
+  "traps": [
+   "Installing without --set crds.install=false → CRD ownership conflict",
+   "Forgetting --version 7.7.3 on install",
+   "Missing namespace argocd (use --create-namespace if it doesn't exist)"
+  ],
+  "verify": [
+   {
+    "need": "template file, no CRDs",
+    "cmd": "grep -c \"kind: CustomResourceDefinition\" /root/argo-helm.yaml",
+    "see": "0"
+   },
+   {
+    "need": "release installed",
+    "cmd": "helm -n argocd list",
+    "see": "argocd deployed argo-cd-7.7.3"
+   },
+   {
+    "need": "pods up",
+    "cmd": "k -n argocd get pods",
+    "see": "Running"
+   }
+  ],
+  "memorise": [
+   "ssh cka01006",
+   "helm repo add argocd https://argoproj.github.io/argo-helm; helm repo update",
+   "helm show values argocd/argo-cd --version 7.7.3 | grep -A3 '^crds'",
+   "helm template argocd argocd/argo-cd --version 7.7.3 --namespace argocd --set crds.install=false > /root/argo-helm.yaml",
+   "helm install argocd argocd/argo-cd --version 7.7.3 --namespace argocd --set crds.install=false"
+  ],
+  "minutes": 8
+ },
+ "107": {
+  "pattern": "Prepare node: dpkg -i, enable service, sysctl file",
+  "clues": [
+   {
+    "q": "Install the Debian package /root/cri-dockerd.deb using dpkg",
+    "means": "dpkg -i /root/cri-dockerd.deb"
+   },
+   {
+    "q": "Enable and start the cri-docker service",
+    "means": "systemctl enable --now cri-docker"
+   },
+   {
+    "q": "persist across reboots (file /etc/sysctl.d/k8s.conf)",
+    "means": "Write exactly that file, then sysctl --system"
+   }
+  ],
+  "traps": [
+   "sysctl -w (not persistent)",
+   "bridge-nf-call-iptables missing until br_netfilter is loaded → modprobe br_netfilter",
+   "Wrong file name — the question names /etc/sysctl.d/k8s.conf"
+  ],
+  "verify": [
+   {
+    "need": "package + service",
+    "cmd": "dpkg -l | grep cri-dockerd; systemctl is-enabled cri-docker",
+    "see": "ii cri-dockerd / enabled"
+   },
+   {
+    "need": "params applied",
+    "cmd": "sysctl net.ipv4.ip_forward net.netfilter.nf_conntrack_max",
+    "see": "1 / 131072"
+   }
+  ],
+  "memorise": [
+   "ssh cka01007",
+   "dpkg -i /root/cri-dockerd.deb",
+   "systemctl enable --now cri-docker",
+   "vim /etc/sysctl.d/k8s.conf   # paste the 4 lines",
+   "modprobe br_netfilter; sysctl --system"
+  ],
+  "minutes": 5
+ },
+ "108": {
+  "pattern": "List CRDs / explain a custom field into files",
+  "clues": [
+   {
+    "q": "save it to /root/resources.yaml",
+    "means": "k get crd | grep cert-manager > /root/resources.yaml"
+   },
+   {
+    "q": "do not set an output format",
+    "means": "No -o yaml even though the file ends in .yaml"
+   },
+   {
+    "q": "subject specification field of the Certificate",
+    "means": "k explain certificate.spec.subject > /root/subject.yaml"
+   }
+  ],
+  "traps": [
+   "Adding -o yaml because of the .yaml file name",
+   "Explaining certificate.subject (missing spec)",
+   "Listing certificates instead of CRDs"
+  ],
+  "verify": [
+   {
+    "need": "CRD list",
+    "cmd": "wc -l /root/resources.yaml",
+    "see": "cert-manager CRD lines"
+   },
+   {
+    "need": "field docs",
+    "cmd": "head -5 /root/subject.yaml",
+    "see": "KIND: Certificate, FIELD: subject"
+   }
+  ],
+  "memorise": [
+   "ssh cka01008",
+   "k get crd | grep cert-manager > /root/resources.yaml",
+   "k explain certificate.spec.subject > /root/subject.yaml"
+  ],
+  "minutes": 2
+ },
+ "109": {
+  "pattern": "ServiceAccount + Role + RoleBinding, imperative, then auth can-i",
+  "clues": [
+   {
+    "q": "In namespace finance",
+    "means": "-n finance on every command"
+   },
+   {
+    "q": "allows only get, list and watch on pods",
+    "means": "--verb=get,list,watch --resource=pods"
+   },
+   {
+    "q": "with a RoleBinding named reporter-binding",
+    "means": "--role=pod-reader --serviceaccount=finance:reporter"
+   }
+  ],
+  "traps": [
+   "--serviceaccount=reporter without finance: — binds nothing, no error",
+   "Creating a ClusterRole instead of a Role",
+   "Spaces in the --verb list"
+  ],
+  "verify": [
+   {
+    "need": "allowed verbs",
+    "cmd": "k -n finance auth can-i list pods --as=system:serviceaccount:finance:reporter",
+    "see": "yes"
+   },
+   {
+    "need": "only those",
+    "cmd": "k -n finance auth can-i delete pods --as=system:serviceaccount:finance:reporter",
+    "see": "no"
+   }
+  ],
+  "memorise": [
+   "ssh cka01009",
+   "k -n finance create sa reporter",
+   "k -n finance create role pod-reader --verb=get,list,watch --resource=pods",
+   "k -n finance create rolebinding reporter-binding --role=pod-reader --serviceaccount=finance:reporter",
+   "k -n finance auth can-i watch pods --as=system:serviceaccount:finance:reporter"
+  ],
+  "minutes": 3
+ },
+ "110": {
+  "pattern": "Named containerPort + NodePort Service targeting the port name",
+  "clues": [
+   {
+    "q": "add a port specification named http exposing port 80/tcp",
+    "means": "ports: - name: http containerPort: 80 protocol: TCP on container nginx"
+   },
+   {
+    "q": "exposing the container port http",
+    "means": "Service targetPort: http (the name)"
+   },
+   {
+    "q": "with nodePort 30080",
+    "means": "nodePort: 30080 in the Service (edit after k expose)"
+   }
+  ],
+  "traps": [
+   "Service selector not matching pod labels → no endpoints",
+   "Leaving the random nodePort from k expose",
+   "Forgetting name: http on the containerPort, so targetPort: http fails"
+  ],
+  "verify": [
+   {
+    "need": "service shape",
+    "cmd": "k -n front get svc front-end-svc",
+    "see": "NodePort 80:30080/TCP"
+   },
+   {
+    "need": "reaches pods",
+    "cmd": "k -n front get endpointslices -l kubernetes.io/service-name=front-end-svc",
+    "see": "pod IPs, port 80"
+   }
+  ],
+  "memorise": [
+   "ssh cka01010",
+   "k -n front edit deploy front-end   # under nginx image: ports: - name: http containerPort: 80 protocol: TCP",
+   "k -n front expose deploy front-end --name=front-end-svc --type=NodePort --port=80 --target-port=http",
+   "k -n front edit svc front-end-svc   # nodePort: 30080",
+   "k -n front get endpointslices -l kubernetes.io/service-name=front-end-svc"
+  ],
+  "minutes": 5
+ },
+ "111": {
+  "pattern": "Ingress → Gateway (HTTPS listener + TLS) + HTTPRoute, delete Ingress",
+  "clues": [
+   {
+    "q": "with an HTTPS listener on port 443 for hostname gateway.web.example",
+    "means": "listeners: protocol HTTPS, port 443, hostname gateway.web.example"
+   },
+   {
+    "q": "Use the TLS Secret web-tls",
+    "means": "tls: mode: Terminate, certificateRefs: - kind: Secret name: web-tls"
+   },
+   {
+    "q": "sends all paths (/) for gateway.web.example to Service web on port 80",
+    "means": "HTTPRoute: hostnames, PathPrefix /, backendRefs web:80"
+   },
+   {
+    "q": "Delete the Ingress web when done",
+    "means": "k -n web-app delete ingress web"
+   }
+  ],
+  "traps": [
+   "Missing tls block → listener not programmed",
+   "parentRefs name typo (must be web-gateway)",
+   "Forgetting namespace web-app in metadata"
+  ],
+  "verify": [
+   {
+    "need": "gateway + route",
+    "cmd": "k -n web-app get gateway,httproute",
+    "see": "web-gateway, web-route"
+   },
+   {
+    "need": "listener correct",
+    "cmd": "k -n web-app get gateway web-gateway -o yaml | grep -A8 listeners",
+    "see": "HTTPS 443 gateway.web.example web-tls"
+   },
+   {
+    "need": "ingress gone",
+    "cmd": "k -n web-app get ingress",
+    "see": "No resources found"
+   }
+  ],
+  "memorise": [
+   "ssh cka01011",
+   "k -n web-app get ingress web -o yaml | grep -A12 '^spec'",
+   "docs: 'gateway api' → Gateway example → gatewayClassName nginx; listener https/HTTPS/443/hostname; tls: mode Terminate, certificateRefs web-tls",
+   "docs: HTTPRoute example → parentRefs web-gateway; hostnames; PathPrefix /; backendRefs web 80",
+   "k apply -f gw.yaml -f route.yaml; k -n web-app delete ingress web"
+  ],
+  "minutes": 9
+ },
+ "112": {
+  "pattern": "Pick the least-permissive NetworkPolicy file and apply it",
+  "clues": [
+   {
+    "q": "on port 80",
+    "means": "Correct policy limits ports to 80"
+   },
+   {
+    "q": "apply the ONE that allows this traffic with the least permissions",
+    "means": "Read all files; reject ones allowing all pods/namespaces or all ports"
+   },
+   {
+    "q": "Do not delete or modify the existing policies",
+    "means": "Only k apply the chosen file"
+   }
+  ],
+  "traps": [
+   "Choosing a policy with namespaceSelector: {} (all namespaces) or no ports",
+   "Choosing one whose namespace/labels don't match frontend → still blocked",
+   "Applying more than one file"
+  ],
+  "verify": [
+   {
+    "need": "traffic works",
+    "cmd": "k -n frontend exec deploy/frontend -- wget -qO- -T2 backend.backend | head -4",
+    "see": "HTML response"
+   },
+   {
+    "need": "existing policies intact",
+    "cmd": "k -n backend get networkpolicy",
+    "see": "deny-all + the new one"
+   }
+  ],
+  "memorise": [
+   "ssh cka01012",
+   "cat /root/netpol/*.yaml   # narrow namespace+pod selector AND port 80",
+   "k apply -f /root/netpol/policy-2.yaml",
+   "k -n frontend exec deploy/frontend -- wget -qO- -T2 backend.backend"
+  ],
+  "minutes": 5
+ },
+ "113": {
+  "pattern": "PriorityClass value from existing ones, patch deployment",
+  "clues": [
+   {
+    "q": "exactly one less than the highest existing user-defined PriorityClass value",
+    "means": "k get pc; skip system-*; highest − 1"
+   },
+   {
+    "q": "Patch the existing Deployment busybox-logger",
+    "means": "priorityClassName: urgent in spec.template.spec"
+   },
+   {
+    "q": "Ensure the Deployment rolls out successfully",
+    "means": "k rollout status deploy busybox-logger"
+   }
+  ],
+  "traps": [
+   "Taking a system-* value",
+   "Putting priorityClassName at deployment spec level instead of template.spec",
+   "Not checking rollout (new pods may be Pending)"
+  ],
+  "verify": [
+   {
+    "need": "class value",
+    "cmd": "k get pc urgent",
+    "see": "highest − 1 (e.g. 4999)"
+   },
+   {
+    "need": "deploy uses it",
+    "cmd": "k -n priority get deploy busybox-logger -o jsonpath='{.spec.template.spec.priorityClassName}'",
+    "see": "urgent"
+   }
+  ],
+  "memorise": [
+   "ssh cka01013",
+   "k get pc",
+   "k create pc urgent --value=<highest-1>",
+   "k -n priority patch deploy busybox-logger -p '{\"spec\":{\"template\":{\"spec\":{\"priorityClassName\":\"urgent\"}}}}'",
+   "k -n priority rollout status deploy busybox-logger"
+  ],
+  "minutes": 4
+ },
+ "114": {
+  "pattern": "HPA (autoscaling/v2) with scaleDown stabilization window",
+  "clues": [
+   {
+    "q": "target 50% CPU utilisation per Pod",
+    "means": "--cpu-percent=50 (averageUtilization: 50)"
+   },
+   {
+    "q": "minimum of 1 and a maximum of 4 replicas",
+    "means": "--min=1 --max=4"
+   },
+   {
+    "q": "scale-down stabilization window to 30 seconds",
+    "means": "behavior.scaleDown.stabilizationWindowSeconds: 30"
+   }
+  ],
+  "traps": [
+   "behavior under metrics instead of spec",
+   "scaleUp instead of scaleDown",
+   "Wrong namespace (autoscale)"
+  ],
+  "verify": [
+   {
+    "need": "HPA values",
+    "cmd": "k -n autoscale get hpa apache-server",
+    "see": "cpu …/50%, 1, 4"
+   },
+   {
+    "need": "window",
+    "cmd": "k -n autoscale get hpa apache-server -o jsonpath='{.spec.behavior.scaleDown}'",
+    "see": "stabilizationWindowSeconds 30"
+   }
+  ],
+  "memorise": [
+   "ssh cka01014",
+   "k -n autoscale autoscale deploy apache-server --min=1 --max=4 --cpu-percent=50",
+   "k -n autoscale edit hpa apache-server   # spec: behavior: scaleDown: stabilizationWindowSeconds: 30",
+   "k -n autoscale get hpa apache-server"
+  ],
+  "minutes": 4
+ },
+ "115": {
+  "pattern": "New default StorageClass; un-default all others",
+  "clues": [
+   {
+    "q": "volume binding mode WaitForFirstConsumer",
+    "means": "volumeBindingMode: WaitForFirstConsumer"
+   },
+   {
+    "q": "it must be the ONLY default",
+    "means": "Patch every other SC to is-default-class \"false\""
+   },
+   {
+    "q": "Do not modify existing PersistentVolumeClaims",
+    "means": "Touch only StorageClasses"
+   }
+  ],
+  "traps": [
+   "Leaving the old default → two (default)",
+   "Deleting/recreating the old SC",
+   "Unquoted \"true\" in the annotation"
+  ],
+  "verify": [
+   {
+    "need": "SC fields",
+    "cmd": "k get sc local-fast",
+    "see": "rancher.io/local-path WaitForFirstConsumer"
+   },
+   {
+    "need": "only default",
+    "cmd": "k get sc",
+    "see": "(default) only on local-fast"
+   }
+  ],
+  "memorise": [
+   "ssh cka01015",
+   "k get sc",
+   "docs: 'storage classes' → name local-fast; annotation storageclass.kubernetes.io/is-default-class: \"true\"; provisioner rancher.io/local-path; volumeBindingMode: WaitForFirstConsumer",
+   "k patch sc <old> -p '{\"metadata\":{\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"false\"}}}'",
+   "k get sc"
+  ],
+  "minutes": 5
+ },
+ "116": {
+  "pattern": "PVC that binds to an existing PV; point deployment at it",
+  "clues": [
+   {
+    "q": "its PersistentVolume mariadb-pv was kept",
+    "means": "k get pv mariadb-pv → read class, mode, size"
+   },
+   {
+    "q": "so that it binds to the existing PV",
+    "means": "Match storageClassName (\"\" if the PV has none); optionally volumeName: mariadb-pv"
+   },
+   {
+    "q": "Ensure the Pod is Running",
+    "means": "k -n mariadb get pods → 1/1 Running"
+   }
+  ],
+  "traps": [
+   "Omitting storageClassName → default SC is used and PVC won't bind to mariadb-pv",
+   "PV stuck Released with an old claimRef",
+   "Forgetting to change claimName in the deploy file"
+  ],
+  "verify": [
+   {
+    "need": "PVC bound",
+    "cmd": "k -n mariadb get pvc mariadb",
+    "see": "Bound mariadb-pv"
+   },
+   {
+    "need": "pod running",
+    "cmd": "k -n mariadb get pods",
+    "see": "1/1 Running"
+   }
+  ],
+  "memorise": [
+   "ssh cka01016",
+   "k get pv mariadb-pv",
+   "pvc.yaml: name mariadb, ns mariadb, RWO, 250Mi, storageClassName: \"\"",
+   "vim /root/mariadb-deploy.yaml   # claimName: mariadb",
+   "k apply -f /root/mariadb-deploy.yaml; k -n mariadb get pods"
+  ],
+  "minutes": 6
  }
 }

@@ -86,8 +86,13 @@
       return `<h2>${esc(topicShort(t.name))} <span class="chip">${t.weight}% of exam</span></h2>
         <div class="card"><ul class="qlist">${qs.map(q => `<li><a href="#/q/${q.n}"><span class="num">${q.n}</span><span>${esc(q.title)}</span><span class="st ${statusOf(q.n)}">${ST[statusOf(q.n)] || ''}</span></a></li>`).join('')}</ul></div>`;
     }).join('');
-    app.innerHTML = `${installCard()}<h1>Practice</h1><p class="sub">40 questions · ${solo} solved alone. Open one, set it up in Killercoda, solve it.</p>${groups}`;
+    app.innerHTML = `${installCard()}<h1>Practice</h1><a class="btn ghost block" href="#/cheat">Cheat sheet (commands, YAML from docs, facts, warm-up)</a><p class="sub">40 questions · ${solo} solved alone. Open one, set it up in Killercoda, solve it.</p>${groups}`;
     if ($('#installBtn')) $('#installBtn').onclick = async () => { installEvt.prompt(); await installEvt.userChoice; installEvt = null; render(); };
+  }
+  function cheatPage() {
+    const secs = D.refs.filter((r, i) => i > 0).concat(D.topics.map(t => ({ title: 'How to solve: ' + topicShort(t.name), html: t.intro })));
+    app.innerHTML = `<a href="#/" class="small">← Practice</a><h1>Cheat sheet</h1><p class="sub">Everything from your guide. Tap a section to open it.</p>
+      ${secs.map(r => `<details class="step"><summary>${esc(r.title.replace(/^\d[A-Z]?\.\s*/, '').replace(/^./, c => c.toUpperCase()).toLowerCase().replace(/^./, c => c.toUpperCase()))}</summary><div class="body btable">${r.html}</div></details>`).join('')}`;
   }
   function mocksPage() { // the Mock exams tab
     const cards = [1, 2, 3].map(m => {
@@ -186,6 +191,7 @@
       <div class="bstep routine"><div class="bnum">0</div><div class="bbody"><b>Start of every question</b>${codeBlock(((q.question.match(/^ssh \S+/) || [])[0] || 'ssh <host from the question>') + '      # exam only (skip in Killercoda)\nk get nodes')}<div class="bwhy"><p>In the exam each question is on a different machine: the ssh line is at the top of the question. <code>k get nodes</code> proves you're on the right machine and kubectl answers. <code>localhost:8080 refused</code> = wrong machine.</p></div></div></div>
       ${steps}
       <div class="bstep routine"><div class="bnum">✓</div><div class="bbody"><b>End of every question</b>${codeBlock('exit      # exam only: leave this machine before the next question')}<div class="bwhy"><p>Verify first (below), then exit. The next question's ssh only works from the base machine.</p></div></div></div>
+      ${q.wrong ? `<h2>If something goes wrong</h2><div class="card btable">${q.wrong}</div>` : ""}
       ${c ? coachBottom(c, q) : ""}`;
   }
 
@@ -198,6 +204,7 @@
       <h1>${label}. ${esc(q.title)}</h1>
       <p class="sub">${q.star ? '<span class="chip star">often in exam</span> ' : ''}${q.target} min ${p.st ? '· ' + ST[p.st] : ''}</p>
       <section class="card exam"><div class="label">Exam question</div><p class="q">${inline(q.question)}</p></section>
+      ${q.keys && q.keys.length ? `<div class="writedown"><b>Write down:</b> ${q.keys.map(k => `<span class="chip">${inline(k)}</span>`).join(' ')}</div>` : ''}
       ${solution(q)}
       <h2>How did it go?</h2>
       <div class="row"><button class="btn good" data-r="solo">Alone</button><button class="btn warn" data-r="help">With help</button><button class="btn bad" data-r="fail">Not yet</button></div>
@@ -563,6 +570,7 @@
     else if (h[0] === 'mock' && h[2]) mockTask(+h[1], +h[2]);
     else if (h[0] === 'mock') mockView(+h[1]);
     else if (h[0] === 'mocks') mocksPage();
+    else if (h[0] === 'cheat') cheatPage();
     else home();
     const onMock = h[0] === 'mocks' || h[0] === 'mock' || (h[0] === 'q' && +h[1] > 100);
     $$('.tabs a').forEach(a => a.classList.toggle('on', a.dataset.tab === (onMock ? 'mocks' : 'practice')));
