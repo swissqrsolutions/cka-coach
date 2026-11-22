@@ -244,7 +244,7 @@ pre.out{background:var(--code);color:#b9c6dc;border-radius:12px;padding:10px;whi
 .s-mgr-out .phoneline{border-color:#e0b4ae}
 .nosign{position:absolute;right:10px;top:4px;font:800 11px var(--sans);color:#c0392b;background:#fff;border:2px solid #c0392b;border-radius:8px;padding:1px 6px;opacity:0;transition:opacity .5s}
 .s-notready .nosign{opacity:1}
-.s-notready .alloc{background:#fbe3e0}
+.s-notready .sched{background:#fbe3e0}
 .s-notready .ops{background:#fbe3e0}
 .s-intro .stn{animation:pop .6s both}
 .roster{position:absolute;left:8px;right:8px;bottom:6px;display:flex;gap:8px;align-items:center;font-size:12px;background:#fff;border:2px dashed #7a4f1e;border-radius:10px;padding:4px 8px;opacity:0;transform:translateY(8px);transition:all .5s}
@@ -292,3 +292,4 @@ pre.out{background:var(--code);color:#b9c6dc;border-radius:12px;padding:10px;whi
 .vbody{flex:1;min-width:0}
 .vbody .code{margin:6px 0}
 .vsee{font-size:14px;color:var(--muted)}
+.stn small{overflow-wrap:anywhere}

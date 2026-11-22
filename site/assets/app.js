@@ -286,19 +286,16 @@
   function mountVideo(q, root) {
     const v = q.video;
     const st = (emo, name, real, cls) => `<div class="stn ${cls}"><i>${emo}</i><b>${name}</b><small>${real}</small></div>`;
+    const wd = v.world;
+    const floor = (f, cls) => `<div class="floor ${cls}"><div class="flabel">${esc(f.label)} · <code>${esc(f.real)}</code></div>${f.stations.map(x => st(x[0], esc(x[1]), esc(x[2]), x[3])).join('')}${cls === 'office' ? '<div class="regtext"></div>' : `<div class="nosign">${esc(wd.nosign)}</div><div class="roster"><b>${wd.roster} <code>${esc(wd.rosterReal)}</code></b><span></span></div>`}</div>`;
     root.innerHTML = `<div class="vid">
       <div class="world" id="world">
-        <div class="floor office"><div class="flabel">HEAD OFFICE · <code>control plane</code></div>
-          ${st('🛎️', 'Reception', 'API server', 'reception')}${st('📒', 'Register', 'etcd', 'register')}${st('🗺️', 'Allocation', 'Scheduler', 'alloc')}${st('📋', 'Operations', 'Controller mgr', 'ops')}
-          <div class="regtext"></div></div>
-        <div class="phoneline"><span class="call">📞 all fine!</span></div>
-        <div class="floor branch"><div class="flabel">BRANCH KITCHEN · <code>node01</code></div>
-          ${st('🧑‍💼', 'Branch manager', 'kubelet', 'mgr')}${st('🔥', 'Stoves', 'container runtime', 'stoves')}${st('☎️', 'Switchboard', 'kube-proxy', 'switch')}${st('🍽️', 'Counters', 'Pods', 'counters')}
-          <div class="nosign">⛔ no new orders</div>
-          <div class="roster"><b>📋 Staff roster <code>systemctl</code></b><span></span></div></div>
-        <div class="owner"><i>🚗</i><b>You</b><small>kubectl</small></div>
-        <div class="vexam">📝 Bring <b>node01</b> back to <b>Ready</b>.<br>Fix must <mark>survive a reboot</mark>.</div>
-        <div class="night"><span>🌙 night… <b>REBOOT</b></span></div>
+        ${floor(wd.top, 'office')}
+        <div class="phoneline"><span class="call">${esc(wd.call)}</span></div>
+        ${floor(wd.bottom, 'branch')}
+        <div class="owner"><i>${wd.owner[0]}</i><b>${esc(wd.owner[1])}</b><small>${esc(wd.owner[2])}</small></div>
+        <div class="vexam">${wd.goal}</div>
+        <div class="night"><span>${wd.night}</span></div>
         <div class="vterm"><div class="vprompt"></div><pre></pre></div>
         <div class="vquiz"></div>
         <div class="bigcheck">✓</div>
@@ -315,8 +312,8 @@
     const sleep = ms => new Promise(r => setTimeout(r, ms));
     // plays one clip; always finishes: on end, on error, or after the clip's length (+1 s) even if 'ended' never fires
     const playAudio = (src, my) => new Promise(res => {
-      if (audio) audio.pause();
-      const me = audio = new Audio(src);
+      const me = audio || (audio = new Audio());
+      me.pause(); me.src = src;
       try { me.muted = !!JSON.parse(localStorage.getItem('cka:mute')); } catch {}
       let done = false, guard = 0, iv = 0;
       const finish = () => { if (done) return; done = true; clearTimeout(guard); clearInterval(iv); res(); };
@@ -367,7 +364,11 @@
       if (my !== gen) return;
       if (playing) scene(k + 1); else pendingNext = k + 1;
     };
-    btn.onclick = e => { e.stopPropagation(); playing = true; btn.hidden = true; W.classList.remove('ended'); scene(0); };
+    btn.onclick = e => {
+      e.stopPropagation();
+      if (!audio) { audio = new Audio(`media/${q.n}/s1.mp3`); audio.play().then(() => audio.pause()).catch(() => {}); } // unlock sound inside the tap
+      playing = true; btn.hidden = true; W.classList.remove('ended'); scene(0);
+    };
     W.onclick = () => {
       if (!btn.hidden || $('.vquiz', root).classList.contains('on')) return;
       playing = !playing; W.classList.toggle('paused', !playing);

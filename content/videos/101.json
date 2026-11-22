@@ -1,30 +1,45 @@
 {
  "voice": "en-GB-SoniaNeural",
+ "world": {
+  "top": { "label": "LEADERSHIP ROOM", "real": "control plane", "stations": [
+    ["🖥️", "Jira", "API server", "api"], ["🗄️", "Jira database", "etcd", "etcd"],
+    ["🗂️", "Work assigner", "Scheduler", "sched"], ["🚆", "Release Train Eng.", "Controller mgr", "ops"] ] },
+  "bottom": { "label": "TEAM ALPHA'S ROOM", "real": "node01", "stations": [
+    ["🧑‍💼", "Scrum Master", "kubelet", "mgr"], ["🧑‍🔧", "Team Lead", "container runtime", "tl"],
+    ["🔁", "Triage rotation", "kube-proxy", "proxy"], ["🗒️", "Work items", "Pods", "items"] ] },
+  "call": "📣 team healthy!",
+  "nosign": "⛔ no new work",
+  "roster": "🪪 Role assignment",
+  "rosterReal": "systemctl",
+  "owner": ["🧑‍💻", "You", "kubectl"],
+  "night": "🔄 reorg… <b>REBOOT</b>",
+  "goal": "📝 Bring <b>node01</b> (Team Alpha) back to <b>Ready</b>.<br>Fix must <mark>survive a reboot</mark>."
+ },
  "scenes": [
-  { "state": "intro beat ready", "reg": "node01 · Ready", "say": "Welcome to Kube Foods, your restaurant company. At the top: head office. Reception takes every call. The register holds the truth. The allocation manager picks a kitchen for each new order. And the operations manager keeps everything matching the register.", "sub": "Head office = the control plane" },
-  { "state": "intro beat ready", "reg": "node01 · Ready", "say": "Below: the branch kitchen, node zero one. Its stoves cook the dishes, the switchboard routes calls, and the branch manager, the kubelet, runs it all. Every few seconds he phones reception: branch open, all fine!", "sub": "kubelet = branch manager → phones \"all fine\" every few seconds" },
-  { "state": "mgr-out notready", "reg": "node01 · NotReady", "say": "But this morning, the branch manager isn't there. No calls. After forty seconds the operations manager writes in the register: node zero one, Not Ready. And the allocation manager stops sending new orders there.", "sub": "No calls for 40 s → node01 NotReady → no new orders" },
-  { "state": "mgr-out notready exam", "reg": "node01 · NotReady", "say": "Your exam task: bring node zero one back to Ready. And the fix must survive a reboot. Remember that last part.", "sub": "Goal: Ready + survive a reboot" },
-  { "state": "mgr-out notready", "reg": "node01 · NotReady", "say": "Quick question. Why is node zero one Not Ready?", "sub": "Why is node01 NotReady?",
-    "quiz": [ { "t": "🔥 The stoves are broken", "ok": false, "fb": "Not quite. Broken stoves would hurt the dishes, but the branch would still phone in. Nobody is phoning." },
-              { "t": "🧑‍💼 The branch manager (kubelet) isn't working", "ok": true, "fb": "Exactly! No branch manager, no phone calls, so head office marks the branch Not Ready." },
-              { "t": "🛎️ Reception is closed", "ok": false, "fb": "Not quite. If reception were closed, nothing would work at all, not even k get nodes." } ] },
-  { "state": "mgr-out notready car-n1 term", "reg": "node01 · NotReady", "prompt": "root@node01", "term": ["$ ssh node01"], "say": "So drive to that branch. S S H node zero one means: open a terminal inside node zero one. Look at the prompt: it now says node zero one. You are in the kitchen.", "sub": "ssh node01 = drive to the branch" },
-  { "state": "mgr-out notready car-n1 term roster", "reg": "node01 · NotReady", "roster": "kubelet · inactive (dead) · not on permanent roster", "prompt": "root@node01", "term": ["$ systemctl status kubelet", "  Active: inactive (dead)"], "say": "Every branch has an H R staff roster. That is system control. System control status kubelet asks: is the branch manager working? Answer: inactive, dead. He's not here.", "sub": "systemctl = the branch staff roster · status = is he working?" },
-  { "state": "car-n1 term roster beat ready", "reg": "node01 · Ready", "roster": "kubelet · active (running) · today only", "prompt": "root@node01", "term": ["$ systemctl start kubelet"], "say": "Easy! System control start kubelet calls him in. He's back, he phones reception, node zero one is Ready. Done? Not so fast.", "sub": "systemctl start = call him in… for today" },
-  { "state": "night mgr-out notready", "reg": "node01 · NotReady", "roster": "kubelet · not on permanent roster", "say": "Twist! That night the branch closes and reopens. That is a reboot. Next morning, the branch manager is missing again! Why? Start only called him in for one day. He was never put on the permanent roster.", "sub": "TWIST: reboot → he's gone again" },
-  { "state": "mgr-out notready car-n1 term", "reg": "node01 · NotReady", "prompt": "root@node01", "say": "So which command puts him on the permanent roster, and starts him right now?", "sub": "Which command survives a reboot?",
-    "quiz": [ { "t": "systemctl start kubelet", "ok": false, "fb": "That's the trap we just fell into. Start is only for today." },
-              { "t": "systemctl enable --now kubelet", "ok": true, "fb": "Yes! Enable puts him on the permanent roster. Dash dash now also starts him right away." },
-              { "t": "kubectl restart node01", "ok": false, "fb": "That command doesn't exist. And kubectl only talks to head office, not to the branch roster." } ] },
-  { "state": "car-n1 term roster beat ready", "reg": "node01 · Ready", "roster": "kubelet · active (running) · enabled: every day", "prompt": "root@node01", "term": ["$ systemctl enable --now kubelet"], "say": "System control enable, dash dash now, kubelet. Enable: on the permanent roster, so he comes back after every reboot. Dash dash now: start working right now.", "sub": "enable = every day · --now = right now" },
-  { "state": "night2 beat ready roster", "reg": "node01 · Ready", "roster": "kubelet · enabled: every day", "say": "Another night, another reboot. And this time? He's back by himself. The fix survives a reboot.", "sub": "Reboot again → he comes back by himself ✓" },
-  { "state": "car-cp term beat ready check", "reg": "node01 · Ready", "prompt": "root@controlplane", "term": ["$ exit", "$ k get nodes", "node01   Ready"], "say": "Now drive back with exit, and read the register with k get nodes. Node zero one: Ready. Task done!", "sub": "exit = drive back · k get nodes = read the register" },
-  { "state": "recap", "reg": "node01 · Ready", "say": "Remember: Not Ready means the branch manager is missing. Drive there with S S H. Check the roster with status. And never just start him: enable dash dash now, so he survives the night.", "sub": "NotReady → ssh → status → enable --now → exit → get nodes" }
+  { "state": "intro beat ready", "reg": "Team Alpha · node01 · Ready", "say": "Welcome to your software company. Upstairs is the leadership room: the control plane. Jira, the API server, takes every request and checks permissions. Jira's database, etcd, holds the truth. The work assigner, the scheduler, gives each new work item to a team with capacity. And the Release Train Engineer, the controller manager, keeps reality matching the plan.", "sub": "Leadership room = the control plane" },
+  { "state": "intro beat ready", "reg": "Team Alpha · node01 · Ready", "say": "Downstairs is Team Alpha's room: node zero one. The team lead, the container runtime, gets the developers working. And the Scrum Master, the kubelet, takes the assigned work, and at every sync reports to Jira: team healthy!", "sub": "kubelet = Scrum Master → reports \"team healthy\" at every sync" },
+  { "state": "mgr-out notready", "reg": "Team Alpha · node01 · NotReady", "say": "But today, the Scrum Master doesn't show up. No sync, no report. After forty seconds, the Release Train Engineer marks Team Alpha as not reporting: node zero one, Not Ready. And the work assigner stops giving the team new work.", "sub": "No report for 40 s → node01 NotReady → no new work" },
+  { "state": "mgr-out notready exam", "reg": "Team Alpha · node01 · NotReady", "say": "Your exam task: bring node zero one back to Ready. And the fix must survive a reboot. Remember that last part.", "sub": "Goal: Ready + survive a reboot" },
+  { "state": "mgr-out notready", "reg": "Team Alpha · node01 · NotReady", "say": "Quick question. Why is node zero one Not Ready?", "sub": "Why is node01 NotReady?",
+    "quiz": [ { "t": "🧑‍🔧 The Team Lead (container runtime) is off sick", "ok": false, "fb": "Not quite. Without the team lead the work would stall, but the Scrum Master would still report. Nobody is reporting at all." },
+              { "t": "🧑‍💼 The Scrum Master (kubelet) isn't doing the job", "ok": true, "fb": "Exactly! No Scrum Master, no team healthy report, so the team is marked Not Ready." },
+              { "t": "🖥️ Jira (API server) is down", "ok": false, "fb": "Not quite. If Jira were down, nobody could see anything, not even k get nodes." } ] },
+  { "state": "mgr-out notready car-n1 term", "reg": "Team Alpha · node01 · NotReady", "prompt": "root@node01", "term": ["$ ssh node01"], "say": "So go to the team's room. S S H node zero one. Your terminal now works inside Team Alpha's room. Look at the prompt: it says node zero one.", "sub": "ssh node01 = walk into Team Alpha's room" },
+  { "state": "mgr-out notready car-n1 term roster", "reg": "Team Alpha · node01 · NotReady", "roster": "kubelet · inactive (dead) · not officially assigned", "prompt": "root@node01", "term": ["$ systemctl status kubelet", "  Active: inactive (dead)"], "say": "Every role in the room has an official assignment. That's system control. System control status kubelet asks: is the Scrum Master doing the job? Answer: inactive, dead. Nobody is.", "sub": "systemctl = role assignment · status = is anyone doing the job?" },
+  { "state": "car-n1 term roster beat ready", "reg": "Team Alpha · node01 · Ready", "roster": "kubelet · active (running) · covering this sprint only", "prompt": "root@node01", "term": ["$ systemctl start kubelet"], "say": "Easy fix: system control start kubelet. Someone covers the role for this sprint. The Scrum Master reports again, Team Alpha is Ready. Done? Not so fast.", "sub": "systemctl start = cover the role… this sprint only" },
+  { "state": "night mgr-out notready", "reg": "Team Alpha · node01 · NotReady", "roster": "kubelet · not officially assigned", "say": "Twist! Next week there's a reorg. That's a reboot. And Team Alpha has no Scrum Master again! Why? Start only covered the role for one sprint. Nobody was officially assigned.", "sub": "TWIST: reorg (reboot) → no Scrum Master again" },
+  { "state": "mgr-out notready car-n1 term", "reg": "Team Alpha · node01 · NotReady", "prompt": "root@node01", "say": "So which command officially assigns the Scrum Master, and starts the job right now?", "sub": "Which command survives a reboot?",
+    "quiz": [ { "t": "systemctl start kubelet", "ok": false, "fb": "That's the trap we just fell into. Start only covers this sprint." },
+              { "t": "systemctl enable --now kubelet", "ok": true, "fb": "Yes! Enable makes the assignment official, so it survives every reorg. Dash dash now also starts it right away." },
+              { "t": "kubectl restart node01", "ok": false, "fb": "That command doesn't exist. And kubectl only talks to Jira, not to the role assignments in the team room." } ] },
+  { "state": "car-n1 term roster beat ready", "reg": "Team Alpha · node01 · Ready", "roster": "kubelet · active (running) · officially assigned", "prompt": "root@node01", "term": ["$ systemctl enable --now kubelet"], "say": "System control enable, dash dash now, kubelet. Enable: officially assigned, so the role survives every reorg. Dash dash now: start right now.", "sub": "enable = official, survives reboots · --now = right now" },
+  { "state": "night2 beat ready roster", "reg": "Team Alpha · node01 · Ready", "roster": "kubelet · officially assigned", "say": "Another reorg. And this time? The Scrum Master is still there. The fix survives a reboot.", "sub": "Reorg again → Scrum Master still there ✓" },
+  { "state": "car-cp term beat ready check", "reg": "Team Alpha · node01 · Ready", "prompt": "root@controlplane", "term": ["$ exit", "$ k get nodes", "node01   Ready"], "say": "Go back to the leadership room with exit, and check Jira with k get nodes. Node zero one: Ready. Task done!", "sub": "exit = back to leadership · k get nodes = check Jira" },
+  { "state": "recap", "reg": "Team Alpha · node01 · Ready", "say": "Remember: Not Ready means the Scrum Master, the kubelet, isn't doing the job. Go to the team with S S H. Check with status. And never just start it: enable dash dash now, so it survives the reorg.", "sub": "NotReady → ssh → status → enable --now → exit → get nodes" }
  ],
  "steps": [
-  { "do": "Drive to the branch and check the branch manager", "cmds": ["ssh node01", "systemctl status kubelet"], "see": "Active: inactive (dead)" },
-  { "do": "Put him on the permanent roster and start him now, then drive back", "cmds": ["systemctl enable --now kubelet", "exit"], "see": "" },
-  { "do": "Read the register", "cmds": ["k get nodes"], "see": "node01   Ready" }
+  { "do": "Go to Team Alpha's room and check the Scrum Master", "cmds": ["ssh node01", "systemctl status kubelet"], "see": "Active: inactive (dead)" },
+  { "do": "Assign officially and start now, then go back", "cmds": ["systemctl enable --now kubelet", "exit"], "see": "" },
+  { "do": "Check Jira", "cmds": ["k get nodes"], "see": "node01   Ready" }
  ]
 }
