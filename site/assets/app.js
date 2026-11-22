@@ -158,11 +158,12 @@
       <h1>${label}. ${esc(q.title)}</h1>
       <p class="sub">${q.star ? '<span class="chip star">often in exam</span> ' : ''}${q.target} min ${p.st ? '· ' + ST[p.st] : ''}</p>
       <section class="card exam"><div class="label">Exam question</div><p class="q">${inline(q.question)}</p></section>
-      <a class="btn block big" href="#/watch/${n}">▶ Watch how to solve it</a>
+      <div id="story"></div>
       <div class="row" style="margin-top:10px"><a class="btn ghost" href="#/do/${n}">Practise here</a><a class="btn ghost" href="#/guide/${n}/0">Real cluster</a></div>
       <h2>How did it go?</h2>
       <div class="row"><button class="btn good" data-r="solo">Alone</button><button class="btn warn" data-r="help">With help</button><button class="btn bad" data-r="fail">Not yet</button></div>
       <div class="pager">${q.mock ? '' : n > 1 ? `<a class="btn ghost" href="#/q/${n - 1}">← ${n - 1}</a>` : ''}${!q.mock && n < 40 ? `<a class="btn ghost" href="#/q/${n + 1}">${n + 1} →</a>` : ''}</div>`;
+    mountPlayer(n, $('#story'));
     $$('[data-r]').forEach(b => b.onclick = () => {
       const all = prog(); all[n] = { st: b.dataset.r, at: Date.now() }; store.set('progress', all);
       toast(b.dataset.r === 'solo' ? 'Saved ✓' : 'Saved. It comes back later.');
@@ -170,71 +171,72 @@
     });
   }
 
-  // ---------- ▶ the explainer: a short animation built from the question's own steps ----------
-  function watch(n) {
-    const q = Q(n); if (!q) return home();
-    const scenes = [];
-    scenes.push({ t: 'What is going on', run: async (st, a) => {
-      st.innerHTML = picture(q) + `<p class="cap" id="cap"></p>`;
-      await a.wait(1300);
-      const parts = $$('.part', st);
-      // the request goes: you -> API server -> the part this task is about
-      const path = ['you', 'api', ...q.pic.parts].filter((k, i, a) => a.indexOf(k) === i).map(k => st.querySelector('.p-' + k)).filter(Boolean);
-      for (const p of path) { parts.forEach(x => x.classList.toggle('visit', false)); p.classList.add('visit'); await a.wait(520); }
-      parts.forEach(p => p.classList.toggle('visit', false));
-      st.querySelector('.pic').classList.add('lit');
-      await a.wait(700); await a.type($('#cap', st), q.pic.say); await a.wait(1800);
+  // ---------- ▶ the story player: one consistent kitchen story for every task, you tap Next ----------
+  const CAST = {
+    you: ['🧑‍💼', 'You, the owner', 'kubectl'], api: ['🛎️', 'Front desk', 'API server'], etcd: ['📒', 'Order book', 'etcd'],
+    sched: ['🪑', 'Host', 'Scheduler'], cm: ['👨‍🍳', 'Head chef', 'Controller manager'], kubelet: ['🧑‍🍳', 'Table cook', 'kubelet (node)'],
+    pod: ['🍲', 'Dish', 'Pod'], svc: ['☎️', 'Phone number', 'Service'], net: ['🚧', 'Door guard', 'NetworkPolicy / CNI'],
+    dns: ['📖', 'Phone book', 'CoreDNS'], store: ['🗄️', 'Store room', 'PV / PVC / StorageClass'], access: ['🪪', 'Key cards', 'RBAC'],
+    tools: ['🧰', 'Meal kits', 'Helm / Kustomize / CRD'],
+  };
+  const card = (k, cls = '') => { const c = CAST[k] || CAST.pod; return `<div class="cast ${cls}"><div class="emo">${c[0]}</div><div><b>${c[1]}</b><code>${c[2]}</code></div></div>`; };
+  function watch(n) { location.replace('#/q/' + n); }
+  function mountPlayer(n, root) {
+    const q = Q(n); if (!q) return;
+    const st = q.story || { cast: q.pic.parts.length ? q.pic.parts : ['pod'], broken: q.pic.say, fix: '', before: '', after: '' };
+    const build = q.pic.mode === 'build';
+    const main = st.cast[0];
+    const badge = (txt, ok) => txt ? `<span class="badge ${ok ? 'ok' : 'bad'}">${esc(txt)}</span>` : '';
+    const strip = ok => `<div class="strip">${card(main, ok ? 'good' : build ? 'missing' : 'broken')}${badge(ok ? st.after : st.before, ok)}</div>`;
+    const beats = [];
+    beats.push({ t: 'Meet the cast', html: `<div class="castlist">${st.cast.map((k, i) => card(k, 'enter" style="animation-delay:' + (i * 0.7) + 's')).join('')}</div><p class="cap">These are the characters in this task.</p>` });
+    beats.push({ t: build ? "What's missing" : "What's broken", html: `<div class="hero-card">${card(main, build ? 'missing big' : 'broken big')}${badge(st.before, false)}</div><p class="cap story">${esc(st.broken)}</p>` });
+    beats.push({ t: 'Read the order', html: `<p class="q" id="dq"></p><div class="keys" id="dk"></div><p class="cap small">Write these down before you type anything.</p>`, after: el => {
+      dissect(q, $('#dq', el))(); $$('.tok', el).forEach(t => t.classList.toggle('miss', false));
+      $$('.tok.hit', el).forEach((t, i) => { t.classList.toggle('hit', false); setTimeout(() => t.classList.add('hit'), 600 + i * 700); });
+      $('#dk', el).innerHTML = q.keys.map((k, i) => `<span class="chip enter" style="animation-delay:${0.6 + i * 0.9}s">${inline(k)}</span>`).join('');
     } });
-    scenes.push({ t: 'Read the question like this', run: async (st, a) => {
-      st.innerHTML = `<p class="q" id="dq"></p><div class="keys" id="dk"></div>`;
-      const get = dissect(q, $('#dq', st)); get();
-      $$('.tok', st).forEach(t => t.classList.remove('hit', 'miss'));
-      await a.wait(1200);
-      for (const k of q.keys) {
-        const words = (k.split('=')[1] || k).replace(/`/g, '').toLowerCase().split(/[^a-z0-9.\-/:]+/).filter(w => w.length > 1);
-        $$('.tok', st).filter(t => words.includes(t.dataset.w)).forEach(t => t.classList.add('hit'));
-        $('#dk', st).insertAdjacentHTML('beforeend', `<span class="chip pop">${inline(k)}</span>`);
-        await a.wait(1300);
-      }
-      await a.wait(1200);
-    } });
-    q.steps.forEach((s, si) => scenes.push({ t: s.title.replace(/^Step \d+\.\s*/, '').replace('Closing routine', 'Check it works'), run: async (st, a) => {
-      const last = si === q.steps.length - 1;
-      st.innerHTML = `<div class="mini">${picture(q)}</div><div class="term" id="tm"></div><p class="cap" id="cap"></p>`;
-      st.querySelector('.pic').classList.add('lit');
-      const tm = $('#tm', st);
+    q.steps.forEach((s, si) => {
       const items = s.flow.filter(f => !f.skip);
-      for (let i = 0; i < items.length; i++) {
-        const f = items[i];
-        if (f.k === 'cmd') { const line = document.createElement('div'); line.className = 'ln'; line.innerHTML = '<span class="pr">$</span> '; tm.append(line); const sp = document.createElement('span'); line.append(sp); await a.type(sp, f.t, 32); await a.wait(500); }
-        else if (f.k === 'out') { const o = document.createElement('pre'); o.className = 'out'; o.innerHTML = paint(f.t); tm.append(o); tm.scrollTop = 1e6; await a.wait(1600); }
-        else if (useful(f)) { $('#cap', st).innerHTML = shortH(f.h); $('#cap', st).classList.remove('pop'); void st.offsetWidth; $('#cap', st).classList.add('pop'); await a.wait(Math.min(4200, 1400 + short(f.h).length * 28)); }
-      }
-      if (last) { st.querySelector('.pic').classList.add('healed'); $('#cap', st).innerHTML = '<b class="win">✓ Fixed and verified</b>'; await a.wait(2200); }
-      await a.wait(900);
-    } }));
-    scenes.push({ t: 'The whole answer', run: async (st, a) => { st.innerHTML = `<div class="mug">${q.mug}</div>`; await a.wait(6000); } });
-
-    app.innerHTML = `<a href="#/q/${n}" class="small">← ${q.n}. ${esc(q.title)}</a>
-      <div class="player"><div class="ptitle" id="pt"></div><div class="stage" id="stage"></div>
-        <div class="dots">${scenes.map((_, i) => `<i data-i="${i}"></i>`).join('')}</div>
-        <div class="pctl"><button class="iconbtn" id="pv" aria-label="Back">⏮</button><button class="btn" id="pp">❚❚ Pause</button><button class="iconbtn" id="nx" aria-label="Next">⏭</button><button class="iconbtn" id="sp" aria-label="Speed">1×</button></div></div>
-      <div class="row" style="margin-top:12px"><a class="btn" href="#/do/${n}">Now practise it</a></div>`;
-    let idx = 0, paused = false, token = 0, speed = 1; const gen = ++watchGen;
-    const api = tk => ({
-      wait: ms => new Promise((res, rej) => { let left = ms; const step = () => { if (tk !== token || gen !== watchGen) return rej(0); if (!paused) left -= 50 * speed; if (left <= 0) res(); else setTimeout(step, 50); }; step(); }),
-      async type(el, text, cps = 30) { for (const ch of text) { await this.wait(cps); el.textContent += ch; } },
+      items.forEach((f, i) => {
+        if (f.k !== 'cmd') return;
+        const outs = [], says = [];
+        for (let j = i + 1; j < items.length && items[j].k !== 'cmd'; j++) (items[j].k === 'out' ? outs : says).push(items[j]);
+        const say = says.find(useful);
+        const isLast = si === q.steps.length - 1;
+        beats.push({ t: s.title.replace(/^Step \d+\.\s*/, '').replace('Closing routine', 'Prove it works'), html: `${strip(false)}<div class="term"><div class="ln"><span class="pr">$</span> <span class="typed"></span></div></div><p class="cap"></p>`, after: async (el, alive) => {
+          const ty = $('.typed', el), tm = $('.term', el), text = f.multi ? f.t.split('\n')[0] + ' …' : f.t;
+          for (const ch of text) { if (!alive()) return; ty.textContent += ch; await new Promise(r => setTimeout(r, 45)); }
+          await new Promise(r => setTimeout(r, 600)); if (!alive()) return;
+          outs.forEach(o => { const p = document.createElement('pre'); p.className = 'out enter'; p.innerHTML = paint(o.t); tm.append(p); });
+          await new Promise(r => setTimeout(r, outs.length ? 900 : 200)); if (!alive()) return;
+          const cap = $('.cap', el); cap.innerHTML = say ? shortH(say.h) : (isLast ? 'Check the result.' : ''); cap.classList.add('enter');
+        } });
+      });
     });
-    const show = async i => {
-      idx = Math.max(0, Math.min(scenes.length - 1, i)); const tk = ++token;
-      $('#pt').textContent = `${idx + 1}/${scenes.length} · ${scenes[idx].t}`;
+    beats.push({ t: 'Fixed', html: `<div class="hero-card">${card(main, 'good big')}${badge(st.after, true)}</div><p class="cap story">${esc(st.fix || 'Done and verified.')}</p>` });
+    beats.push({ t: 'Remember', html: `<p class="cap story"><b>Broken:</b> ${esc(st.broken)}<br><b>Fix:</b> ${esc(st.fix)}</p><div class="mug">${q.mug}</div>` });
+
+    root.innerHTML = `<div class="player"><div class="ptitle" id="pt"></div><div class="stage" id="stage"></div>
+        <div class="dots">${beats.map((_, i) => `<i data-i="${i}"></i>`).join('')}</div>
+        <div class="pctl"><button class="iconbtn" id="pv" aria-label="Back">◀</button><button class="btn" id="nx">Next ▶</button><button class="iconbtn" id="auto" aria-label="Auto play">Auto</button></div></div>`;
+    let idx = 0, gen = 0, auto = false, timer = 0;
+    const show = i => {
+      idx = Math.max(0, Math.min(beats.length - 1, i)); const my = ++gen; clearTimeout(timer);
+      const b = beats[idx], stage = $('#stage');
+      $('#pt').textContent = `${idx + 1}/${beats.length} · ${b.t}`;
+      stage.innerHTML = `<div class="beat enter">${b.html}</div>`;
       $$('.dots i').forEach((d, j) => d.className = j < idx ? 'done' : j === idx ? 'now' : '');
-      try { await scenes[idx].run($('#stage'), api(tk)); if (tk === token && idx < scenes.length - 1) show(idx + 1); else if (tk === token) { $('#pp').textContent = '↺ Replay'; paused = true; } } catch {}
+      $('#nx').textContent = idx === beats.length - 1 ? 'Practise it ▶' : 'Next ▶';
+      const alive = () => my === gen && document.body.contains(stage);
+      Promise.resolve(b.after && b.after(stage, alive)).then(() => {
+        if (auto && alive() && idx < beats.length - 1) timer = setTimeout(() => alive() && show(idx + 1), Math.max(4500, plain(stage.textContent).length * 65));
+      });
     };
-    $('#pp').onclick = () => { if ($('#pp').textContent.includes('Replay')) { paused = false; $('#pp').textContent = '❚❚ Pause'; return show(0); } paused = !paused; $('#pp').textContent = paused ? '▶ Play' : '❚❚ Pause'; $('#stage').classList.toggle('paused', paused); };
+    $('#nx').onclick = () => idx === beats.length - 1 ? (location.hash = `#/do/${n}`) : show(idx + 1);
     $('#pv').onclick = () => show(idx - 1);
-    $('#nx').onclick = () => show(idx + 1);
-    $('#sp').onclick = () => { speed = speed === 1 ? 1.5 : speed === 1.5 ? 2 : 1; $('#sp').textContent = speed + '×'; };
+    $('#auto').onclick = () => { auto = !auto; $('#auto').classList.toggle('on', auto); if (auto) show(idx + 1 < beats.length ? idx + 1 : idx); };
+    $('#stage').onclick = e => { if (!e.target.closest('button,a')) $('#nx').click(); };
     $$('.dots i').forEach(d => d.onclick = () => show(+d.dataset.i));
     show(0);
   }
@@ -327,7 +329,7 @@
     app.innerHTML = `<a href="#/mock/${m}" class="small">← All tasks</a>
       <h1>Task ${i} of ${ids.length}</h1><p class="sub">Weight ${weightOf(m, n).toFixed(1)}% · ${esc(topicShort(q.topic))}</p>
       <section class="card exam"><div class="label">Task</div>${(() => { const mm = q.question.match(/^(ssh \S+)\s*(.*)$/s); return mm ? `<div class="sshline">${codeBlock(mm[1])}</div><p class="q">${inline(mm[2])}</p>` : `<p class="q">${inline(q.question)}</p>`; })()}</section>
-      <a class="btn ghost block" id="help" href="#/watch/${n}">▶ Stuck? Watch how to solve it${s.help && s.help[n] ? ' (used)' : ''}</a>
+      <a class="btn ghost block" id="help" href="#/q/${n}">▶ Stuck? See how to solve it${s.help && s.help[n] ? ' (used)' : ''}</a>
       ${q.setup ? `<details class="step"><summary>Setup for Killercoda (paste first)</summary><div class="body">${codeBlock(q.setup)}<p class="small">In the real exam this is already there.</p></div></details>` : `<div class="card small">This task can't be built in a playground. Write down the steps you would run; check them at the end.</div>`}
       <div class="row"><a class="btn ghost" href="${KILLERCODA}" target="_blank" rel="noopener">Terminal</a><a class="btn ghost" href="${DOCS}" target="_blank" rel="noopener">Docs</a></div>
       <div class="row" style="margin-top:10px"><button class="btn ${s.flag[n] ? 'warn' : 'ghost'}" id="flag">${s.flag[n] ? 'Flagged' : 'Flag'}</button><button class="btn ${s.done[n] ? 'good' : ''}" id="done">${s.done[n] ? 'Done ✓' : 'Mark done'}</button></div>

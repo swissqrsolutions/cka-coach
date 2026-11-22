@@ -154,6 +154,8 @@ if (fs.existsSync(mockFile)) {
   data_sources = M.sources || [];
 }
 
+const storyFile = path.join(ROOT, 'content', 'stories.json');
+if (fs.existsSync(storyFile)) { const S = JSON.parse(fs.readFileSync(storyFile, 'utf8')); for (const x of questions) if (S[x.n]) x.story = S[x.n]; }
 const data = { sources: data_sources, built: new Date().toISOString(), topics: topics.map(t => ({ name: t.name, weight: t.weight, intro: html(t.intro) })), refs: refs.map(r => ({ title: r.title, html: html(r.body) })), questions, mocks };
 fs.writeFileSync(path.join(ROOT, 'site', 'data.json'), JSON.stringify(data));
 

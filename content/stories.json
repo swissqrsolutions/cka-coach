@@ -1,0 +1,845 @@
+{
+ "1": {
+  "cast": [
+   "kubelet",
+   "pod"
+  ],
+  "broken": "The cook (kubelet) asks the supplier for recipe nginx:doesnotexist — no such recipe, so the dish (Pod) never cooks.",
+  "fix": "Give the head order (Deployment) a real recipe: set image nginx:1.27 — a new dish is cooked.",
+  "before": "ImagePullBackOff",
+  "after": "Running"
+ },
+ "2": {
+  "cast": [
+   "pod",
+   "kubelet"
+  ],
+  "broken": "The dish (Pod) gets a wrong cooking instruction (command), so it ends at once and the cook restarts it forever.",
+  "fix": "Fix the Deployment's command to sleep 3600 (kubectl edit deploy) — the dish now stays on the table.",
+  "before": "CrashLoopBackOff",
+  "after": "Running"
+ },
+ "3": {
+  "cast": [
+   "sched",
+   "pod"
+  ],
+  "broken": "The dish (Pod) asks for more CPU than any table has, so the host (Scheduler) finds no seat.",
+  "fix": "Lower the request to cpu=100m (kubectl set resources) — the host seats the dish.",
+  "before": "Pending",
+  "after": "Running"
+ },
+ "4": {
+  "cast": [
+   "kubelet",
+   "you"
+  ],
+  "broken": "The cook (kubelet) at table node01 went home — the service is stopped and not enabled.",
+  "fix": "On node01, systemctl enable --now kubelet — the cook returns, also after every reboot.",
+  "before": "NotReady",
+  "after": "Ready"
+ },
+ "5": {
+  "cast": [
+   "kubelet"
+  ],
+  "broken": "The cook's (kubelet's) job sheet points to /usr/local/bin/kubelet — nobody is there, so the cook never starts.",
+  "fix": "Change the path back to /usr/bin/kubelet, then systemctl daemon-reload and restart kubelet.",
+  "before": "NotReady",
+  "after": "Ready"
+ },
+ "6": {
+  "cast": [
+   "svc",
+   "pod"
+  ],
+  "broken": "The phone number (Service) finds dishes by label, but its selector matches no dish's label.",
+  "fix": "Edit the Service selector to the pods' real label — calls reach the dishes again.",
+  "before": "<none>",
+  "after": "10.0.1.5:80"
+ },
+ "7": {
+  "cast": [
+   "svc",
+   "pod"
+  ],
+  "broken": "The phone number (Service) rings the wrong door: targetPort isn't nginx's port 80.",
+  "fix": "kubectl edit svc backend-svc and set targetPort: 80 — the call reaches the dish.",
+  "before": "timeout",
+  "after": "nginx page"
+ },
+ "8": {
+  "cast": [
+   "api",
+   "etcd"
+  ],
+  "broken": "A config change broke the front desk (API server); it can't reach the order book (etcd), so nothing answers.",
+  "fix": "Read crictl logs, fix the bad line in kube-apiserver.yaml — the kubelet restarts the front desk.",
+  "before": "connection refused",
+  "after": "kubectl works"
+ },
+ "9": {
+  "cast": [
+   "sched",
+   "pod"
+  ],
+  "broken": "The host's (Scheduler's) start sheet has a typo: kube-schedulerx. The host can't start, so dish test waits.",
+  "fix": "Fix the typo in /etc/kubernetes/manifests/kube-scheduler.yaml — the host returns and seats test.",
+  "before": "Pending",
+  "after": "Running"
+ },
+ "10": {
+  "cast": [
+   "net",
+   "pod"
+  ],
+  "broken": "A door guard (NetworkPolicy) blocks everyone at the backend's door, so client can't get in.",
+  "fix": "Add another guard rule, allow-client: only pod client may enter, on port 80.",
+  "before": "timeout",
+  "after": "nginx page"
+ },
+ "11": {
+  "cast": [
+   "dns",
+   "svc"
+  ],
+  "broken": "The phone book (CoreDNS) is not running, so names can't be turned into numbers (IPs).",
+  "fix": "Bring deploy coredns in kube-system back to 2 replicas — names resolve again.",
+  "before": "0/2",
+  "after": "2/2"
+ },
+ "12": {
+  "cast": [
+   "you",
+   "pod"
+  ],
+  "broken": "The owner needs a written report: a dish's diary (logs) and who uses the most CPU.",
+  "fix": "Save kubectl logs api to /opt/api.log and the kubectl top answer to its file.",
+  "before": "missing",
+  "after": "file saved"
+ },
+ "13": {
+  "cast": [
+   "access"
+  ],
+  "broken": "Robot staff member deploy-bot (ServiceAccount) has no key card, so it can't touch deployments.",
+  "fix": "Create Role deploy-manager (what the card opens) and RoleBinding giving deploy-bot that card.",
+  "before": "no",
+  "after": "yes"
+ },
+ "14": {
+  "cast": [
+   "access"
+  ],
+  "broken": "Robot node-viewer needs a card for the whole restaurant (ClusterRole), to look at all tables (nodes).",
+  "fix": "Create ClusterRole node-reader (get,list nodes) and ClusterRoleBinding node-viewer-binding to node-viewer.",
+  "before": "no",
+  "after": "yes"
+ },
+ "15": {
+  "cast": [
+   "tools"
+  ],
+  "broken": "The owner wants the Argo CD meal kit (Helm chart) printed as plain recipes, without new menu items (CRDs).",
+  "fix": "helm repo add argocd, then helm template with CRDs turned off; save the output file.",
+  "before": "missing",
+  "after": "created"
+ },
+ "16": {
+  "cast": [
+   "tools"
+  ],
+  "broken": "The ingress-nginx meal kit (Helm chart) must be installed, changed, then undone.",
+  "fix": "helm install, then helm upgrade with new values, then helm rollback to the old revision.",
+  "before": "not installed",
+  "after": "deployed"
+ },
+ "17": {
+  "cast": [
+   "tools",
+   "pod"
+  ],
+  "broken": "The Kustomize kit cooks 1 copy of kweb; the owner wants 3, without touching deploy.yaml.",
+  "fix": "Add a replicas entry (kweb, count 3) to kustomization.yaml, then kubectl apply -k /root/kust.",
+  "before": "1/1",
+  "after": "3/3"
+ },
+ "18": {
+  "cast": [
+   "tools"
+  ],
+  "broken": "cert-manager added new menu items (CRDs); the owner needs their list and one field explained.",
+  "fix": "kubectl get crd | grep cert-manager > file; kubectl explain certificate.spec.subject > file.",
+  "before": "missing",
+  "after": "files saved"
+ },
+ "19": {
+  "cast": [
+   "kubelet"
+  ],
+  "broken": "A new table (node) has no stove adapter: cri-dockerd isn't installed or running.",
+  "fix": "dpkg -i cri-dockerd.deb, systemctl enable --now cri-docker, and set the kernel settings.",
+  "before": "inactive",
+  "after": "active (running)"
+ },
+ "20": {
+  "cast": [
+   "net"
+  ],
+  "broken": "The restaurant has no hallways (CNI), so tables can't talk and stay NotReady.",
+  "fix": "Apply the CNI manifest (e.g. Calico) with the cluster's pod CIDR — the hallways are built.",
+  "before": "NotReady",
+  "after": "Ready"
+ },
+ "21": {
+  "cast": [
+   "kubelet",
+   "api"
+  ],
+  "broken": "The kitchen runs an old version; every table must move to 1.35.2, one at a time.",
+  "fix": "Drain, kubeadm upgrade, upgrade kubelet, restart, uncordon — control plane first, then node01.",
+  "before": "old version",
+  "after": "v1.35.2"
+ },
+ "22": {
+  "cast": [
+   "etcd"
+  ],
+  "broken": "The order book (etcd) has no copy; if it's lost, every order is gone.",
+  "fix": "etcdctl snapshot save with the certs; later, snapshot restore into a new data dir.",
+  "before": "no backup",
+  "after": "snapshot saved"
+ },
+ "23": {
+  "cast": [
+   "svc",
+   "pod"
+  ],
+  "broken": "The dishes have no phone number that works from outside the restaurant.",
+  "fix": "Name the container port, then kubectl expose as type NodePort — a number on every table.",
+  "before": "no service",
+  "after": "NodePort"
+ },
+ "24": {
+  "cast": [
+   "svc",
+   "net"
+  ],
+  "broken": "Guests asking for shop.example.com at the street door have no sign telling them where to go.",
+  "fix": "kubectl create ingress web-ing with rule shop.example.com/ → backend-svc:80.",
+  "before": "missing",
+  "after": "created"
+ },
+ "25": {
+  "cast": [
+   "svc",
+   "net"
+  ],
+  "broken": "The old street-door sign (Ingress) must be replaced by the newer Gateway system.",
+  "fix": "Create a Gateway (HTTPS listener with the TLS secret) and an HTTPRoute to the same Service.",
+  "before": "Ingress",
+  "after": "Gateway + route"
+ },
+ "26": {
+  "cast": [
+   "net",
+   "pod"
+  ],
+  "broken": "Anyone can walk to the db dishes; only api dishes should enter, on port 80.",
+  "fix": "Create NetworkPolicy db-policy: podSelector app=db, allow from app=api, TCP 80.",
+  "before": "open",
+  "after": "api only"
+ },
+ "27": {
+  "cast": [
+   "net",
+   "dns"
+  ],
+  "broken": "Room prod has no guard at all — all traffic in and out is allowed.",
+  "fix": "Create default-deny for Ingress and Egress, but allow egress port 53 UDP/TCP to the phone book.",
+  "before": "open",
+  "after": "deny + DNS"
+ },
+ "28": {
+  "cast": [
+   "pod"
+  ],
+  "broken": "The dish's recipe card (ConfigMap) still allows TLSv1.2, and running dishes use the old card.",
+  "fix": "Edit the ConfigMap to TLSv1.3 only, then rollout restart so dishes read the new card.",
+  "before": "TLSv1.2 works",
+  "after": "TLSv1.3 only"
+ },
+ "29": {
+  "cast": [
+   "dns"
+  ],
+  "broken": "The phone book (CoreDNS) has no entry for api.example.com.",
+  "fix": "Add a rewrite rule to the coredns ConfigMap pointing to backend-svc.web, then restart CoreDNS.",
+  "before": "NXDOMAIN",
+  "after": "resolves"
+ },
+ "30": {
+  "cast": [
+   "dns",
+   "svc"
+  ],
+  "broken": "A guest in one room (namespace) must look up backend-svc, which lives in room web.",
+  "fix": "nslookup backend-svc.web.svc.cluster.local from a busybox pod; save the output to /root/dns.txt.",
+  "before": "missing",
+  "after": "file saved"
+ },
+ "31": {
+  "cast": [
+   "pod"
+  ],
+  "broken": "The dish writes a diary (log file), but no helper reads it out.",
+  "fix": "Add sidecar log-shipper (busybox, tail -f) sharing volume logs at /var/log in both containers.",
+  "before": "1/1",
+  "after": "2/2"
+ },
+ "32": {
+  "cast": [
+   "cm",
+   "pod"
+  ],
+  "broken": "No one adds or removes copies of the web dish when the kitchen gets busy.",
+  "fix": "kubectl autoscale deploy web min 2 max 5 cpu 70%, then set scale-down window 30s.",
+  "before": "no HPA",
+  "after": "HPA 2–5"
+ },
+ "33": {
+  "cast": [
+   "sched",
+   "pod"
+  ],
+  "broken": "All dishes are equally important, so a key dish can't jump the queue for a table.",
+  "fix": "Create PriorityClass high-priority (highest user value minus 1) and set it on the Deployment.",
+  "before": "no priority",
+  "after": "high-priority"
+ },
+ "34": {
+  "cast": [
+   "sched",
+   "pod"
+  ],
+  "broken": "Three web dishes fight over node01's space; some can't get a seat.",
+  "fix": "Scale to 0, split free CPU/memory (keep ~10% spare) by 3, set requests, scale back to 3.",
+  "before": "Pending",
+  "after": "3/3 Running"
+ },
+ "35": {
+  "cast": [
+   "pod"
+  ],
+  "broken": "Dish api needs its recipe card (ConfigMap) and secret sauce (Secret), but neither exists.",
+  "fix": "Create cm app-cfg and secret db-sec, then give them to pod api as env vars.",
+  "before": "missing",
+  "after": "Running"
+ },
+ "36": {
+  "cast": [
+   "sched",
+   "pod"
+  ],
+  "broken": "Table node01 should seat only prod dishes, and the dish must ask for that table.",
+  "fix": "Taint node01 env=prod:NoSchedule; give the pod a matching toleration and nodeSelector env=prod.",
+  "before": "Pending",
+  "after": "Running on node01"
+ },
+ "37": {
+  "cast": [
+   "pod",
+   "cm"
+  ],
+  "broken": "The web dishes must switch to recipe nginx:1.28, and be able to go back.",
+  "fix": "kubectl set image to 1.28, watch rollout status, then rollout undo to go back.",
+  "before": "nginx:1.27",
+  "after": "nginx:1.28"
+ },
+ "38": {
+  "cast": [
+   "store",
+   "pod"
+  ],
+  "broken": "The dish needs a shelf, but there is no store room (PV) and no request slip (PVC).",
+  "fix": "Create PV pv-data (1Gi, /mnt/data), a matching PVC, then a Pod that mounts the PVC.",
+  "before": "missing",
+  "after": "Bound"
+ },
+ "39": {
+  "cast": [
+   "store"
+  ],
+  "broken": "There is no room type (StorageClass) called fast, and it isn't the default.",
+  "fix": "Create StorageClass fast (local-path, WaitForFirstConsumer) and make it the only default.",
+  "before": "missing",
+  "after": "fast (default)"
+ },
+ "40": {
+  "cast": [
+   "store",
+   "pod"
+  ],
+  "broken": "The MariaDB dish was thrown out, but its store room (PV) still holds the data.",
+  "fix": "Write a request slip (PVC) that matches the PV, then recreate the Deployment using it.",
+  "before": "Available",
+  "after": "Bound"
+ },
+ "101": {
+  "cast": [
+   "kubelet"
+  ],
+  "broken": "The cook (kubelet) at table node01 stopped and won't come back after a reboot.",
+  "fix": "ssh node01; systemctl enable --now kubelet — the cook is back, also after reboots.",
+  "before": "NotReady",
+  "after": "Ready"
+ },
+ "102": {
+  "cast": [
+   "svc",
+   "pod"
+  ],
+  "broken": "Phone number cart (Service) looks for the wrong label, so it rings no cart dishes.",
+  "fix": "Edit the Service selector to match the cart pods' labels; leave the Deployment alone.",
+  "before": "<none>",
+  "after": "endpoints listed"
+ },
+ "103": {
+  "cast": [
+   "sched",
+   "pod"
+  ],
+  "broken": "Reporter dishes ask for more memory than any table has, so the host can't seat them.",
+  "fix": "kubectl set resources deploy reporter --requests=memory=128Mi — all copies get seats.",
+  "before": "Pending",
+  "after": "Running"
+ },
+ "104": {
+  "cast": [
+   "kubelet",
+   "pod"
+  ],
+  "broken": "The cook's health check (liveness probe) knocks on door 8080, but nginx answers on 80.",
+  "fix": "Change the liveness probe port to 80 — the cook stops restarting the dish.",
+  "before": "CrashLoopBackOff",
+  "after": "Running"
+ },
+ "105": {
+  "cast": [
+   "you",
+   "pod"
+  ],
+  "broken": "Dish legacy-app writes a long diary (logs); the owner wants only the ERROR lines.",
+  "fix": "kubectl logs legacy-app -n ops | grep ERROR > /opt/course/5/errors.txt.",
+  "before": "missing",
+  "after": "file saved"
+ },
+ "106": {
+  "cast": [
+   "tools"
+  ],
+  "broken": "The Argo CD meal kit (Helm chart) must be printed as recipes without new menu items (CRDs).",
+  "fix": "helm repo add argocd; helm template version 7.7.3 with CRDs off; save to the file.",
+  "before": "missing",
+  "after": "created"
+ },
+ "107": {
+  "cast": [
+   "kubelet"
+  ],
+  "broken": "A table (node) needs the Docker stove adapter cri-dockerd and kernel settings that survive reboots.",
+  "fix": "dpkg -i the .deb, systemctl enable --now cri-docker, write the sysctl file, sysctl --system.",
+  "before": "inactive",
+  "after": "active (running)"
+ },
+ "108": {
+  "cast": [
+   "tools"
+  ],
+  "broken": "The owner needs the list of cert-manager menu items (CRDs) and one field explained.",
+  "fix": "kubectl get crd | grep cert-manager > resources.yaml; kubectl explain certificate.spec.subject > subject.yaml.",
+  "before": "missing",
+  "after": "files saved"
+ },
+ "109": {
+  "cast": [
+   "access"
+  ],
+  "broken": "Robot staff member reporter (ServiceAccount) has no key card to read pods in finance.",
+  "fix": "Create Role pod-reader (get,list,watch pods) and RoleBinding reporter-binding to reporter.",
+  "before": "no",
+  "after": "yes"
+ },
+ "110": {
+  "cast": [
+   "svc",
+   "pod"
+  ],
+  "broken": "Front-end dishes have no named door (port) and no outside phone number.",
+  "fix": "Add container port http 80/tcp, then create NodePort Service front-end-svc to port http.",
+  "before": "no service",
+  "after": "NodePort"
+ },
+ "111": {
+  "cast": [
+   "svc",
+   "net"
+  ],
+  "broken": "The old street-door sign (Ingress) web must become a Gateway that still speaks HTTPS.",
+  "fix": "Create Gateway web-gateway (443, TLS secret) and an HTTPRoute to the same Service.",
+  "before": "Ingress",
+  "after": "Gateway + route"
+ },
+ "112": {
+  "cast": [
+   "net"
+  ],
+  "broken": "A deny-all guard blocks frontend from reaching backend; several rule sheets are offered.",
+  "fix": "Read /root/netpol/*.yaml and apply the least open one that still allows frontend → backend:80.",
+  "before": "timeout",
+  "after": "reachable"
+ },
+ "113": {
+  "cast": [
+   "sched",
+   "pod"
+  ],
+  "broken": "Dish busybox-logger has no priority, so it can't jump ahead for a table.",
+  "fix": "Create PriorityClass urgent (highest user value minus 1); patch the Deployment to use it.",
+  "before": "no priority",
+  "after": "urgent"
+ },
+ "114": {
+  "cast": [
+   "cm",
+   "pod"
+  ],
+  "broken": "Nobody adds or removes apache-server copies when the kitchen gets busy.",
+  "fix": "Create HPA apache-server: CPU 50%, min 1, max 4, plus the scale-down stabilization window.",
+  "before": "no HPA",
+  "after": "HPA 1–4"
+ },
+ "115": {
+  "cast": [
+   "store"
+  ],
+  "broken": "No room type (StorageClass) local-fast exists, and another class is the default.",
+  "fix": "Create local-fast (local-path, WaitForFirstConsumer), make it default, remove the default mark elsewhere.",
+  "before": "missing",
+  "after": "local-fast (default)"
+ },
+ "116": {
+  "cast": [
+   "store",
+   "pod"
+  ],
+  "broken": "MariaDB was thrown out; store room mariadb-pv still holds the data but has no slip.",
+  "fix": "Create PVC mariadb (RWO, 250Mi) matching the PV, then the Deployment that uses it.",
+  "before": "Available",
+  "after": "Bound"
+ },
+ "201": {
+  "cast": [
+   "kubelet"
+  ],
+  "broken": "The cook's (kubelet's) job sheet (systemd drop-in) points to a program path that doesn't exist.",
+  "fix": "Fix the path in the drop-in, systemctl daemon-reload, restart kubelet.",
+  "before": "NotReady",
+  "after": "Ready"
+ },
+ "202": {
+  "cast": [
+   "sched",
+   "pod"
+  ],
+  "broken": "A typo in the host's (Scheduler's) manifest keeps it away, so pod stuck gets no table.",
+  "fix": "Fix the typo in kube-scheduler.yaml — the host returns and seats stuck.",
+  "before": "Pending",
+  "after": "Running"
+ },
+ "203": {
+  "cast": [
+   "dns"
+  ],
+  "broken": "The phone book (CoreDNS) was switched off — zero replicas — so names don't resolve.",
+  "fix": "Scale coredns back up, then save nslookup kubernetes.default to /root/dns.txt.",
+  "before": "0/2",
+  "after": "2/2"
+ },
+ "204": {
+  "cast": [
+   "sched",
+   "pod"
+  ],
+  "broken": "Analytics dishes ask for a table labeled disktype=ssd, but no table has that label.",
+  "fix": "kubectl label node node01 disktype=ssd — the host now seats them; Deployment untouched.",
+  "before": "Pending",
+  "after": "Running"
+ },
+ "205": {
+  "cast": [
+   "pod"
+  ],
+  "broken": "The dish's starter step (init container) waits for recipe card inventory-config, which doesn't exist.",
+  "fix": "kubectl create configmap inventory-config --from-literal=ready=yes — the starter step finishes.",
+  "before": "Init:0/1",
+  "after": "Running"
+ },
+ "206": {
+  "cast": [
+   "net"
+  ],
+  "broken": "The restaurant has no hallways (CNI) that can enforce door guards (NetworkPolicy).",
+  "fix": "Install Calico v3.29.2: tigera-operator, then custom resources with the cluster's pod CIDR.",
+  "before": "NotReady",
+  "after": "Ready"
+ },
+ "207": {
+  "cast": [
+   "etcd"
+  ],
+  "broken": "The order book (etcd) has no safety copy.",
+  "fix": "etcdctl snapshot save /opt/backup/etcd-snap.db with the given CA, cert and key.",
+  "before": "no backup",
+  "after": "snapshot saved"
+ },
+ "208": {
+  "cast": [
+   "tools"
+  ],
+  "broken": "The shop kit (Kustomize base) has no prod version with its own room, name prefix and count.",
+  "fix": "Write overlays/prod: base, namespace shop-prod, namePrefix prod-, replicas; then kubectl apply -k.",
+  "before": "missing",
+  "after": "created"
+ },
+ "209": {
+  "cast": [
+   "tools"
+  ],
+  "broken": "The podinfo meal kit (Helm chart) isn't installed as release web.",
+  "fix": "helm install web podinfo/podinfo 6.7.1 with 2 replicas, then helm upgrade with the new values.",
+  "before": "not installed",
+  "after": "deployed"
+ },
+ "210": {
+  "cast": [
+   "svc",
+   "net"
+  ],
+  "broken": "Guests asking for example.org/echo have no sign pointing to the echo Service.",
+  "fix": "kubectl create ingress echo --class=nginx --rule=\"example.org/echo*=echo:8080\".",
+  "before": "missing",
+  "after": "created"
+ },
+ "211": {
+  "cast": [
+   "pod"
+  ],
+  "broken": "Recipe card (ConfigMap) nginx-config still allows TLSv1.2 and can still be changed.",
+  "fix": "Set TLSv1.3 only, make the ConfigMap immutable, rollout restart nginx-static.",
+  "before": "TLSv1.2 works",
+  "after": "TLSv1.3 only"
+ },
+ "212": {
+  "cast": [
+   "net",
+   "pod"
+  ],
+  "broken": "Anyone can reach the db dishes; only role=api dishes from room api should.",
+  "fix": "NetworkPolicy db-allow-api: namespaceSelector AND podSelector in one from item, TCP 80.",
+  "before": "open",
+  "after": "api only"
+ },
+ "213": {
+  "cast": [
+   "pod"
+  ],
+  "broken": "Order-app writes a diary (log) but no helper reads it out.",
+  "fix": "Add log-shipper as an init container with restartPolicy: Always, sharing the log volume.",
+  "before": "1/1",
+  "after": "2/2"
+ },
+ "214": {
+  "cast": [
+   "sched",
+   "pod"
+  ],
+  "broken": "Three wordpress dishes fight for node01's space; some can't start.",
+  "fix": "Scale to 0, split node01's free CPU/memory by 3 for app and init containers, scale back.",
+  "before": "Pending",
+  "after": "3/3 Running"
+ },
+ "215": {
+  "cast": [
+   "store"
+  ],
+  "broken": "The request slip (PVC) asks for a room type (StorageClass) that doesn't exist.",
+  "fix": "Recreate logs-pvc with storageClassName local-path, then recreate pod log-writer.",
+  "before": "Pending",
+  "after": "Bound"
+ },
+ "216": {
+  "cast": [
+   "store",
+   "pod"
+  ],
+  "broken": "The app-writer dish needs a shelf, but there's no store room (PV) or slip (PVC).",
+  "fix": "Create PV app-pv (hostPath, manual), PVC app-pvc (500Mi), then Pod app-writer mounting it.",
+  "before": "missing",
+  "after": "Bound"
+ },
+ "301": {
+  "cast": [
+   "api",
+   "etcd"
+  ],
+  "broken": "The front desk (API server) calls the order book (etcd) on port 2380 instead of 2379.",
+  "fix": "Edit kube-apiserver.yaml: set --etcd-servers back to port 2379 — the front desk answers.",
+  "before": "connection refused",
+  "after": "kubectl works"
+ },
+ "302": {
+  "cast": [
+   "cm",
+   "pod"
+  ],
+  "broken": "The head chef (controller manager) has a wrong file path, so nobody makes the missing dishes.",
+  "fix": "Fix the path in kube-controller-manager.yaml — the chef returns and makes all 3 dishes.",
+  "before": "1/3",
+  "after": "3/3"
+ },
+ "303": {
+  "cast": [
+   "kubelet"
+  ],
+  "broken": "The cook's (kubelet's) settings name a certificate file that doesn't exist, so it won't start.",
+  "fix": "Fix clientCAFile in /var/lib/kubelet/config.yaml, then restart kubelet.",
+  "before": "NotReady",
+  "after": "Ready"
+ },
+ "304": {
+  "cast": [
+   "net",
+   "dns"
+  ],
+  "broken": "A door guard (NetworkPolicy) blocks calls to the phone book (CoreDNS) on port 53.",
+  "fix": "Add NetworkPolicy allow-dns: egress to the kube-system DNS pods on port 53 UDP and TCP.",
+  "before": "IP only",
+  "after": "names work"
+ },
+ "305": {
+  "cast": [
+   "pod",
+   "cm"
+  ],
+  "broken": "A bad new recipe (image) left checkout unavailable.",
+  "fix": "kubectl rollout undo deploy checkout, then save the running image to /root/checkout-image.txt.",
+  "before": "unavailable",
+  "after": "Available"
+ },
+ "306": {
+  "cast": [
+   "kubelet"
+  ],
+  "broken": "The table (node) lacks the Docker stove adapter cri-dockerd and lasting kernel settings.",
+  "fix": "dpkg -i the .deb; enable --now socket and service; write 99-cri.conf; sysctl --system.",
+  "before": "inactive",
+  "after": "active (running)"
+ },
+ "307": {
+  "cast": [
+   "tools",
+   "svc"
+  ],
+  "broken": "The Argo CD meal kit must be printed without CRDs, with its server phone number as NodePort.",
+  "fix": "helm template argo with CRDs off and server.service.type=NodePort, then kubectl apply.",
+  "before": "not installed",
+  "after": "running"
+ },
+ "308": {
+  "cast": [
+   "tools"
+  ],
+  "broken": "The owner needs the cert-manager.io menu items (CRDs) listed, and a new ClusterIssuer created.",
+  "fix": "List CRDs of group cert-manager.io into /root/cm-crds.txt; apply ClusterIssuer selfsigned with selfSigned: {}.",
+  "before": "missing",
+  "after": "created"
+ },
+ "309": {
+  "cast": [
+   "api"
+  ],
+  "broken": "The front desk's ID badge (apiserver certificate) needs checking and renewing; a join note is needed.",
+  "fix": "kubeadm certs check-expiration; certs renew apiserver; restart it; kubeadm token create --print-join-command.",
+  "before": "old cert",
+  "after": "renewed"
+ },
+ "310": {
+  "cast": [
+   "svc",
+   "net"
+  ],
+  "broken": "Guests at gateway shop-gw have no route that checks header x-version or splits traffic.",
+  "fix": "HTTPRoute shop-route: header x-version: v2 → shop-v2; all others split by weight.",
+  "before": "no route",
+  "after": "route accepted"
+ },
+ "311": {
+  "cast": [
+   "net"
+  ],
+  "broken": "Guard rule sheets look alike; one wrongly lets in any edge pod OR any gateway pod.",
+  "fix": "Apply the policy with namespace AND pod selector in one from item, plus port 80.",
+  "before": "timeout",
+  "after": "gateway only"
+ },
+ "312": {
+  "cast": [
+   "svc",
+   "dns"
+  ],
+  "broken": "Catalog dishes have no phone number, and no per-dish entries in the phone book.",
+  "fix": "Expose catalog-svc (8080→80) and headless catalog-headless (clusterIP None); nslookup both.",
+  "before": "no service",
+  "after": "DNS records"
+ },
+ "313": {
+  "cast": [
+   "cm",
+   "pod"
+  ],
+  "broken": "Nobody adjusts worker copies when CPU or memory gets busy.",
+  "fix": "HPA worker-hpa: min 2, max 6, CPU 60%, memory 70%, with scaleUp and scaleDown policies.",
+  "before": "no HPA",
+  "after": "HPA 2–6"
+ },
+ "314": {
+  "cast": [
+   "sched",
+   "pod"
+  ],
+  "broken": "Critical jobs can't push lower dishes out of the way to get a table.",
+  "fix": "PriorityClass critical-jobs (highest minus 1, PreemptLowerPriority); patch the Deployment to use it.",
+  "before": "no priority",
+  "after": "critical-jobs"
+ },
+ "315": {
+  "cast": [
+   "store",
+   "pod"
+  ],
+  "broken": "No room type retain-local exists, and the cache dishes have no store rooms.",
+  "fix": "Create StorageClass retain-local (Retain, expandable), then StatefulSet cache with volumeClaimTemplates.",
+  "before": "missing",
+  "after": "Bound"
+ },
+ "316": {
+  "cast": [
+   "store"
+  ],
+  "broken": "Store room pg-data-pv still holds data but is Released: still tied to an old slip.",
+  "fix": "Remove spec.claimRef from the PV, then create PVC pg-data to bind it.",
+  "before": "Released",
+  "after": "Bound"
+ }
+}

@@ -170,3 +170,34 @@ pre.out{background:var(--code);color:#b9c6dc;border-radius:12px;padding:10px;whi
 @keyframes blink{50%{opacity:0}}
 .win{color:var(--good);font-size:20px;animation:pop .4s ease-out}
 .sshline .code{margin:6px 0}.sshline pre{padding-top:12px}
+/* story player */
+.stage{min-height:320px;cursor:pointer}
+.beat{display:flex;flex-direction:column;gap:14px}
+.enter{animation:pop .6s ease-out both}
+.cast{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:14px;border:2px solid var(--line);background:var(--bg)}
+.cast .emo{font-size:30px;line-height:1}
+.cast b{display:block;font-size:17px}
+.cast code{font-size:13px}
+.castlist{display:flex;flex-direction:column;gap:10px}
+.cast.big{padding:18px;justify-content:center}
+.cast.big .emo{font-size:52px}
+.cast.big b{font-size:21px}
+.cast.broken{border-color:var(--bad);background:var(--bad-soft);animation:shake .5s ease-in-out .3s 2}
+.cast.broken::after{content:"✗";margin-left:auto;font-size:26px;color:var(--bad);font-weight:900}
+.cast.missing{border-style:dashed;border-color:var(--warn);background:var(--warn-soft)}
+.cast.missing::after{content:"?";margin-left:auto;font-size:26px;color:var(--warn);font-weight:900}
+.cast.good{border-color:var(--good);background:var(--good-soft);animation:pop .6s ease-out}
+.cast.good::after{content:"✓";margin-left:auto;font-size:26px;color:var(--good);font-weight:900}
+.hero-card{display:flex;flex-direction:column;gap:10px;align-items:stretch}
+.badge{align-self:center;font:700 16px var(--mono);padding:6px 14px;border-radius:999px}
+.badge.bad{background:var(--bad-soft);color:var(--bad)}
+.badge.ok{background:var(--good-soft);color:var(--good);animation:pop .6s ease-out .3s both}
+.strip{display:flex;align-items:center;gap:10px}
+.strip .cast{flex:1;padding:6px 10px}
+.strip .cast .emo{font-size:22px}
+.strip .cast b{font-size:14px}
+.strip .cast code{display:none}
+.strip .cast::after{font-size:18px}
+.cap.story{font-size:19px;line-height:1.55}
+.term .ln .typed::after{content:"▋";animation:blink 1s steps(1) infinite;color:#6fe39a;margin-left:2px}
+#auto.on{background:var(--accent);color:var(--accent-ink)}
