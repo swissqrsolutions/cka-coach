@@ -257,9 +257,9 @@ pre.out{background:var(--code);color:#b9c6dc;border-radius:12px;padding:10px;whi
 .owner b{font-size:11px}.owner small{font:10px var(--mono);color:#6b5a48}
 .s-car-n1 .owner{top:238px;right:46%}
 .s-car-cp .owner{top:166px;right:14px}
-.exam{position:absolute;left:6%;right:6%;top:150px;background:#fff;color:#152033;border:2px solid #2f6fde;border-radius:14px;padding:12px;font-size:16px;box-shadow:0 10px 30px rgba(0,0,0,.2);opacity:0;transform:scale(.8);transition:all .5s;z-index:4}
-.exam mark{background:#ffe08a;padding:0 3px;border-radius:4px}
-.world.s-exam .exam{opacity:1;transform:none}
+.vexam{position:absolute;left:6%;right:6%;top:150px;background:#fff;color:#152033;border:2px solid #2f6fde;border-radius:14px;padding:12px;font-size:16px;box-shadow:0 10px 30px rgba(0,0,0,.2);opacity:0;transform:scale(.8);transition:all .5s;z-index:4}
+.vexam mark{background:#ffe08a;padding:0 3px;border-radius:4px}
+.world.s-exam .vexam{opacity:1;transform:none}
 .night{position:absolute;inset:0;background:rgba(10,14,40,.86);display:grid;place-items:center;color:#fff;font-size:22px;opacity:0;pointer-events:none;transition:opacity .8s;z-index:6}
 .night b{color:#ffd166}
 .world.s-night .night{opacity:1}

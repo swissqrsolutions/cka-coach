@@ -297,7 +297,7 @@
           <div class="nosign">⛔ no new orders</div>
           <div class="roster"><b>📋 Staff roster <code>systemctl</code></b><span></span></div></div>
         <div class="owner"><i>🚗</i><b>You</b><small>kubectl</small></div>
-        <div class="exam">📝 Bring <b>node01</b> back to <b>Ready</b>.<br>Fix must <mark>survive a reboot</mark>.</div>
+        <div class="vexam">📝 Bring <b>node01</b> back to <b>Ready</b>.<br>Fix must <mark>survive a reboot</mark>.</div>
         <div class="night"><span>🌙 night… <b>REBOOT</b></span></div>
         <div class="vterm"><div class="vprompt"></div><pre></pre></div>
         <div class="vquiz"></div>
