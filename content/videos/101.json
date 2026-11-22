@@ -1,78 +1,30 @@
 {
  "voice": "en-GB-SoniaNeural",
  "scenes": [
-  {
-   "act": "tables",
-   "say": "This is our kitchen: the Kubernetes cluster. It has two tables. Control plane, where the front desk takes every order. And node zero one.",
-   "sub": "The cluster = a kitchen with two tables"
-  },
-  {
-   "act": "heartbeat",
-   "say": "At every table works a cook: the kubelet. Every few seconds the cook shouts to the front desk: I'm here, my table is ready!",
-   "sub": "kubelet = the cook. It reports: Ready!"
-  },
-  {
-   "act": "leave",
-   "say": "But today, the cook at node zero one went home. No more shouting. So the front desk writes: node zero one, Not Ready.",
-   "sub": "kubelet stopped → node01 NotReady"
-  },
-  {
-   "act": "task",
-   "say": "The exam says: bring node zero one back to Ready. And your fix must survive a reboot.",
-   "sub": "Goal: Ready + must survive a reboot"
-  },
-  {
-   "act": "walk",
-   "say": "So, first walk to that table. S S H node zero one. Then ask about the cook: system control status kubelet. It says: inactive, dead. The cook is gone.",
-   "sub": "ssh node01 → systemctl status kubelet → inactive (dead)",
-   "term": [
-    "$ ssh node01",
-    "$ systemctl status kubelet",
-    "  Active: inactive (dead)"
-   ]
-  },
-  {
-   "act": "back",
-   "say": "Call the cook back, for today and for every day: system control enable, dash dash now, kubelet. Enable means: it also comes back after a reboot.",
-   "sub": "systemctl enable --now kubelet",
-   "term": [
-    "$ systemctl enable --now kubelet"
-   ]
-  },
-  {
-   "act": "ready",
-   "say": "Walk back with exit, and check: k get nodes. Node zero one is Ready. Task done!",
-   "sub": "exit → k get nodes → node01 Ready ✓",
-   "term": [
-    "$ exit",
-    "$ k get nodes",
-    "node01   Ready"
-   ]
-  }
+  { "state": "intro beat ready", "reg": "node01 · Ready", "say": "Welcome to Kube Foods, your restaurant company. At the top: head office. Reception takes every call. The register holds the truth. The allocation manager picks a kitchen for each new order. And the operations manager keeps everything matching the register.", "sub": "Head office = the control plane" },
+  { "state": "intro beat ready", "reg": "node01 · Ready", "say": "Below: the branch kitchen, node zero one. Its stoves cook the dishes, the switchboard routes calls, and the branch manager, the kubelet, runs it all. Every few seconds he phones reception: branch open, all fine!", "sub": "kubelet = branch manager → phones \"all fine\" every few seconds" },
+  { "state": "mgr-out notready", "reg": "node01 · NotReady", "say": "But this morning, the branch manager isn't there. No calls. After forty seconds the operations manager writes in the register: node zero one, Not Ready. And the allocation manager stops sending new orders there.", "sub": "No calls for 40 s → node01 NotReady → no new orders" },
+  { "state": "mgr-out notready exam", "reg": "node01 · NotReady", "say": "Your exam task: bring node zero one back to Ready. And the fix must survive a reboot. Remember that last part.", "sub": "Goal: Ready + survive a reboot" },
+  { "state": "mgr-out notready", "reg": "node01 · NotReady", "say": "Quick question. Why is node zero one Not Ready?", "sub": "Why is node01 NotReady?",
+    "quiz": [ { "t": "🔥 The stoves are broken", "ok": false, "fb": "Not quite. Broken stoves would hurt the dishes, but the branch would still phone in. Nobody is phoning." },
+              { "t": "🧑‍💼 The branch manager (kubelet) isn't working", "ok": true, "fb": "Exactly! No branch manager, no phone calls, so head office marks the branch Not Ready." },
+              { "t": "🛎️ Reception is closed", "ok": false, "fb": "Not quite. If reception were closed, nothing would work at all, not even k get nodes." } ] },
+  { "state": "mgr-out notready car-n1 term", "reg": "node01 · NotReady", "prompt": "root@node01", "term": ["$ ssh node01"], "say": "So drive to that branch. S S H node zero one means: open a terminal inside node zero one. Look at the prompt: it now says node zero one. You are in the kitchen.", "sub": "ssh node01 = drive to the branch" },
+  { "state": "mgr-out notready car-n1 term roster", "reg": "node01 · NotReady", "roster": "kubelet · inactive (dead) · not on permanent roster", "prompt": "root@node01", "term": ["$ systemctl status kubelet", "  Active: inactive (dead)"], "say": "Every branch has an H R staff roster. That is system control. System control status kubelet asks: is the branch manager working? Answer: inactive, dead. He's not here.", "sub": "systemctl = the branch staff roster · status = is he working?" },
+  { "state": "car-n1 term roster beat ready", "reg": "node01 · Ready", "roster": "kubelet · active (running) · today only", "prompt": "root@node01", "term": ["$ systemctl start kubelet"], "say": "Easy! System control start kubelet calls him in. He's back, he phones reception, node zero one is Ready. Done? Not so fast.", "sub": "systemctl start = call him in… for today" },
+  { "state": "night mgr-out notready", "reg": "node01 · NotReady", "roster": "kubelet · not on permanent roster", "say": "Twist! That night the branch closes and reopens. That is a reboot. Next morning, the branch manager is missing again! Why? Start only called him in for one day. He was never put on the permanent roster.", "sub": "TWIST: reboot → he's gone again" },
+  { "state": "mgr-out notready car-n1 term", "reg": "node01 · NotReady", "prompt": "root@node01", "say": "So which command puts him on the permanent roster, and starts him right now?", "sub": "Which command survives a reboot?",
+    "quiz": [ { "t": "systemctl start kubelet", "ok": false, "fb": "That's the trap we just fell into. Start is only for today." },
+              { "t": "systemctl enable --now kubelet", "ok": true, "fb": "Yes! Enable puts him on the permanent roster. Dash dash now also starts him right away." },
+              { "t": "kubectl restart node01", "ok": false, "fb": "That command doesn't exist. And kubectl only talks to head office, not to the branch roster." } ] },
+  { "state": "car-n1 term roster beat ready", "reg": "node01 · Ready", "roster": "kubelet · active (running) · enabled: every day", "prompt": "root@node01", "term": ["$ systemctl enable --now kubelet"], "say": "System control enable, dash dash now, kubelet. Enable: on the permanent roster, so he comes back after every reboot. Dash dash now: start working right now.", "sub": "enable = every day · --now = right now" },
+  { "state": "night2 beat ready roster", "reg": "node01 · Ready", "roster": "kubelet · enabled: every day", "say": "Another night, another reboot. And this time? He's back by himself. The fix survives a reboot.", "sub": "Reboot again → he comes back by himself ✓" },
+  { "state": "car-cp term beat ready check", "reg": "node01 · Ready", "prompt": "root@controlplane", "term": ["$ exit", "$ k get nodes", "node01   Ready"], "say": "Now drive back with exit, and read the register with k get nodes. Node zero one: Ready. Task done!", "sub": "exit = drive back · k get nodes = read the register" },
+  { "state": "recap", "reg": "node01 · Ready", "say": "Remember: Not Ready means the branch manager is missing. Drive there with S S H. Check the roster with status. And never just start him: enable dash dash now, so he survives the night.", "sub": "NotReady → ssh → status → enable --now → exit → get nodes" }
  ],
  "steps": [
-  {
-   "do": "Go to the node and look at the cook",
-   "cmds": [
-    "ssh node01",
-    "systemctl status kubelet"
-   ],
-   "see": "Active: inactive (dead)"
-  },
-  {
-   "do": "Start it now and after every reboot, then leave",
-   "cmds": [
-    "systemctl enable --now kubelet",
-    "exit"
-   ],
-   "see": ""
-  },
-  {
-   "do": "Check",
-   "cmds": [
-    "k get nodes"
-   ],
-   "see": "node01   Ready"
-  }
+  { "do": "Drive to the branch and check the branch manager", "cmds": ["ssh node01", "systemctl status kubelet"], "see": "Active: inactive (dead)" },
+  { "do": "Put him on the permanent roster and start him now, then drive back", "cmds": ["systemctl enable --now kubelet", "exit"], "see": "" },
+  { "do": "Read the register", "cmds": ["k get nodes"], "see": "node01   Ready" }
  ]
 }
