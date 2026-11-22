@@ -166,6 +166,8 @@ const storyFile = path.join(ROOT, 'content', 'stories.json');
 if (fs.existsSync(storyFile)) { const S = JSON.parse(fs.readFileSync(storyFile, 'utf8')); for (const x of questions) if (S[x.n]) x.story = S[x.n]; }
 const vdir = path.join(ROOT, 'content', 'videos');
 if (fs.existsSync(vdir)) for (const f of fs.readdirSync(vdir)) { const x = questions.find(q => q.n === +f.replace('.json', '')); if (x) { const raw = fs.readFileSync(path.join(vdir, f), 'utf8'); x.video = JSON.parse(raw); x.video.ver = crypto.createHash('sha1').update(raw).digest('hex').slice(0, 8); } }
+const coachFile = path.join(ROOT, 'content', 'coach.json');
+if (fs.existsSync(coachFile)) { const C = JSON.parse(fs.readFileSync(coachFile, 'utf8')); for (const x of questions) if (C[x.n]) x.coach = C[x.n]; }
 const data = { sources: data_sources, built: new Date().toISOString(), topics: topics.map(t => ({ name: t.name, weight: t.weight, intro: html(t.intro) })), refs: refs.map(r => ({ title: r.title, html: html(r.body) })), questions, mocks };
 fs.writeFileSync(path.join(ROOT, 'site', 'data.json'), JSON.stringify(data));
 

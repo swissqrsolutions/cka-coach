@@ -95,7 +95,14 @@
       const state = !s ? 'Not started' : s.finished ? `Score ${s.score}% · ${s.score >= 66 ? 'PASS' : 'below 66%'}` : 'In progress';
       return `<a class="card mock" href="#/mock/${m}"><span><b>Mock exam ${m}</b><br><span class="small">16 tasks · 2 hours · ${state}</span></span><span class="chip ${s && s.finished && s.score >= 66 ? 'good' : ''}">${s && s.finished ? s.score + '%' : s ? 'Open' : 'Start'}</span></a>`;
     }).join('');
-    app.innerHTML = `<h1>Mock exams</h1><p class="sub">Like the real exam: 2 hours, pass at 66%. Do them after the practice questions.</p>${cards}`;
+    app.innerHTML = `<h1>Mock exams</h1><p class="sub">Like the real exam: 2 hours, pass at 66%. Do them after the practice questions.</p>${cards}
+      <h2>Exam day: before you start</h2><div class="card plain">
+        <p><b>Where:</b> the PSI secure browser shows a Linux desktop: question panel, a terminal and Firefox (only kubernetes.io/docs allowed). Not Killercoda.</p>
+        <p><b>Already set up for you:</b> <code>k</code> = kubectl, tab completion. Don't spend time on aliases: they don't exist on the next machine.</p>
+        <p><b>Copy / paste:</b> in the terminal it's <code>Ctrl+Shift+C</code> / <code>Ctrl+Shift+V</code>. Copy names from the question, never retype them.</p>
+        <p><b>Every question:</b> run its <code>ssh</code> line → <code>k get nodes</code> → solve → verify → <code>exit</code>.</p>
+        <p><b>Time plan:</b> first 80 min all questions in order, flag anything over 8 min; last 40 min flagged ones, then re-check.</p>
+        <p><b>Real rehearsal:</b> your exam includes 2 killer.sh sessions (36 h each), almost identical to the exam. Use them in the last week.</p></div>`;
   }
 
   function topicView(i) {
@@ -148,6 +155,12 @@
   const BAD = /(ImagePullBackOff|ErrImagePull|CrashLoopBackOff|CreateContainerConfigError|OOMKilled|Pending|NotReady|Unknown|inactive \(dead\)|auto-restart|refused|timed out|Exited|Error|Failed\w*|failed|Insufficient \w+|untolerated taint|&lt;none&gt;|No resources found|forbidden)/g;
   const GOOD = /(\bRunning\b|\bReady\b|\bBound\b|\bAvailable\b|active \(running\)|Welcome to nginx!|\b1\/1\b|\b2\/2\b|\(default\)|\byes\b|edited|created|configured|rolled back)/g;
   const paint = t => esc(t).replace(BAD, '<b class="bad">$1</b>').replace(GOOD, '<b class="good">$1</b>');
+  // exam coaching: the pattern, the clues in the question, traps, verification, the fast version
+  const coachTop = c => `<h2>Spot the pattern</h2><div class="card pattern"><div class="ptag">${esc(c.pattern)}</div>
+    ${(c.clues || []).map(x => `<div class="clue"><mark>${esc(x.q)}</mark><span>→ ${esc(x.means)}</span></div>`).join('')}</div>`;
+  const coachBottom = (c, q) => `<h2>Traps to avoid</h2><div class="card traps">${(c.traps || []).map(t => `<div class="trap">⚠ ${esc(t)}</div>`).join('')}</div>
+    <h2>Verify against the question</h2><div class="card">${(c.verify || []).map(v => `<div class="vrow"><div class="need">✔ ${esc(v.need)}</div>${codeBlock(v.cmd)}<div class="bsee">You must see: <code>${esc(v.see)}</code></div></div>`).join('')}</div>
+    <h2>Memorise: the fast version</h2><div class="card">${codeBlock((c.memorise || []).join('\n'))}<p class="small">Target: ${c.minutes || q.target} min in the exam. Type it from memory once a day.</p></div>`;
   // the whole answer in baby steps: one command, what you see, why
   function solution(q) {
     const plainWords = q.meaning || (q.story && q.story.broken ? esc(q.story.broken) : '');
@@ -165,10 +178,15 @@
         ${whys.length ? `<div class="bwhy">${whys.map(w => `<p>${w.h}</p>`).join("")}</div>` : ''}
       </div></div>`;
     }).join('');
-    return `${q.words ? `<h2>Words you need</h2><div class="card plain">${q.words}</div>` : ""}${plainWords ? `<h2>In plain words</h2><div class="card plain">${plainWords}</div>` : ''}
+    const c = q.coach;
+    return `${q.words ? `<h2>Words you need</h2><div class="card plain">${q.words}</div>` : ""}${c ? coachTop(c) : ""}${plainWords ? `<h2>In plain words</h2><div class="card plain">${plainWords}</div>` : ''}
       <h2>Set up in Killercoda</h2>
       <div class="card">${q.setup ? `<a class="btn block" href="${KILLERCODA}" target="_blank" rel="noopener">Open Killercoda</a>${codeBlock(q.setup)}<p class="small">Paste this first. In the real exam it is already set up.</p>` : `<p class="small">This one can't be set up in a playground. Read the steps; practise it in killer.sh.</p>`}</div>
-      <h2>Solve it, step by step</h2>${steps}`;
+      <h2>Solve it, step by step</h2>
+      <div class="bstep routine"><div class="bnum">0</div><div class="bbody"><b>Start of every question</b>${codeBlock(((q.question.match(/^ssh \S+/) || [])[0] || 'ssh <host from the question>') + '      # exam only (skip in Killercoda)\nk get nodes')}<div class="bwhy"><p>In the exam each question is on a different machine: the ssh line is at the top of the question. <code>k get nodes</code> proves you're on the right machine and kubectl answers. <code>localhost:8080 refused</code> = wrong machine.</p></div></div></div>
+      ${steps}
+      <div class="bstep routine"><div class="bnum">✓</div><div class="bbody"><b>End of every question</b>${codeBlock('exit      # exam only: leave this machine before the next question')}<div class="bwhy"><p>Verify first (below), then exit. The next question's ssh only works from the base machine.</p></div></div></div>
+      ${c ? coachBottom(c, q) : ""}`;
   }
 
   function practice(n) {
@@ -184,6 +202,7 @@
       <h2>How did it go?</h2>
       <div class="row"><button class="btn good" data-r="solo">Alone</button><button class="btn warn" data-r="help">With help</button><button class="btn bad" data-r="fail">Not yet</button></div>
       <div class="pager">${q.mock ? '' : n > 1 ? `<a class="btn ghost" href="#/q/${n - 1}">← ${n - 1}</a>` : ''}${!q.mock && n < 40 ? `<a class="btn ghost" href="#/q/${n + 1}">${n + 1} →</a>` : ''}</div>`;
+    if (q.coach) { const qe = $('section.exam .q'); if (qe) for (const x of q.coach.clues || []) { const h = inline(x.q); if (h && qe.innerHTML.includes(h)) qe.innerHTML = qe.innerHTML.replace(h, '<mark>' + h + '</mark>'); } }
     $$('[data-r]').forEach(b => b.onclick = () => {
       const all = prog(); all[n] = { st: b.dataset.r, at: Date.now() }; store.set('progress', all);
       toast(b.dataset.r === 'solo' ? 'Saved ✓' : 'Saved. It comes back later.');

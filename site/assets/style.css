@@ -315,3 +315,14 @@ pre.out{background:var(--code);color:#b9c6dc;border-radius:12px;padding:10px;whi
 main{padding-bottom:90px}
 .toast{bottom:76px}
 h2 .chip{vertical-align:middle;margin-left:6px}
+
+/* exam coaching */
+.pattern .ptag{font-weight:800;font-size:17px;margin-bottom:8px}
+.clue{display:flex;flex-direction:column;gap:2px;padding:8px 0;border-top:1px solid var(--line)}
+.clue mark,.exam .q mark{background:#ffe08a;color:#152033;border-radius:4px;padding:0 3px}
+.clue span{font-size:15px}
+.trap{padding:6px 0;border-top:1px solid var(--line);font-size:15px}
+.trap:first-child,.clue:first-of-type{border-top:0}
+.vrow{padding:6px 0;border-top:1px solid var(--line)}.vrow:first-child{border-top:0}
+.need{font-weight:800;color:var(--good)}
+.bstep.routine{background:var(--accent-soft);border-color:transparent}
