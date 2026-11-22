@@ -342,7 +342,7 @@
         $$('button', box).forEach(x => { x.disabled = true; if (sc.quiz[+x.dataset.j].ok) x.classList.add('right'); });
         if (!o.ok) b.classList.add('wrong');
         box.insertAdjacentHTML('beforeend', `<div class="fb ${o.ok ? 'ok' : ''}">${esc(o.fb)}</div>`);
-        await playAudio(`media/${q.n}/s${k + 1}-o${+b.dataset.j + 1}.mp3`, my);
+        await playAudio(`media/${q.n}/s${k + 1}-o${+b.dataset.j + 1}.mp3?v=${v.ver}`, my);
         await sleep(700); box.classList.remove('on'); res();
       });
     });
@@ -356,7 +356,7 @@
       $('.vprompt', root).textContent = (sc.prompt || 'root@controlplane') + ':~$';
       if (k === v.scenes.length - 1) $('.recap', root).innerHTML = v.steps.flatMap(s => s.cmds).map((c, i) => `<code style="animation-delay:${i * 0.8}s">${esc(c)}</code>`).join('');
       sub.textContent = sc.sub; bar.style.width = ((k + 1) / v.scenes.length * 100) + '%';
-      const talk = playAudio(`media/${q.n}/s${k + 1}.mp3`, my);
+      const talk = playAudio(`media/${q.n}/s${k + 1}.mp3?v=${v.ver}`, my);
       await Promise.all([talk, typeTerm(sc.term, my)]);
       if (my !== gen) return;
       if (sc.quiz) { await ask(sc, k, my); if (my !== gen) return; }
@@ -366,7 +366,7 @@
     };
     btn.onclick = e => {
       e.stopPropagation();
-      if (!audio) { audio = new Audio(`media/${q.n}/s1.mp3`); audio.play().then(() => audio.pause()).catch(() => {}); } // unlock sound inside the tap
+      if (!audio) { audio = new Audio(`media/${q.n}/s1.mp3?v=${v.ver}`); audio.play().then(() => audio.pause()).catch(() => {}); } // unlock sound inside the tap
       playing = true; btn.hidden = true; W.classList.remove('ended'); scene(0);
     };
     W.onclick = () => {
