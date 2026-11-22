@@ -166,7 +166,7 @@
         ${whys.length ? `<div class="bwhy">${whys.map(w => `<p>${w.h}</p>`).join("")}</div>` : ''}
       </div></div>`;
     }).join('');
-    return `${plainWords ? `<h2>In plain words</h2><div class="card plain">${plainWords}</div>` : ''}
+    return `${q.words ? `<h2>Words you need</h2><div class="card plain">${q.words}</div>` : ""}${plainWords ? `<h2>In plain words</h2><div class="card plain">${plainWords}</div>` : ''}
       <h2>Set up in Killercoda</h2>
       <div class="card">${q.setup ? `<a class="btn block" href="${KILLERCODA}" target="_blank" rel="noopener">Open Killercoda</a>${codeBlock(q.setup)}<p class="small">Paste this first. In the real exam it is already set up.</p>` : `<p class="small">This one can't be set up in a playground. Read the steps; practise it in killer.sh.</p>`}</div>
       <h2>Solve it, step by step</h2>${steps}`;
