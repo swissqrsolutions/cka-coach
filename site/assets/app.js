@@ -91,8 +91,6 @@
         <div class="small">${done}/${qs.length} solved alone</div><div class="bar"><i style="width:${Math.round(100 * done / qs.length)}%"></i></div></a>`;
     }).join('');
     app.innerHTML = `
-      <section class="card hero"><h1>Pass the CKA</h1><p class="sub">${solo}/40 tasks solved alone. Practise each task, then sit 3 full mock exams.</p>
-        <a class="btn block" href="#/q/${next.n}">Continue: ${next.n}. ${esc(next.title)}</a></section>
       ${install}
       <h2>Mock exams</h2>${mocks}
       <h2>Practise by topic</h2>${topics}`;
