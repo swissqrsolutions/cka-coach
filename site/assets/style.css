@@ -293,3 +293,17 @@ pre.out{background:var(--code);color:#b9c6dc;border-radius:12px;padding:10px;whi
 .vbody .code{margin:6px 0}
 .vsee{font-size:14px;color:var(--muted)}
 .stn small{overflow-wrap:anywhere}
+
+/* baby steps */
+.plain{font-size:17px;line-height:1.6}
+.plain p{margin:0 0 6px}
+.bstep{display:flex;gap:12px;margin:12px 0;padding:12px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+.bnum{flex:none;width:34px;height:34px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:900}
+.bbody{flex:1;min-width:0}
+.bbody>b{display:block;font-size:17px;margin:4px 0 6px}
+.bsee{font-size:13px;font-weight:800;color:var(--muted);margin-top:6px}
+.bbody pre.out{margin:4px 0;font-size:13px}
+.bbody pre.out .bad{color:#ff7b6e}.bbody pre.out .good{color:#4cc38a}
+.bwhy{margin-top:8px;padding:8px 10px;border-radius:10px;background:var(--accent-soft);font-size:15px}
+.btable table{margin:8px 0;font-size:13px}
+.bwhy p{margin:0 0 6px}.bwhy p:last-child{margin:0}

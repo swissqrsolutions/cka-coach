@@ -149,6 +149,29 @@
   const BAD = /(ImagePullBackOff|ErrImagePull|CrashLoopBackOff|CreateContainerConfigError|OOMKilled|Pending|NotReady|Unknown|inactive \(dead\)|auto-restart|refused|timed out|Exited|Error|Failed\w*|failed|Insufficient \w+|untolerated taint|&lt;none&gt;|No resources found|forbidden)/g;
   const GOOD = /(\bRunning\b|\bReady\b|\bBound\b|\bAvailable\b|active \(running\)|Welcome to nginx!|\b1\/1\b|\b2\/2\b|\(default\)|\byes\b|edited|created|configured|rolled back)/g;
   const paint = t => esc(t).replace(BAD, '<b class="bad">$1</b>').replace(GOOD, '<b class="good">$1</b>');
+  // the whole answer in baby steps: one command, what you see, why
+  function solution(q) {
+    const plainWords = q.meaning || (q.story && q.story.broken ? esc(q.story.broken) : '');
+    const steps = q.steps.map((s, i) => {
+      const items = s.flow.filter(f => !f.skip);
+      const cmds = items.filter(f => f.k === 'cmd').map(f => f.t);
+      const outs = items.filter(f => f.k === 'out').map(f => f.t);
+      const whys = items.filter(f => f.k === "say" && plain(f.h).length > 2), why = whys[0];
+      if (!cmds.length && !outs.length && !why) return '';
+      return `<div class="bstep"><div class="bnum">${i + 1}</div><div class="bbody">
+        <b>${esc(s.title.replace(/^Step \d+\.\s*/, '').replace('Closing routine', 'Check it works'))}</b>
+        ${cmds.length ? codeBlock(cmds.join('\n')) : ''}
+        ${outs.length ? `<div class="bsee">You see:</div><pre class="out">${paint(outs.join('\n'))}</pre>` : ''}
+        ${items.filter(f => f.k === 'tbl').map(f => `<div class="btable">${f.h}</div>`).join('')}
+        ${whys.length ? `<div class="bwhy">${whys.map(w => `<p>${w.h}</p>`).join("")}</div>` : ''}
+      </div></div>`;
+    }).join('');
+    return `${plainWords ? `<h2>In plain words</h2><div class="card plain">${plainWords}</div>` : ''}
+      <h2>Set up in Killercoda</h2>
+      <div class="card">${q.setup ? `<a class="btn block" href="${KILLERCODA}" target="_blank" rel="noopener">Open Killercoda</a>${codeBlock(q.setup)}<p class="small">Paste this first. In the real exam it is already set up.</p>` : `<p class="small">This one can't be set up in a playground. Read the steps; practise it in killer.sh.</p>`}</div>
+      <h2>Solve it, step by step</h2>${steps}`;
+  }
+
   function practice(n) {
     const q = Q(n); if (!q) return home();
     const p = prog()[n] || {};
@@ -158,12 +181,10 @@
       <h1>${label}. ${esc(q.title)}</h1>
       <p class="sub">${q.star ? '<span class="chip star">often in exam</span> ' : ''}${q.target} min ${p.st ? '· ' + ST[p.st] : ''}</p>
       <section class="card exam"><div class="label">Exam question</div><p class="q">${inline(q.question)}</p></section>
-      <div id="story"></div>
-      <div class="row" style="margin-top:10px"><a class="btn ghost" href="#/do/${n}">Practise here</a><a class="btn ghost" href="#/guide/${n}/0">Real cluster</a></div>
+      ${solution(q)}
       <h2>How did it go?</h2>
       <div class="row"><button class="btn good" data-r="solo">Alone</button><button class="btn warn" data-r="help">With help</button><button class="btn bad" data-r="fail">Not yet</button></div>
       <div class="pager">${q.mock ? '' : n > 1 ? `<a class="btn ghost" href="#/q/${n - 1}">← ${n - 1}</a>` : ''}${!q.mock && n < 40 ? `<a class="btn ghost" href="#/q/${n + 1}">${n + 1} →</a>` : ''}</div>`;
-    if (q.video) mountVideo(q, $('#story')); else mountPlayer(n, $('#story'));
     $$('[data-r]').forEach(b => b.onclick = () => {
       const all = prog(); all[n] = { st: b.dataset.r, at: Date.now() }; store.set('progress', all);
       toast(b.dataset.r === 'solo' ? 'Saved ✓' : 'Saved. It comes back later.');
@@ -466,13 +487,12 @@
     app.innerHTML = `<a href="#/mock/${m}" class="small">← All tasks</a>
       <h1>Task ${i} of ${ids.length}</h1><p class="sub">Weight ${weightOf(m, n).toFixed(1)}% · ${esc(topicShort(q.topic))}</p>
       <section class="card exam"><div class="label">Task</div>${(() => { const mm = q.question.match(/^(ssh \S+)\s*(.*)$/s); return mm ? `<div class="sshline">${codeBlock(mm[1])}</div><p class="q">${inline(mm[2])}</p>` : `<p class="q">${inline(q.question)}</p>`; })()}</section>
-      ${q.video ? '<div id="vidbox"></div>' : ''}<details class="step" id="helpbox" ${q.video ? 'hidden' : ''}><summary>▶ Stuck? See how to solve it${s.help && s.help[n] ? ' (used)' : ''}</summary><div class="body" id="helpbody"></div></details>
+      <details class="step" id="helpbox"><summary>Show solution (counts as help)${s.help && s.help[n] ? ' (used)' : ''}</summary><div class="body" id="helpbody"></div></details>
       ${q.setup ? `<details class="step"><summary>Setup for Killercoda (paste first)</summary><div class="body">${codeBlock(q.setup)}<p class="small">In the real exam this is already there.</p></div></details>` : `<div class="card small">This task can't be built in a playground. Write down the steps you would run; check them at the end.</div>`}
       <div class="row"><a class="btn ghost" href="${KILLERCODA}" target="_blank" rel="noopener">Terminal</a><a class="btn ghost" href="${DOCS}" target="_blank" rel="noopener">Docs</a></div>
       <div class="row" style="margin-top:10px"><button class="btn ${s.flag[n] ? 'warn' : 'ghost'}" id="flag">${s.flag[n] ? 'Flagged' : 'Flag'}</button><button class="btn ${s.done[n] ? 'good' : ''}" id="done">${s.done[n] ? 'Done ✓' : 'Mark done'}</button></div>
       <div class="pager">${i > 1 ? `<a class="btn ghost" href="#/mock/${m}/${i - 1}">← ${i - 1}</a>` : ''}${i < ids.length ? `<a class="btn ghost" href="#/mock/${m}/${i + 1}">${i + 1} →</a>` : `<a class="btn ghost" href="#/mock/${m}">All tasks</a>`}</div>`;
-    if (q.video) mountVideo(q, $('#vidbox'));
-    $('#helpbox').ontoggle = () => { if (!$('#helpbox').open || $('#helpbody').children.length) return; const st = mockState(m); (st.help ||= {})[n] = 1; store.set('mock' + m, st); q.video ? mountVideo(q, $('#helpbody')) : mountPlayer(n, $('#helpbody')); };
+    $('#helpbox').ontoggle = () => { if (!$('#helpbox').open || $('#helpbody').children.length) return; const st = mockState(m); (st.help ||= {})[n] = 1; store.set('mock' + m, st); $('#helpbody').innerHTML = solution(q).replace(/<h2>Set up in Killercoda<\/h2>[\s\S]*?<h2>Solve it/, '<h2>Solve it'); };
     $('#flag').onclick = () => { const st = mockState(m); st.flag[n] ? delete st.flag[n] : st.flag[n] = 1; store.set('mock' + m, st); mockTask(m, i); };
     $('#done').onclick = () => { const st = mockState(m); st.done[n] = 1; store.set('mock' + m, st); location.hash = i < ids.length ? `#/mock/${m}/${i + 1}` : `#/mock/${m}`; };
   }

@@ -54,7 +54,15 @@ const sec = (raw, re) => {
 // A code block is OUTPUT when the text right before it ends with ":" ("You see:", "for example:", "Change:"), else COMMANDS.
 function flowOf(body) {
   const items = [], text = [];
-  const flushText = () => { const t = text.join('\n').trim(); text.length = 0; if (t) items.push({ k: 'say', h: marked.parseInline(t.replace(/\n(?!\n)/g, ' ')) }); };
+  // text between commands: tables stay tables (k:'tbl'), other paragraphs become one short explanation each
+  const flushText = () => {
+    const t = text.join('\n').trim(); text.length = 0; if (!t) return;
+    for (const par of t.split(/\n\s*\n/)) {
+      const p = par.trim(); if (!p) continue;
+      if (p.split('\n').every(l => l.trim().startsWith('|'))) items.push({ k: 'tbl', h: marked.parse(p) });
+      else items.push({ k: 'say', h: marked.parseInline(p.replace(/\n/g, ' ')) });
+    }
+  };
   const ls = body.split('\n');
   for (let i = 0; i < ls.length; i++) {
     if (!ls[i].startsWith('```')) { if (ls[i].trim() !== '---') text.push(ls[i]); continue; }
