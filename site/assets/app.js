@@ -73,28 +73,29 @@
   }
 
   // ---------- views ----------
-  function home() {
-    const p = prog(), solo = PQ().filter(q => (p[q.n] || {}).st === 'solo').length;
-    const next = PQ().find(q => (p[q.n] || {}).st !== 'solo') || PQ()[0];
-    const install = isInstalled() ? '' : installEvt
+  function installCard() {
+    return isInstalled() ? '' : installEvt
       ? `<div class="card install"><p><b>Install CKA Coach</b><br><span class="small">Open it from your home screen, works offline.</span></p><button class="btn" id="installBtn">Install</button></div>`
       : isIOS ? `<div class="card install"><p><b>Install:</b> tap Share, then <b>Add to Home Screen</b>.</p></div>`
       : `<div class="card install"><p><b>Install:</b> Chrome menu ⋮ → <b>Add to Home screen</b> → Install.</p></div>`;
-    const mocks = [1, 2, 3].map(m => {
+  }
+  function home() { // the Practice tab
+    const p = prog(), solo = PQ().filter(q => (p[q.n] || {}).st === 'solo').length;
+    const groups = D.topics.map(t => {
+      const qs = PQ().filter(q => q.topic === t.name);
+      return `<h2>${esc(topicShort(t.name))} <span class="chip">${t.weight}% of exam</span></h2>
+        <div class="card"><ul class="qlist">${qs.map(q => `<li><a href="#/q/${q.n}"><span class="num">${q.n}</span><span>${esc(q.title)}</span><span class="st ${statusOf(q.n)}">${ST[statusOf(q.n)] || ''}</span></a></li>`).join('')}</ul></div>`;
+    }).join('');
+    app.innerHTML = `${installCard()}<h1>Practice</h1><p class="sub">40 questions · ${solo} solved alone. Open one, set it up in Killercoda, solve it.</p>${groups}`;
+    if ($('#installBtn')) $('#installBtn').onclick = async () => { installEvt.prompt(); await installEvt.userChoice; installEvt = null; render(); };
+  }
+  function mocksPage() { // the Mock exams tab
+    const cards = [1, 2, 3].map(m => {
       const s = store.get('mock' + m, null);
       const state = !s ? 'Not started' : s.finished ? `Score ${s.score}% · ${s.score >= 66 ? 'PASS' : 'below 66%'}` : 'In progress';
-      return `<a class="card mock" href="#/mock/${m}"><span><b>Mock exam ${m}</b><br><span class="small">16 tasks · 2 hours · ${state}</span></span><span class="chip ${s && s.finished && s.score >= 66 ? 'good' : ''}">${s && s.finished ? s.score + '%' : 'Start'}</span></a>`;
+      return `<a class="card mock" href="#/mock/${m}"><span><b>Mock exam ${m}</b><br><span class="small">16 tasks · 2 hours · ${state}</span></span><span class="chip ${s && s.finished && s.score >= 66 ? 'good' : ''}">${s && s.finished ? s.score + '%' : s ? 'Open' : 'Start'}</span></a>`;
     }).join('');
-    const topics = D.topics.map((t, i) => {
-      const qs = PQ().filter(q => q.topic === t.name), done = qs.filter(q => (p[q.n] || {}).st === 'solo').length;
-      return `<a class="card topic" href="#/topic/${i}"><div class="head"><span>${esc(topicShort(t.name))}</span><span class="chip">${t.weight}% of exam</span></div>
-        <div class="small">${done}/${qs.length} solved alone</div><div class="bar"><i style="width:${Math.round(100 * done / qs.length)}%"></i></div></a>`;
-    }).join('');
-    app.innerHTML = `
-      ${install}
-      <h2>Mock exams</h2>${mocks}
-      <h2>Practise by topic</h2>${topics}`;
-    if ($('#installBtn')) $('#installBtn').onclick = async () => { installEvt.prompt(); await installEvt.userChoice; installEvt = null; render(); };
+    app.innerHTML = `<h1>Mock exams</h1><p class="sub">Like the real exam: 2 hours, pass at 66%. Do them after the practice questions.</p>${cards}`;
   }
 
   function topicView(i) {
@@ -173,7 +174,7 @@
   function practice(n) {
     const q = Q(n); if (!q) return home();
     const p = prog()[n] || {};
-    const back = q.mock ? `<a href="#/mock/${q.mock}" class="small">← Mock exam ${q.mock}</a>` : `<a href="#/topic/${D.topics.findIndex(t => t.name === q.topic)}" class="small">← ${esc(topicShort(q.topic))}</a>`;
+    const back = q.mock ? `<a href="#/mock/${q.mock}" class="small">← Mock exam ${q.mock}</a>` : `<a href="#/" class="small">← Practice</a>`;
     const label = q.mock ? `Mock ${q.mock} · task ${q.n % 100}` : q.n;
     app.innerHTML = `${back}
       <h1>${label}. ${esc(q.title)}</h1>
@@ -461,7 +462,7 @@
     const ids = D.mocks[m - 1], s = mockState(m);
     if (s.finished) return mockResult(m);
     if (!s.started) {
-      app.innerHTML = `<a href="#/" class="small">← Home</a><h1>Mock exam ${m}</h1>
+      app.innerHTML = `<a href="#/mocks" class="small">← Mock exams</a><h1>Mock exam ${m}</h1>
         <div class="card"><p><b>Like the real CKA:</b> 16 tasks, 2 hours, pass at 66%. Tasks are weighted like the exam (troubleshooting 30%, architecture 25%, networking 20%, workloads 15%, storage 10%).</p>
         <p><b>How it works:</b> open the Killercoda CKA playground. For each task, paste its setup, then solve it there. Use only the kubernetes.io docs. No hints during the exam.</p>
         <p><b>Time plan:</b> first 80 minutes all tasks in order; stuck more than 8 minutes → flag it and move on. Last 40 minutes: flagged tasks, then check everything.</p>
@@ -471,7 +472,7 @@
       return;
     }
     const left = Math.max(0, s.deadline - Date.now());
-    app.innerHTML = `<a href="#/" class="small">← Home (the timer keeps running)</a><h1>Mock exam ${m}</h1>
+    app.innerHTML = `<a href="#/mocks" class="small">← Mock exams (the timer keeps running)</a><h1>Mock exam ${m}</h1>
       <p class="sub">${Object.keys(s.done).length}/${ids.length} done · ${Object.keys(s.flag).length} flagged · ${Math.ceil(left / 60000)} min left</p>
       <a class="btn ghost block" href="${KILLERCODA}" target="_blank" rel="noopener">Open Killercoda CKA playground</a>
       <div class="card"><div class="grid">${ids.map((n, i) => `<a href="#/mock/${m}/${i + 1}" class="${s.done[n] ? 'done' : ''} ${s.flag[n] ? 'flag' : ''}">${i + 1}</a>`).join('')}</div></div>
@@ -514,7 +515,7 @@
   function mockResult(m) {
     const ids = D.mocks[m - 1], s = mockState(m), mins = Math.round(((s.ended || Date.now()) - s.started) / 60000);
     const weak = ids.filter(n => s.grade[n] < 1);
-    app.innerHTML = `<a href="#/" class="small">← Home</a><h1>Mock exam ${m}: result</h1>
+    app.innerHTML = `<a href="#/mocks" class="small">← Mock exams</a><h1>Mock exam ${m}: result</h1>
       <div class="card"><div class="score ${s.score >= 66 ? 'pass' : 'fail'}">${s.score}%</div><p style="text-align:center">${s.score >= 66 ? 'PASS. You would pass the real exam with this.' : 'Below 66%. Practise the tasks below, then try the next mock.'}<br><span class="small">Time used: ${mins} min of 120${s.help ? ` · watched help on ${Object.keys(s.help).length} task(s)` : ""}</span></p></div>
       ${weak.length ? `<h2>Practise these</h2><div class="card"><ul class="qlist">${weak.map(n => `<li><a href="#/q/${n}"><span class="num">${n}</span>${esc(Q(n).title)}<span class="st fail">${s.grade[n] === 0.5 ? 'partly' : 'failed'}</span></a></li>`).join('')}</ul></div>` : '<div class="card">Every task passed. Excellent.</div>'}
       <button class="btn ghost block" id="redo">Reset this mock exam</button>`;
@@ -542,7 +543,10 @@
     else if (h[0] === 'mock' && h[2] === 'grade') mockGrade(+h[1]);
     else if (h[0] === 'mock' && h[2]) mockTask(+h[1], +h[2]);
     else if (h[0] === 'mock') mockView(+h[1]);
+    else if (h[0] === 'mocks') mocksPage();
     else home();
+    const onMock = h[0] === 'mocks' || h[0] === 'mock' || (h[0] === 'q' && +h[1] > 100);
+    $$('.tabs a').forEach(a => a.classList.toggle('on', a.dataset.tab === (onMock ? 'mocks' : 'practice')));
     headerTimer();
   }
   addEventListener('hashchange', render);

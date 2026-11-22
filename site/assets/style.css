@@ -307,3 +307,11 @@ pre.out{background:var(--code);color:#b9c6dc;border-radius:12px;padding:10px;whi
 .bwhy{margin-top:8px;padding:8px 10px;border-radius:10px;background:var(--accent-soft);font-size:15px}
 .btable table{margin:8px 0;font-size:13px}
 .bwhy p{margin:0 0 6px}.bwhy p:last-child{margin:0}
+
+/* bottom tabs */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+.tabs a{flex:1;display:grid;place-items:center;min-height:56px;font-weight:800;font-size:16px;color:var(--muted);text-decoration:none;border-top:3px solid transparent}
+.tabs a.on{color:var(--accent);border-top-color:var(--accent)}
+main{padding-bottom:90px}
+.toast{bottom:76px}
+h2 .chip{vertical-align:middle;margin-left:6px}
