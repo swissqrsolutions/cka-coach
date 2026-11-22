@@ -326,11 +326,13 @@
     if (!s.started) return mockView(m);
     app.innerHTML = `<a href="#/mock/${m}" class="small">← All tasks</a>
       <h1>Task ${i} of ${ids.length}</h1><p class="sub">Weight ${weightOf(m, n).toFixed(1)}% · ${esc(topicShort(q.topic))}</p>
-      <section class="card exam"><div class="label">Task</div><p class="q">${inline(q.question)}</p></section>
+      <section class="card exam"><div class="label">Task</div>${(() => { const mm = q.question.match(/^(ssh \S+)\s*(.*)$/s); return mm ? `<div class="sshline">${codeBlock(mm[1])}</div><p class="q">${inline(mm[2])}</p>` : `<p class="q">${inline(q.question)}</p>`; })()}</section>
+      <a class="btn ghost block" id="help" href="#/watch/${n}">▶ Stuck? Watch how to solve it${s.help && s.help[n] ? ' (used)' : ''}</a>
       ${q.setup ? `<details class="step"><summary>Setup for Killercoda (paste first)</summary><div class="body">${codeBlock(q.setup)}<p class="small">In the real exam this is already there.</p></div></details>` : `<div class="card small">This task can't be built in a playground. Write down the steps you would run; check them at the end.</div>`}
       <div class="row"><a class="btn ghost" href="${KILLERCODA}" target="_blank" rel="noopener">Terminal</a><a class="btn ghost" href="${DOCS}" target="_blank" rel="noopener">Docs</a></div>
       <div class="row" style="margin-top:10px"><button class="btn ${s.flag[n] ? 'warn' : 'ghost'}" id="flag">${s.flag[n] ? 'Flagged' : 'Flag'}</button><button class="btn ${s.done[n] ? 'good' : ''}" id="done">${s.done[n] ? 'Done ✓' : 'Mark done'}</button></div>
       <div class="pager">${i > 1 ? `<a class="btn ghost" href="#/mock/${m}/${i - 1}">← ${i - 1}</a>` : ''}${i < ids.length ? `<a class="btn ghost" href="#/mock/${m}/${i + 1}">${i + 1} →</a>` : `<a class="btn ghost" href="#/mock/${m}">All tasks</a>`}</div>`;
+    $('#help').onclick = () => { const st = mockState(m); (st.help ||= {})[n] = 1; store.set('mock' + m, st); };
     $('#flag').onclick = () => { const st = mockState(m); st.flag[n] ? delete st.flag[n] : st.flag[n] = 1; store.set('mock' + m, st); mockTask(m, i); };
     $('#done').onclick = () => { const st = mockState(m); st.done[n] = 1; store.set('mock' + m, st); location.hash = i < ids.length ? `#/mock/${m}/${i + 1}` : `#/mock/${m}`; };
   }
@@ -338,7 +340,7 @@
   function mockGrade(m) {
     const ids = D.mocks[m - 1], s = mockState(m);
     app.innerHTML = `<h1>Check your answers</h1><p class="sub">For each task run its verify steps in the terminal. Be honest: a fix that does not verify scores zero in the real exam.</p>
-      ${ids.map((n, i) => { const q = Q(n), v = q.steps.find(x => /Closing|Check it works/.test(x.title)); return `<details class="step"><summary>${i + 1}. ${esc(q.title)} <span class="chip" id="g${n}">${s.grade[n] ?? '–'}</span></summary><div class="body">
+      ${ids.map((n, i) => { const q = Q(n), v = q.steps.find(x => /Closing|Check it works/.test(x.title)); return `<details class="step"><summary>${i + 1}. ${esc(q.title)}${s.help && s.help[n] ? " (watched)" : ""} <span class="chip" id="g${n}">${s.grade[n] ?? '–'}</span></summary><div class="body">
         <p>${inline(q.question)}</p>${v && v.html ? v.html : v ? v.flow.filter(f => f.k === "cmd").map(f => codeBlock(f.t)).join("") : q.mug}
         <div class="row"><button class="btn good" data-n="${n}" data-g="1">Passed</button><button class="btn warn" data-n="${n}" data-g="0.5">Partly</button><button class="btn bad" data-n="${n}" data-g="0">Failed</button></div></div></details>`; }).join('')}
       <button class="btn block" id="score">See my score</button>`;
@@ -355,7 +357,7 @@
     const ids = D.mocks[m - 1], s = mockState(m), mins = Math.round(((s.ended || Date.now()) - s.started) / 60000);
     const weak = ids.filter(n => s.grade[n] < 1);
     app.innerHTML = `<a href="#/" class="small">← Home</a><h1>Mock exam ${m}: result</h1>
-      <div class="card"><div class="score ${s.score >= 66 ? 'pass' : 'fail'}">${s.score}%</div><p style="text-align:center">${s.score >= 66 ? 'PASS. You would pass the real exam with this.' : 'Below 66%. Practise the tasks below, then try the next mock.'}<br><span class="small">Time used: ${mins} min of 120</span></p></div>
+      <div class="card"><div class="score ${s.score >= 66 ? 'pass' : 'fail'}">${s.score}%</div><p style="text-align:center">${s.score >= 66 ? 'PASS. You would pass the real exam with this.' : 'Below 66%. Practise the tasks below, then try the next mock.'}<br><span class="small">Time used: ${mins} min of 120${s.help ? ` · watched help on ${Object.keys(s.help).length} task(s)` : ""}</span></p></div>
       ${weak.length ? `<h2>Practise these</h2><div class="card"><ul class="qlist">${weak.map(n => `<li><a href="#/q/${n}"><span class="num">${n}</span>${esc(Q(n).title)}<span class="st fail">${s.grade[n] === 0.5 ? 'partly' : 'failed'}</span></a></li>`).join('')}</ul></div>` : '<div class="card">Every task passed. Excellent.</div>'}
       <button class="btn ghost block" id="redo">Reset this mock exam</button>`;
     $('#redo').onclick = () => { if (confirm('Reset mock exam ' + m + '? Your score is cleared.')) { localStorage.removeItem('cka:mock' + m); headerTimer(); mockView(m); } };

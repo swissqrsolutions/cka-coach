@@ -169,3 +169,4 @@ pre.out{background:var(--code);color:#b9c6dc;border-radius:12px;padding:10px;whi
 .term .ln:last-of-type span:last-child::after{content:"▋";animation:blink 1s steps(1) infinite;color:#6fe39a;margin-left:2px}
 @keyframes blink{50%{opacity:0}}
 .win{color:var(--good);font-size:20px;animation:pop .4s ease-out}
+.sshline .code{margin:6px 0}.sshline pre{padding-top:12px}
