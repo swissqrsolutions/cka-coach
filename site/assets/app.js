@@ -33,6 +33,8 @@
   };
 
   // ---------- small helpers ----------
+  window.CKAToast = t => toast(t);
+  if (window.CKANative) document.documentElement.classList.add('native');
   function toast(t) { const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 2200); }
   document.addEventListener('click', async e => {
     const b = e.target.closest('.copy'); if (!b) return;

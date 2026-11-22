@@ -150,3 +150,5 @@ blockquote{margin:8px 0;padding:8px 12px;border-left:4px solid var(--accent);bac
 .just{background:var(--accent-soft);border-radius:12px;padding:10px 12px;font-size:15px;margin:8px 0}
 pre.out{background:var(--code);color:#b9c6dc;border-radius:12px;padding:10px;white-space:pre-wrap;font:13px/1.5 var(--mono)}
 .gstep h2{margin-top:4px}
+.native .copy{font-size:0}.native .copy::after{content:"Send ▶";font-size:13px}
+.native .install{display:none}
