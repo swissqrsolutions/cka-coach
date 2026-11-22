@@ -37,7 +37,11 @@
   if (window.CKANative) document.documentElement.classList.add('native');
   function toast(t) { const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 2200); }
   document.addEventListener('click', async e => {
+    // inside the Android app: Killercoda opens in the top half, Copy sends the command into that terminal
+    const kc = e.target.closest('a[href^="https://killercoda.com"]');
+    if (kc && window.CKANative) { e.preventDefault(); CKANative.openTerminal(kc.href); return; }
     const b = e.target.closest('.copy'); if (!b) return;
+    if (window.CKANative) { CKANative.run(b.parentElement.querySelector('code').innerText); toast('Sent to the terminal. Press Enter there.'); return; }
     const txt = b.parentElement.querySelector('code').innerText;
     try { await navigator.clipboard.writeText(txt); } catch { const ta = document.createElement('textarea'); ta.value = txt; document.body.append(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
     b.textContent = 'Copied'; b.classList.add('done'); setTimeout(() => { b.textContent = 'Copy'; b.classList.remove('done'); }, 1500);
