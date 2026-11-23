@@ -337,3 +337,18 @@ mark.ph{background:#ffe08a;color:#152033;border-radius:4px;padding:0 2px}
 .basics{margin-top:14px}
 .solution>summary{font-size:18px;color:var(--accent)}
 .solution>.body{padding-top:4px}
+/* bigger, easier to read (laptop and phone) */
+body{font-size:18px}
+.bwhy{font-size:17px;line-height:1.6}
+.bwhy ol,.bwhy ul{margin:4px 0 4px 20px;padding:0}
+.bwhy li{margin:3px 0}
+.code pre{font-size:16px;line-height:1.55}
+pre.out,.bbody pre.out{font-size:15px}
+.phnote{font-size:16px}
+.bsee{font-size:14px}
+.small{font-size:15px}
+.plain{font-size:18px}
+.trap,.clue span{font-size:17px}
+.bbody>b{font-size:19px}
+.exam .q{font-size:20px}
+@media (min-width:900px){main{max-width:900px}}

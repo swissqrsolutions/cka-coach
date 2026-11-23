@@ -62,6 +62,7 @@ function flowOf(body) {
     for (const par of t.split(/\n\s*\n/)) {
       const p = par.trim(); if (!p) continue;
       if (p.split('\n').every(l => l.trim().startsWith('|'))) items.push({ k: 'tbl', h: marked.parse(pipeSafe(p)) });
+      else if (p.split('\n').some(l => /^\s*(\d+\.|-|\*)\s/.test(l))) items.push({ k: 'say', h: marked.parse(ltSafe(p)) }); // keep numbered / bullet lists as lists
       else items.push({ k: 'say', h: marked.parseInline(ltSafe(p.replace(/\n/g, ' '))) });
     }
   };
