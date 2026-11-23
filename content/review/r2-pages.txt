@@ -1,0 +1,2760 @@
+
+
+==================== PAGE 21 · kubeadm upgrade ====================
+EXAM QUESTION:
+Upgrade the control plane node to Kubernetes `1.35.2`. Then upgrade the worker node `node01` to the same version. Drain each node before upgrading it and make it schedulable again afterwards.
+WRITE DOWN: target version = `1.35.2` · nodes = `controlplane`, `node01` · drain before, uncordon after
+
+WORDS YOU NEED:
+- kubeadm = the tool that installed the cluster. It also upgrades it.
+
+- Three programs are upgraded on each machine: kubeadm (the tool), kubelet (the node agent), kubectl (the command line).
+
+- drain / uncordon = drain moves the pods off a node and closes it for new pods. uncordon opens it again. You drain before the upgrade and uncordon after.
+
+Do not memorise the commands. Follow the docs page line by line. Memorise only the order:
+
+Copydrain → new kubeadm → kubeadm upgrade → new kubelet + kubectl → restart kubelet → uncordon
+
+SPOT THE PATTERN: kubeadm upgrade: drain → kubeadm → kubelet → uncordon, per node
+  "Upgrade the control plane node to Kubernetes `1.35.2`" → Control plane first: kubeadm upgrade apply v1.35.2
+  "Then upgrade the worker node `node01`" → On node01: kubeadm upgrade node (not apply)
+  "Drain each node before upgrading it and make it schedulable again afterwards" → k drain … --ignore-daemonsets before, k uncordon after
+
+IN PLAIN WORDS:
+Do the same 6-step routine twice: once on the control plane, once on the worker. Only ONE command differs between the two (step 3).
+
+SET UP IN KILLERCODA:
+(cannot be set up in a playground)
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Closing routine
+   $ k get nodes
+   You want VERSION v1.35.2 on both nodes, STATUS Ready, and NO SchedulingDisabled.
+
+IF SOMETHING GOES WRONG:
+| 
+
+ | You see
+ | Cause
+ | Fix
+
+ | SchedulingDisabled next to a node
+ | you forgot uncordon
+ | k uncordon <node>
+
+ | k drain refuses: "cannot delete Pods with local storage"
+ | missing flag
+ | add --delete-emptydir-data
+
+ | k drain refuses: pods "not managed by a controller"
+ | a bare pod is on the node
+ | add --force
+
+ | Version &#39;1.35.2&#39; not found
+ | you need the full text
+ | copy it from apt-cache madison kubeadm
+
+ | VERSION still old after the upgrade
+ | the kubelet was not restarted
+ | systemctl daemon-reload && systemctl restart kubelet
+
+ | localhost:8080 was refused
+ | you ran k drain / k uncordon on node01
+ | exit first
+
+TRAPS TO AVOID:
+- Running kubeadm upgrade apply on the worker — workers use kubeadm upgrade node
+- Forgetting apt-mark unhold/hold, so apt refuses to install
+- Forgetting daemon-reload + restart kubelet, so VERSION stays old
+- Running k drain/uncordon from node01 (no kubeconfig there) — run them on the control plane
+
+VERIFY AGAINST THE QUESTION:
+- both nodes on 1.35.2: $ k get nodes  → must see: VERSION v1.35.2 on controlplane and node01
+- schedulable again: $ k get nodes  → must see: Ready, no SchedulingDisabled
+
+MEMORISE (fast version, target 12 min):
+k drain <node> --ignore-daemonsets --delete-emptydir-data
+apt-mark unhold kubeadm; apt-get install -y kubeadm='1.35.2-*'; apt-mark hold kubeadm
+kubeadm upgrade apply v1.35.2   # worker: kubeadm upgrade node
+apt-mark unhold kubelet kubectl; apt-get install -y kubelet='1.35.2-*' kubectl='1.35.2-*'; apt-mark hold kubelet kubectl
+systemctl daemon-reload; systemctl restart kubelet
+k uncordon <node>
+
+
+==================== PAGE 22 · etcd backup and restore (lower priority) ====================
+EXAM QUESTION:
+1. Create a snapshot of etcd, which runs at `https://127.0.0.1:2379`, and save it to `/opt/etcd-backup.db`.
+2. Restore the snapshot into the directory `/var/lib/etcd-restored` and configure etcd to use it.
+WRITE DOWN: endpoint = `https://127.0.0.1:2379` · backup file = `/opt/etcd-backup.db` · restore folder = `/var/lib/etcd-restored`
+
+WORDS YOU NEED:
+- etcd = the database where the cluster stores every object. It runs as a static pod from /etc/kubernetes/manifests/etcd.yaml.
+
+- Snapshot = a backup file of that database. Made with etcdctl snapshot save.
+
+- Restore = unpack a snapshot into a NEW folder, then tell etcd to use that folder.
+
+etcd only accepts connections that show three certificate files. Their paths are written in etcd.yaml.
+
+SPOT THE PATTERN: etcd snapshot save (with certs) + restore + repoint hostPath
+  "which runs at `https://127.0.0.1:2379`" → --endpoints=https://127.0.0.1:2379 plus cacert/cert/key from etcd.yaml
+  "save it to `/opt/etcd-backup.db`" → etcdctl snapshot save /opt/etcd-backup.db
+  "configure etcd to use it" → In etcd.yaml change the etcd-data hostPath to /var/lib/etcd-restored
+
+IN PLAIN WORDS:
+Part 1 is one long command. Part 2 is one command plus a 1-line change in etcd.yaml.
+
+SET UP IN KILLERCODA:
+rm -f /opt/etcd-backup.db ; rm -rf /var/lib/etcd-restored ; clear
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Step 1. Get the command from the docs
+   1. Open https://kubernetes.io/docs 2. Search: etcd backup 3. Click: "Operating etcd clusters for Kubernetes"    (direct link: https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/ ) 4. Go to the heading "Backing up an etcd cluster" → "Snapshot using etcdctl options". Copy the command that has --cacert, --cert and --key.
+2. Step 2. Find the three certificate paths
+   $ grep -E "trusted-ca-file|cert-file|key-file" /etc/kubernetes/manifests/etcd.yaml
+   Use the three lines WITHOUT the word peer:
+   | 
+   
+    | Line in etcd.yaml
+    | Flag for etcdctl
+    | Usual value
+   
+    | --trusted-ca-file=
+    | --cacert=
+    | /etc/kubernetes/pki/etcd/ca.crt
+   
+    | --cert-file=
+    | --cert=
+    | /etc/kubernetes/pki/etcd/server.crt
+   
+    | --key-file=
+    | --key=
+    | /etc/kubernetes/pki/etcd/server.key
+3. Step 3. Take the snapshot
+   $ etcdctl snapshot save /opt/etcd-backup.db \
+   $ --endpoints=https://127.0.0.1:2379 \
+   $ --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+   $ --cert=/etc/kubernetes/pki/etcd/server.crt \
+   $ --key=/etc/kubernetes/pki/etcd/server.key
+   You want Snapshot saved at /opt/etcd-backup.db.
+   If the question only asks for a backup, you are finished: ls -l /opt/etcd-backup.db.
+4. Step 4. Restore into a new folder
+   $ etcdutl snapshot restore /opt/etcd-backup.db --data-dir=/var/lib/etcd-restored
+   (If etcdutl is not installed, the same line with etcdctl works.) No certificates needed: this only unpacks a file.
+5. Step 5. Tell etcd to use the new folder
+   $ cp /etc/kubernetes/manifests/etcd.yaml /root/etcd.yaml.bak
+   $ vim /etc/kubernetes/manifests/etcd.yaml
+   Press G to jump to the end of the file. You see:
+   YOU SEE:   volumes:
+              - hostPath:
+                  path: /etc/kubernetes/pki/etcd
+                  type: DirectoryOrCreate
+                name: etcd-certs
+              - hostPath:
+                  path: /var/lib/etcd
+                  type: DirectoryOrCreate
+                name: etcd-data
+   Change ONE line: in the block named etcd-data, change
+   | 
+   
+    | Before
+    | After
+   
+    | path: /var/lib/etcd
+    | path: /var/lib/etcd-restored
+   Save with Esc, :wq.
+   Why only this line: hostPath is the folder on the machine. It is shown INSIDE the etcd container at /var/lib/etcd (that is the mountPath). etcd reads /var/lib/etcd inside the container (that is --data-dir). By changing only the hostPath, etcd keeps reading the same place, but that place now shows the restored folder. Leave --data-dir and mountPath alone.
+   Check:
+   YOU SEE: grep -n "etcd-restored" /etc/kubernetes/manifests/etcd.yaml
+   You want exactly 1 line.
+6. Closing routine
+   The kubelet restarts etcd by itself. kubectl does not answer for up to 60 seconds. That is normal.
+   $ k get nodes
+   $ k get pods -n kube-system | grep etcd
+
+IF SOMETHING GOES WRONG:
+| 
+
+ | You see
+ | Cause
+ | Fix
+
+ | snapshot save hangs or says context deadline exceeded
+ | a certificate path or the endpoint is wrong
+ | compare with step 2
+
+ | kubectl does not come back after 2 minutes
+ | a typo in etcd.yaml
+ | `crictl ps -a
+
+ | data-dir ... not empty on restore
+ | the target folder already exists
+ | choose a new folder name or rm -rf it first
+
+TRAPS TO AVOID:
+- Using the peer-cert/peer-key files instead of server.crt/server.key
+- Changing --data-dir or the mountPath instead of only the hostPath path
+- Panicking when kubectl is silent for ~60 s after saving etcd.yaml
+
+VERIFY AGAINST THE QUESTION:
+- snapshot exists: $ ls -l /opt/etcd-backup.db  → must see: file, size > 0
+- etcd uses restored dir: $ grep etcd-restored /etc/kubernetes/manifests/etcd.yaml  → must see: exactly 1 line
+- cluster up: $ k get pods -n kube-system | grep etcd  → must see: 1/1 Running
+
+MEMORISE (fast version, target 8 min):
+docs: 'etcd backup' → Operating etcd clusters
+grep -E 'trusted-ca-file|cert-file|key-file' /etc/kubernetes/manifests/etcd.yaml
+etcdctl snapshot save /opt/etcd-backup.db --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key
+etcdutl snapshot restore /opt/etcd-backup.db --data-dir=/var/lib/etcd-restored
+vim /etc/kubernetes/manifests/etcd.yaml   # etcd-data hostPath path: /var/lib/etcd-restored
+
+
+==================== PAGE 23 · NodePort ====================
+EXAM QUESTION:
+In namespace `web`:
+1. Edit deployment `np` so that the container declares port `80` (TCP).
+2. Create a Service named `np-svc` of type `NodePort` that exposes the deployment on port `80`, using node port `30080`.
+WRITE DOWN: namespace = `web` · deployment = `np` · containerPort = `80` · Service = `np-svc` · port = `80` · nodePort = `30080`
+
+WORDS YOU NEED:
+- containerPort = a line in the pod template that states which port the container listens on.
+
+- NodePort Service = a Service that also opens a port on every node. Three numbers are involved:
+
+- port = the Service&#39;s own port
+
+- targetPort = the container&#39;s port
+
+- nodePort = the port on every node (30000 to 32767)
+
+- k expose = the command that creates a Service for a Deployment. It copies the Deployment&#39;s labels into the selector, so the selector is always right.
+
+SPOT THE PATTERN: Add containerPort, expose as NodePort with fixed nodePort
+  "the container declares port `80` (TCP)" → k edit deploy: add ports: - containerPort: 80 protocol: TCP under the container
+  "of type `NodePort`" → k expose … --type=NodePort
+  "using node port `30080`" → k expose can't set it: k edit svc → nodePort: 30080
+
+IN PLAIN WORDS:
+Two jobs. Add two lines to the Deployment. Create a Service, then set its node port to a fixed number (Kubernetes picks a random one otherwise).
+
+SET UP IN KILLERCODA:
+k delete ns web --ignore-not-found
+k create ns web
+k create deploy np --image=nginx:1.27 -n web
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Step 1. Add the container port to the Deployment
+   $ k edit deploy np -n web
+   Type /image: and press Enter. You see:
+   YOU SEE:       containers:
+                  - image: nginx:1.27
+                    imagePullPolicy: IfNotPresent
+                    name: nginx
+   Press o (opens a new line below) and add these two lines. ports: must start in the same column as image: / name::
+   YOU SEE:         ports:
+                    - containerPort: 80
+   Save with Esc, :wq. You see deployment.apps/np edited.
+2. Step 2. Create the Service
+   $ k expose deploy np --name=np-svc --port=80 --target-port=80 --type=NodePort -n web
+3. Step 3. Set the node port
+   $ k edit svc np-svc -n web
+   Type /nodePort and press Enter. You see a random number:
+   YOU SEE:   - nodePort: 31544
+                port: 80
+   Change it to 30080. Save with Esc, :wq.
+4. Closing routine
+   $ k get svc np-svc -n web
+   You want TYPE NodePort and PORT(S) 80:30080/TCP.
+   $ k get endpoints np-svc -n web
+   $ curl -s -m 3 node01:30080 | head -5
+
+IF SOMETHING GOES WRONG:
+| 
+
+ | You see
+ | Cause
+ | Fix
+
+ | after step 1 vim reopens with an error at the top
+ | wrong indentation, or a Tab character
+ | ports: lines up with name:. Spaces only.
+
+ | the Service is called np
+ | you forgot --name=np-svc
+ | k delete svc np -n web, run step 2 again
+
+ | provided port is not in the valid range
+ | nodePort outside 30000 to 32767
+ | use the number from the question
+
+ | curl fails but endpoints are fine
+ | you curled the wrong node name
+ | k get nodes -o wide, use a node IP
+
+TRAPS TO AVOID:
+- Wrong indentation of ports: (must line up with image:)
+- Leaving the random nodePort from k expose
+- Forgetting -n web
+
+VERIFY AGAINST THE QUESTION:
+- container declares 80: $ k get deploy np -n web -o jsonpath='{..ports}'  → must see: containerPort 80 TCP
+- service correct: $ k get svc np-svc -n web  → must see: NodePort 80:30080/TCP
+- reachable: $ curl -s -m 3 node01:30080 | head -5  → must see: Welcome to nginx!
+
+MEMORISE (fast version, target 4 min):
+k edit deploy np -n web   # under image: ports: - containerPort: 80 / protocol: TCP
+k expose deploy np --name=np-svc --port=80 --target-port=80 --type=NodePort -n web
+k edit svc np-svc -n web   # nodePort: 30080
+k get svc np-svc -n web
+
+
+==================== PAGE 24 · Ingress ====================
+EXAM QUESTION:
+In namespace `web`, create an Ingress named `web-ing` that uses the existing IngressClass. Requests for host `shop.example.com` with path `/` (type Prefix) must go to service `backend-svc` on port `80`.
+WRITE DOWN: namespace = `web` · Ingress = `web-ing` · host = `shop.example.com` · path = `/` Prefix · Service = `backend-svc` · port = `80` · class = "the existing one" (look it up)
+
+WORDS YOU NEED:
+- Ingress = a rule for web traffic coming into the cluster: "host X, path Y → Service Z, port N".
+
+- IngressClass = the name of the controller that will carry out the rule (for example nginx). An Ingress without a class is ignored.
+
+- pathType: Prefix = the rule matches the path and everything below it. / with Prefix matches every request.
+
+SPOT THE PATTERN: Create Ingress imperatively: host/path → service:port
+  "uses the existing IngressClass" → k get ingressclass → --class=<name>
+  "with path `/` (type Prefix)" → In --rule use /* (star = Prefix)
+  "must go to service `backend-svc` on port `80`" → =backend-svc:80
+
+IN PLAIN WORDS:
+One object, and there is a command for it. No YAML.
+
+SET UP IN KILLERCODA:
+k delete ns web --ignore-not-found
+k create ns web
+k create deploy backend --image=nginx:1.27 -n web
+k expose deploy backend --name=backend-svc --port=80 -n web
+cat <<EOF | k apply -f -
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: nginx
+spec:
+  controller: k8s.io/ingress-nginx
+EOF
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Step 1. Find the class name
+   $ k get ingressclass
+   You see nginx. Write it down.
+2. Step 2. Create the Ingress
+   $ k create ingress web-ing --class=nginx --rule="shop.example.com/*=backend-svc:80" -n web
+   How to read the rule: "HOST/PATH=SERVICE:PORT"
+   | 
+   
+    | Part
+    | Meaning
+   
+    | shop.example.com
+    | the host
+   
+    | /*
+    | path /. The * makes it pathType: Prefix. Without * it becomes Exact.
+   
+    | backend-svc:80
+    | Service name and Service port
+3. Closing routine
+   $ k describe ing web-ing -n web
+   You want:
+   YOU SEE: Ingress Class:    nginx
+            Rules:
+              Host              Path  Backends
+              shop.example.com  /     backend-svc:80 (192.168.x.x:80)
+   The IP in brackets proves the Service name and port are right.
+
+IF SOMETHING GOES WRONG:
+| 
+
+ | You see
+ | Cause
+ | Fix
+
+ | Backends shows <error: services "..." not found>
+ | the Service name or port has a typo
+ | k delete ing web-ing -n web, create again
+
+ | Ingress Class: <none>
+ | you forgot --class
+ | delete and create again
+
+ | the question asks for TLS with secret web-tls
+ | add it inside the rule
+ | --rule="shop.example.com/*=backend-svc:80,tls=web-tls"
+
+ | the question asks for two paths
+ | repeat the flag
+ | --rule="host/api*=api-svc:80" --rule="host/*=web-svc:80"
+
+ | the question asks for an annotation (for example rewrite-target)
+ | add a flag
+ | --annotation nginx.ingress.kubernetes.io/rewrite-target=/
+
+TRAPS TO AVOID:
+- Writing host/ instead of host/* → creates pathType Exact
+- Forgetting --class, so no controller picks it up
+- Forgetting quotes around --rule
+
+VERIFY AGAINST THE QUESTION:
+- rule correct: $ k describe ing web-ing -n web  → must see: shop.example.com / backend-svc:80 (<pod IP>:80)
+- class set: $ k get ing web-ing -n web  → must see: CLASS nginx
+
+MEMORISE (fast version, target 3 min):
+k get ingressclass
+k create ingress web-ing --class=nginx --rule="shop.example.com/*=backend-svc:80" -n web
+k describe ing web-ing -n web
+
+
+==================== PAGE 25 · Gateway API (replace an Ingress) ====================
+EXAM QUESTION:
+In namespace `web`, an Ingress named `web-ing` exposes an application over HTTPS. Migrate it to the Gateway API:
+1. Create a Gateway named `web-gw` that uses the existing GatewayClass and keeps the same hostname and TLS configuration as the Ingress.
+2. Create an HTTPRoute named `web-route` that keeps the same routing rules as the Ingress.
+3. Delete the Ingress.
+WRITE DOWN: namespace = `web` · Gateway = `web-gw` · HTTPRoute = `web-route` · source = Ingress `web-ing`
+
+WORDS YOU NEED:
+- Gateway = the entry point: which port, which protocol, which hostname, which TLS certificate. It names a GatewayClass (the controller), the same way an Ingress names an IngressClass.
+
+- HTTPRoute = the routing rule: which host and path go to which Service and port. It points to its Gateway with parentRefs.
+
+- Together they do what ONE Ingress did. An Ingress → Gateway migration means: read the values out of the Ingress, write them into these two objects.
+
+SPOT THE PATTERN: Ingress → Gateway + HTTPRoute (copy host, TLS, rules)
+  "uses the existing GatewayClass" → k get gatewayclass → gatewayClassName
+  "keeps the same hostname and TLS configuration as the Ingress" → Listener: protocol HTTPS, port 443, hostname, tls.certificateRefs = Ingress secretName
+  "keeps the same routing rules as the Ingress" → HTTPRoute: parentRefs web-gw, hostnames, path, backendRefs service:port
+  "Delete the Ingress" → k delete ing web-ing -n web — only after route is created
+
+IN PLAIN WORDS:
+The question does not give you the values. They are inside the existing Ingress. Read 5 values from it, put them into two new objects.
+
+SET UP IN KILLERCODA:
+k apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
+k delete ns web --ignore-not-found
+k create ns web
+k create deploy backend --image=nginx:1.27 -n web
+k expose deploy backend --name=backend-svc --port=80 -n web
+openssl req -x509 -nodes -newkey rsa:2048 -days 30 -subj "/CN=shop.example.com" -keyout /tmp/t.key -out /tmp/t.crt 2>/dev/null
+k create secret tls web-tls --cert=/tmp/t.crt --key=/tmp/t.key -n web
+cat <<EOF | k apply -f -
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: nginx
+spec:
+  controllerName: gateway.nginx.org/nginx-gateway-controller
+EOF
+k create ingress web-ing --class=nginx --rule="shop.example.com/*=backend-svc:80,tls=web-tls" -n web
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Step 1. Read the 5 values
+   $ k get ing web-ing -n web -o yaml
+   $ k get gatewayclass
+   In the Ingress YAML, find and write down:
+   | 
+   
+    | #
+    | Value
+    | Where in the Ingress
+    | Here
+   
+    | 1
+    | hostname
+    | spec.rules[].host
+    | shop.example.com
+   
+    | 2
+    | TLS secret
+    | spec.tls[].secretName
+    | web-tls
+   
+    | 3
+    | path
+    | spec.rules[].http.paths[].path
+    | /
+   
+    | 4
+    | Service name
+    | ...backend.service.name
+    | backend-svc
+   
+    | 5
+    | Service port
+    | ...backend.service.port.number
+    | 80
+   And from k get gatewayclass: the class name → nginx.
+2. Step 2. Get the text from the docs
+   1. Open https://kubernetes.io/docs 2. Search: gateway api 3. Click: "Gateway API"    (direct link: https://kubernetes.io/docs/concepts/services-networking/gateway/ ) 4. Copy the example under the heading "Gateway", and the example under the heading "HTTPRoute".
+   This is what you copied (Gateway):
+   YOU SEE: apiVersion: gateway.networking.k8s.io/v1
+            kind: Gateway
+            metadata:
+              name: example-gateway
+            spec:
+              gatewayClassName: example-class
+              listeners:
+              - name: http
+                protocol: HTTP
+                port: 80
+   This is what you copied (HTTPRoute):
+   YOU SEE: apiVersion: gateway.networking.k8s.io/v1
+            kind: HTTPRoute
+            metadata:
+              name: example-httproute
+            spec:
+              parentRefs:
+              - name: example-gateway
+              hostnames:
+              - "www.example.com"
+              rules:
+              - matches:
+                - path:
+                    type: PathPrefix
+                    value: /login
+                backendRefs:
+                - name: example-svc
+                  port: 8080
+3. Step 3. The Gateway
+   $ vim gw.yaml
+   Paste the Gateway example.
+   | 
+   
+    | #
+    | The docs say
+    | You change it to
+    | Why
+   
+    | 1
+    | name: example-gateway
+    | name: web-gw
+    | from the question
+   
+    | 2
+    | (no namespace line)
+    | add namespace: web under name:
+    | from the question
+   
+    | 3
+    | gatewayClassName: example-class
+    | gatewayClassName: nginx
+    | the existing class (step 1)
+   
+    | 4
+    | - name: http
+    | - name: https
+    | just a label for the listener
+   
+    | 5
+    | protocol: HTTP
+    | protocol: HTTPS
+    | the Ingress used TLS
+   
+    | 6
+    | port: 80
+    | port: 443
+    | the HTTPS port
+   
+    | 7
+    | (not in the example)
+    | add hostname: and the tls: block, see below
+    | value 1 and value 2
+   The tls: block is NOT in the docs example. Memorise these 4 lines, or get them with k explain gateway.spec.listeners.tls:
+   YOU SEE:     tls:
+                  mode: Terminate
+                  certificateRefs:
+                  - name: web-tls
+   The finished file:
+   YOU SEE: apiVersion: gateway.networking.k8s.io/v1
+            kind: Gateway
+            metadata:
+              name: web-gw
+              namespace: web
+            spec:
+              gatewayClassName: nginx
+              listeners:
+              - name: https
+                protocol: HTTPS
+                port: 443
+                hostname: shop.example.com
+                tls:
+                  mode: Terminate
+                  certificateRefs:
+                  - name: web-tls
+   Save, then:
+   YOU SEE: k apply -f gw.yaml
+4. Step 4. The HTTPRoute
+   $ vim route.yaml
+   Paste the HTTPRoute example.
+   | 
+   
+    | #
+    | The docs say
+    | You change it to
+    | Why
+   
+    | 1
+    | name: example-httproute
+    | name: web-route
+    | from the question
+   
+    | 2
+    | (no namespace line)
+    | add namespace: web under name:
+    | from the question
+   
+    | 3
+    | - name: example-gateway
+    | - name: web-gw
+    | must be the Gateway&#39;s name from step 3. This is the link between the two objects.
+   
+    | 4
+    | - "www.example.com"
+    | - "shop.example.com"
+    | value 1
+   
+    | 5
+    | value: /login
+    | value: /
+    | value 3
+   
+    | 6
+    | - name: example-svc
+    | - name: backend-svc
+    | value 4
+   
+    | 7
+    | port: 8080
+    | port: 80
+    | value 5
+   The finished file:
+   YOU SEE: apiVersion: gateway.networking.k8s.io/v1
+            kind: HTTPRoute
+            metadata:
+              name: web-route
+              namespace: web
+            spec:
+              parentRefs:
+              - name: web-gw
+              hostnames:
+              - "shop.example.com"
+              rules:
+              - matches:
+                - path:
+                    type: PathPrefix
+                    value: /
+                backendRefs:
+                - name: backend-svc
+                  port: 80
+   Save, then:
+   YOU SEE: k apply -f route.yaml
+5. Step 5. Delete the Ingress (only after both objects exist)
+   $ k get gateway,httproute -n web
+   $ k delete ing web-ing -n web
+6. Closing routine
+   $ k get gateway,httproute -n web
+   $ k describe httproute web-route -n web | grep -A3 "Parent Refs"
+   $ k get ing -n web
+   In the exam the Gateway shows PROGRAMMED True and the question usually gives a curl command to test with. Run it.
+
+IF SOMETHING GOES WRONG:
+| 
+
+ | You see
+ | Cause
+ | Fix
+
+ | no matches for kind "Gateway"
+ | wrong apiVersion
+ | gateway.networking.k8s.io/v1
+
+ | the route is not attached / curl gives 404
+ | parentRefs.name is not the Gateway&#39;s name, or the hostnames differ
+ | make them identical
+
+ | the Ingress had NO tls
+ | plain HTTP
+ | keep protocol: HTTP, port: 80, and leave the tls: block out
+
+TRAPS TO AVOID:
+- Forgetting the tls block (mode: Terminate + certificateRefs) on the listener
+- parentRefs name not matching web-gw
+- Forgetting namespace: web in both YAMLs
+
+VERIFY AGAINST THE QUESTION:
+- gateway + route exist: $ k get gateway,httproute -n web  → must see: web-gw and web-route
+- route attached: $ k describe httproute web-route -n web | grep -A3 'Parent Refs'  → must see: Name: web-gw
+- ingress gone: $ k get ing -n web  → must see: No resources found
+
+MEMORISE (fast version, target 8 min):
+k get ing web-ing -n web -o yaml   # host, secretName, path, service, port
+k get gatewayclass
+docs: 'gateway api' → copy Gateway example → listener HTTPS 443 + hostname + tls: mode Terminate, certificateRefs: - name <secret>
+docs: copy HTTPRoute example → parentRefs web-gw, hostnames, path, backendRefs
+k apply -f gw.yaml -f route.yaml; k delete ing web-ing -n web
+
+
+==================== PAGE 26 · NetworkPolicy: allow one app to reach another ====================
+EXAM QUESTION:
+In namespace `prod`, create a NetworkPolicy named `db-policy`. Pods with label `app=db` must accept incoming traffic ONLY from pods with label `app=api` in the same namespace, and only on TCP port `80`.
+WRITE DOWN: namespace = `prod` · policy = `db-policy` · plus the three blanks
+
+WORDS YOU NEED:
+- podSelector at the top of the policy = the pods being protected (the destination).
+
+- ingress → from = who may send traffic to them (the source).
+
+- AND vs OR inside from: each - starts a new, separate source (OR). Two selectors under the SAME - must both be true (AND).
+
+Copy  - from:                                   - from:
+    - namespaceSelector: ...                  - namespaceSelector: ...
+      podSelector: ...                        - podSelector: ...
+  ONE dash = namespace AND pod              TWO dashes = namespace OR pod  (allows much more)
+
+SPOT THE PATTERN: NetworkPolicy: allow pod label A → pod label B on one port
+  "Pods with label `app=db`" → spec.podSelector.matchLabels app: db
+  "ONLY from pods with label `app=api` in the same namespace" → from: - podSelector app: api (no namespaceSelector)
+  "only on TCP port `80`" → ports: - protocol: TCP port: 80
+
+IN PLAIN WORDS:
+The same three blanks as in question 10:
+
+ | 
+
+ | Blank
+ | Value
+
+ | WHO is protected
+ | app=db
+
+ | WHO may come in
+ | app=api
+
+ | WHICH port
+ | TCP 80
+
+SET UP IN KILLERCODA:
+k delete ns prod --ignore-not-found
+k create ns prod
+k run db --image=nginx:1.27 -n prod --labels=app=db
+k run api --image=busybox:1.36 -n prod --labels=app=api -- sleep 3600
+k run other --image=busybox:1.36 -n prod --labels=app=other -- sleep 3600
+k expose pod db --name=db-svc --port=80 -n prod
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Step 1. Check that the labels are real
+   $ k get pods -n prod --show-labels
+   You see app=db, app=api, app=other. They match the question.
+2. Step 2. Get the policy text from the docs
+   1. Open https://kubernetes.io/docs → search network policies → click "Network Policies"    (direct link: https://kubernetes.io/docs/concepts/services-networking/network-policies/ ) 2. Under "The NetworkPolicy resource", copy the example box. (It is the same box as in question 10.)
+3. Step 3. Paste, delete 3 blocks, change 5 lines
+   $ vim np.yaml
+   Delete: - the line - Egress - the 7 lines from - ipBlock: to project: myproject - the 7 lines from egress: to the end
+   Change:
+   | 
+   
+    | #
+    | The docs say
+    | You change it to
+   
+    | 1
+    | name: test-network-policy
+    | name: db-policy
+   
+    | 2
+    | namespace: default
+    | namespace: prod
+   
+    | 3
+    | role: db
+    | app: db
+   
+    | 4
+    | role: frontend
+    | app: api
+   
+    | 5
+    | port: 6379
+    | port: 80
+   The finished file:
+   YOU SEE: apiVersion: networking.k8s.io/v1
+            kind: NetworkPolicy
+            metadata:
+              name: db-policy
+              namespace: prod
+            spec:
+              podSelector:
+                matchLabels:
+                  app: db
+              policyTypes:
+              - Ingress
+              ingress:
+              - from:
+                - podSelector:
+                    matchLabels:
+                      app: api
+                ports:
+                - protocol: TCP
+                  port: 80
+   Save, then:
+   YOU SEE: k apply -f np.yaml
+4. Closing routine
+   $ k exec api -n prod -- wget -qO- -T 3 db-svc | head -3
+   $ k exec other -n prod -- wget -qO- -T 3 db-svc
+   $ k describe netpol db-policy -n prod
+
+TRAPS TO AVOID:
+- Leaving namespaceSelector/ipBlock from the docs example in the from list
+- Putting podSelector and namespaceSelector as two list items (OR) instead of removing it
+- Keeping Egress in policyTypes → blocks db's outgoing traffic
+
+VERIFY AGAINST THE QUESTION:
+- api allowed: $ k exec api -n prod -- wget -qO- -T 3 db-svc | head -3  → must see: Welcome to nginx!
+- others blocked: $ k exec other -n prod -- wget -qO- -T 3 db-svc  → must see: download timed out
+
+MEMORISE (fast version, target 5 min):
+k get pods -n prod --show-labels
+docs: 'network policies' → copy example → delete Egress, ipBlock, namespaceSelector, egress
+name: db-policy; namespace: prod; podSelector app: db; from podSelector app: api; ports TCP 80
+k apply -f np.yaml
+
+
+==================== PAGE 27 · Default deny, but keep DNS ====================
+EXAM QUESTION:
+In namespace `prod`, create a NetworkPolicy named `default-deny` that blocks all incoming and all outgoing traffic for every pod in the namespace. DNS lookups (port 53, UDP and TCP) must still work.
+WRITE DOWN: namespace = `prod` · policy = `default-deny` · both directions · exception = port 53 UDP + TCP
+
+WORDS YOU NEED:
+- Ingress (in a NetworkPolicy) = traffic coming INTO the selected pods. Egress = traffic going OUT of them.
+
+- Default deny = a policy that selects all pods (podSelector: {}) and allows nothing. After it, only traffic allowed by other policies passes.
+
+- Port 53 = the DNS port (UDP and TCP). If you block egress and do not allow port 53, pods can no longer look up any Service name.
+
+SPOT THE PATTERN: Default deny both directions + egress exception for DNS
+  "blocks all incoming and all outgoing traffic" → podSelector: {} and policyTypes Ingress + Egress
+  "for every pod in the namespace" → podSelector: {} (empty = all)
+  "port 53, UDP and TCP" → egress: - ports: UDP 53 and TCP 53 (no 'to', so any destination)
+
+IN PLAIN WORDS:
+One policy: select every pod, list both directions, allow nothing in, allow only port 53 out.
+
+SET UP IN KILLERCODA:
+k delete ns prod --ignore-not-found
+k create ns prod
+k run app --image=busybox:1.36 -n prod -- sleep 3600
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Step 1. Get the policy text from the docs
+   1. Open https://kubernetes.io/docs → search network policies → click "Network Policies"    (direct link: https://kubernetes.io/docs/concepts/services-networking/network-policies/ ) 2. Scroll to the heading "Default policies" → "Default deny all ingress and all egress traffic". Copy that small box.
+   This is what you copied:
+   YOU SEE: apiVersion: networking.k8s.io/v1
+            kind: NetworkPolicy
+            metadata:
+              name: default-deny-all
+            spec:
+              podSelector: {}
+              policyTypes:
+              - Ingress
+              - Egress
+2. Step 2. Paste, change 1 line, add 7 lines
+   $ vim deny.yaml
+   | 
+   
+    | #
+    | The docs say
+    | You change it to
+    | Why
+   
+    | 1
+    | name: default-deny-all
+    | name: default-deny
+    | from the question
+   
+    | 2
+    | (no namespace line)
+    | add namespace: prod under name:
+    | from the question
+   
+    | 3
+    | (file ends after - Egress)
+    | add the egress: block below
+    | the DNS exception
+   The finished file:
+   YOU SEE: apiVersion: networking.k8s.io/v1
+            kind: NetworkPolicy
+            metadata:
+              name: default-deny
+              namespace: prod
+            spec:
+              podSelector: {}
+              policyTypes:
+              - Ingress
+              - Egress
+              egress:
+              - ports:
+                - protocol: UDP
+                  port: 53
+                - protocol: TCP
+                  port: 53
+   How it reads: "All pods. Both directions are restricted. Nothing may come in (no ingress: section). Going out, only port 53 is allowed."
+   egress: starts in the same column as policyTypes:.
+   Save, then:
+   YOU SEE: k apply -f deny.yaml
+3. Closing routine
+   $ k describe netpol default-deny -n prod
+   You want:
+   YOU SEE: PodSelector:     <none> (Allowing the specific traffic to all pods in this namespace)
+            Allowing ingress traffic:    <none> (Selected pods are isolated for ingress connectivity)
+            Allowing egress traffic:     To Port: 53/UDP   To Port: 53/TCP
+            Policy Types: Ingress, Egress
+   Test: a name lookup works, a connection does not.
+   $ k exec app -n prod -- nslookup kubernetes.default
+   $ k exec app -n prod -- wget -qO- -T 3 kubernetes.default:443
+
+TRAPS TO AVOID:
+- Adding an empty ingress rule '- {}' which ALLOWS all ingress
+- Only UDP 53 — TCP 53 is also required
+- Forgetting namespace: prod in metadata
+
+VERIFY AGAINST THE QUESTION:
+- policy shape: $ k describe netpol default-deny -n prod  → must see: Ingress: none allowed; Egress: to port 53/UDP, 53/TCP
+- DNS works: $ k exec app -n prod -- nslookup kubernetes.default  → must see: Address line
+- traffic blocked: $ k exec app -n prod -- wget -qO- -T 3 kubernetes.default:443  → must see: download timed out
+
+MEMORISE (fast version, target 4 min):
+docs: 'network policies' → 'Default deny all ingress and all egress traffic' example
+name: default-deny; namespace: prod; podSelector: {}; policyTypes: [Ingress, Egress]
+egress: - ports: - protocol: UDP port: 53 / - protocol: TCP port: 53
+k apply -f deny.yaml; k describe netpol default-deny -n prod
+
+
+==================== PAGE 28 · TLS settings in a ConfigMap ====================
+EXAM QUESTION:
+In namespace `nginx-static`, deployment `nginx-static` gets its configuration from ConfigMap `nginx-config`. The server currently accepts TLSv1.2 and TLSv1.3. Change the configuration so that ONLY TLSv1.3 is accepted, and make sure the running pods use the new configuration.
+WRITE DOWN: namespace = `nginx-static` · ConfigMap = `nginx-config` · deployment = `nginx-static` · keep only `TLSv1.3`
+
+WORDS YOU NEED:
+- ConfigMap = an object that holds configuration text. A pod can mount it as a file. Here it holds the nginx config file.
+
+- ssl_protocols = the nginx setting that lists which TLS versions the server accepts.
+
+- A running pod does not re-read its config. After you change the ConfigMap you must restart the pods: k rollout restart.
+
+SPOT THE PATTERN: Edit ConfigMap → rollout restart so pods pick it up
+  "ONLY TLSv1.3 is accepted" → ssl_protocols TLSv1.3; (remove TLSv1.2)
+  "make sure the running pods use the new configuration" → k rollout restart deploy nginx-static — pods don't reload the CM by themselves
+
+IN PLAIN WORDS:
+Remove one word from one line in a ConfigMap. Then restart the Deployment so the pods pick it up.
+
+SET UP IN KILLERCODA:
+k delete ns nginx-static --ignore-not-found
+k create ns nginx-static
+k create cm nginx-config -n nginx-static --from-literal=nginx.conf="server { listen 443 ssl; ssl_protocols TLSv1.2 TLSv1.3; }"
+k create deploy nginx-static --image=nginx:1.27 -n nginx-static
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Step 1. Backup first
+   $ k get cm nginx-config -n nginx-static -o yaml > /root/cm-backup.yaml
+2. Step 2. Change the line
+   $ k edit cm nginx-config -n nginx-static
+   Type /ssl_protocols and press Enter.
+   | 
+   
+    | Before
+    | After
+   
+    | ssl_protocols TLSv1.2 TLSv1.3;
+    | ssl_protocols TLSv1.3;
+   Keep the ; at the end. Save with Esc, :wq.
+3. Step 3. Restart the pods
+   $ k rollout restart deploy nginx-static -n nginx-static
+   $ k rollout status deploy nginx-static -n nginx-static
+   You want successfully rolled out.
+4. Closing routine
+   $ k get cm nginx-config -n nginx-static -o yaml | grep ssl_protocols
+   $ k get pods -n nginx-static
+   In the exam the question gives a test. It looks like this:
+   YOU SEE: curl -k --tls-max 1.2 https://<address>      # must now FAIL
+            curl -k --tlsv1.3 https://<address>          # must work
+
+IF SOMETHING GOES WRONG:
+| 
+
+ | You see
+ | Cause
+ | Fix
+
+ | the edit is refused: field is immutable
+ | the ConfigMap has immutable: true
+ | vim /root/cm-backup.yaml (change the line there), k delete cm nginx-config -n nginx-static, k apply -f /root/cm-backup.yaml, then step 3
+
+ | new pod goes CrashLoopBackOff
+ | you broke the nginx syntax (missing ;)
+ | k logs <pod> -n nginx-static names the line. Fix the ConfigMap, restart again.
+
+ | the old TLS version still works
+ | you skipped step 3
+ | restart
+
+TRAPS TO AVOID:
+- Not restarting the deployment — old config stays in nginx
+- Deleting the trailing ; → nginx fails to start
+- Editing the deployment instead of the ConfigMap
+
+VERIFY AGAINST THE QUESTION:
+- CM has only TLSv1.3: $ k get cm nginx-config -n nginx-static -o yaml | grep ssl_protocols  → must see: ssl_protocols TLSv1.3;
+- pods restarted: $ k rollout status deploy nginx-static -n nginx-static  → must see: successfully rolled out
+
+MEMORISE (fast version, target 3 min):
+k get cm nginx-config -n nginx-static -o yaml > /root/cm-backup.yaml
+k edit cm nginx-config -n nginx-static   # ssl_protocols TLSv1.3;
+k rollout restart deploy nginx-static -n nginx-static
+k rollout status deploy nginx-static -n nginx-static
+
+
+==================== PAGE 29 · CoreDNS config ====================
+EXAM QUESTION:
+Configure cluster DNS so that the name `api.example.com` resolves to the service `backend-svc` in namespace `web`, for all pods in the cluster. Make sure CoreDNS uses the new configuration.
+WRITE DOWN: name = `api.example.com` · target = `backend-svc.web.svc.cluster.local`
+
+WORDS YOU NEED:
+- Corefile = the configuration text of CoreDNS. It is stored in ConfigMap coredns, namespace kube-system.
+
+- .:53 { ... } = the main block of the Corefile. Each line inside is a plug-in. The line kubernetes cluster.local ... is the one that answers for Service names.
+
+- rewrite name A B = a plug-in line: "when someone asks for name A, answer as if they asked for name B".
+
+SPOT THE PATTERN: CoreDNS Corefile edit (rewrite) → restart CoreDNS
+  "resolves to the service `backend-svc` in namespace `web`" → Target name backend-svc.web.svc.cluster.local
+  "for all pods in the cluster" → Edit the coredns ConfigMap in kube-system (not a pod's /etc/hosts)
+  "Make sure CoreDNS uses the new configuration" → k rollout restart deploy coredns -n kube-system
+
+IN PLAIN WORDS:
+Add one line to the Corefile, then restart CoreDNS. Same three motions as question 28: backup, edit, restart. A mistake here breaks DNS for the whole cluster, so the backup is not optional.
+
+SET UP IN KILLERCODA:
+k delete ns web --ignore-not-found
+k create ns web
+k create deploy backend --image=nginx:1.27 -n web
+k expose deploy backend --name=backend-svc --port=80 -n web
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Step 1. Backup first
+   $ k get cm coredns -n kube-system -o yaml > /root/coredns-backup.yaml
+2. Step 2. Add the line
+   $ k edit cm coredns -n kube-system
+   You see:
+   YOU SEE:   Corefile: |
+                .:53 {
+                    errors
+                    health {
+                       lameduck 5s
+                    }
+                    ready
+                    kubernetes cluster.local in-addr.arpa ip6.arpa {
+   Put the cursor on the line ready, press o (new line below), and type, with the same indentation as ready:
+   YOU SEE:         rewrite name api.example.com backend-svc.web.svc.cluster.local
+   Save with Esc, :wq.
+3. Step 3. Restart CoreDNS
+   $ k rollout restart deploy coredns -n kube-system
+   $ k rollout status deploy coredns -n kube-system
+4. Closing routine
+   $ k get pods -n kube-system -l k8s-app=kube-dns
+   $ k get svc backend-svc -n web
+   $ k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup api.example.com
+   You want an Address: line that shows the CLUSTER-IP of backend-svc.
+
+IF SOMETHING GOES WRONG:
+| 
+
+ | You see
+ | Cause
+ | Fix
+
+ | coredns pods CrashLoopBackOff after the restart
+ | a typo in the Corefile
+ | k logs -n kube-system -l k8s-app=kube-dns names the line. Or put the backup back: k apply -f /root/coredns-backup.yaml, then restart again.
+
+ | nslookup says NXDOMAIN
+ | the line is outside the .:53 { } block, or you did not restart
+ | check the position, restart
+
+ | the question asks to forward a whole domain to another DNS server
+ | different line
+ | add a new block at the end of the Corefile: example.org:53 { forward . 10.0.0.53 } (3 lines). Docs search: customizing dns service
+
+TRAPS TO AVOID:
+- Putting the rewrite line outside the .:53 { } block or with broken indentation → CoreDNS CrashLoop
+- Rewriting to backend-svc without .web.svc.cluster.local
+- Not backing up the ConfigMap first
+
+VERIFY AGAINST THE QUESTION:
+- CoreDNS healthy: $ k get pods -n kube-system -l k8s-app=kube-dns  → must see: Running, fresh AGE
+- name resolves to svc IP: $ k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup api.example.com  → must see: Address = CLUSTER-IP of backend-svc
+
+MEMORISE (fast version, target 5 min):
+k get cm coredns -n kube-system -o yaml > /root/coredns-backup.yaml
+k edit cm coredns -n kube-system   # under ready: rewrite name api.example.com backend-svc.web.svc.cluster.local
+k rollout restart deploy coredns -n kube-system
+k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup api.example.com
+
+
+==================== PAGE 30 · DNS names across namespaces ====================
+EXAM QUESTION:
+From a temporary pod in namespace `default` (image `busybox:1.36`), look up the DNS name of service `backend-svc` that lives in namespace `web`. Save the output of the lookup to `/root/dns.txt`.
+WRITE DOWN: Service = `backend-svc` · its namespace = `web` · image = `busybox:1.36` · file = `/root/dns.txt`
+
+WORDS YOU NEED:
+- Short name = just the Service name, for example backend-svc. It only works from a pod in the SAME namespace.
+
+- Full name (FQDN) = SERVICE.NAMESPACE.svc.cluster.local. It works from every namespace.
+
+- nslookup = asks DNS for the IP behind a name.
+
+SPOT THE PATTERN: Cross-namespace DNS lookup from temp pod → file
+  "From a temporary pod in namespace `default`" → k run … --rm -it --restart=Never (no -n)
+  "that lives in namespace `web`" → Use the full name backend-svc.web.svc.cluster.local
+  "Save the output of the lookup to `/root/dns.txt`" → Redirect > /root/dns.txt on the control plane
+
+IN PLAIN WORDS:
+The test pod and the Service are in different namespaces, so use the full name. Send the output into a file.
+
+SET UP IN KILLERCODA:
+k delete ns web --ignore-not-found
+k create ns web
+k create deploy backend --image=nginx:1.27 -n web
+k expose deploy backend --name=backend-svc --port=80 -n web
+rm -f /root/dns.txt
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Step 1. Build the full name
+   $ SERVICE   . NAMESPACE . svc.cluster.local
+   $ backend-svc . web     . svc.cluster.local     →   backend-svc.web.svc.cluster.local
+2. Step 2. Look it up and write the file
+   $ k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup backend-svc.web.svc.cluster.local > /root/dns.txt
+   | 
+   
+    | Part
+    | Meaning
+   
+    | k run t --image=busybox:1.36
+    | a temporary pod named t (in default, because there is no -n)
+   
+    | --rm -it --restart=Never
+    | run once, show the output, delete the pod afterwards
+   
+    | -- nslookup <name>
+    | the command the pod runs
+   
+    | > /root/dns.txt
+    | write the output into the file
+3. Closing routine
+   $ cat /root/dns.txt
+   You want:
+   YOU SEE: Name:      backend-svc.web.svc.cluster.local
+            Address:   10.x.x.x
+   Compare the address with k get svc backend-svc -n web. It is the same IP.
+
+IF SOMETHING GOES WRONG:
+| 
+
+ | You see
+ | Cause
+ | Fix
+
+ | NXDOMAIN / can&#39;t resolve
+ | a typo in the name, or the wrong namespace in the name
+ | build the name again from step 1
+
+ | pods "t" already exists
+ | an older test pod is still there
+ | k delete pod t, run it again
+
+ | the file also contains pod "t" deleted
+ | that line comes from kubectl
+ | usually accepted. To avoid it: run the pod without --rm, then k logs t > /root/dns.txt, then k delete pod t
+
+ | every name fails
+ | DNS itself is broken
+ | question 11
+
+Good to know: backend-svc.web (without the rest) also works. A pod&#39;s DNS settings are in /etc/resolv.conf: k exec <pod> -- cat /etc/resolv.conf.
+
+TRAPS TO AVOID:
+- Looking up just backend-svc from default → NXDOMAIN
+- Wrong image (must be busybox:1.36)
+- Running the pod in namespace web
+
+VERIFY AGAINST THE QUESTION:
+- file has lookup: $ cat /root/dns.txt  → must see: Name: backend-svc.web.svc.cluster.local + Address
+- right IP: $ k get svc backend-svc -n web  → must see: same CLUSTER-IP
+
+MEMORISE (fast version, target 2 min):
+# SERVICE.NAMESPACE.svc.cluster.local
+k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup backend-svc.web.svc.cluster.local > /root/dns.txt
+cat /root/dns.txt
+
+
+==================== PAGE 31 · Sidecar container ====================
+EXAM QUESTION:
+In namespace `work`, deployment `app` writes its log to `/var/log/app.log`. Add a sidecar container named `log-shipper` with image `busybox:1.36` that runs `tail -f /var/log/app.log`. Use a shared volume named `logs` mounted at `/var/log` in both containers. Do not change the existing container's image or command.
+WRITE DOWN: namespace = `work` · deployment = `app` · sidecar = `log-shipper`, `busybox:1.36`, `tail -f /var/log/app.log` · volume = `logs` · mount path = `/var/log`
+
+WORDS YOU NEED:
+- Sidecar = a second container in the same pod that helps the main one (for example: reads its log file). In YAML it is written under initContainers: with restartPolicy: Always. That one line is what makes it a sidecar: it starts first and keeps running.
+
+- emptyDir volume = an empty folder that belongs to the pod. Every container in the pod that mounts it sees the same files.
+
+- volumeMounts = where a volume appears inside a container. Two containers in one pod do NOT see each other&#39;s files unless both mount the same volume.
+
+SPOT THE PATTERN: Add native sidecar (initContainer, restartPolicy Always) + shared emptyDir
+  "Add a sidecar container named `log-shipper`" → initContainers: entry with restartPolicy: Always (native sidecar)
+  "runs `tail -f /var/log/app.log`" → command: ["sh","-c","tail -f /var/log/app.log"]
+  "Use a shared volume named `logs` mounted at `/var/log` in both containers" → volumes: - name: logs emptyDir: {} + volumeMounts in BOTH containers
+  "Do not change the existing container's image or command" → Only add volumeMounts to the main container
+
+IN PLAIN WORDS:
+Add three things to the Deployment:
+
+Copy1. a volume                          (pod level)
+2. a mount of it in the main container   (container level)
+3. the sidecar, which also mounts it     (pod level, under initContainers)
+
+SET UP IN KILLERCODA:
+k delete ns work --ignore-not-found
+k create ns work
+k create deploy app --image=busybox:1.36 -n work -- sh -c "while true; do date >> /var/log/app.log; sleep 2; done"
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Step 1. Open the docs example next to you
+   1. Open https://kubernetes.io/docs → search sidecar containers → click "Sidecar Containers"    (direct link: https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/ ) 2. Under the heading "Example application" there is a Deployment. Its bottom half is exactly the shape you need:
+   YOU SEE:     spec:
+                  containers:
+                    - name: myapp
+                      image: alpine:latest
+                      command: ['sh', '-c', 'while true; do echo "logging" >> /opt/logs.txt; sleep 1; done']
+                      volumeMounts:
+                        - name: data
+                          mountPath: /opt
+                  initContainers:
+                    - name: logshipper
+                      image: alpine:latest
+                      restartPolicy: Always
+                      command: ['sh', '-c', 'tail -F /opt/logs.txt']
+                      volumeMounts:
+                        - name: data
+                          mountPath: /opt
+                  volumes:
+                    - name: data
+                      emptyDir: {}
+   You copy three pieces from it: the volumeMounts: block, the initContainers: block, the volumes: block.
+2. Step 2. Work on a file, not in the live editor
+   A long edit is safer in a file: if the YAML is wrong, you still have the file.
+   $ k get deploy app -n work -o yaml > app.yaml
+   $ cp app.yaml app-backup.yaml
+   $ vim app.yaml
+   Type /containers: and press Enter. You see:
+   YOU SEE:     spec:
+                  containers:
+                  - command:
+                    - sh
+                    - -c
+                    - while true; do date >> /var/log/app.log; sleep 2; done
+                    image: busybox:1.36
+                    imagePullPolicy: IfNotPresent
+                    name: busybox
+                    resources: {}
+3. Step 3. Add the three pieces
+   Lines marked # ADD are new. Do not type the # ADD text.
+   $ spec:
+   $ volumes:
+   $ - name: logs
+   $ emptyDir: {}
+   $ initContainers:
+   $ - name: log-shipper
+   $ image: busybox:1.36
+   $ restartPolicy: Always
+   $ command: ['sh', '-c', 'tail -f /var/log/app.log']
+   $ volumeMounts:
+   $ - name: logs
+   $ mountPath: /var/log
+   $ containers:
+   $ - command:
+   $ - sh
+   $ - -c
+   $ - while true; do date >> /var/log/app.log; sleep 2; done
+   $ image: busybox:1.36
+   $ imagePullPolicy: IfNotPresent
+   $ name: busybox
+   $ resources: {}
+   $ volumeMounts:
+   $ - name: logs
+   $ mountPath: /var/log
+   What changed compared with the docs example:
+   | 
+   
+    | The docs say
+    | You write
+   
+    | volume name data (3 places)
+    | logs (3 places)
+   
+    | mountPath: /opt (2 places)
+    | /var/log (2 places)
+   
+    | sidecar name: logshipper
+    | log-shipper
+   
+    | image: alpine:latest
+    | busybox:1.36
+   
+    | tail -F /opt/logs.txt
+    | tail -f /var/log/app.log
+   Indentation rule: volumes:, initContainers: and containers: all start in the same column.
+   Save with Esc, :wq.
+4. Step 4. Apply
+   $ k apply -f app.yaml
+   (A warning about a missing annotation is harmless.)
+5. Closing routine
+   $ k rollout status deploy app -n work
+   $ k get pods -n work
+   You want READY 2/2 (main container + sidecar), Running.
+   $ k logs deploy/app -c log-shipper -n work | tail -3
+   You want date lines. That proves the sidecar reads the file the main container writes.
+
+IF SOMETHING GOES WRONG:
+| 
+
+ | You see
+ | Cause
+ | Fix
+
+ | error converting YAML / did not find expected key
+ | indentation, or a Tab
+ | compare with step 3; spaces only
+
+ | pod stays Init:0/1 forever
+ | restartPolicy: Always is missing, so Kubernetes waits for tail -f to finish (it never does)
+ | add the line
+
+ | sidecar log: tail: can&#39;t open &#39;/var/log/app.log&#39;
+ | the main container does not mount the volume (piece 2 missing), or the names differ
+ | the name: must be identical in all 3 places
+
+ | everything is broken
+ | start over
+ | cp app-backup.yaml app.yaml
+
+TRAPS TO AVOID:
+- Mounting the volume only in the sidecar — the main app writes to its own /var/log
+- Putting volumes: under the container instead of at pod spec level
+- Forgetting restartPolicy: Always → it becomes a normal init container that blocks forever
+
+VERIFY AGAINST THE QUESTION:
+- both containers run: $ k get pods -n work  → must see: 2/2 Running
+- sidecar reads the log: $ k logs deploy/app -c log-shipper -n work  → must see: app log lines
+
+MEMORISE (fast version, target 8 min):
+k get deploy app -n work -o yaml > app.yaml
+vim app.yaml   # volumes: - name: logs emptyDir: {}; main: volumeMounts logs → /var/log
+initContainers: - name: log-shipper image: busybox:1.36 restartPolicy: Always command: [sh,-c,'tail -f /var/log/app.log'] volumeMounts logs → /var/log
+k apply -f app.yaml; k get pods -n work
+
+
+==================== PAGE 32 · HPA (autoscaling) ====================
+EXAM QUESTION:
+In namespace `shop`, create a HorizontalPodAutoscaler named `web` for deployment `web`: minimum `2` replicas, maximum `5` replicas, target average CPU utilization `70`%. Set the scale-down stabilization window to `30` seconds.
+WRITE DOWN: namespace = `shop` · deployment = `web` · min `2` · max `5` · CPU `70`% · scale-down window `30` s
+
+WORDS YOU NEED:
+- HPA (HorizontalPodAutoscaler) = an object that changes the number of replicas of a Deployment automatically, based on CPU use.
+
+- Target 70% = "keep average CPU use at 70% of what each pod REQUESTED". So the Deployment must have a CPU request. Without one, the HPA cannot calculate anything.
+
+- Stabilization window = how long the HPA waits before it removes pods, so the count does not jump up and down.
+
+SPOT THE PATTERN: HPA imperative, then edit behavior for stabilization window
+  "minimum `2` replicas, maximum `5` replicas" → --min=2 --max=5
+  "target average CPU utilization `70`%" → --cpu-percent=70
+  "scale-down stabilization window to `30` seconds" → k edit hpa: spec.behavior.scaleDown.stabilizationWindowSeconds: 30
+
+IN PLAIN WORDS:
+One command creates the HPA. One small edit adds the 3-line "behavior" block, because the command has no flag for it.
+
+SET UP IN KILLERCODA:
+k delete ns shop --ignore-not-found
+k create ns shop
+k create deploy web --image=nginx:1.27 -n shop
+k set resources deploy web -n shop --requests=cpu=100m
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Step 1. Create the HPA
+   $ k autoscale deploy web --min=2 --max=5 --cpu-percent=70 -n shop
+   The HPA gets the same name as the deployment: web. A warning that --cpu-percent is deprecated is harmless. If the flag is refused, run k autoscale --help and use the newer spelling shown there (--cpu=70%).
+2. Step 2. Add the stabilization window
+   $ k edit hpa web -n shop
+   Type /maxReplicas and press Enter. Press O (capital o: new line ABOVE) and type these 3 lines. behavior: starts in the same column as maxReplicas::
+   YOU SEE:   behavior:
+                scaleDown:
+                  stabilizationWindowSeconds: 30
+   Save with Esc, :wq.
+   If you forget the spelling: docs search horizontal pod autoscaling → page "Horizontal Pod Autoscaling" → heading "Stabilization window". The same 3 lines are there.
+3. Closing routine
+   $ k get hpa -n shop
+   You want:
+   YOU SEE: NAME   REFERENCE        TARGETS       MINPODS   MAXPODS   REPLICAS
+            web    Deployment/web   cpu: 0%/70%   2         5         2
+   $ k describe hpa web -n shop | grep -A3 -i behavior
+   You want Scale Down: Stabilization Window: 30 seconds.
+
+IF SOMETHING GOES WRONG:
+| 
+
+ | You see
+ | Cause
+ | Fix
+
+ | TARGETS <unknown>/70% for more than a minute
+ | the deployment has no CPU request
+ | k set resources deploy web -n shop --requests=cpu=100m
+
+ | TARGETS <unknown> and k top pods also fails
+ | no metrics-server in this playground
+ | nothing to fix; the exam has it
+
+ | the question wants a different HPA name
+ | the command names it after the deployment
+ | add --name=<name> to step 1
+
+ | the question asks for MEMORY
+ | no flag in older kubectl
+ | create with CPU, then k edit hpa and change name: cpu to name: memory
+
+TRAPS TO AVOID:
+- Putting stabilizationWindowSeconds under scaleUp
+- Putting behavior: inside metrics: instead of directly under spec:
+- Forgetting -n shop
+
+VERIFY AGAINST THE QUESTION:
+- min/max/target: $ k get hpa -n shop  → must see: web  cpu: …/70%  MINPODS 2  MAXPODS 5
+- window 30 s: $ k get hpa web -n shop -o yaml | grep -A2 scaleDown  → must see: stabilizationWindowSeconds: 30
+
+MEMORISE (fast version, target 4 min):
+k autoscale deploy web --min=2 --max=5 --cpu-percent=70 -n shop
+k edit hpa web -n shop   # spec: behavior: scaleDown: stabilizationWindowSeconds: 30
+k get hpa -n shop
+
+
+==================== PAGE 33 · PriorityClass ====================
+EXAM QUESTION:
+1. Create a PriorityClass named `high-priority` whose value is exactly ONE LESS than the highest existing user-defined PriorityClass.
+2. Configure deployment `web` in namespace `shop` to use this PriorityClass.
+WRITE DOWN: class = `high-priority` · value = highest user-defined minus 1 · deployment = `web` in `shop`
+
+WORDS YOU NEED:
+- PriorityClass = an object that holds a number. A pod that names the class gets that priority. When the cluster is full, higher numbers are scheduled first, and lower ones can be evicted to make room.
+
+- User-defined = created by an admin. Two classes always exist and belong to Kubernetes itself: system-cluster-critical and system-node-critical. They do NOT count as user-defined.
+
+- priorityClassName = the line in the pod template (pod level) that names the class.
+
+SPOT THE PATTERN: PriorityClass value from existing ones, attach to deployment
+  "exactly ONE LESS than the highest existing user-defined PriorityClass" → k get pc; ignore system-* classes; value = highest − 1
+  "to use this PriorityClass" → k edit deploy: priorityClassName: high-priority in the pod spec
+
+IN PLAIN WORDS:
+Look at the existing numbers, ignore the two system- ones, subtract 1, create the class, add one line to the Deployment.
+
+SET UP IN KILLERCODA:
+k delete ns shop --ignore-not-found
+k delete pc high-priority mid-prio low-prio --ignore-not-found
+k create ns shop
+k create deploy web --image=nginx:1.27 -n shop
+k create pc mid-prio --value=1000
+k create pc low-prio --value=100
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Step 1. Look at the existing classes
+   $ k get pc
+   (pc = short for priorityclass. No namespace.)
+   $ NAME                      VALUE        GLOBAL-DEFAULT   AGE
+   $ low-prio                  100          false            1m
+   $ mid-prio                  1000         false            1m
+   $ system-cluster-critical   2000000000   false            5h
+   $ system-node-critical      2000001000   false            5h
+   Ignore both system- lines. Highest user-defined = 1000. One less = 999.
+2. Step 2. Create the class
+   $ k create pc high-priority --value=999
+3. Step 3. Put it on the Deployment
+   $ k edit deploy web -n shop
+   Type /containers: and press Enter. Press O (capital o: new line ABOVE) and type, starting in the same column as containers::
+   YOU SEE:       priorityClassName: high-priority
+   Save with Esc, :wq.
+   One-line alternative (same result, no editor):
+   YOU SEE: k patch deploy web -n shop -p '{"spec":{"template":{"spec":{"priorityClassName":"high-priority"}}}}'
+4. Closing routine
+   $ k rollout status deploy web -n shop
+   $ k get pods -n shop -o custom-columns=NAME:.metadata.name,CLASS:.spec.priorityClassName,PRIO:.spec.priority
+   You want CLASS high-priority and PRIO 999.
+
+IF SOMETHING GOES WRONG:
+| 
+
+ | You see
+ | Cause
+ | Fix
+
+ | you used 1999999999
+ | you counted a system- class
+ | k delete pc high-priority, create again with the right value
+
+ | new pods do not appear, k describe rs says no PriorityClass with name ...
+ | typo in the class name
+ | fix the line in k edit deploy
+
+ | other pods got evicted after your change
+ | expected: higher priority pods may push out lower ones
+ | nothing to fix
+
+ | a PriorityClass value cannot be edited
+ | the field is immutable
+ | delete and create again
+
+TRAPS TO AVOID:
+- Using system-cluster-critical / system-node-critical values
+- Putting priorityClassName in the container instead of the pod spec
+- Setting globalDefault: true (not asked)
+
+VERIFY AGAINST THE QUESTION:
+- value correct: $ k get pc  → must see: high-priority = highest user value − 1
+- pods use it: $ k get pods -n shop -o custom-columns=NAME:.metadata.name,CLASS:.spec.priorityClassName  → must see: high-priority on new pods
+
+MEMORISE (fast version, target 3 min):
+k get pc
+k create pc high-priority --value=<highest-1>
+k edit deploy web -n shop   # priorityClassName: high-priority (above containers:)
+k get pods -n shop -o custom-columns=NAME:.metadata.name,CLASS:.spec.priorityClassName
+
+
+==================== PAGE 34 · Share a node's resources between pods ====================
+EXAM QUESTION:
+In namespace `shop`, deployment `web` runs `3` replicas, all on node `node01`. Set CPU and memory requests so that the three pods share the node's available resources equally. Leave roughly 10% headroom so the node stays stable. All 3 pods must be Running afterwards.
+WRITE DOWN: namespace = `shop` · deployment = `web` · 3 replicas · node = `node01` · 10% headroom
+
+WORDS YOU NEED:
+- Allocatable = how much CPU and memory a node offers to pods in total.
+
+- Allocated (requests) = how much of that is already reserved by the pods running there.
+
+- Request = what one pod reserves. The scheduler only places a pod on a node if allocatable − already requested ≥ the pod&#39;s request. Ask for too much and the pod stays Pending.
+
+SPOT THE PATTERN: Compute requests from node allocatable, split across replicas
+  "share the node's available resources equally" → (allocatable − already requested by others) ÷ 3
+  "Leave roughly 10% headroom" → Multiply the free amount by 0.9, round down
+  "All 3 pods must be Running afterwards" → Scale to 0 first, set requests, scale back to 3 and check
+
+IN PLAIN WORDS:
+A calculation, then one command:
+
+Copy(allocatable − already requested) × 0.9 ÷ 3  =  request per pod
+
+SET UP IN KILLERCODA:
+k delete ns shop --ignore-not-found
+k create ns shop
+cat <<EOF | k apply -f -
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: shop
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: node01
+      containers:
+      - name: nginx
+        image: nginx:1.27
+EOF
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Step 1. Take the deployment out of the calculation
+   $ k scale deploy web --replicas=0 -n shop
+   Now the node&#39;s numbers show only what OTHER pods use.
+2. Step 2. Read the two numbers
+   $ k describe node node01 | grep -A7 "Allocatable:"
+   $ k describe node node01 | grep -A6 "Allocated resources:"
+   Example output:
+   YOU SEE: Allocatable:
+              cpu:       1
+              memory:    1843756Ki
+            ...
+            Allocated resources:
+              Resource   Requests     Limits
+              cpu        250m (25%)   0 (0%)
+              memory     200Mi (11%)  ...
+3. Step 3. Calculate
+   Convert first: 1 CPU = 1000m. Memory in Ki ÷ 1024 = Mi → 1843756Ki ≈ 1800Mi.
+   | 
+   
+    | 
+    | CPU
+    | Memory
+   
+    | Allocatable
+    | 1000m
+    | 1800Mi
+   
+    | − already requested
+    | − 250m
+    | − 200Mi
+   
+    | = free
+    | 750m
+    | 1600Mi
+   
+    | × 0.9 (keep 10%)
+    | 675m
+    | 1440Mi
+   
+    | ÷ 3 pods
+    | 225m
+    | 480Mi
+   
+    | round DOWN
+    | 220m
+    | 480Mi
+   Use YOUR numbers. Always round down.
+4. Step 4. Set the requests and bring the pods back
+   $ k set resources deploy web -n shop --requests=cpu=220m,memory=480Mi
+   $ k scale deploy web --replicas=3 -n shop
+   Only if the question also asks for limits: add --limits=cpu=220m,memory=480Mi.
+5. Closing routine
+   $ k get pods -n shop -o wide
+   You want 3 pods, all Running, all on node01.
+   $ k describe node node01 | grep -A6 "Allocated resources:"
+   You want CPU and memory requests around 90%, not above 100%.
+
+IF SOMETHING GOES WRONG:
+| 
+
+ | You see
+ | Cause
+ | Fix
+
+ | one pod Pending, Events: Insufficient cpu (or memory)
+ | the requests are a bit too big
+ | lower them by 10% and run step 4 again
+
+ | the pod has init containers too
+ | they also need room
+ | k edit deploy web -n shop and give the init containers the same resources: block
+
+ | the deployment has 2 containers per pod
+ | set resources applies the values to EVERY container
+ | divide by (pods × containers), or name one container: -c <name>
+
+TRAPS TO AVOID:
+- Using Capacity instead of Allocatable
+- Counting web's own current requests as used (scale to 0 first)
+- Setting limits instead of requests
+
+VERIFY AGAINST THE QUESTION:
+- requests set: $ k get deploy web -n shop -o jsonpath='{..resources}'  → must see: requests cpu/memory
+- all Running: $ k get pods -n shop -o wide  → must see: 3 pods Running on node01
+
+MEMORISE (fast version, target 6 min):
+k scale deploy web --replicas=0 -n shop
+k describe node node01 | grep -A7 'Allocatable:'
+k describe node node01 | grep -A6 'Allocated resources:'
+k set resources deploy web -n shop --requests=cpu=<X>m,memory=<Y>Mi   # (free × 0.9) ÷ 3
+k scale deploy web --replicas=3 -n shop; k get pods -n shop
+
+
+==================== PAGE 35 · ConfigMap and Secret in a pod ====================
+EXAM QUESTION:
+In namespace `app`:
+1. Create a ConfigMap named `app-cfg` with the key `LOG_LEVEL` and value `debug`.
+2. Create a Secret named `db-sec` with the key `password` and value `s3cret`.
+3. Create a pod named `api` with image `nginx:1.27`. All keys of the ConfigMap must be available as environment variables. The Secret must be mounted as files under `/etc/db`.
+WRITE DOWN: namespace = `app` · ConfigMap = `app-cfg` (`LOG_LEVEL=debug`) · Secret = `db-sec` (`password=s3cret`) · pod = `api`, `nginx:1.27` · mount path = `/etc/db`
+
+WORDS YOU NEED:
+- ConfigMap = holds plain settings as KEY=VALUE. Secret = the same, for sensitive values (passwords).
+
+- As environment variables = every key becomes a variable inside the container. Written with envFrom: at CONTAINER level.
+
+- As files (a volume) = every key becomes a file in a folder inside the container; the file&#39;s content is the value. Needs two blocks: volumes: at POD level and volumeMounts: at CONTAINER level, linked by the same name:.
+
+SPOT THE PATTERN: ConfigMap as env (envFrom) + Secret as volume in a pod
+  "with the key `LOG_LEVEL` and value `debug`" → k create cm app-cfg --from-literal=LOG_LEVEL=debug
+  "All keys of the ConfigMap must be available as environment variables" → envFrom: - configMapRef: name: app-cfg
+  "The Secret must be mounted as files under `/etc/db`" → volumes: secret.secretName db-sec + volumeMounts mountPath /etc/db
+
+IN PLAIN WORDS:
+Two one-line commands, then a pod YAML to which you add two blocks: envFrom (for the ConfigMap) and volumes + volumeMounts (for the Secret).
+
+SET UP IN KILLERCODA:
+k delete ns app --ignore-not-found
+k create ns app
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Step 1. Create the ConfigMap and the Secret
+   $ k create cm app-cfg --from-literal=LOG_LEVEL=debug -n app
+   $ k create secret generic db-sec --from-literal=password=s3cret -n app
+2. Step 2. Generate the pod YAML (no typing)
+   $ k run api --image=nginx:1.27 -n app --dry-run=client -o yaml > pod.yaml
+   $ vim pod.yaml
+   --dry-run=client -o yaml = print the YAML, create nothing. You see:
+   YOU SEE: spec:
+              containers:
+              - image: nginx:1.27
+                name: api
+                resources: {}
+              dnsPolicy: ClusterFirst
+              restartPolicy: Always
+3. Step 3. Where to copy the two blocks from
+   | 
+   
+    | Block
+    | Docs search
+    | Page
+    | Copy
+   
+    | envFrom
+    | configmap
+    | "Configure a Pod to Use a ConfigMap" → heading "Configure all key-value pairs in a ConfigMap as container environment variables"
+    | the 3 lines envFrom: / - configMapRef: / name:
+   
+    | Secret volume
+    | secret volume
+    | "Distribute Credentials Securely Using Secrets" → heading "Create a Pod that has access to the secret data through a Volume"
+    | the volumeMounts: block and the volumes: block
+4. Step 4. Add the two blocks
+   Lines marked # ADD are new. Do not type the # ADD text.
+   $ spec:
+   $ containers:
+   $ - image: nginx:1.27
+   $ name: api
+   $ resources: {}
+   $ envFrom:
+   $ - configMapRef:
+   $ name: app-cfg
+   $ volumeMounts:
+   $ - name: db
+   $ mountPath: /etc/db
+   $ volumes:
+   $ - name: db
+   $ secret:
+   $ secretName: db-sec
+   $ dnsPolicy: ClusterFirst
+   $ restartPolicy: Always
+   How it reads: - envFrom → "take every key of ConfigMap app-cfg and make it an environment variable" - volumes → "this pod has storage called db, and its content is Secret db-sec" - volumeMounts → "show storage db inside the container at /etc/db"
+   db is just a linking name you choose. It must be the same in both blocks.
+   Save with Esc, :wq. Then:
+   YOU SEE: k apply -f pod.yaml
+5. Closing routine
+   $ k get pod api -n app
+   $ k exec api -n app -- env | grep LOG_LEVEL
+   $ k exec api -n app -- ls /etc/db
+   $ k exec api -n app -- cat /etc/db/password
+
+IF SOMETHING GOES WRONG:
+| 
+
+ | You see
+ | Cause
+ | Fix
+
+ | STATUS CreateContainerConfigError
+ | the ConfigMap or Secret name in the pod does not exist
+ | k describe pod api -n app names it. k delete pod api -n app, fix pod.yaml, apply again.
+
+ | error validating data: unknown field "volumes"
+ | volumes: is indented under the container
+ | move it to pod level (same column as containers:)
+
+ | unknown field "secretName" under configMap
+ | wrong word
+ | Secret volume uses secretName:. ConfigMap volume uses name:.
+
+ | A pod cannot be changed after creation (for these fields)
+ | 
+ | k delete pod api -n app, fix the file, apply again
+
+Variants:
+
+- Only ONE key as a variable: use env: with valueFrom: → configMapKeyRef: (name: + key:). Same docs page, heading "Define container environment variables using ConfigMap data".
+
+- Secret as environment variables: envFrom: → - secretRef: → name: db-sec.
+
+- ConfigMap as files: volumes: → configMap: → name: app-cfg.
+
+TRAPS TO AVOID:
+- Using env/valueFrom for a single key instead of envFrom
+- secretName vs name: secret volumes use secretName
+- Forgetting -n app on cm/secret/pod
+
+VERIFY AGAINST THE QUESTION:
+- env set: $ k exec api -n app -- env | grep LOG_LEVEL  → must see: LOG_LEVEL=debug
+- secret as file: $ k exec api -n app -- cat /etc/db/password  → must see: s3cret
+
+MEMORISE (fast version, target 6 min):
+k create cm app-cfg --from-literal=LOG_LEVEL=debug -n app
+k create secret generic db-sec --from-literal=password=s3cret -n app
+k run api --image=nginx:1.27 -n app --dry-run=client -o yaml > pod.yaml
+vim pod.yaml   # envFrom: - configMapRef: name: app-cfg; volumeMounts /etc/db; volumes: secret: secretName: db-sec
+k apply -f pod.yaml
+
+
+==================== PAGE 36 · Taint, toleration, nodeSelector ====================
+EXAM QUESTION:
+1. Taint node `node01` with `env=prod:NoSchedule`.
+2. Label node `node01` with `env=prod`.
+3. Create a pod named `x` with image `nginx:1.27` in namespace `default` that tolerates the taint and is scheduled on `node01`.
+WRITE DOWN: node = `node01` · taint = `env=prod:NoSchedule` · label = `env=prod` · pod = `x`, `nginx:1.27`
+
+WORDS YOU NEED:
+- Taint = a mark on a NODE, written key=value:effect. With effect NoSchedule, the scheduler puts no new pod on that node, unless the pod tolerates the taint.
+
+- Toleration = lines in a POD that say "I accept this taint". It only ALLOWS the pod on that node. It does not send the pod there.
+
+- nodeSelector = lines in a pod that say "only put me on a node with this label". This is what SENDS the pod to a node.
+
+To get a pod onto a tainted node for sure, you need both: toleration (allowed) + nodeSelector (sent).
+
+SPOT THE PATTERN: Taint + label node; pod with toleration + nodeSelector
+  "Taint node `node01` with `env=prod:NoSchedule`" → k taint node node01 env=prod:NoSchedule
+  "tolerates the taint" → tolerations: key env, operator Equal, value prod, effect NoSchedule
+  "is scheduled on `node01`" → nodeSelector: env: prod (a toleration alone doesn't force placement)
+
+IN PLAIN WORDS:
+Two commands on the node. Then a pod YAML with two added blocks at pod level.
+
+SET UP IN KILLERCODA:
+k delete pod x --ignore-not-found
+k taint node node01 env=prod:NoSchedule- 2>/dev/null
+k label node node01 env- 2>/dev/null
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Step 1. Taint and label the node
+   $ k taint node node01 env=prod:NoSchedule
+   $ k label node node01 env=prod
+   Check:
+   YOU SEE: k describe node node01 | grep -i taints
+            k get node node01 --show-labels | grep -o "env=prod"
+2. Step 2. Generate the pod YAML
+   $ k run x --image=nginx:1.27 --dry-run=client -o yaml > x.yaml
+   $ vim x.yaml
+3. Step 3. Where to copy the toleration from
+   1. Open https://kubernetes.io/docs → search taints tolerations → click "Taints and Tolerations"    (direct link: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/ ) 2. Near the top, copy this block:
+   YOU SEE: tolerations:
+            - key: "key1"
+              operator: "Equal"
+              value: "value1"
+              effect: "NoSchedule"
+4. Step 4. Add two blocks at pod level
+   Lines marked # ADD are new.
+   $ spec:
+   $ nodeSelector:
+   $ env: prod
+   $ tolerations:
+   $ - key: "env"
+   $ operator: "Equal"
+   $ value: "prod"
+   $ effect: "NoSchedule"
+   $ containers:
+   $ - image: nginx:1.27
+   $ name: x
+   How the taint maps to the toleration:
+   | 
+   
+    | Taint env=prod:NoSchedule
+    | Toleration line
+   
+    | env
+    | key: "env"
+   
+    | prod
+    | value: "prod"
+   
+    | NoSchedule
+    | effect: "NoSchedule"
+   Save with Esc, :wq. Then:
+   YOU SEE: k apply -f x.yaml
+5. Closing routine
+   $ k get pod x -o wide
+   You want Running and NODE node01.
+
+IF SOMETHING GOES WRONG:
+| 
+
+ | You see
+ | Cause
+ | Fix
+
+ | pod Pending, Events: had untolerated taint {env: prod}
+ | key, value or effect in the toleration differ from the taint
+ | k delete pod x, fix x.yaml, apply again
+
+ | pod Pending, Events: didn&#39;t match Pod&#39;s node affinity/selector
+ | the node label is missing or different
+ | k label node node01 env=prod
+
+ | pod is Running but on another node
+ | nodeSelector is missing
+ | add it (toleration alone does not send the pod)
+
+Related commands:
+
+Copyk taint node node01 env=prod:NoSchedule-     # remove a taint: same text + "-" at the end
+k label node node01 env-                     # remove a label: key + "-"
+k describe node <node> | grep -i taints      # see taints
+
+- NoSchedule = no NEW pods. NoExecute = also removes pods that are already running there.
+
+- A toleration for "any value": operator: "Exists" and no value: line.
+
+TRAPS TO AVOID:
+- Only adding the toleration — pod may land on another node
+- Putting tolerations under the container
+- Typo in effect (NoSchedule is case-sensitive)
+
+VERIFY AGAINST THE QUESTION:
+- taint + label: $ k describe node node01 | grep -E 'Taints|env='  → must see: env=prod:NoSchedule and env=prod
+- pod on node01: $ k get pod x -o wide  → must see: Running, NODE node01
+
+MEMORISE (fast version, target 5 min):
+k taint node node01 env=prod:NoSchedule
+k label node node01 env=prod
+k run x --image=nginx:1.27 --dry-run=client -o yaml > x.yaml
+vim x.yaml   # spec: nodeSelector: env: prod; tolerations: - key: env operator: Equal value: prod effect: NoSchedule
+k apply -f x.yaml; k get pod x -o wide
+
+
+==================== PAGE 37 · Rolling update and rollback ====================
+EXAM QUESTION:
+In namespace `shop`:
+1. Update deployment `web` to image `nginx:1.28` and wait until the rollout is complete.
+2. Then roll the deployment back to the previous revision.
+3. Write the image that is in use after the rollback to `/root/image.txt`.
+WRITE DOWN: namespace = `shop` · deployment = `web` · new image = `nginx:1.28` · file = `/root/image.txt`
+
+WORDS YOU NEED:
+- Rolling update = when you change a Deployment&#39;s image, it replaces the pods a few at a time, so the app stays available.
+
+- Revision = each change of the pod template creates a new numbered revision. The Deployment keeps the old ones.
+
+- Rollback = go back to an earlier revision: k rollout undo.
+
+SPOT THE PATTERN: set image → rollout status → undo → record image
+  "wait until the rollout is complete" → k rollout status deploy/web -n shop
+  "roll the deployment back to the previous revision" → k rollout undo deploy/web -n shop
+  "Write the image that is in use after the rollback" → jsonpath of the container image > /root/image.txt
+
+IN PLAIN WORDS:
+Three commands: change the image, watch it finish, undo. Then one output into a file.
+
+SET UP IN KILLERCODA:
+k delete ns shop --ignore-not-found
+k create ns shop
+k create deploy web --image=nginx:1.27 --replicas=3 -n shop
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Step 1. Find the container name
+   $ k get deploy web -n shop -o wide
+   Read the CONTAINERS column: nginx. And IMAGES: nginx:1.27.
+2. Step 2. Update and wait
+   $ k set image deploy/web nginx=nginx:1.28 -n shop
+   $ k rollout status deploy/web -n shop
+   You want deployment "web" successfully rolled out.
+3. Step 3. Look at the history, then roll back
+   $ k rollout history deploy/web -n shop
+   You see revision 1 and revision 2.
+   $ k rollout undo deploy/web -n shop
+   $ k rollout status deploy/web -n shop
+   To go to one specific revision instead: k rollout undo deploy/web -n shop --to-revision=1
+4. Step 4. Write the image into the file
+   $ k get deploy web -n shop -o jsonpath='{.spec.template.spec.containers[0].image}' > /root/image.txt
+   If you cannot remember the jsonpath, this is just as good: read the image with k get deploy web -n shop -o wide, then echo nginx:1.27 > /root/image.txt.
+5. Closing routine
+   $ cat /root/image.txt
+   $ k get deploy web -n shop
+
+IF SOMETHING GOES WRONG:
+| 
+
+ | You see
+ | Cause
+ | Fix
+
+ | rollout status never finishes
+ | the new image does not exist (question 1)
+ | k rollout undo deploy/web -n shop
+
+ | unable to find container named ...
+ | wrong name left of =
+ | use the CONTAINERS column from step 1
+
+Related commands:
+
+Copyk scale deploy web --replicas=5 -n shop
+k rollout restart deploy/web -n shop         # restart all pods, same image
+k rollout pause deploy/web -n shop           # / resume
+
+TRAPS TO AVOID:
+- Wrong container name in set image — check with -o wide first
+- Writing nginx:1.28 to the file (that's before rollback)
+- Forgetting -n shop
+
+VERIFY AGAINST THE QUESTION:
+- rolled back: $ k rollout history deploy/web -n shop  → must see: new top revision
+- file correct: $ cat /root/image.txt  → must see: old image (not nginx:1.28)
+
+MEMORISE (fast version, target 3 min):
+k get deploy web -n shop -o wide   # container name
+k set image deploy/web nginx=nginx:1.28 -n shop
+k rollout status deploy/web -n shop
+k rollout undo deploy/web -n shop
+k get deploy web -n shop -o jsonpath='{.spec.template.spec.containers[0].image}' > /root/image.txt
+
+
+==================== PAGE 38 · PV + PVC + Pod (build the whole chain) ====================
+EXAM QUESTION:
+1. Create a PersistentVolume named `pv-data`: capacity `1Gi`, access mode `ReadWriteOnce`, hostPath `/mnt/data`, storage class `manual`.
+2. In namespace `storage`, create a PersistentVolumeClaim named `pvc-data` that requests `500Mi`, access mode `ReadWriteOnce`, storage class `manual`.
+3. In namespace `storage`, create a pod named `web-store` with image `nginx:1.27` that mounts the claim at `/usr/share/nginx/html`.
+
+WORDS YOU NEED:
+- PV = a disk. It belongs to the whole cluster, so it has NO namespace.
+
+- PVC = a request for a disk. It lives in a namespace. Kubernetes connects it to a PV that matches.
+
+- Pod = uses the PVC by its name. The PVC and the pod must be in the SAME namespace.
+
+The chain is always: Pod → PVC → PV
+
+In question 40 one part of the chain already existed. Here nothing exists. You build all three, from right to left: first the PV, then the PVC, then the pod.
+
+SPOT THE PATTERN: PV → PVC (Bound) → Pod mounting the claim
+  "hostPath `/mnt/data`, storage class `manual`" → PV: hostPath.path /mnt/data, storageClassName: manual
+  "requests `500Mi`, access mode `ReadWriteOnce`, storage class `manual`" → PVC must match class + mode to bind to pv-data
+  "mounts the claim at `/usr/share/nginx/html`" → volumes: persistentVolumeClaim.claimName pvc-data + volumeMounts
+
+IN PLAIN WORDS:
+CopyPod ✗   →   PVC ✗   →   PV ✗
+Make a disk. Make a request that matches the disk. Make a pod that uses the request.
+
+Kubernetes connects a PVC to a PV by comparing three values. They are all in the question:
+
+ | 
+
+ | Value
+ | PV (the disk)
+ | PVC (the request)
+ | Rule
+
+ | storageClassName
+ | manual
+ | manual
+ | must be the same
+
+ | accessModes
+ | ReadWriteOnce
+ | ReadWriteOnce
+ | must be the same
+
+ | size
+ | 1Gi
+ | 500Mi
+ | the disk must be big enough. 1Gi is bigger than 500Mi, so it fits.
+
+SET UP IN KILLERCODA:
+k delete ns storage --ignore-not-found
+k delete pv pv-data --ignore-not-found
+k create ns storage
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Step 1. Open ONE docs page. It has all three pieces.
+   There is no k create pv and no k create pvc command. So you copy.
+   1. Open https://kubernetes.io/docs 2. In the search box type: persistent volume pod 3. Click the result named: "Configure a Pod to Use a PersistentVolume for Storage"    (direct link: https://kubernetes.io/docs/tutorials/configuration/configure-persistent-volume-storage/ )
+   Keep this page open. You will copy three boxes from it, one per step:
+   | 
+   
+    | Step
+    | Heading on the page
+    | Box to copy
+   
+    | 2
+    | "Create a PersistentVolume"
+    | pods/storage/pv-volume.yaml
+   
+    | 3
+    | "Create a PersistentVolumeClaim"
+    | pods/storage/pv-claim.yaml
+   
+    | 4
+    | "Create a Pod"
+    | pods/storage/pv-pod.yaml
+2. Step 2. The PV (the disk)
+   Copy the box pods/storage/pv-volume.yaml. This is what you copied:
+   YOU SEE: apiVersion: v1
+            kind: PersistentVolume
+            metadata:
+              name: task-pv-volume
+              labels:
+                type: local
+            spec:
+              storageClassName: manual
+              capacity:
+                storage: 10Gi
+              accessModes:
+                - ReadWriteOnce
+              hostPath:
+                path: "/mnt/data"
+   $ vim pv.yaml
+   Press i, paste. Change 2 lines, delete 2 lines:
+   | 
+   
+    | #
+    | The docs say
+    | You change it to
+    | Why
+   
+    | 1
+    | name: task-pv-volume
+    | name: pv-data
+    | the name the question asks for
+   
+    | 2
+    | storage: 10Gi
+    | storage: 1Gi
+    | the size the question asks for
+   
+    | 3
+    | labels: and type: local
+    | delete both lines (dd twice)
+    | the question did not ask for labels
+   storageClassName: manual, ReadWriteOnce and /mnt/data already match the question. Lucky. In the exam, check each one against YOUR question.
+   No namespace: line. A PV has no namespace.
+   The finished file:
+   YOU SEE: apiVersion: v1
+            kind: PersistentVolume
+            metadata:
+              name: pv-data
+            spec:
+              storageClassName: manual
+              capacity:
+                storage: 1Gi
+              accessModes:
+                - ReadWriteOnce
+              hostPath:
+                path: "/mnt/data"
+   Save with Esc, :wq. Then:
+   YOU SEE: k apply -f pv.yaml
+            k get pv
+   You want:
+   YOU SEE: NAME      CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   AGE
+            pv-data   1Gi        RWO            Retain           Available           manual         5s
+   STATUS Available = the disk exists and nobody uses it yet.
+   $ Pod ✗   →   PVC ✗   →   PV ✓
+3. Step 3. The PVC (the request)
+   Copy the box pods/storage/pv-claim.yaml. This is what you copied:
+   YOU SEE: apiVersion: v1
+            kind: PersistentVolumeClaim
+            metadata:
+              name: task-pv-claim
+            spec:
+              storageClassName: manual
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 3Gi
+   $ vim pvc.yaml
+   Press i, paste. Change 2 lines, add 1 line:
+   | 
+   
+    | #
+    | The docs say
+    | You change it to
+    | Why
+   
+    | 1
+    | name: task-pv-claim
+    | name: pvc-data
+    | the name the question asks for
+   
+    | 2
+    | (no namespace line)
+    | add namespace: storage under name:
+    | a PVC lives in a namespace
+   
+    | 3
+    | storage: 3Gi
+    | storage: 500Mi
+    | the size the question asks for
+   The finished file:
+   YOU SEE: apiVersion: v1
+            kind: PersistentVolumeClaim
+            metadata:
+              name: pvc-data
+              namespace: storage
+            spec:
+              storageClassName: manual
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 500Mi
+   Save. Then:
+   YOU SEE: k apply -f pvc.yaml
+            k get pvc -n storage
+   You want:
+   YOU SEE: NAME       STATUS   VOLUME    CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+            pvc-data   Bound    pv-data   1Gi        RWO            manual         5s
+   Check two columns: STATUS = Bound, VOLUME = pv-data.
+   CAPACITY shows 1Gi although you asked for 500Mi. That is correct. The PVC gets the WHOLE disk it was connected to. Do not try to fix it.
+   Do not go to step 4 until you see Bound. If the PVC is not bound, the pod will never start.
+   $ Pod ✗   →   PVC ✓   →   PV ✓
+4. Step 4. The pod
+   Copy the box pods/storage/pv-pod.yaml. This is what you copied:
+   YOU SEE: apiVersion: v1
+            kind: Pod
+            metadata:
+              name: task-pv-pod
+            spec:
+              volumes:
+                - name: task-pv-storage
+                  persistentVolumeClaim:
+                    claimName: task-pv-claim
+              containers:
+                - name: task-pv-container
+                  image: nginx
+                  ports:
+                    - containerPort: 80
+                      name: "http-server"
+                  volumeMounts:
+                    - mountPath: "/usr/share/nginx/html"
+                      name: task-pv-storage
+   $ vim pod.yaml
+   Press i, paste. Change 3 lines, add 1 line:
+   | 
+   
+    | #
+    | The docs say
+    | You change it to
+    | Why
+   
+    | 1
+    | name: task-pv-pod
+    | name: web-store
+    | the name the question asks for
+   
+    | 2
+    | (no namespace line)
+    | add namespace: storage under name:
+    | must be the same namespace as the PVC
+   
+    | 3
+    | claimName: task-pv-claim
+    | claimName: pvc-data
+    | the NAME of the PVC from step 3
+   
+    | 4
+    | image: nginx
+    | image: nginx:1.27
+    | the image the question asks for
+   mountPath: "/usr/share/nginx/html" already matches. In the exam, check it against YOUR question.
+   Leave everything else alone. In particular, task-pv-storage appears twice (under volumes and under volumeMounts). That is just a label that links the two blocks. It must be the same in both places, so do not touch it.
+   How the pod file reads, in plain words: - volumes: = "this pod has a disk, and it comes from the PVC called pvc-data" - volumeMounts: = "show that disk inside the container at the folder /usr/share/nginx/html"
+   Save. Then:
+   YOU SEE: k apply -f pod.yaml
+5. Closing routine
+   $ k get pod -n storage
+   You want web-store   1/1   Running. ContainerCreating for a few seconds is normal. Run it again.
+   $ k get pv
+   You want pv-data, STATUS Bound, CLAIM storage/pvc-data.
+   The chain is complete:
+   YOU SEE: Pod ✓   →   PVC ✓   →   PV ✓
+
+IF SOMETHING GOES WRONG:
+| 
+
+ | You see
+ | Cause
+ | Fix
+
+ | PVC Pending
+ | class or access mode differ between pv.yaml and pvc.yaml, or the PVC asks for MORE than the PV has
+ | k describe pvc pvc-data -n storage, read Events. k delete pvc pvc-data -n storage, fix the file, apply again.
+
+ | PVC Bound, but VOLUME is a long name like pvc-3f2a...
+ | the storageClassName line is missing in pvc.yaml, so the default class made a new disk (the question 40 trap)
+ | delete the PVC, put storageClassName: manual back, apply again
+
+ | Pod Pending, Events say persistentvolumeclaim "..." not found
+ | claimName has a typo, or the pod is in a different namespace than the PVC
+ | k delete pod web-store -n storage, fix pod.yaml, apply again
+
+ | Pod Pending, Events say unbound immediate PersistentVolumeClaims
+ | you skipped the Bound check in step 3
+ | fix the PVC first
+
+ | manual vs Manual
+ | class names are case-sensitive
+ | make them identical
+
+A PVC and a pod cannot be edited in these fields after creation. Delete, fix the file, apply again. It takes 20 seconds.
+
+TRAPS TO AVOID:
+- Putting namespace on the PV (PVs are cluster-scoped)
+- PVC storageClassName missing → uses default class, stays Pending
+- Continuing before PVC shows Bound
+
+VERIFY AGAINST THE QUESTION:
+- PVC bound to PV: $ k get pvc -n storage  → must see: pvc-data Bound pv-data
+- pod running: $ k get pod web-store -n storage  → must see: 1/1 Running
+
+MEMORISE (fast version, target 8 min):
+docs: 'configure persistent volume storage' → 3 boxes: PV, PVC, Pod
+pv.yaml: name pv-data, 1Gi, RWO, storageClassName manual, hostPath /mnt/data (no namespace)
+pvc.yaml: name pvc-data, namespace storage, 500Mi, RWO, manual
+pod.yaml: web-store, namespace storage, nginx:1.27, claimName pvc-data, mountPath /usr/share/nginx/html
+k get pvc -n storage; k get pod -n storage
+
+
+==================== PAGE 39 · StorageClass (create one and make it the default) ====================
+EXAM QUESTION:
+1. Create a StorageClass named `fast` with provisioner `rancher.io/local-path` and volume binding mode `WaitForFirstConsumer`.
+2. Make `fast` the default StorageClass.
+3. No other StorageClass may be marked as default. Do not delete or modify anything else.
+
+WORDS YOU NEED:
+- StorageClass = a template. When a PVC asks for a disk and no PV exists, Kubernetes uses the template to CREATE a new PV automatically.
+
+- Provisioner = the program that actually makes the disk. It is just a name inside the StorageClass. You copy it from the question.
+
+- Default StorageClass = the template used when a PVC does not name any class. It shows as (default) in k get sc.
+
+You already met the default class in question 40: it is the thing that silently creates a new empty disk when a PVC forgets storageClassName.
+
+One more setting you will be asked for:
+
+ | 
+
+ | volumeBindingMode
+ | Meaning
+
+ | Immediate
+ | create the disk the moment the PVC appears
+
+ | WaitForFirstConsumer
+ | wait until a pod actually uses the PVC, then create the disk
+
+SPOT THE PATTERN: New StorageClass as default; un-default the old one
+  "provisioner `rancher.io/local-path`" → provisioner: rancher.io/local-path
+  "volume binding mode `WaitForFirstConsumer`" → volumeBindingMode: WaitForFirstConsumer
+  "No other StorageClass may be marked as default" → Patch the old default: is-default-class "false"
+
+IN PLAIN WORDS:
+Three small jobs:
+
+Copy1. make a new template called fast
+2. put the "default" mark on fast
+3. take the "default" mark OFF the old one
+The "default" mark is an annotation (a note on the object) with this exact text:
+storageclass.kubernetes.io/is-default-class: "true"
+You never type it. You copy it from the docs.
+
+SET UP IN KILLERCODA:
+k delete sc fast standard --ignore-not-found
+k patch sc local-path -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}' 2>/dev/null
+cat <<EOF | k apply -f -
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: standard
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: rancher.io/local-path
+volumeBindingMode: Immediate
+EOF
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Step 1. Look at what exists
+   $ k get sc
+   You see something like:
+   YOU SEE: NAME                 PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE   ALLOWVOLUMEEXPANSION   AGE
+            local-path           rancher.io/local-path   Delete          WaitForFirstConsumer   false               2h
+            standard (default)   rancher.io/local-path   Delete          Immediate              false               10s
+   Read one thing: which name has (default) next to it. Here: standard. Write it down. You need it in step 5.
+   (sc is short for storageclass. A StorageClass has no namespace, so there is no -n.)
+2. Step 2. Get the StorageClass text from the docs
+   There is no k create storageclass command. So you copy.
+   1. Open https://kubernetes.io/docs 2. In the search box type: storage classes 3. Click the result named: "Storage Classes"    (direct link: https://kubernetes.io/docs/concepts/storage/storage-classes/ ) 4. Near the top, under the heading "StorageClass objects", find the sentence "Here&#39;s an example of a StorageClass:" 5. Copy the box right below it.
+   This is what you copied:
+   YOU SEE: apiVersion: storage.k8s.io/v1
+            kind: StorageClass
+            metadata:
+              name: low-latency
+              annotations:
+                storageclass.kubernetes.io/is-default-class: "false"
+            provisioner: csi-driver.example-vendor.example
+            reclaimPolicy: Retain # default value is Delete
+            allowVolumeExpansion: true
+            mountOptions:
+              - discard # this might enable UNMAP / TRIM at the block storage layer
+            volumeBindingMode: WaitForFirstConsumer
+            parameters:
+              guaranteedReadWriteLatency: "true" # provider-specific
+   Good news: the long annotation is already in there. So is volumeBindingMode.
+3. Step 3. Paste it into a file, change 3 lines, delete 6 lines
+   $ vim sc.yaml
+   Press i, paste.
+   Change 3 lines:
+   | 
+   
+    | #
+    | The docs say
+    | You change it to
+    | Why
+   
+    | 1
+    | name: low-latency
+    | name: fast
+    | the name the question asks for
+   
+    | 2
+    | is-default-class: "false"
+    | is-default-class: "true"
+    | this IS the "make it default" job
+   
+    | 3
+    | provisioner: csi-driver.example-vendor.example
+    | provisioner: rancher.io/local-path
+    | the provisioner the question gives
+   Delete 6 lines (the question did not ask for them; dd deletes a line in vim):
+   YOU SEE: reclaimPolicy: Retain ...
+            allowVolumeExpansion: true
+            mountOptions:
+              - discard ...
+            parameters:
+              guaranteedReadWriteLatency: ...
+   volumeBindingMode: WaitForFirstConsumer stays. It already matches the question. (If your question says Immediate, change that word.)
+   The finished file, 8 lines:
+   YOU SEE: apiVersion: storage.k8s.io/v1
+            kind: StorageClass
+            metadata:
+              name: fast
+              annotations:
+                storageclass.kubernetes.io/is-default-class: "true"
+            provisioner: rancher.io/local-path
+            volumeBindingMode: WaitForFirstConsumer
+   Press Esc, type :wq, press Enter.
+   Rule for deleting: keep only what the question names. Extra settings copied from an example can make the grader mark it wrong, and parameters meant for another provisioner can break disk creation.
+4. Step 4. Create it
+   $ k apply -f sc.yaml
+   $ k get sc
+   You see:
+   YOU SEE: NAME                 PROVISIONER             ...
+            fast (default)       rancher.io/local-path   ...
+            local-path           rancher.io/local-path   ...
+            standard (default)   rancher.io/local-path   ...
+   Jobs 1 and 2 are done. But look: two names have (default). The question says only one may. That is job 3.
+5. Step 5. Take the default mark off the old class
+   Do not type this command. Copy it from the docs.
+   1. Same search box, type: change default storage class 2. Click the result named: "Change the default StorageClass"    (direct link: https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/ ) 3. Find step 2 on that page: "Mark the default StorageClass as non-default". Copy the command under it.
+   This is what you copied:
+   YOU SEE: kubectl patch storageclass standard -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
+   Change ONE word: standard → the name you wrote down in step 1. (In this practice it already is standard.) Then run it.
+   What it does: patch changes one small part of an object. Here it sets the annotation to "false" on the old class. Nothing else on that class is touched, so you respect "do not modify anything else".
+   If you prefer no long command: k edit sc standard, find the line storageclass.kubernetes.io/is-default-class: "true", change "true" to "false", save with :wq. Same result.
+6. Closing routine
+   $ k get sc
+   You want (default) next to fast only:
+   YOU SEE: NAME             PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ...
+            fast (default)   rancher.io/local-path   Delete          WaitForFirstConsumer   ...
+            local-path       rancher.io/local-path   Delete          WaitForFirstConsumer   ...
+            standard         rancher.io/local-path   Delete          Immediate              ...
+   Check three columns on the fast row: the name has (default), PROVISIONER is what the question gave, VOLUMEBINDINGMODE is WaitForFirstConsumer.
+
+TRAPS TO AVOID:
+- Forgetting to un-default the old class → two (default)
+- Deleting the old StorageClass (forbidden)
+- Annotation value not quoted (must be the string "true")
+
+VERIFY AGAINST THE QUESTION:
+- fast exists correctly: $ k get sc fast  → must see: rancher.io/local-path WaitForFirstConsumer
+- only fast default: $ k get sc  → must see: (default) only next to fast
+
+MEMORISE (fast version, target 5 min):
+k get sc   # note current (default)
+docs: 'storage classes' → copy example; annotations: storageclass.kubernetes.io/is-default-class: "true"
+name: fast; provisioner: rancher.io/local-path; volumeBindingMode: WaitForFirstConsumer
+k apply -f sc.yaml
+k patch sc <old> -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
+
+
+==================== PAGE 40 · Reuse an existing PV (the MariaDB question) ====================
+EXAM QUESTION:
+A MariaDB deployment in namespace `mariadb` was deleted by accident. Its PersistentVolume still exists and holds the data.
+1. Create a PersistentVolumeClaim named `mariadb` in namespace `mariadb`, with access mode `ReadWriteOnce` and `250Mi` of storage. It must bind to the existing PersistentVolume.
+2. Edit `/root/mariadb-deploy.yaml` so the deployment uses this PVC.
+3. Apply the file and make sure the deployment is running.
+
+WORDS YOU NEED:
+- PV = a disk. It exists in the cluster. Here it holds the database files.
+
+- PVC = a request for a disk. A pod cannot use a PV directly. A pod uses a PVC, and Kubernetes connects the PVC to a PV.
+
+The chain is always: Pod → PVC → PV
+
+SPOT THE PATTERN: PVC that binds to an existing PV; point deployment at it
+  "It must bind to the existing PersistentVolume" → Copy storageClassName/accessMode from k get pv; size ≤ PV size
+  "so the deployment uses this PVC" → In the file set claimName: mariadb
+  "make sure the deployment is running" → k get pods -n mariadb → 1/1 Running
+
+IN PLAIN WORDS:
+Look at the chain. Only the last part is left:
+
+CopyPod ✗   →   PVC ✗   →   PV ✓
+You rebuild the two missing parts, so the new database uses the OLD disk and gets its old data back.
+
+SET UP IN KILLERCODA:
+k delete ns mariadb --ignore-not-found
+k delete pv mariadb-pv --ignore-not-found
+k create ns mariadb
+cat <<EOF | k apply -f -
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mariadb-pv
+spec:
+  capacity:
+    storage: 250Mi
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  hostPath:
+    path: /mnt/mariadb
+EOF
+cat > /root/mariadb-deploy.yaml <<EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mariadb
+  namespace: mariadb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mariadb
+  template:
+    metadata:
+      labels:
+        app: mariadb
+    spec:
+      containers:
+      - name: mariadb
+        image: mariadb:11
+        env:
+        - name: MARIADB_ROOT_PASSWORD
+          value: secret
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/mysql
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: ""
+EOF
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Step 1. Look at the old disk
+   $ k get pv
+   You see:
+   YOU SEE: NAME         CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   AGE
+            mariadb-pv   250Mi      RWO            Retain           Available                          1m
+   Read four columns:
+   | 
+   
+    | Column
+    | Value
+    | Meaning
+   
+    | CAPACITY
+    | 250Mi
+    | size of the disk
+   
+    | ACCESS MODES
+    | RWO
+    | short for ReadWriteOnce
+   
+    | STATUS
+    | Available
+    | free; no PVC is using it
+   
+    | STORAGECLASS
+    | (empty)
+    | this disk has NO class. Remember this.
+   Why this step matters: you never write "use disk mariadb-pv" in a PVC. You write what you need, and Kubernetes picks a disk that matches. It compares three things: class, access mode, size. So your PVC must repeat the values you just read.
+2. Step 2. Get the PVC text from the docs
+   There is no k create pvc command. So you copy from the docs. Do not type it from memory.
+   1. Open https://kubernetes.io/docs 2. In the search box type: persistent volume pod 3. Click the result named: "Configure a Pod to Use a PersistentVolume for Storage"    (direct link: https://kubernetes.io/docs/tutorials/configuration/configure-persistent-volume-storage/ ) 4. On the right side of the page, click the heading: "Create a PersistentVolumeClaim" 5. You see a box labelled pods/storage/pv-claim.yaml. Click the copy icon at the top of that box.
+   This is what you copied:
+   YOU SEE: apiVersion: v1
+            kind: PersistentVolumeClaim
+            metadata:
+              name: task-pv-claim
+            spec:
+              storageClassName: manual
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 3Gi
+3. Step 3. Paste it into a file and change 4 things
+   $ vim pvc.yaml
+   Press i, paste, then make these 4 changes:
+   | 
+   
+    | #
+    | The docs say
+    | You change it to
+    | Why
+   
+    | 1
+    | name: task-pv-claim
+    | name: mariadb
+    | the name the question asks for
+   
+    | 2
+    | (no namespace line)
+    | add namespace: mariadb under name:
+    | the question says namespace mariadb
+   
+    | 3
+    | storageClassName: manual
+    | storageClassName: ""
+    | the old disk&#39;s class is empty (step 1)
+   
+    | 4
+    | storage: 3Gi
+    | storage: 250Mi
+    | the size the question asks for
+   accessModes: ReadWriteOnce stays as it is. It already matches.
+   The finished file:
+   YOU SEE: apiVersion: v1
+            kind: PersistentVolumeClaim
+            metadata:
+              name: mariadb
+              namespace: mariadb
+            spec:
+              storageClassName: ""
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 250Mi
+   Press Esc, type :wq, press Enter.
+   About change 3, the one people get wrong: do NOT delete the storageClassName line. If the line is missing, Kubernetes fills in the cluster&#39;s default class. That class then creates a brand-new EMPTY disk for you. Your PVC shows "Bound", everything looks fine, but the database has no data and you lose the points. Writing "" says "no class", which is exactly what the old disk has.
+4. Step 4. Create the PVC and check it connected to the OLD disk
+   $ k apply -f pvc.yaml
+   $ k get pvc -n mariadb
+   You want:
+   YOU SEE: NAME      STATUS   VOLUME       CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+            mariadb   Bound    mariadb-pv   250Mi      RWO                           5s
+   Check two columns: STATUS = Bound, and VOLUME = mariadb-pv (the old disk&#39;s name).
+   The chain is now:
+   YOU SEE: Pod ✗   →   PVC ✓   →   PV ✓
+   If something else shows up:
+   | 
+   
+    | You see
+    | Cause
+    | Fix
+   
+    | STATUS Pending
+    | one of the three values does not match the disk
+    | k describe pvc mariadb -n mariadb, read Events. Then k delete pvc mariadb -n mariadb, fix pvc.yaml, apply again.
+   
+    | VOLUME is a long name like pvc-3f2a...
+    | you lost the storageClassName: "" line, a new empty disk was made
+    | same: delete the PVC, fix the file, apply again
+   (A PVC cannot be edited after creation. Delete and re-create is the normal way.)
+5. Step 5. Tell the app to use the PVC
+   $ vim /root/mariadb-deploy.yaml
+   Type /claimName and press Enter. The cursor jumps to the line.
+   | 
+   
+    | Before
+    | After
+   
+    | claimName: ""
+    | claimName: mariadb
+   claimName is simply the NAME of the PVC you made in step 4. One word changes. Nothing else in this file is touched. Save with Esc, :wq.
+6. Step 6. Start the app
+   $ k apply -f /root/mariadb-deploy.yaml
+7. Closing routine
+   $ k get pods -n mariadb
+   You want 1/1 Running. The first start can take a minute while the image downloads. Run it again if you see ContainerCreating.
+   $ k get pv
+   You want mariadb-pv with STATUS Bound and CLAIM mariadb/mariadb. This proves the old disk is the one in use.
+   The chain is complete:
+   YOU SEE: Pod ✓   →   PVC ✓   →   PV ✓
+
+TRAPS TO AVOID:
+- storageClassName mismatch → PVC Pending
+- PV still Released with an old claimRef — check status before
+- Forgetting namespace: mariadb in the PVC
+
+VERIFY AGAINST THE QUESTION:
+- PVC bound to old PV: $ k get pvc -n mariadb  → must see: mariadb Bound <old PV name>
+- deployment running: $ k get pods -n mariadb  → must see: 1/1 Running
+
+MEMORISE (fast version, target 7 min):
+k get pv   # size, access mode, storage class
+docs: 'persistent volumes' → PVC example → name mariadb, namespace mariadb, RWO, 250Mi, storageClassName <same as PV>
+k apply -f pvc.yaml; k get pvc -n mariadb
+vim /root/mariadb-deploy.yaml   # claimName: mariadb
+k apply -f /root/mariadb-deploy.yaml; k get pods -n mariadb

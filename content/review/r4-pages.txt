@@ -1,0 +1,1947 @@
+
+
+==================== PAGE 209 (Mock 2 task 9) · Helm install + upgrade with values ====================
+EXAM QUESTION:
+ssh cka02009
+Add the Helm repository podinfo (https://stefanprodan.github.io/podinfo). Install chart podinfo/podinfo version 6.7.1 as release web in namespace helm-web (create it) with 2 replicas.
+Then upgrade the release, keeping the same chart version, so that the UI message is "hello cka" (value ui.message). Write the current revision number of the release to /root/helm-rev.txt.
+WRITE DOWN: repo = podinfo · release = web, ns helm-web · version 6.7.1, replicaCount=2 · upgrade: ui.message="hello cka" · file = /root/helm-rev.txt
+
+SPOT THE PATTERN: helm install with --set, upgrade with --reuse-values, read revision
+  "version 6.7.1 as release web in namespace helm-web (create it) with 2 replicas" → helm install web podinfo/podinfo --version 6.7.1 -n helm-web --create-namespace --set replicaCount=2
+  "keeping the same chart version" → --version 6.7.1 again on upgrade
+  "(value ui.message)" → --set ui.message="hello cka" plus --reuse-values so replicas stay 2
+  "Write the current revision number" → helm list → REVISION (2) > /root/helm-rev.txt
+
+IN PLAIN WORDS:
+Install an app from a Helm chart, then change one setting with an upgrade.
+
+SET UP IN KILLERCODA:
+command -v helm >/dev/null || curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Add the repo
+   $ helm repo add podinfo https://stefanprodan.github.io/podinfo
+   $ helm repo update
+   YOU SEE: "podinfo" has been added
+   Repo = chart catalogue.
+2. Install
+   $ helm install web podinfo/podinfo --version 6.7.1 -n helm-web --create-namespace --set replicaCount=2
+   YOU SEE: STATUS: deployed  REVISION: 1
+   --create-namespace makes helm-web.
+3. Upgrade with a new value
+   $ helm upgrade web podinfo/podinfo --version 6.7.1 -n helm-web --reuse-values --set ui.message="hello cka"
+   YOU SEE: REVISION: 2
+   --reuse-values keeps replicaCount=2.
+4. Save revision
+   $ helm -n helm-web list
+   $ helm -n helm-web list -o json | grep -o '"revision":"[0-9]*"' | grep -o '[0-9]*' > /root/helm-rev.txt; cat /root/helm-rev.txt
+   YOU SEE: 2
+   Revision counts installs + upgrades.
+5. Check it works
+   $ helm -n helm-web get values web
+   $ kubectl -n helm-web get deploy
+
+TRAPS TO AVOID:
+- Upgrading without --reuse-values → replicaCount resets to 1
+- Forgetting --version on upgrade → newest chart
+- Writing more than the number into the file
+
+VERIFY AGAINST THE QUESTION:
+- values: $ helm -n helm-web get values web  → must see: replicaCount: 2, ui.message: hello cka
+- revision file: $ cat /root/helm-rev.txt  → must see: 2
+
+MEMORISE (fast version, target 5 min):
+ssh cka02009
+helm repo add podinfo https://stefanprodan.github.io/podinfo; helm repo update
+helm install web podinfo/podinfo --version 6.7.1 -n helm-web --create-namespace --set replicaCount=2
+helm upgrade web podinfo/podinfo --version 6.7.1 -n helm-web --reuse-values --set ui.message="hello cka"
+helm -n helm-web list   # REVISION → echo 2 > /root/helm-rev.txt
+
+
+==================== PAGE 210 (Mock 2 task 10) · Create an Ingress with path routing ====================
+EXAM QUESTION:
+ssh cka02010
+Create an Ingress named echo in namespace echo-sound that exposes Service echo on port 8080 at http://example.org/echo using ingressClassName nginx and pathType Prefix.
+WRITE DOWN: namespace = echo-sound · ingress = echo · host example.org, path /echo, Prefix · backend echo:8080 · ingressClassName nginx
+
+SPOT THE PATTERN: Create Ingress imperatively: host/path → service:port
+  "exposes Service echo on port 8080" → =echo:8080
+  "at http://example.org/echo" → host example.org, path /echo
+  "using ingressClassName nginx and pathType Prefix" → --class=nginx and a * after the path (/echo*)
+
+IN PLAIN WORDS:
+Publish a service under the web address example.org/echo. No ingress controller on Killercoda, so ADDRESS stays empty.
+
+SET UP IN KILLERCODA:
+kubectl create namespace echo-sound --dry-run=client -o yaml | kubectl apply -f -
+cat <<'EOF' | kubectl apply -f -
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: echo, namespace: echo-sound}
+spec:
+  selector: {matchLabels: {app: echo}}
+  template:
+    metadata: {labels: {app: echo}}
+    spec: {containers: [{name: c, image: nginx:1.27-alpine}]}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: echo, namespace: echo-sound}
+spec: {selector: {app: echo}, ports: [{port: 8080, targetPort: 80}]}
+EOF
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Check the Service port
+   $ kubectl -n echo-sound get svc echo
+   YOU SEE: 8080/TCP
+   Ingress must use the Service port, not the pod port.
+2. Create the Ingress
+   $ kubectl -n echo-sound create ingress echo --class=nginx --rule="example.org/echo*=echo:8080"
+   YOU SEE: ingress.networking.k8s.io/echo created
+   The * at the end means pathType Prefix.
+3. Check
+   $ kubectl -n echo-sound describe ingress echo | grep -A3 Rules
+   YOU SEE: example.org  /echo  echo:8080
+   Host, path and backend are right.
+4. Check it works
+   $ kubectl -n echo-sound get ingress echo -o jsonpath="{.spec.rules[0].http.paths[0].pathType}"
+
+TRAPS TO AVOID:
+- Forgetting the * → pathType Exact
+- Port 80 instead of 8080
+- Missing -n echo-sound
+
+VERIFY AGAINST THE QUESTION:
+- rule: $ k -n echo-sound describe ingress echo | grep -A3 Rules  → must see: example.org /echo echo:8080
+- Prefix: $ k -n echo-sound get ingress echo -o jsonpath='{.spec.rules[0].http.paths[0].pathType}'  → must see: Prefix
+
+MEMORISE (fast version, target 3 min):
+ssh cka02010
+k -n echo-sound get svc echo
+k -n echo-sound create ingress echo --class=nginx --rule="example.org/echo*=echo:8080"
+k -n echo-sound describe ingress echo
+
+
+==================== PAGE 211 (Mock 2 task 11) · TLS ConfigMap: allow only TLSv1.3 ====================
+EXAM QUESTION:
+ssh cka02011
+Deployment nginx-static in namespace nginx-static serves HTTPS using configuration from ConfigMap nginx-config. It currently allows TLSv1.2 and TLSv1.3.
+Change the configuration so that ONLY TLSv1.3 is accepted, then make the ConfigMap immutable. Make sure the running Pods use the new configuration.
+WRITE DOWN: namespace = nginx-static · configmap = nginx-config · only TLSv1.3 · configmap immutable · pods must pick up the change
+
+SPOT THE PATTERN: Edit ConfigMap, make immutable, rollout restart
+  "ONLY TLSv1.3 is accepted" → ssl_protocols TLSv1.3;
+  "make the ConfigMap immutable" → Set immutable: true AFTER the edit (an immutable CM can't be changed)
+  "Make sure the running Pods use the new configuration" → k rollout restart deploy nginx-static
+
+IN PLAIN WORDS:
+Edit nginx settings stored in a ConfigMap to allow only TLS 1.3, lock the ConfigMap, restart nginx.
+
+SET UP IN KILLERCODA:
+kubectl create namespace nginx-static --dry-run=client -o yaml | kubectl apply -f -
+openssl req -x509 -nodes -newkey rsa:2048 -days 365 -subj "/CN=web.example.com" -keyout /tmp/nginx-tls.key -out /tmp/nginx-tls.crt 2>/dev/null
+kubectl -n nginx-static create secret tls nginx-tls --cert=/tmp/nginx-tls.crt --key=/tmp/nginx-tls.key --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n nginx-static get cm nginx-config -o jsonpath='{.immutable}' 2>/dev/null | grep -q true && kubectl -n nginx-static delete cm nginx-config
+cat <<'EOF' | kubectl apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: nginx-config, namespace: nginx-static}
+data:
+  nginx.conf: |
+    events {}
+    http {
+      server {
+        listen 443 ssl;
+        server_name web.example.com;
+        ssl_certificate /etc/nginx/tls/tls.crt;
+        ssl_certificate_key /etc/nginx/tls/tls.key;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        location / { return 200 "ok\n"; }
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: nginx-static, namespace: nginx-static}
+spec:
+  selector: {matchLabels: {app: nginx-static}}
+  template:
+    metadata: {labels: {app: nginx-static}}
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.27-alpine
+        volumeMounts:
+        - {name: conf, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf}
+        - {name: tls, mountPath: /etc/nginx/tls}
+      volumes:
+      - {name: conf, configMap: {name: nginx-config}}
+      - {name: tls, secret: {secretName: nginx-tls}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: nginx-static, namespace: nginx-static}
+spec: {selector: {app: nginx-static}, ports: [{port: 443}]}
+EOF
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Test TLS 1.2 works now
+   $ curl -sk --tls-max 1.2 https://$(kubectl -n nginx-static get svc nginx-static -o jsonpath="{.spec.clusterIP}")
+   YOU SEE: ok
+   Baseline: 1.2 still accepted.
+2. Edit the ConfigMap
+   $ kubectl -n nginx-static get cm nginx-config -o yaml > /root/nginx-config.yaml
+   $ sed -i 's/ssl_protocols TLSv1.2 TLSv1.3;/ssl_protocols TLSv1.3;/' /root/nginx-config.yaml
+   $ kubectl apply -f /root/nginx-config.yaml
+   YOU SEE: configmap/nginx-config configured
+   Change content BEFORE making it immutable.
+3. Make it immutable
+   $ kubectl -n nginx-static patch cm nginx-config -p '{"immutable":true}'
+   YOU SEE: configmap/nginx-config patched
+   Immutable = no more edits allowed.
+4. Restart the pods
+   $ kubectl -n nginx-static rollout restart deploy nginx-static && kubectl -n nginx-static rollout status deploy nginx-static
+   YOU SEE: successfully rolled out
+   subPath files only change on pod restart.
+5. Prove 1.2 is refused
+   $ curl -sk --tls-max 1.2 https://$(kubectl -n nginx-static get svc nginx-static -o jsonpath="{.spec.clusterIP}") || echo refused
+   YOU SEE: refused
+   Only TLS 1.3 clients get in now.
+6. Check it works
+   $ kubectl -n nginx-static get cm nginx-config -o jsonpath="{.immutable}"
+   $ kubectl -n nginx-static get cm nginx-config -o yaml | grep ssl_protocols
+
+TRAPS TO AVOID:
+- Setting immutable before editing → you must delete/recreate it
+- Forgetting the rollout restart
+- Breaking the trailing ; in the nginx line
+
+VERIFY AGAINST THE QUESTION:
+- only TLSv1.3: $ k -n nginx-static get cm nginx-config -o yaml | grep ssl_protocols  → must see: ssl_protocols TLSv1.3;
+- immutable: $ k -n nginx-static get cm nginx-config -o jsonpath='{.immutable}'  → must see: true
+- TLS 1.2 refused: $ curl -sk --tls-max 1.2 https://<svc-clusterIP>  → must see: error / refused
+
+MEMORISE (fast version, target 5 min):
+ssh cka02011
+k -n nginx-static edit cm nginx-config   # ssl_protocols TLSv1.3;
+k -n nginx-static patch cm nginx-config -p '{"immutable":true}'
+k -n nginx-static rollout restart deploy nginx-static
+k -n nginx-static rollout status deploy nginx-static
+
+
+==================== PAGE 212 (Mock 2 task 12) · Write a NetworkPolicy: namespace AND pod selector ====================
+EXAM QUESTION:
+ssh cka02012
+In namespace db create a NetworkPolicy named db-allow-api that allows incoming traffic to Pods labelled app=db ONLY from Pods labelled role=api in namespace api, on TCP port 80. All other incoming traffic to app=db Pods must be denied.
+WRITE DOWN: namespace = db · policy = db-allow-api · from: ns api AND role=api · port TCP 80
+
+SPOT THE PATTERN: NetworkPolicy: namespaceSelector AND podSelector in one from item
+  "to Pods labelled app=db" → spec.podSelector app: db
+  "ONLY from Pods labelled role=api in namespace api" → ONE from item with namespaceSelector (kubernetes.io/metadata.name: api) AND podSelector role: api
+  "on TCP port 80" → ports: - protocol: TCP port: 80
+
+IN PLAIN WORDS:
+Let only the api pods from the api namespace talk to the database on port 80.
+
+SET UP IN KILLERCODA:
+kubectl create namespace db --dry-run=client -o yaml | kubectl apply -f -
+kubectl create namespace api --dry-run=client -o yaml | kubectl apply -f -
+cat <<'EOF' | kubectl apply -f -
+apiVersion: v1
+kind: Pod
+metadata: {name: db, namespace: db, labels: {app: db}}
+spec: {containers: [{name: c, image: nginx:1.27-alpine}]}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: db, namespace: db}
+spec: {selector: {app: db}, ports: [{port: 80}]}
+---
+apiVersion: v1
+kind: Pod
+metadata: {name: api, namespace: api, labels: {role: api}}
+spec: {containers: [{name: c, image: busybox:1.36, command: [sleep, "36000"]}]}
+---
+apiVersion: v1
+kind: Pod
+metadata: {name: web, namespace: api, labels: {role: web}}
+spec: {containers: [{name: c, image: busybox:1.36, command: [sleep, "36000"]}]}
+EOF
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Create the policy
+   $ cat <<'EOF' | kubectl apply -f -
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: db-allow-api, namespace: db}
+spec:
+  podSelector: {matchLabels: {app: db}}
+  policyTypes: [Ingress]
+  ingress:
+  - from:
+    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: api}}
+      podSelector: {matchLabels: {role: api}}
+    ports: [{protocol: TCP, port: 80}]
+EOF
+   YOU SEE: networkpolicy.../db-allow-api created
+   Same list item (no 2nd dash) = AND.
+2. Allowed pod works
+   $ kubectl -n api exec api -- wget -qO- -T2 db.db | head -2
+   YOU SEE: <!DOCTYPE html>
+   role=api in ns api passes.
+3. Other pod is blocked
+   $ kubectl -n api exec web -- wget -qO- -T2 db.db
+   YOU SEE: download timed out
+   role=web is denied.
+4. Check it works
+   $ kubectl -n db describe networkpolicy db-allow-api
+
+TRAPS TO AVOID:
+- Writing '- podSelector' as a second list item → OR (allows role=api in any ns + all of ns api)
+- podSelector alone → only same namespace db
+- Using a namespace label that doesn't exist — kubernetes.io/metadata.name is automatic
+
+VERIFY AGAINST THE QUESTION:
+- api allowed: $ k -n api exec api -- wget -qO- -T2 db.db | head -2  → must see: HTML
+- others denied: $ k -n api exec web -- wget -qO- -T2 db.db  → must see: download timed out
+
+MEMORISE (fast version, target 6 min):
+ssh cka02012
+docs: 'network policies' → copy example → keep Ingress only
+podSelector app: db; from: - namespaceSelector: matchLabels kubernetes.io/metadata.name: api   (no dash) podSelector: matchLabels role: api
+ports: - protocol: TCP port: 80
+k apply -f np.yaml; k -n db describe networkpolicy db-allow-api
+
+
+==================== PAGE 213 (Mock 2 task 13) · Native sidecar container (restartPolicy Always) ====================
+EXAM QUESTION:
+ssh cka02013
+Update Deployment order-app in namespace logging: add a sidecar container named log-shipper using image busybox:1.36 that runs: tail -n+1 -F /var/log/order.log
+Use the native sidecar pattern (an init container with restartPolicy: Always). Share the log directory using a volume named logs mounted at /var/log in both containers. Do not change the existing container's command.
+WRITE DOWN: namespace = logging · deployment = order-app · sidecar = log-shipper, busybox:1.36 · initContainer + restartPolicy: Always · volume logs at /var/log
+
+SPOT THE PATTERN: Add native sidecar (initContainer, restartPolicy Always) + shared emptyDir
+  "add a sidecar container named log-shipper using image busybox:1.36" → initContainers: - name: log-shipper image: busybox:1.36
+  "an init container with restartPolicy: Always" → restartPolicy: Always on the init container
+  "a volume named logs mounted at /var/log in both containers" → volumes: logs emptyDir + volumeMounts in app AND log-shipper
+  "Do not change the existing container's command" → Only add volumeMounts to the app container
+
+IN PLAIN WORDS:
+Add a helper container that keeps reading the app log file through a shared folder.
+
+SET UP IN KILLERCODA:
+kubectl create namespace logging --dry-run=client -o yaml | kubectl apply -f -
+cat <<'EOF' | kubectl apply -f -
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: order-app, namespace: logging}
+spec:
+  selector: {matchLabels: {app: order-app}}
+  template:
+    metadata: {labels: {app: order-app}}
+    spec:
+      containers:
+      - name: app
+        image: busybox:1.36
+        command: [sh, -c, "while true; do echo order $(date) >> /var/log/order.log; sleep 3; done"]
+EOF
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Save the current YAML
+   $ kubectl -n logging get deploy order-app -o yaml > /root/order-app.yaml
+   Backup before big edits.
+2. Apply the new spec
+   $ cat <<'EOF' | kubectl apply -f -
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: order-app, namespace: logging}
+spec:
+  selector: {matchLabels: {app: order-app}}
+  template:
+    metadata: {labels: {app: order-app}}
+    spec:
+      initContainers:
+      - name: log-shipper
+        image: busybox:1.36
+        restartPolicy: Always
+        command: [sh, -c, "tail -n+1 -F /var/log/order.log"]
+        volumeMounts: [{name: logs, mountPath: /var/log}]
+      containers:
+      - name: app
+        image: busybox:1.36
+        command: [sh, -c, "while true; do echo order $(date) >> /var/log/order.log; sleep 3; done"]
+        volumeMounts: [{name: logs, mountPath: /var/log}]
+      volumes:
+      - {name: logs, emptyDir: {}}
+EOF
+   YOU SEE: deployment.apps/order-app configured
+   restartPolicy Always turns the init container into a sidecar.
+3. Check both run
+   $ kubectl -n logging get pods
+   YOU SEE: 2/2 Running
+   Sidecar counts as a running container.
+4. Read sidecar logs
+   $ kubectl -n logging logs deploy/order-app -c log-shipper --tail=3
+   YOU SEE: order Sat Nov ...
+   Sidecar sees the app log file.
+5. Check it works
+   $ kubectl -n logging get deploy order-app -o jsonpath="{.spec.template.spec.initContainers[0].restartPolicy}"
+
+TRAPS TO AVOID:
+- Adding it under containers: (not the native pattern asked)
+- Mount missing in the main container
+- Wrong command quoting — use [sh, -c, "tail -n+1 -F /var/log/order.log"]
+
+VERIFY AGAINST THE QUESTION:
+- 2/2 running: $ k -n logging get pods  → must see: 2/2 Running
+- native sidecar: $ k -n logging get deploy order-app -o jsonpath='{.spec.template.spec.initContainers[0].restartPolicy}'  → must see: Always
+- ships logs: $ k -n logging logs deploy/order-app -c log-shipper --tail=3  → must see: order … lines
+
+MEMORISE (fast version, target 9 min):
+ssh cka02013
+k -n logging edit deploy order-app
+initContainers: - name: log-shipper image: busybox:1.36 restartPolicy: Always command: [sh, -c, "tail -n+1 -F /var/log/order.log"] volumeMounts: [{name: logs, mountPath: /var/log}]
+app: volumeMounts logs → /var/log; volumes: - name: logs emptyDir: {}
+k -n logging get pods
+
+
+==================== PAGE 214 (Mock 2 task 14) · Split node resources evenly across replicas ====================
+EXAM QUESTION:
+ssh cka02014
+Deployment wordpress in namespace wp runs 3 replicas on node01 (it has an init container). Some Pods cannot start.
+Scale the Deployment to 0. Then give each Pod an equal share of node01's remaining CPU and memory: take node01's allocatable minus what is already requested by other Pods, keep 10% as headroom, and divide the rest by 3. Use identical requests for the init container and the main container. Scale back to 3 and ensure all Pods are Running.
+WRITE DOWN: namespace = wp · deployment = wordpress · scale 0 -> edit -> 3 · init + main same requests · all 3 pods Running on node01
+
+SPOT THE PATTERN: Compute requests from node allocatable; set on init + main
+  "Scale the Deployment to 0" → k scale … --replicas=0 first, so its own requests don't count
+  "keep 10% as headroom, and divide the rest by 3" → (allocatable − requested) × 0.9 ÷ 3, round down
+  "Use identical requests for the init container and the main container" → k set resources -c init … and -c wordpress … with same values
+
+IN PLAIN WORDS:
+Share what is free on node01 fairly between 3 pods so all of them fit.
+
+SET UP IN KILLERCODA:
+kubectl create namespace wp --dry-run=client -o yaml | kubectl apply -f -
+cat <<'EOF' | kubectl apply -f -
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: wordpress, namespace: wp}
+spec:
+  replicas: 3
+  selector: {matchLabels: {app: wordpress}}
+  template:
+    metadata: {labels: {app: wordpress}}
+    spec:
+      nodeSelector: {kubernetes.io/hostname: node01}
+      initContainers:
+      - {name: init, image: busybox:1.36, command: [sh, -c, "sleep 2"], resources: {requests: {cpu: "1", memory: 1Gi}}}
+      containers:
+      - {name: wordpress, image: nginx:1.27-alpine, resources: {requests: {cpu: "1", memory: 1Gi}}}
+EOF
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Scale to 0
+   $ kubectl -n wp scale deploy wordpress --replicas=0
+   YOU SEE: deployment.apps/wordpress scaled
+   Free the node while you calculate.
+2. Read node01 numbers
+   $ kubectl describe node node01 | grep -A6 Allocatable
+   $ kubectl describe node node01 | grep -A5 "Allocated resources"
+   YOU SEE: cpu 1 / memory ~1.9Gi; requests cpu 250m ...
+   Allocatable minus already requested = free.
+3. Calculate (example)
+   $ echo "free cpu 1000m-250m=750m, *0.9=675m, /3=225m; free mem 1900Mi-150Mi=1750Mi, *0.9=1575Mi, /3=525Mi"
+   Use YOUR numbers; round down.
+4. Set requests on both containers
+   $ kubectl -n wp set resources deploy wordpress -c init --requests=cpu=225m,memory=525Mi
+   $ kubectl -n wp set resources deploy wordpress -c wordpress --requests=cpu=225m,memory=525Mi
+   YOU SEE: resource requirements updated
+   -c picks the container (init too).
+5. Scale back and check
+   $ kubectl -n wp scale deploy wordpress --replicas=3
+   $ kubectl -n wp get pods -o wide
+   YOU SEE: 3 x Running on node01
+   All three fit now.
+6. Check it works
+   $ kubectl -n wp get deploy wordpress
+   $ kubectl -n wp get deploy wordpress -o jsonpath="{.spec.template.spec.initContainers[0].resources}"
+   $ kubectl -n wp get deploy wordpress -o jsonpath="{.spec.template.spec.containers[0].resources}"
+
+TRAPS TO AVOID:
+- Forgetting the init container → its larger request blocks scheduling
+- Using Capacity instead of Allocatable
+- Mixing Mi and M
+
+VERIFY AGAINST THE QUESTION:
+- same requests on both: $ k -n wp get deploy wordpress -o jsonpath='{.spec.template.spec.initContainers[0].resources}{.spec.template.spec.containers[0].resources}'  → must see: identical cpu/memory
+- all running: $ k -n wp get pods -o wide  → must see: 3 Running on node01
+
+MEMORISE (fast version, target 8 min):
+ssh cka02014; k -n wp scale deploy wordpress --replicas=0
+k describe node node01 | grep -A6 Allocatable; k describe node node01 | grep -A5 'Allocated resources'
+k -n wp set resources deploy wordpress -c init --requests=cpu=<X>m,memory=<Y>Mi
+k -n wp set resources deploy wordpress -c wordpress --requests=cpu=<X>m,memory=<Y>Mi
+k -n wp scale deploy wordpress --replicas=3; k -n wp get pods
+
+
+==================== PAGE 215 (Mock 2 task 15) · PVC Pending: wrong StorageClass ====================
+EXAM QUESTION:
+ssh cka02015
+PVC logs-pvc in namespace storage-fix stays Pending and Pod log-writer cannot start. Fix it so the PVC is Bound using StorageClass local-path (same name, size 200Mi, ReadWriteOnce) and the Pod is Running.
+WRITE DOWN: namespace = storage-fix · pvc = logs-pvc, 200Mi, RWO · storageclass = local-path · pod log-writer Running
+
+SPOT THE PATTERN: PVC Pending (bad class) → recreate PVC + pod
+  "stays Pending" → describe pvc → storageclass not found
+  "using StorageClass local-path (same name, size 200Mi, ReadWriteOnce)" → PVC spec is immutable: save YAML, delete, recreate with storageClassName local-path
+  "the Pod is Running" → Pod must be deleted and recreated to mount the new PVC
+
+IN PLAIN WORDS:
+The storage request names a storage type that does not exist; recreate it with the right type.
+
+SET UP IN KILLERCODA:
+kubectl get deploy -A | grep -q local-path-provisioner || kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.30/deploy/local-path-storage.yaml
+kubectl create namespace storage-fix --dry-run=client -o yaml | kubectl apply -f -
+cat <<'EOF' | kubectl apply -f -
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: {name: logs-pvc, namespace: storage-fix}
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: fast-ssd
+  resources: {requests: {storage: 200Mi}}
+---
+apiVersion: v1
+kind: Pod
+metadata: {name: log-writer, namespace: storage-fix}
+spec:
+  containers:
+  - {name: c, image: busybox:1.36, command: [sh, -c, "while true; do date >> /data/log; sleep 5; done"], volumeMounts: [{name: d, mountPath: /data}]}
+  volumes: [{name: d, persistentVolumeClaim: {claimName: logs-pvc}}]
+EOF
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Read the reason
+   $ kubectl -n storage-fix describe pvc logs-pvc | tail -3
+   YOU SEE: storageclass.storage.k8s.io "fast-ssd" not found
+   The class does not exist.
+2. Save, delete, recreate the PVC
+   $ kubectl -n storage-fix get pvc logs-pvc -o yaml > /root/logs-pvc.yaml
+   $ kubectl -n storage-fix delete pod log-writer --force --grace-period=0
+   $ kubectl -n storage-fix delete pvc logs-pvc
+   storageClassName cannot be edited on a PVC.
+3. Create the fixed PVC
+   $ cat <<'EOF' | kubectl apply -f -
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: {name: logs-pvc, namespace: storage-fix}
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources: {requests: {storage: 200Mi}}
+EOF
+   YOU SEE: persistentvolumeclaim/logs-pvc created
+   Same name, right class.
+4. Recreate the Pod
+   $ cat <<'EOF' | kubectl apply -f -
+apiVersion: v1
+kind: Pod
+metadata: {name: log-writer, namespace: storage-fix}
+spec:
+  containers:
+  - {name: c, image: busybox:1.36, command: [sh, -c, "while true; do date >> /data/log; sleep 5; done"], volumeMounts: [{name: d, mountPath: /data}]}
+  volumes: [{name: d, persistentVolumeClaim: {claimName: logs-pvc}}]
+EOF
+   YOU SEE: pod/log-writer created
+   Same pod spec as before.
+5. Check
+   $ kubectl -n storage-fix get pvc,pod
+   YOU SEE: Bound / Running
+   local-path binds when the pod starts.
+6. Check it works
+   $ kubectl -n storage-fix get pvc logs-pvc
+   $ kubectl -n storage-fix get pod log-writer
+
+TRAPS TO AVOID:
+- Trying k edit pvc storageClassName — forbidden on an existing PVC
+- Deleting the pod without saving its YAML first
+- PVC with WaitForFirstConsumer stays Pending until the pod exists — that's normal
+
+VERIFY AGAINST THE QUESTION:
+- PVC bound: $ k -n storage-fix get pvc logs-pvc  → must see: Bound local-path
+- pod running: $ k -n storage-fix get pod log-writer  → must see: 1/1 Running
+
+MEMORISE (fast version, target 6 min):
+ssh cka02015
+k -n storage-fix describe pvc logs-pvc | tail -3
+k -n storage-fix get pvc logs-pvc -o yaml > pvc.yaml; k -n storage-fix get pod log-writer -o yaml > pod.yaml
+k -n storage-fix delete pod log-writer --force --grace-period=0; k -n storage-fix delete pvc logs-pvc
+vim pvc.yaml   # storageClassName: local-path, strip status/uid; k apply -f pvc.yaml -f pod.yaml
+
+
+==================== PAGE 216 (Mock 2 task 16) · Static PV + PVC + Pod (hostPath) ====================
+EXAM QUESTION:
+ssh cka02016
+Create a PersistentVolume app-pv: 1Gi, ReadWriteOnce, hostPath /srv/app-data, storageClassName manual.
+Create a PersistentVolumeClaim app-pvc in namespace app-store requesting 500Mi from class manual.
+Create a Pod app-writer (image busybox:1.36, command sleep 3600) in namespace app-store mounting the claim at /data.
+WRITE DOWN: pv = app-pv 1Gi RWO hostPath /srv/app-data · pvc = app-pvc 500Mi class manual (ns app-store) · pod = app-writer mount /data
+
+SPOT THE PATTERN: PV → PVC (Bound) → Pod mounting the claim
+  "hostPath /srv/app-data, storageClassName manual" → PV hostPath.path /srv/app-data, class manual, no namespace
+  "requesting 500Mi from class manual" → PVC storageClassName manual, 500Mi, RWO
+  "mounting the claim at /data" → volumes: persistentVolumeClaim.claimName app-pvc; mountPath /data
+
+IN PLAIN WORDS:
+Make a disk, request it, and mount it into a pod.
+
+SET UP IN KILLERCODA:
+kubectl create namespace app-store --dry-run=client -o yaml | kubectl apply -f -
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Create PV, PVC and Pod
+   $ cat <<'EOF' | kubectl apply -f -
+apiVersion: v1
+kind: PersistentVolume
+metadata: {name: app-pv}
+spec:
+  capacity: {storage: 1Gi}
+  accessModes: [ReadWriteOnce]
+  storageClassName: manual
+  hostPath: {path: /srv/app-data}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: {name: app-pvc, namespace: app-store}
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: manual
+  resources: {requests: {storage: 500Mi}}
+---
+apiVersion: v1
+kind: Pod
+metadata: {name: app-writer, namespace: app-store}
+spec:
+  containers:
+  - {name: c, image: busybox:1.36, command: [sleep, "3600"], volumeMounts: [{name: d, mountPath: /data}]}
+  volumes: [{name: d, persistentVolumeClaim: {claimName: app-pvc}}]
+EOF
+   YOU SEE: created x3
+   PV = disk, PVC = request, Pod = user.
+2. Check binding
+   $ kubectl get pv app-pv; kubectl -n app-store get pvc,pod
+   YOU SEE: Bound ... app-store/app-pvc; Running
+   PVC gets the 1Gi PV (bigger is OK).
+3. Write a test file
+   $ kubectl -n app-store exec app-writer -- sh -c "echo hi > /data/t && cat /data/t"
+   YOU SEE: hi
+   Proves the mount is writable.
+4. Check it works
+   $ kubectl get pv app-pv
+   $ kubectl -n app-store get pvc app-pvc
+
+TRAPS TO AVOID:
+- Namespace on the PV
+- PVC without storageClassName → default class, never binds
+- Pod command as a string instead of [sleep, "3600"]
+
+VERIFY AGAINST THE QUESTION:
+- PV/PVC bound: $ k -n app-store get pvc app-pvc  → must see: Bound app-pv
+- pod writes: $ k -n app-store exec app-writer -- sh -c 'echo hi > /data/t && cat /data/t'  → must see: hi
+
+MEMORISE (fast version, target 6 min):
+ssh cka02016
+docs: 'configure persistent volume storage' → PV, PVC, Pod boxes
+PV app-pv 1Gi RWO manual hostPath /srv/app-data; PVC app-pvc ns app-store 500Mi manual
+Pod app-writer busybox:1.36 command [sleep, "3600"], claimName app-pvc, mountPath /data
+k apply -f all.yaml; k -n app-store get pvc,pod
+
+
+==================== PAGE 301 (Mock 3 task 1) · API server down after etcd change ====================
+EXAM QUESTION:
+ssh cka03001
+After a migration, kubectl on the controlplane can no longer reach the cluster ("connection refused"). The kube-apiserver is configured incorrectly. Find the problem and repair the cluster. Do not restore any backup.
+WRITE DOWN: component = kube-apiserver (static pod) · etcd client port is 2379 (peer port is 2380) · do NOT restore etcd
+
+SPOT THE PATTERN: kubectl refused → crictl logs apiserver → fix static manifest flag
+  "can no longer reach the cluster ("connection refused")" → API server down: use crictl, not kubectl
+  "The kube-apiserver is configured incorrectly" → Fix /etc/kubernetes/manifests/kube-apiserver.yaml
+  "Do not restore any backup" → Repair the flag (etcd-servers port), not etcd data
+
+IN PLAIN WORDS:
+The API server dials the wrong etcd port; change 2380 back to 2379.
+
+SET UP IN KILLERCODA:
+sed -i "s#--etcd-servers=https://127.0.0.1:2379#--etcd-servers=https://127.0.0.1:2380#" /etc/kubernetes/manifests/kube-apiserver.yaml
+sleep 30
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. See the symptom
+   $ kubectl get nodes
+   YOU SEE: connection to the server ... refused
+   API server is down; use crictl instead.
+2. Find the apiserver container
+   $ crictl ps -a | grep kube-apiserver
+   YOU SEE: Exited ... kube-apiserver
+   kubelet keeps restarting it.
+3. Read its logs
+   $ crictl logs $(crictl ps -a --name kube-apiserver -q | head -1) 2>&1 | tail -5
+   YOU SEE: dial tcp 127.0.0.1:2380 ... / context deadline exceeded
+   It talks to the etcd PEER port.
+4. Compare with etcd
+   $ grep -E "listen-client-urls|listen-peer-urls" /etc/kubernetes/manifests/etcd.yaml
+   $ grep etcd-servers /etc/kubernetes/manifests/kube-apiserver.yaml
+   YOU SEE: client :2379, peer :2380; apiserver uses :2380
+   2379 is for clients like the apiserver.
+5. Fix the manifest
+   $ sed -i 's#--etcd-servers=https://127.0.0.1:2380#--etcd-servers=https://127.0.0.1:2379#' /etc/kubernetes/manifests/kube-apiserver.yaml
+   kubelet notices the change and restarts the pod.
+6. Wait and check
+   $ watch -n3 crictl ps --name kube-apiserver
+   $ kubectl get nodes
+   YOU SEE: Running ... / Ready
+   Takes ~1 minute.
+7. Check it works
+   $ kubectl get nodes
+   $ kubectl -n kube-system get pods
+
+TRAPS TO AVOID:
+- Restoring etcd (forbidden, and not the cause)
+- Using port 2380 (peer) instead of 2379 (client)
+- Editing a copy in another folder — kubelet only reads /etc/kubernetes/manifests
+
+VERIFY AGAINST THE QUESTION:
+- cluster reachable: $ k get nodes  → must see: nodes listed
+- control plane healthy: $ k -n kube-system get pods  → must see: kube-apiserver 1/1 Running
+
+MEMORISE (fast version, target 6 min):
+ssh cka03001
+crictl ps -a | grep kube-apiserver; crictl logs <id> 2>&1 | tail -5
+grep listen-client-urls /etc/kubernetes/manifests/etcd.yaml; grep etcd-servers /etc/kubernetes/manifests/kube-apiserver.yaml
+vim /etc/kubernetes/manifests/kube-apiserver.yaml   # --etcd-servers=https://127.0.0.1:2379
+watch crictl ps --name kube-apiserver; k get nodes
+
+
+==================== PAGE 302 (Mock 3 task 2) · Controller-manager broken: Deployment does not scale ====================
+EXAM QUESTION:
+ssh cka03002
+Deployment scale-test in namespace cm-test was scaled to 3 replicas, but only 1 Pod exists and no new ReplicaSet activity happens. Find the responsible control plane component and fix it.
+WRITE DOWN: namespace = cm-test · deployment = scale-test must reach 3/3 · fix the component, not the deployment
+
+SPOT THE PATTERN: Deployment doesn't scale → controller-manager broken → fix manifest
+  "only 1 Pod exists and no new ReplicaSet activity happens" → Controllers aren't running → kube-controller-manager
+  "Find the responsible control plane component" → Check kube-system pods + logs; fix /etc/kubernetes/manifests/kube-controller-manager.yaml
+
+IN PLAIN WORDS:
+The program that creates pods for deployments has a wrong file path; correct it.
+
+SET UP IN KILLERCODA:
+kubectl create namespace cm-test --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n cm-test create deployment scale-test --image=nginx:1.27-alpine --dry-run=client -o yaml | kubectl apply -f -
+sleep 5
+sed -i "s#--kubeconfig=/etc/kubernetes/controller-manager.conf#--kubeconfig=/etc/kubernetes/controller-manager.cfg#" /etc/kubernetes/manifests/kube-controller-manager.yaml
+sleep 20
+kubectl -n cm-test scale deploy scale-test --replicas=3
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. See the symptom
+   $ kubectl -n cm-test get deploy scale-test
+   YOU SEE: READY 1/3
+   Nothing creates the missing pods.
+2. Check the controller-manager
+   $ kubectl -n kube-system get pods | grep controller-manager
+   YOU SEE: CrashLoopBackOff
+   Controllers create pods for Deployments.
+3. Read logs
+   $ kubectl -n kube-system logs kube-controller-manager-controlplane | tail -3
+   YOU SEE: stat /etc/kubernetes/controller-manager.cfg: no such file
+   Wrong kubeconfig file name.
+4. Fix the manifest
+   $ sed -i 's#controller-manager.cfg#controller-manager.conf#' /etc/kubernetes/manifests/kube-controller-manager.yaml
+   $ ls /etc/kubernetes/*.conf
+   YOU SEE: controller-manager.conf exists
+   Point to the file that really exists.
+5. Check
+   $ kubectl -n cm-test get deploy scale-test
+   YOU SEE: READY 3/3
+   Controller catches up automatically.
+6. Check it works
+   $ kubectl -n cm-test get deploy scale-test
+   $ kubectl -n kube-system get pods | grep controller-manager
+
+TRAPS TO AVOID:
+- Blaming the scheduler — Pending pods would exist; here pods aren't even created
+- Scaling the deployment again instead of fixing the component
+- Fixing the wrong path — compare with ls /etc/kubernetes/*.conf
+
+VERIFY AGAINST THE QUESTION:
+- controller-manager running: $ k -n kube-system get pods | grep controller-manager  → must see: 1/1 Running
+- deployment scaled: $ k -n cm-test get deploy scale-test  → must see: 3/3
+
+MEMORISE (fast version, target 5 min):
+ssh cka03002
+k -n kube-system get pods | grep controller-manager
+k -n kube-system logs kube-controller-manager-controlplane | tail -3
+ls /etc/kubernetes/*.conf
+vim /etc/kubernetes/manifests/kube-controller-manager.yaml   # controller-manager.cfg → controller-manager.conf
+
+
+==================== PAGE 303 (Mock 3 task 3) · Kubelet config: wrong client CA file ====================
+EXAM QUESTION:
+ssh cka03003
+node01 is NotReady. The kubelet service fails to start. Repair the kubelet configuration on node01 so that the node becomes Ready. Do not re-join the node.
+WRITE DOWN: node = node01 · config = /var/lib/kubelet/config.yaml · do NOT kubeadm reset/join
+
+SPOT THE PATTERN: Node NotReady → kubelet config.yaml wrong file → fix + restart
+  "The kubelet service fails to start" → ssh node01; journalctl -u kubelet shows the bad file
+  "Repair the kubelet configuration on node01" → Edit /var/lib/kubelet/config.yaml (clientCAFile)
+  "Do not re-join the node" → No kubeadm reset/join — fix the file, restart kubelet
+
+IN PLAIN WORDS:
+The kubelet settings file names a certificate that does not exist; fix the name.
+
+SET UP IN KILLERCODA:
+ssh node01 "sed -i 's#clientCAFile: /etc/kubernetes/pki/ca.crt#clientCAFile: /etc/kubernetes/pki/ca-wrong.crt#' /var/lib/kubelet/config.yaml; systemctl restart kubelet"
+sleep 45
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Log in and check status
+   $ ssh node01
+   $ systemctl status kubelet --no-pager | head -5
+   YOU SEE: activating (auto-restart)
+   Starts then crashes.
+2. Read the error
+   $ journalctl -u kubelet --no-pager | grep -i -m2 "ca-wrong\|client-ca\|error"
+   YOU SEE: unable to load client CA file /etc/kubernetes/pki/ca-wrong.crt
+   File does not exist.
+3. Find the right file
+   $ ls /etc/kubernetes/pki/
+   $ grep clientCAFile /var/lib/kubelet/config.yaml
+   YOU SEE: ca.crt
+   Worker nodes have only ca.crt.
+4. Fix and restart
+   $ sed -i 's#ca-wrong.crt#ca.crt#' /var/lib/kubelet/config.yaml
+   $ systemctl restart kubelet
+   $ systemctl is-active kubelet
+   $ exit
+   YOU SEE: active
+   kubelet reads config.yaml at start.
+5. Check
+   $ kubectl get nodes
+   YOU SEE: node01 Ready
+   Allow ~30s.
+6. Check it works
+   $ kubectl get nodes
+   $ ssh node01 grep clientCAFile /var/lib/kubelet/config.yaml
+
+TRAPS TO AVOID:
+- kubeadm reset/join (forbidden)
+- Editing the file on the control plane instead of node01
+- Forgetting systemctl restart kubelet
+
+VERIFY AGAINST THE QUESTION:
+- kubelet active: $ ssh node01 systemctl is-active kubelet  → must see: active
+- node Ready: $ k get nodes  → must see: node01 Ready
+
+MEMORISE (fast version, target 5 min):
+ssh cka03003; ssh node01
+journalctl -u kubelet --no-pager | grep -i -m2 'client-ca\|error'
+ls /etc/kubernetes/pki/; grep clientCAFile /var/lib/kubelet/config.yaml
+vim /var/lib/kubelet/config.yaml   # ca-wrong.crt → ca.crt
+systemctl restart kubelet; exit; k get nodes
+
+
+==================== PAGE 304 (Mock 3 task 4) · NetworkPolicy blocks DNS egress ====================
+EXAM QUESTION:
+ssh cka03004
+In namespace secure, Pod client can reach Service backend by IP but not by name. Existing NetworkPolicies must stay unchanged. Create an additional NetworkPolicy named allow-dns in namespace secure that allows all Pods in the namespace to send DNS queries (UDP and TCP 53) to the cluster DNS Pods in kube-system.
+WRITE DOWN: namespace = secure · new policy = allow-dns · egress UDP+TCP 53 to kube-system k8s-app=kube-dns · do NOT edit/delete existing policies
+
+SPOT THE PATTERN: Name fails, IP works → egress policy blocks DNS → allow 53
+  "can reach Service backend by IP but not by name" → DNS egress is blocked
+  "Existing NetworkPolicies must stay unchanged" → Add a new policy; policies add up
+  "allows all Pods in the namespace" → podSelector: {} and policyTypes [Egress]
+  "to the cluster DNS Pods in kube-system" → to: namespaceSelector kube-system AND podSelector k8s-app: kube-dns (same item), ports UDP+TCP 53
+
+IN PLAIN WORDS:
+A firewall rule blocks name lookups; add a rule that allows DNS only.
+
+SET UP IN KILLERCODA:
+kubectl create namespace secure --dry-run=client -o yaml | kubectl apply -f -
+cat <<'EOF' | kubectl apply -f -
+apiVersion: v1
+kind: Pod
+metadata: {name: backend, namespace: secure, labels: {app: backend}}
+spec: {containers: [{name: c, image: nginx:1.27-alpine}]}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: backend, namespace: secure}
+spec: {selector: {app: backend}, ports: [{port: 80}]}
+---
+apiVersion: v1
+kind: Pod
+metadata: {name: client, namespace: secure, labels: {app: client}}
+spec: {containers: [{name: c, image: busybox:1.36, command: [sleep, "36000"]}]}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: default-deny-egress, namespace: secure}
+spec: {podSelector: {}, policyTypes: [Egress]}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-backend, namespace: secure}
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress: [{to: [{podSelector: {matchLabels: {app: backend}}}], ports: [{protocol: TCP, port: 80}]}]
+EOF
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Name fails, IP works
+   $ kubectl -n secure exec client -- wget -qO- -T2 backend
+   $ kubectl -n secure exec client -- wget -qO- -T2 $(kubectl -n secure get pod backend -o jsonpath="{.status.podIP}") | head -2
+   YOU SEE: bad address 'backend' / <!DOCTYPE html>
+   Classic sign: DNS (port 53) is blocked.
+2. Check DNS pod labels
+   $ kubectl -n kube-system get pods -l k8s-app=kube-dns --show-labels
+   YOU SEE: coredns-... k8s-app=kube-dns
+   Target for the new rule.
+3. Create allow-dns
+   $ cat <<'EOF' | kubectl apply -f -
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-dns, namespace: secure}
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+  - to:
+    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+      podSelector: {matchLabels: {k8s-app: kube-dns}}
+    ports:
+    - {protocol: UDP, port: 53}
+    - {protocol: TCP, port: 53}
+EOF
+   YOU SEE: networkpolicy.../allow-dns created
+   Policies add up; this opens only DNS.
+4. Test by name
+   $ kubectl -n secure exec client -- wget -qO- -T3 backend | head -2
+   YOU SEE: <!DOCTYPE html>
+   Name resolves and connects.
+5. Check it works
+   $ kubectl -n secure get networkpolicy
+
+TRAPS TO AVOID:
+- Splitting namespaceSelector and podSelector into two items (OR)
+- Only UDP 53
+- Adding Ingress to policyTypes → blocks incoming traffic for every pod
+
+VERIFY AGAINST THE QUESTION:
+- name works: $ k -n secure exec client -- wget -qO- -T3 backend | head -2  → must see: HTML
+- old policies intact: $ k -n secure get networkpolicy  → must see: old ones + allow-dns
+
+MEMORISE (fast version, target 5 min):
+ssh cka03004
+k -n kube-system get pods -l k8s-app=kube-dns --show-labels
+docs: 'network policies' → name allow-dns, ns secure, podSelector: {}, policyTypes [Egress]
+egress: - to: - namespaceSelector: matchLabels kubernetes.io/metadata.name: kube-system  podSelector: matchLabels k8s-app: kube-dns; ports UDP 53, TCP 53
+k apply -f dns.yaml; k -n secure exec client -- wget -qO- -T3 backend
+
+
+==================== PAGE 305 (Mock 3 task 5) · Bad rollout: roll back and record image ====================
+EXAM QUESTION:
+ssh cka03005
+A recent update of Deployment checkout in namespace release left it unavailable. Roll the Deployment back to the last working revision. Then write the image used by the running Pods to /root/checkout-image.txt.
+WRITE DOWN: namespace = release · deployment = checkout · roll back (do not recreate) · file = /root/checkout-image.txt
+
+SPOT THE PATTERN: Bad rollout → rollout undo → record running image
+  "Roll the Deployment back to the last working revision" → k rollout history, then undo (to the previous or --to-revision=N)
+  "write the image used by the running Pods" → jsonpath image > /root/checkout-image.txt after the rollback
+
+IN PLAIN WORDS:
+An update broke the app; undo it and note which image works.
+
+SET UP IN KILLERCODA:
+kubectl create namespace release --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n release create deployment checkout --image=nginx:1.27-alpine --replicas=2 --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n release rollout status deploy checkout --timeout=90s
+kubectl -n release set image deploy/checkout nginx=nginx:1.27-doesnotexist
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. See the problem
+   $ kubectl -n release get pods
+   YOU SEE: ImagePullBackOff
+   New image tag does not exist.
+2. See history
+   $ kubectl -n release rollout history deploy checkout
+   YOU SEE: REVISION 1, 2
+   Revision 1 was healthy.
+3. Roll back
+   $ kubectl -n release rollout undo deploy checkout
+   $ kubectl -n release rollout status deploy checkout
+   YOU SEE: successfully rolled out
+   undo = go to previous revision.
+4. Save the image
+   $ kubectl -n release get deploy checkout -o jsonpath="{.spec.template.spec.containers[0].image}" > /root/checkout-image.txt
+   $ cat /root/checkout-image.txt
+   YOU SEE: nginx:1.27-alpine
+   jsonpath pulls one field.
+5. Check it works
+   $ kubectl -n release get deploy checkout
+   $ cat /root/checkout-image.txt
+
+TRAPS TO AVOID:
+- Undoing twice → back to the broken one
+- Writing the image before rolling back
+- Forgetting -n release
+
+VERIFY AGAINST THE QUESTION:
+- available: $ k -n release get deploy checkout  → must see: READY n/n
+- file: $ cat /root/checkout-image.txt  → must see: the working image
+
+MEMORISE (fast version, target 3 min):
+ssh cka03005
+k -n release rollout history deploy checkout
+k -n release rollout undo deploy checkout
+k -n release rollout status deploy checkout
+k -n release get deploy checkout -o jsonpath='{.spec.template.spec.containers[0].image}' > /root/checkout-image.txt
+
+
+==================== PAGE 306 (Mock 3 task 6) · cri-dockerd + sysctl (persist + verify) ====================
+EXAM QUESTION:
+ssh cka03006
+Set up cri-dockerd on this node:
+- Install /root/cri-dockerd.deb with dpkg.
+- Enable and start the cri-docker socket and service so they start on boot.
+- Persist these kernel settings in /etc/sysctl.d/99-cri.conf and load them now:
+  net.bridge.bridge-nf-call-iptables = 1, net.ipv6.conf.all.forwarding = 1, net.ipv4.ip_forward = 1, net.netfilter.nf_conntrack_max = 131072
+- Make sure the br_netfilter module is loaded at boot (/etc/modules-load.d/cri.conf).
+WRITE DOWN: dpkg -i · cri-docker.socket + cri-docker.service enabled · file /etc/sysctl.d/99-cri.conf · br_netfilter in /etc/modules-load.d/cri.conf
+
+SPOT THE PATTERN: Prepare node: .deb, socket+service, sysctl file, module at boot
+  "Enable and start the cri-docker socket and service" → systemctl enable --now cri-docker.socket cri-docker.service
+  "Persist these kernel settings in /etc/sysctl.d/99-cri.conf and load them now" → Write that file + sysctl --system
+  "loaded at boot (/etc/modules-load.d/cri.conf)" → echo br_netfilter > that file + modprobe br_netfilter now
+
+IN PLAIN WORDS:
+Install a runtime package, make it start at boot, and set 4 kernel network switches permanently. Docker is absent on Killercoda, so the service may fail to stay active; the rest still practises.
+
+SET UP IN KILLERCODA:
+test -f /root/cri-dockerd.deb || curl -fsSLo /root/cri-dockerd.deb https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.16/cri-dockerd_0.3.16.3-0.ubuntu-jammy_amd64.deb || echo "download failed - check release page"
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Install
+   $ dpkg -i /root/cri-dockerd.deb
+   YOU SEE: Setting up cri-dockerd
+   Local package install.
+2. Enable socket and service
+   $ systemctl daemon-reload
+   $ systemctl enable --now cri-docker.socket cri-docker.service
+   $ systemctl is-enabled cri-docker.socket cri-docker.service
+   YOU SEE: enabled
+            enabled
+   Both units start on boot.
+3. Module at boot
+   $ echo br_netfilter > /etc/modules-load.d/cri.conf
+   $ modprobe br_netfilter
+   bridge sysctl needs this module.
+4. Persist sysctl
+   $ cat <<'EOF' > /etc/sysctl.d/99-cri.conf
+net.bridge.bridge-nf-call-iptables = 1
+net.ipv6.conf.all.forwarding = 1
+net.ipv4.ip_forward = 1
+net.netfilter.nf_conntrack_max = 131072
+EOF
+   One setting per line.
+5. Load and verify
+   $ sysctl --system >/dev/null
+   $ sysctl net.bridge.bridge-nf-call-iptables net.ipv6.conf.all.forwarding net.ipv4.ip_forward net.netfilter.nf_conntrack_max
+   YOU SEE: = 1, = 1, = 1, = 131072
+   Values active now and after reboot.
+6. Check it works
+   $ dpkg -s cri-dockerd | grep Status
+   $ sysctl net.netfilter.nf_conntrack_max
+
+TRAPS TO AVOID:
+- Enabling only the service, not the socket
+- sysctl --system before modprobe br_netfilter → bridge key missing
+- Wrong file names (must be 99-cri.conf and cri.conf)
+
+VERIFY AGAINST THE QUESTION:
+- units enabled: $ systemctl is-enabled cri-docker.socket cri-docker.service  → must see: enabled enabled
+- settings live: $ sysctl net.bridge.bridge-nf-call-iptables net.ipv4.ip_forward net.netfilter.nf_conntrack_max  → must see: 1 / 1 / 131072
+
+MEMORISE (fast version, target 5 min):
+ssh cka03006
+dpkg -i /root/cri-dockerd.deb; systemctl daemon-reload
+systemctl enable --now cri-docker.socket cri-docker.service
+echo br_netfilter > /etc/modules-load.d/cri.conf; modprobe br_netfilter
+vim /etc/sysctl.d/99-cri.conf   # 4 lines; sysctl --system
+
+
+==================== PAGE 307 (Mock 3 task 7) · Helm template Argo CD and apply with kubectl ====================
+EXAM QUESTION:
+ssh cka03007
+Using the Helm repository argocd (https://argoproj.github.io/argo-helm), render chart argo-cd version 7.7.3 as release argo for namespace gitops:
+- CRDs must NOT be part of the output (they are pre-installed).
+- The argocd-server Service must be of type NodePort.
+Save the rendered manifests to /root/argocd-template.yaml and deploy them with kubectl (not helm install) into namespace gitops.
+WRITE DOWN: repo = argocd · chart argo-cd 7.7.3, release argo · ns = gitops · no CRDs, server.service.type=NodePort · file = /root/argocd-template.yaml · deploy with kubectl apply
+
+SPOT THE PATTERN: helm template with two --set values, then kubectl apply
+  "CRDs must NOT be part of the output" → --set crds.install=false
+  "The argocd-server Service must be of type NodePort" → --set server.service.type=NodePort
+  "deploy them with kubectl (not helm install)" → k create ns gitops; k apply -n gitops -f /root/argocd-template.yaml
+
+IN PLAIN WORDS:
+Print Argo CD YAML with Helm using two settings, save it, and apply it with kubectl.
+
+SET UP IN KILLERCODA:
+command -v helm >/dev/null || curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+kubectl apply -k "https://github.com/argoproj/argo-cd/manifests/crds?ref=v2.13.2"
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Add repo
+   $ helm repo add argocd https://argoproj.github.io/argo-helm
+   $ helm repo update
+   Same repo as the docs.
+2. Find value names
+   $ helm show values argocd/argo-cd --version 7.7.3 | grep -n -A3 -E "^crds:|^  service:" | head -20
+   YOU SEE: crds.install / server.service.type
+   Look up keys, never guess.
+3. Render
+   $ helm template argo argocd/argo-cd --version 7.7.3 --namespace gitops --set crds.install=false --set server.service.type=NodePort > /root/argocd-template.yaml
+   Render only; nothing is installed.
+4. Check content
+   $ grep -c "kind: CustomResourceDefinition" /root/argocd-template.yaml
+   $ grep -B2 -A3 "type: NodePort" /root/argocd-template.yaml | head
+   YOU SEE: 0 / type: NodePort
+   Both requirements visible in the file.
+5. Apply with kubectl
+   $ kubectl create namespace gitops
+   $ kubectl apply -n gitops -f /root/argocd-template.yaml
+   $ kubectl -n gitops get svc argo-argocd-server
+   YOU SEE: TYPE NodePort
+   kubectl applies the rendered YAML.
+6. Check it works
+   $ kubectl -n gitops get pods
+   $ kubectl -n gitops get svc
+
+TRAPS TO AVOID:
+- Running helm install
+- Release name argocd instead of argo (changes resource names)
+- Namespace gitops not created → apply fails
+
+VERIFY AGAINST THE QUESTION:
+- no CRDs: $ grep -c "kind: CustomResourceDefinition" /root/argocd-template.yaml  → must see: 0
+- NodePort: $ k -n gitops get svc argo-argocd-server  → must see: TYPE NodePort
+- running: $ k -n gitops get pods  → must see: pods Running
+
+MEMORISE (fast version, target 7 min):
+ssh cka03007
+helm repo add argocd https://argoproj.github.io/argo-helm; helm repo update
+helm show values argocd/argo-cd --version 7.7.3 | grep -n -A3 -E '^crds:|^  service:'
+helm template argo argocd/argo-cd --version 7.7.3 --namespace gitops --set crds.install=false --set server.service.type=NodePort > /root/argocd-template.yaml
+k create ns gitops; k apply -n gitops -f /root/argocd-template.yaml
+
+
+==================== PAGE 308 (Mock 3 task 8) · CRDs: filter by group + create a custom resource ====================
+EXAM QUESTION:
+ssh cka03008
+cert-manager CRDs are installed.
+- Write the names of all CRDs belonging to API group cert-manager.io, one per line and sorted, to /root/cm-crds.txt.
+- Create a ClusterIssuer named selfsigned of kind cert-manager.io/v1 that uses the selfSigned issuer type.
+- Save the output of kubectl explain for clusterissuer.spec.selfSigned to /root/selfsigned.txt.
+WRITE DOWN: file1 = /root/cm-crds.txt (names only, sorted) · clusterissuer = selfsigned (selfSigned: {}) · file2 = /root/selfsigned.txt
+
+SPOT THE PATTERN: Filter CRDs by group; create custom resource; explain field
+  "belonging to API group cert-manager.io, one per line and sorted" → custom-columns name+group, keep group == cert-manager.io, | sort
+  "Create a ClusterIssuer named selfsigned" → apiVersion cert-manager.io/v1, kind ClusterIssuer, spec.selfSigned: {}
+  "kubectl explain for clusterissuer.spec.selfSigned" → k explain clusterissuer.spec.selfSigned > /root/selfsigned.txt
+
+IN PLAIN WORDS:
+List custom types from one group, create one custom object, save its field help.
+
+SET UP IN KILLERCODA:
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.2/cert-manager.crds.yaml
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Names in group cert-manager.io
+   $ kubectl get crd -o custom-columns=NAME:.metadata.name,GROUP:.spec.group --no-headers | awk '$2=="cert-manager.io"{print $1}' | sort > /root/cm-crds.txt; cat /root/cm-crds.txt
+   YOU SEE: certificaterequests.cert-manager.io ...
+   acme.cert-manager.io items are a different group.
+2. Check the kind exists
+   $ kubectl api-resources --api-group=cert-manager.io
+   YOU SEE: clusterissuers  cert-manager.io/v1  false  ClusterIssuer
+   NAMESPACED false = cluster-wide.
+3. Create the ClusterIssuer
+   $ cat <<'EOF' | kubectl apply -f -
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata: {name: selfsigned}
+spec:
+  selfSigned: {}
+EOF
+   YOU SEE: clusterissuer.cert-manager.io/selfsigned created
+   A CRD lets you store new object kinds.
+4. Save the field docs
+   $ kubectl explain clusterissuer.spec.selfSigned > /root/selfsigned.txt
+   Docs come from the CRD schema.
+5. Check it works
+   $ cat /root/cm-crds.txt
+   $ kubectl get clusterissuer selfsigned
+
+TRAPS TO AVOID:
+- grep cert-manager also catches acme.cert-manager.io CRDs — filter by exact group
+- Adding a namespace to the ClusterIssuer (cluster-scoped)
+- Lowercase selfsigned in the field path
+
+VERIFY AGAINST THE QUESTION:
+- CRD list: $ cat /root/cm-crds.txt  → must see: sorted names, group cert-manager.io only
+- issuer exists: $ k get clusterissuer selfsigned  → must see: READY True
+
+MEMORISE (fast version, target 5 min):
+ssh cka03008
+k get crd -o custom-columns=NAME:.metadata.name,GROUP:.spec.group --no-headers | awk '$2=="cert-manager.io"{print $1}' | sort > /root/cm-crds.txt
+ClusterIssuer: apiVersion cert-manager.io/v1, metadata.name selfsigned, spec: selfSigned: {} → k apply -f ci.yaml
+k explain clusterissuer.spec.selfSigned > /root/selfsigned.txt
+
+
+==================== PAGE 309 (Mock 3 task 9) · kubeadm: cert expiry, renew, join command ====================
+EXAM QUESTION:
+ssh cka03009
+On the controlplane:
+- Save the certificate expiration overview of the cluster to /root/cert-expiry.txt.
+- Renew ONLY the kube-apiserver serving certificate and make the API server use it.
+- Save a complete kubeadm join command for a new worker node to /root/join.sh.
+WRITE DOWN: file1 = /root/cert-expiry.txt · renew only apiserver cert · file2 = /root/join.sh
+
+SPOT THE PATTERN: kubeadm certs check/renew one cert + print join command
+  "Save the certificate expiration overview" → kubeadm certs check-expiration > /root/cert-expiry.txt
+  "Renew ONLY the kube-apiserver serving certificate" → kubeadm certs renew apiserver (not 'all')
+  "make the API server use it" → Restart the static pod: move kube-apiserver.yaml out of manifests, wait, move it back
+  "complete kubeadm join command" → kubeadm token create --print-join-command > /root/join.sh
+
+IN PLAIN WORDS:
+Check certificate dates, renew the API server certificate, and print the command a new node would use to join. No setup needed: the cluster already has these.
+
+SET UP IN KILLERCODA:
+(cannot be set up in a playground)
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Save expiry overview
+   $ kubeadm certs check-expiration > /root/cert-expiry.txt; head -8 /root/cert-expiry.txt
+   YOU SEE: CERTIFICATE  EXPIRES  RESIDUAL TIME ...
+   kubeadm reads all certs for you.
+2. Renew apiserver cert
+   $ kubeadm certs renew apiserver
+   YOU SEE: certificate for serving the Kubernetes API renewed
+   Only this one, as asked.
+3. Restart the API server
+   $ mv /etc/kubernetes/manifests/kube-apiserver.yaml /root/
+   $ sleep 20
+   $ mv /root/kube-apiserver.yaml /etc/kubernetes/manifests/
+   $ sleep 40; kubectl get nodes
+   YOU SEE: Ready
+   Static pod restarts and loads the new cert.
+4. Create the join command
+   $ kubeadm token create --print-join-command > /root/join.sh
+   $ cat /root/join.sh
+   YOU SEE: kubeadm join 172.30.1.2:6443 --token ... --discovery-token-ca-cert-hash sha256:...
+   New token + CA hash in one line.
+5. Check it works
+   $ openssl x509 -in /etc/kubernetes/pki/apiserver.crt -noout -enddate
+   $ cat /root/join.sh
+
+TRAPS TO AVOID:
+- kubeadm certs renew all (renews more than asked)
+- Not restarting the apiserver — it keeps the old cert in memory
+- Saving only the token instead of the full join command
+
+VERIFY AGAINST THE QUESTION:
+- expiry file: $ head -8 /root/cert-expiry.txt  → must see: CERTIFICATE / EXPIRES table
+- new cert date: $ openssl x509 -in /etc/kubernetes/pki/apiserver.crt -noout -enddate  → must see: notAfter ≈ one year from today
+- join command: $ cat /root/join.sh  → must see: kubeadm join <ip>:6443 --token … --discovery-token-ca-cert-hash sha256:…
+
+MEMORISE (fast version, target 6 min):
+ssh cka03009
+kubeadm certs check-expiration > /root/cert-expiry.txt
+kubeadm certs renew apiserver
+mv /etc/kubernetes/manifests/kube-apiserver.yaml /root/; sleep 20; mv /root/kube-apiserver.yaml /etc/kubernetes/manifests/
+kubeadm token create --print-join-command > /root/join.sh
+
+
+==================== PAGE 310 (Mock 3 task 10) · Gateway API: header match + weighted split ====================
+EXAM QUESTION:
+ssh cka03010
+In namespace shop-gw a Gateway shop-gw (HTTP, port 80) and Services shop-v1 and shop-v2 exist.
+Create an HTTPRoute named shop-route attached to shop-gw for hostname shop.example.com:
+- Requests with header x-version: v2 go 100% to shop-v2.
+- All other requests are split 80% shop-v1 and 20% shop-v2.
+Both Services listen on port 80.
+WRITE DOWN: namespace = shop-gw · route = shop-route -> gateway shop-gw · host shop.example.com · header x-version=v2 -> shop-v2 · else 80/20 v1/v2
+
+SPOT THE PATTERN: HTTPRoute with header match + weighted backendRefs
+  "attached to shop-gw for hostname shop.example.com" → parentRefs: - name: shop-gw; hostnames: [shop.example.com]
+  "Requests with header x-version: v2 go 100% to shop-v2" → Rule 1: matches headers name x-version value v2 → backendRefs shop-v2:80
+  "split 80% shop-v1 and 20% shop-v2" → Rule 2: backendRefs with weight: 80 and weight: 20
+
+IN PLAIN WORDS:
+Send testers (header v2) to version 2 and split everyone else 80/20.
+
+SET UP IN KILLERCODA:
+kubectl get crd gateways.gateway.networking.k8s.io >/dev/null 2>&1 || kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
+kubectl create namespace shop-gw --dry-run=client -o yaml | kubectl apply -f -
+cat <<'EOF' | kubectl apply -f -
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata: {name: nginx}
+spec: {controllerName: example.net/gateway-controller}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata: {name: shop-gw, namespace: shop-gw}
+spec:
+  gatewayClassName: nginx
+  listeners: [{name: http, protocol: HTTP, port: 80}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: shop-v1, namespace: shop-gw}
+spec: {selector: {app: shop, v: "1"}, ports: [{port: 80}]}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: shop-v2, namespace: shop-gw}
+spec: {selector: {app: shop, v: "2"}, ports: [{port: 80}]}
+EOF
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Check the Gateway
+   $ kubectl -n shop-gw get gateway shop-gw -o yaml | grep -A3 listeners
+   YOU SEE: name: http  port: 80
+   Route will attach to this.
+2. Create the HTTPRoute
+   $ cat <<'EOF' | kubectl apply -f -
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: shop-route, namespace: shop-gw}
+spec:
+  parentRefs: [{name: shop-gw}]
+  hostnames: [shop.example.com]
+  rules:
+  - matches:
+    - headers: [{name: x-version, value: v2}]
+    backendRefs: [{name: shop-v2, port: 80}]
+  - matches:
+    - path: {type: PathPrefix, value: /}
+    backendRefs:
+    - {name: shop-v1, port: 80, weight: 80}
+    - {name: shop-v2, port: 80, weight: 20}
+EOF
+   YOU SEE: httproute.../shop-route created
+   Header rule is more specific, so it wins.
+3. Check
+   $ kubectl -n shop-gw describe httproute shop-route | grep -A20 Rules
+   YOU SEE: Weight: 80 / Weight: 20 / x-version
+   Both rules stored correctly.
+4. Check it works
+   $ kubectl -n shop-gw get httproute shop-route -o yaml
+
+TRAPS TO AVOID:
+- Putting both matches in ONE rule (then header requests also get split)
+- Forgetting port: 80 in backendRefs
+- Weights as percent strings instead of integers
+
+VERIFY AGAINST THE QUESTION:
+- route accepted: $ k -n shop-gw describe httproute shop-route | grep -A20 Rules  → must see: header rule + weighted rule; Accepted True
+- attached: $ k -n shop-gw get httproute shop-route -o yaml  → must see: parentRefs shop-gw
+
+MEMORISE (fast version, target 7 min):
+ssh cka03010
+docs: 'gateway api' → HTTPRoute (gateway-api.sigs.k8s.io: 'HTTP header matching', 'traffic splitting')
+rules: - matches: - headers: - name: x-version value: v2  backendRefs: - name: shop-v2 port: 80
+- backendRefs: - name: shop-v1 port: 80 weight: 80 / - name: shop-v2 port: 80 weight: 20
+k apply -f route.yaml
+
+
+==================== PAGE 311 (Mock 3 task 11) · NetworkPolicy pick: AND vs OR trap ====================
+EXAM QUESTION:
+ssh cka03011
+Pods labelled app=api in namespace payments must accept traffic ONLY from Pods labelled app=gateway in namespace edge, on TCP port 80. A default deny-ingress policy exists in payments.
+Several candidate policies are in /root/netpols-ex/. Apply the single file that meets the requirement with the least privilege. Do not modify any file or existing policy.
+WRITE DOWN: target = payments app=api · source = ns edge AND app=gateway · port TCP 80 · apply one file only
+
+SPOT THE PATTERN: Pick the least-privilege NetworkPolicy: AND vs OR selectors
+  "ONLY from Pods labelled app=gateway in namespace edge" → Need namespaceSelector AND podSelector in the SAME from item
+  "on TCP port 80" → Correct file has ports TCP 80
+  "Apply the single file" → Exactly one k apply; don't edit files
+
+IN PLAIN WORDS:
+Pick the rule where namespace AND pod label must both match, on port 80 only.
+
+SET UP IN KILLERCODA:
+kubectl create namespace payments --dry-run=client -o yaml | kubectl apply -f -
+kubectl create namespace edge --dry-run=client -o yaml | kubectl apply -f -
+mkdir -p /root/netpols-ex
+cat <<'EOF' | kubectl apply -f -
+apiVersion: v1
+kind: Pod
+metadata: {name: api, namespace: payments, labels: {app: api}}
+spec: {containers: [{name: c, image: nginx:1.27-alpine}]}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: api, namespace: payments}
+spec: {selector: {app: api}, ports: [{port: 80}]}
+---
+apiVersion: v1
+kind: Pod
+metadata: {name: gateway, namespace: edge, labels: {app: gateway}}
+spec: {containers: [{name: c, image: busybox:1.36, command: [sleep, "36000"]}]}
+---
+apiVersion: v1
+kind: Pod
+metadata: {name: intruder, namespace: edge, labels: {app: other}}
+spec: {containers: [{name: c, image: busybox:1.36, command: [sleep, "36000"]}]}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: deny-in, namespace: payments}
+spec: {podSelector: {}, policyTypes: [Ingress]}
+EOF
+cat <<'EOF' > /root/netpols-ex/a.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: np-a, namespace: payments}
+spec:
+  podSelector: {matchLabels: {app: api}}
+  ingress:
+  - from:
+    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: edge}}
+    - podSelector: {matchLabels: {app: gateway}}
+    ports: [{protocol: TCP, port: 80}]
+EOF
+cat <<'EOF' > /root/netpols-ex/b.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: np-b, namespace: payments}
+spec:
+  podSelector: {matchLabels: {app: api}}
+  ingress:
+  - from:
+    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: edge}}
+      podSelector: {matchLabels: {app: gateway}}
+    ports: [{protocol: TCP, port: 80}]
+EOF
+cat <<'EOF' > /root/netpols-ex/c.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: np-c, namespace: payments}
+spec:
+  podSelector: {matchLabels: {app: api}}
+  ingress:
+  - from:
+    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: edge}}
+      podSelector: {matchLabels: {app: gateway}}
+EOF
+cat <<'EOF' > /root/netpols-ex/d.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: np-d, namespace: payments}
+spec:
+  podSelector: {}
+  ingress:
+  - from:
+    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: edge}}
+    ports: [{protocol: TCP, port: 80}]
+EOF
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Read every file carefully
+   $ for f in /root/netpols-ex/*.yaml; do echo "== $f"; cat $f; done
+   Look at dashes: each "-" under from is a separate OR.
+2. Decide
+   $ echo "a=OR (any edge pod OR any gateway pod anywhere), b=AND+port, c=no port limit, d=all edge pods+all targets -> b"
+   b is the only exact match.
+3. Apply b
+   $ kubectl apply -f /root/netpols-ex/b.yaml
+   YOU SEE: networkpolicy.../np-b created
+   One file, no edits.
+4. Test allowed and blocked
+   $ kubectl -n edge exec gateway -- wget -qO- -T2 api.payments | head -2
+   $ kubectl -n edge exec intruder -- wget -qO- -T2 api.payments
+   YOU SEE: <!DOCTYPE html> / download timed out
+   Only the gateway pod gets in.
+5. Check it works
+   $ kubectl -n payments get networkpolicy
+
+TRAPS TO AVOID:
+- Picking the file with '- namespaceSelector' and '- podSelector' as two items (OR)
+- Picking one with no ports block
+- Editing a file to 'fix' it (forbidden)
+
+VERIFY AGAINST THE QUESTION:
+- gateway allowed: $ k -n edge exec gateway -- wget -qO- -T2 api.payments | head -2  → must see: HTML
+- others blocked: $ k -n edge exec intruder -- wget -qO- -T2 api.payments  → must see: download timed out
+
+MEMORISE (fast version, target 5 min):
+ssh cka03011
+for f in /root/netpols-ex/*.yaml; do echo "== $f"; cat $f; done   # look for ONE '-' before namespaceSelector, podSelector without '-', ports 80
+k apply -f /root/netpols-ex/b.yaml
+k -n payments get networkpolicy
+
+
+==================== PAGE 312 (Mock 3 task 12) · ClusterIP + headless Service and DNS records ====================
+EXAM QUESTION:
+ssh cka03012
+In namespace dns-lab, Deployment catalog (2 replicas, nginx on port 80) exists.
+- Expose it with a ClusterIP Service catalog-svc on port 8080 targeting port 80.
+- Create a headless Service catalog-headless for the same Pods on port 80.
+- From a temporary busybox:1.36 Pod, save the nslookup output of catalog-svc.dns-lab.svc.cluster.local to /root/svc-dns.txt, and of catalog-headless.dns-lab.svc.cluster.local to /root/headless-dns.txt.
+WRITE DOWN: namespace = dns-lab · svc catalog-svc 8080->80 · svc catalog-headless clusterIP None · files /root/svc-dns.txt, /root/headless-dns.txt
+
+SPOT THE PATTERN: ClusterIP vs headless Service; DNS lookups to files
+  "ClusterIP Service catalog-svc on port 8080 targeting port 80" → k expose --port=8080 --target-port=80
+  "Create a headless Service catalog-headless" → k expose … --cluster-ip=None --port=80
+  "From a temporary busybox:1.36 Pod" → k run … --rm -i --restart=Never --image=busybox:1.36 -- nslookup … > file
+
+IN PLAIN WORDS:
+Make a normal and a "headless" service and record what DNS answers for each.
+
+SET UP IN KILLERCODA:
+kubectl create namespace dns-lab --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n dns-lab create deployment catalog --image=nginx:1.27-alpine --replicas=2 --port=80 --dry-run=client -o yaml | kubectl apply -f -
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. ClusterIP Service
+   $ kubectl -n dns-lab expose deploy catalog --name=catalog-svc --port=8080 --target-port=80
+   YOU SEE: service/catalog-svc exposed
+   One virtual IP for both pods.
+2. Headless Service
+   $ kubectl -n dns-lab expose deploy catalog --name=catalog-headless --port=80 --cluster-ip=None
+   YOU SEE: service/catalog-headless exposed
+   clusterIP None = DNS returns pod IPs.
+3. Lookups into files
+   $ kubectl -n dns-lab run dnsq --rm -i --restart=Never --image=busybox:1.36 -- nslookup catalog-svc.dns-lab.svc.cluster.local > /root/svc-dns.txt
+   $ kubectl -n dns-lab run dnsq --rm -i --restart=Never --image=busybox:1.36 -- nslookup catalog-headless.dns-lab.svc.cluster.local > /root/headless-dns.txt
+   --rm -i prints output then deletes the pod.
+4. Compare
+   $ cat /root/svc-dns.txt /root/headless-dns.txt
+   YOU SEE: svc: 1 address; headless: 2 addresses
+   Headless shows each pod.
+5. Check it works
+   $ kubectl -n dns-lab get svc
+   $ grep -c Address /root/headless-dns.txt
+
+TRAPS TO AVOID:
+- Using -it with redirect → TTY junk in the file; use -i
+- Headless with a ClusterIP (must be None)
+- Swapping port and target-port
+
+VERIFY AGAINST THE QUESTION:
+- services: $ k -n dns-lab get svc  → must see: catalog-svc 8080/TCP with IP; catalog-headless CLUSTER-IP None
+- headless returns pod IPs: $ grep -c Address /root/headless-dns.txt  → must see: ≥ 2 pod addresses
+
+MEMORISE (fast version, target 5 min):
+ssh cka03012
+k -n dns-lab expose deploy catalog --name=catalog-svc --port=8080 --target-port=80
+k -n dns-lab expose deploy catalog --name=catalog-headless --port=80 --cluster-ip=None
+k -n dns-lab run dnsq --rm -i --restart=Never --image=busybox:1.36 -- nslookup catalog-svc.dns-lab.svc.cluster.local > /root/svc-dns.txt
+(same with catalog-headless… > /root/headless-dns.txt)
+
+
+==================== PAGE 313 (Mock 3 task 13) · HPA: CPU + memory, scaleUp and scaleDown behavior ====================
+EXAM QUESTION:
+ssh cka03013
+Create a HorizontalPodAutoscaler named worker-hpa in namespace metrics-app for Deployment worker:
+- min 2, max 6 replicas,
+- target 60% average CPU utilisation AND 70% average memory utilisation,
+- scale up by at most 2 Pods per 60 seconds,
+- scale-down stabilization window of 120 seconds.
+WRITE DOWN: namespace = metrics-app · hpa = worker-hpa -> deploy worker · min 2 max 6 · cpu 60%, memory 70% · scaleUp Pods 2 / 60s · scaleDown window 120s
+
+SPOT THE PATTERN: HPA v2 YAML: two metrics + scaleUp policy + scaleDown window
+  "60% average CPU utilisation AND 70% average memory utilisation" → Two Resource metrics: cpu 60, memory 70 (k autoscale only does CPU → use YAML)
+  "scale up by at most 2 Pods per 60 seconds" → behavior.scaleUp.policies: - type: Pods value: 2 periodSeconds: 60
+  "scale-down stabilization window of 120 seconds" → behavior.scaleDown.stabilizationWindowSeconds: 120
+
+IN PLAIN WORDS:
+Autoscale on CPU and memory, add at most 2 pods a minute, remove pods only after 2 calm minutes.
+
+SET UP IN KILLERCODA:
+kubectl create namespace metrics-app --dry-run=client -o yaml | kubectl apply -f -
+cat <<'EOF' | kubectl apply -f -
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: worker, namespace: metrics-app}
+spec:
+  selector: {matchLabels: {app: worker}}
+  template:
+    metadata: {labels: {app: worker}}
+    spec:
+      containers:
+      - {name: worker, image: nginx:1.27-alpine, resources: {requests: {cpu: 100m, memory: 64Mi}}}
+EOF
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Create the HPA
+   $ cat <<'EOF' | kubectl apply -f -
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: {name: worker-hpa, namespace: metrics-app}
+spec:
+  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: worker}
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+  - type: Resource
+    resource: {name: cpu, target: {type: Utilization, averageUtilization: 60}}
+  - type: Resource
+    resource: {name: memory, target: {type: Utilization, averageUtilization: 70}}
+  behavior:
+    scaleUp:
+      policies:
+      - {type: Pods, value: 2, periodSeconds: 60}
+    scaleDown:
+      stabilizationWindowSeconds: 120
+EOF
+   YOU SEE: horizontalpodautoscaler.../worker-hpa created
+   Two metrics: HPA uses the higher demand.
+2. Check
+   $ kubectl -n metrics-app get hpa worker-hpa
+   YOU SEE: cpu: <unknown>/60%, memory: <unknown>/70%  2  6
+   = no metrics-server; config is still right.
+3. Check deployment followed min
+   $ kubectl -n metrics-app get deploy worker
+   YOU SEE: READY 2/2 (once metrics exist)
+   Without metrics the HPA may wait.
+4. Check it works
+   $ kubectl -n metrics-app get hpa worker-hpa -o yaml | grep -A12 behavior
+
+TRAPS TO AVOID:
+- Using type: Percent instead of Pods for the scale-up policy
+- Only one metric (k autoscale)
+- apiVersion autoscaling/v1 (no memory, no behavior)
+
+VERIFY AGAINST THE QUESTION:
+- targets + limits: $ k -n metrics-app get hpa worker-hpa  → must see: cpu …/60%, memory …/70%, 2, 6
+- behavior: $ k -n metrics-app get hpa worker-hpa -o yaml | grep -A12 behavior  → must see: Pods 2 / 60s; stabilizationWindowSeconds 120
+
+MEMORISE (fast version, target 7 min):
+ssh cka03013
+docs: 'horizontal pod autoscale walkthrough' / k explain hpa.spec.behavior
+autoscaling/v2; scaleTargetRef Deployment worker; min 2 max 6; metrics cpu 60 + memory 70 (type Utilization)
+behavior: scaleUp: policies: - {type: Pods, value: 2, periodSeconds: 60}; scaleDown: stabilizationWindowSeconds: 120
+k apply -f hpa.yaml; k -n metrics-app get hpa
+
+
+==================== PAGE 314 (Mock 3 task 14) · PriorityClass with preemption policy ====================
+EXAM QUESTION:
+ssh cka03014
+Create a PriorityClass named critical-jobs:
+- value exactly one less than the highest existing user-defined PriorityClass (ignore system-*),
+- preemptionPolicy PreemptLowerPriority, not the global default,
+- description "critical batch".
+Patch Deployment payments-api in namespace prio to use it, and verify that the running Pods have the new priority value.
+WRITE DOWN: pc = critical-jobs · value = max user-defined - 1 · preemptionPolicy PreemptLowerPriority, globalDefault false · deployment payments-api (ns prio)
+
+SPOT THE PATTERN: PriorityClass YAML (value, preemption, description) + patch deployment
+  "value exactly one less than the highest existing user-defined PriorityClass" → k get pc, skip system-*, highest − 1
+  "preemptionPolicy PreemptLowerPriority, not the global default" → preemptionPolicy: PreemptLowerPriority; globalDefault: false
+  "verify that the running Pods have the new priority value" → After rollout, check .spec.priority on pods
+
+IN PLAIN WORDS:
+Create a priority just under the top one, allowed to push others out, and give it to a deployment.
+
+SET UP IN KILLERCODA:
+kubectl create namespace prio --dry-run=client -o yaml | kubectl apply -f -
+cat <<'EOF' | kubectl apply -f -
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata: {name: batch-low}
+value: 100
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata: {name: team-a}
+value: 3000
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata: {name: team-b}
+value: 7000
+preemptionPolicy: Never
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: payments-api, namespace: prio}
+spec:
+  replicas: 2
+  selector: {matchLabels: {app: payments-api}}
+  template:
+    metadata: {labels: {app: payments-api}}
+    spec:
+      priorityClassName: batch-low
+      containers: [{name: c, image: nginx:1.27-alpine}]
+EOF
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Find the highest user value
+   $ kubectl get pc --sort-by=.value -o custom-columns=NAME:.metadata.name,VALUE:.value | grep -v system-
+   YOU SEE: team-b 7000 (highest)
+   Ignore system-* classes.
+2. Create critical-jobs = 6999
+   $ cat <<'EOF' | kubectl apply -f -
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata: {name: critical-jobs}
+value: 6999
+globalDefault: false
+preemptionPolicy: PreemptLowerPriority
+description: "critical batch"
+EOF
+   YOU SEE: priorityclass.../critical-jobs created
+   YAML lets you set every field.
+3. Patch the Deployment
+   $ kubectl -n prio patch deploy payments-api -p '{"spec":{"template":{"spec":{"priorityClassName":"critical-jobs"}}}}'
+   YOU SEE: patched
+   Replaces batch-low.
+4. Verify pods
+   $ kubectl -n prio rollout status deploy payments-api
+   $ kubectl -n prio get pods -o custom-columns=NAME:.metadata.name,PRIO:.spec.priority,CLASS:.spec.priorityClassName
+   YOU SEE: 6999  critical-jobs
+   Priority is copied into each new pod.
+5. Check it works
+   $ kubectl get pc critical-jobs -o yaml | grep -E "value|preemption|globalDefault"
+
+TRAPS TO AVOID:
+- Forgetting --preemption-policy=Never (k create pc NAME --value=N --preemption-policy=Never)
+- Old pods still have the old priority until rollout finishes
+- Description without quotes
+
+VERIFY AGAINST THE QUESTION:
+- class fields: $ k get pc critical-jobs -o yaml | grep -E 'value|preemption|globalDefault'  → must see: value highest-1, PreemptLowerPriority, false
+- pods use it: $ k -n prio get pods -o custom-columns=NAME:.metadata.name,PRIO:.spec.priority,CLASS:.spec.priorityClassName  → must see: new value, critical-jobs
+
+MEMORISE (fast version, target 6 min):
+ssh cka03014
+k get pc --sort-by=.value
+pc.yaml: scheduling.k8s.io/v1 PriorityClass critical-jobs; value: <highest-1>; globalDefault: false; preemptionPolicy: PreemptLowerPriority; description: "critical batch"
+k -n prio patch deploy payments-api -p '{"spec":{"template":{"spec":{"priorityClassName":"critical-jobs"}}}}'
+k -n prio rollout status deploy payments-api
+
+
+==================== PAGE 315 (Mock 3 task 15) · StorageClass (Retain, expandable) + StatefulSet claims ====================
+EXAM QUESTION:
+ssh cka03015
+Create a StorageClass named retain-local: provisioner rancher.io/local-path, reclaimPolicy Retain, volumeBindingMode WaitForFirstConsumer, allowVolumeExpansion true. It must NOT be the default.
+In namespace cache create a StatefulSet cache (2 replicas, image redis:7-alpine, headless Service cache) with a volumeClaimTemplate named data requesting 100Mi from retain-local, mounted at /data.
+WRITE DOWN: sc = retain-local (Retain, WFFC, expandable, not default) · ns = cache · statefulset cache 2 replicas, redis:7-alpine · claim template data 100Mi -> /data
+
+SPOT THE PATTERN: StorageClass fields + StatefulSet with volumeClaimTemplates
+  "reclaimPolicy Retain, volumeBindingMode WaitForFirstConsumer, allowVolumeExpansion true" → Three top-level SC fields (not under spec)
+  "It must NOT be the default" → No is-default-class annotation
+  "with a volumeClaimTemplate named data requesting 100Mi from retain-local" → volumeClaimTemplates: - metadata.name data; storageClassName retain-local; 100Mi
+
+IN PLAIN WORDS:
+Make a storage type that keeps disks after delete, and a 2-pod database that gets one disk each.
+
+SET UP IN KILLERCODA:
+kubectl get deploy -A | grep -q local-path-provisioner || kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.30/deploy/local-path-storage.yaml
+kubectl create namespace cache --dry-run=client -o yaml | kubectl apply -f -
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. Create the StorageClass
+   $ cat <<'EOF' | kubectl apply -f -
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata: {name: retain-local}
+provisioner: rancher.io/local-path
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+EOF
+   YOU SEE: storageclass.../retain-local created
+   No default annotation = not default.
+2. Create Service + StatefulSet
+   $ cat <<'EOF' | kubectl apply -f -
+apiVersion: v1
+kind: Service
+metadata: {name: cache, namespace: cache}
+spec: {clusterIP: None, selector: {app: cache}, ports: [{port: 6379}]}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: {name: cache, namespace: cache}
+spec:
+  serviceName: cache
+  replicas: 2
+  selector: {matchLabels: {app: cache}}
+  template:
+    metadata: {labels: {app: cache}}
+    spec:
+      containers:
+      - {name: redis, image: redis:7-alpine, volumeMounts: [{name: data, mountPath: /data}]}
+  volumeClaimTemplates:
+  - metadata: {name: data}
+    spec:
+      accessModes: [ReadWriteOnce]
+      storageClassName: retain-local
+      resources: {requests: {storage: 100Mi}}
+EOF
+   YOU SEE: service/cache created, statefulset.apps/cache created
+   Each replica gets its own PVC.
+3. Check
+   $ kubectl -n cache get pods,pvc
+   $ kubectl get pv | grep retain-local
+   YOU SEE: data-cache-0 / data-cache-1 Bound; RECLAIM Retain
+   PVs keep the Retain policy.
+4. Check it works
+   $ kubectl get sc retain-local
+   $ kubectl -n cache get pvc
+
+TRAPS TO AVOID:
+- Putting SC fields under spec: (SC has no spec)
+- serviceName not matching the headless Service cache
+- volumeMounts name not matching the template name data
+
+VERIFY AGAINST THE QUESTION:
+- SC correct: $ k get sc retain-local  → must see: Retain WaitForFirstConsumer true, not (default)
+- STS + PVCs: $ k -n cache get pods,pvc  → must see: cache-0, cache-1 Running; data-cache-0/1 Bound
+
+MEMORISE (fast version, target 6 min):
+ssh cka03015
+docs: 'storage classes' → name retain-local, provisioner rancher.io/local-path, reclaimPolicy: Retain, volumeBindingMode: WaitForFirstConsumer, allowVolumeExpansion: true
+docs: 'statefulset' example → Service clusterIP: None name cache + StatefulSet cache, ns cache, replicas 2, redis:7-alpine
+volumeClaimTemplates: name data, storageClassName retain-local, 100Mi; mountPath /data
+k apply -f sts.yaml; k -n cache get pods,pvc
+
+
+==================== PAGE 316 (Mock 3 task 16) · Re-bind a Released PV (clear claimRef) ====================
+EXAM QUESTION:
+ssh cka03016
+The PostgreSQL data PersistentVolume pg-data-pv still holds data, but it is in Released state after its old claim was deleted.
+- Make the PV available again WITHOUT deleting it or its data.
+- Create PVC pg-data in namespace postgres (1Gi, ReadWriteOnce, storageClassName manual) that binds to it.
+- Deploy /root/pg-deploy.yaml (already uses claim pg-data) and make sure the Pod is Running.
+WRITE DOWN: pv = pg-data-pv (do NOT delete) · pvc = pg-data 1Gi RWO manual (ns postgres) · file = /root/pg-deploy.yaml
+
+SPOT THE PATTERN: Released PV → remove claimRef → new PVC binds
+  "it is in Released state" → spec.claimRef still points to the old PVC → remove it
+  "WITHOUT deleting it or its data" → k patch pv to remove claimRef (no delete)
+  "(1Gi, ReadWriteOnce, storageClassName manual) that binds to it" → PVC must match the PV's size, mode and class
+
+IN PLAIN WORDS:
+An old disk is "locked" to a deleted claim; unlock it, claim it again, start the database.
+
+SET UP IN KILLERCODA:
+kubectl create namespace postgres --dry-run=client -o yaml | kubectl apply -f -
+kubectl get pv pg-data-pv >/dev/null 2>&1 || cat <<'EOF' | kubectl apply -f -
+apiVersion: v1
+kind: PersistentVolume
+metadata: {name: pg-data-pv}
+spec:
+  capacity: {storage: 1Gi}
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: manual
+  hostPath: {path: /mnt/pg-data, type: DirectoryOrCreate}
+  claimRef: {namespace: postgres, name: old-pg-claim, uid: 00000000-0000-0000-0000-000000000001}
+EOF
+cat <<'EOF' > /root/pg-deploy.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: postgres, namespace: postgres}
+spec:
+  selector: {matchLabels: {app: postgres}}
+  template:
+    metadata: {labels: {app: postgres}}
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:17-alpine
+        env:
+        - {name: POSTGRES_PASSWORD, value: cka}
+        - {name: PGDATA, value: /var/lib/postgresql/data/pgdata}
+        volumeMounts: [{name: data, mountPath: /var/lib/postgresql/data}]
+      volumes:
+      - {name: data, persistentVolumeClaim: {claimName: pg-data}}
+EOF
+sleep 5
+
+SOLVE IT, STEP BY STEP:
+0. Start of every question: in Killercoda just k get nodes (exam: ssh line first)
+1. See the PV state
+   $ kubectl get pv pg-data-pv
+   YOU SEE: Released   postgres/old-pg-claim
+   Released PVs never bind again by themselves.
+2. Remove the old claimRef
+   $ kubectl patch pv pg-data-pv --type=json -p='[{"op":"remove","path":"/spec/claimRef"}]'
+   YOU SEE: persistentvolume/pg-data-pv patched
+   Frees the PV; data stays on disk.
+3. Check Available
+   $ kubectl get pv pg-data-pv
+   YOU SEE: Available
+   Ready for a new claim.
+4. Create the PVC
+   $ cat <<'EOF' | kubectl apply -f -
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: {name: pg-data, namespace: postgres}
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: manual
+  resources: {requests: {storage: 1Gi}}
+EOF
+   YOU SEE: persistentvolumeclaim/pg-data created
+   Class + size + mode match the PV.
+5. Deploy and check
+   $ kubectl apply -f /root/pg-deploy.yaml
+   $ kubectl -n postgres get pvc,pods
+   YOU SEE: Bound pg-data-pv / Running
+   Database runs on the old disk.
+6. Check it works
+   $ kubectl get pv pg-data-pv
+   $ kubectl -n postgres get pods
+
+TRAPS TO AVOID:
+- Deleting/recreating the PV
+- Creating the PVC before the PV shows Available → may stay Pending
+- Wrong namespace postgres
+
+VERIFY AGAINST THE QUESTION:
+- PV bound again: $ k get pv pg-data-pv  → must see: Bound postgres/pg-data
+- pod running: $ k -n postgres get pods  → must see: 1/1 Running
+
+MEMORISE (fast version, target 5 min):
+ssh cka03016
+k patch pv pg-data-pv --type=json -p='[{"op":"remove","path":"/spec/claimRef"}]'
+k get pv pg-data-pv   # Available
+pvc.yaml: pg-data, ns postgres, RWO, manual, 1Gi → k apply -f pvc.yaml
+k apply -f /root/pg-deploy.yaml; k -n postgres get pvc,pods
