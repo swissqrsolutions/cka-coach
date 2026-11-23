@@ -334,3 +334,6 @@ h2 .chip{vertical-align:middle;margin-left:6px}
 mark.ph{background:#ffe08a;color:#152033;border-radius:4px;padding:0 2px}
 .phnote{margin:6px 0;padding:8px 10px;border-radius:10px;background:var(--warn-soft);font-size:14px}
 .phnote p{margin:0 0 4px}.phnote p:last-child{margin:0}
+.basics{margin-top:14px}
+.solution>summary{font-size:18px;color:var(--accent)}
+.solution>.body{padding-top:4px}

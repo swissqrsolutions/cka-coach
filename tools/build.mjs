@@ -12,7 +12,8 @@ const lines = md.split('\n');
 // code blocks get a copy button (rendered by the app)
 const renderer = new marked.Renderer();
 renderer.code = ({ text }) => `<div class="code"><button class="copy" type="button">Copy</button><pre><code>${text.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))}</code></pre></div>`;
-const html = s => marked.parse(s.trim(), { renderer });
+const pipeSafe = s => s.split('\n').map(l => l.trim().startsWith('|') ? l.replace(/`[^`]*`/g, c => c.replace(/\|/g, '\\|')) : l).join('\n');
+const html = s => marked.parse(pipeSafe(s.trim()), { renderer });
 
 // ---- split top-level parts: everything before PART 4 is reference material
 const p4 = lines.findIndex(l => l.startsWith('# PART 4'));
@@ -59,7 +60,7 @@ function flowOf(body) {
     const t = text.join('\n').trim(); text.length = 0; if (!t) return;
     for (const par of t.split(/\n\s*\n/)) {
       const p = par.trim(); if (!p) continue;
-      if (p.split('\n').every(l => l.trim().startsWith('|'))) items.push({ k: 'tbl', h: marked.parse(p) });
+      if (p.split('\n').every(l => l.trim().startsWith('|'))) items.push({ k: 'tbl', h: marked.parse(pipeSafe(p)) });
       else items.push({ k: 'say', h: marked.parseInline(p.replace(/\n/g, ' ')) });
     }
   };
@@ -70,10 +71,19 @@ function flowOf(body) {
     while (i < ls.length && !ls[i].startsWith('```')) block.push(ls[i++]);
     const before = text.join('\n').trim();
     const lastLine = before.split('\n').pop() || '';
-    const isOut = /:\s*$/.test(lastLine) && !/^\s*$/.test(lastLine);
+    const endsColon = /:\s*$/.test(lastLine);
+    const looksYaml = block.filter(l => /^\s*(-\s+)?[A-Za-z][\w.\/-]*:(\s|$)/.test(l) || /^\s+-\s/.test(l)).length >= Math.max(2, block.filter(l => l.trim()).length * 0.6);
+    const saysOutput = /(you see|you get|you want|shows?|prints?|output|answers?|returns?|looks like|for example|says|result|reads?)[^.]*:\s*$/i.test(lastLine);
+    const cmdStart = /^\s*(k|kubectl|helm|ssh|systemctl|journalctl|crictl|etcdctl|etcdutl|vim|cat|cp|echo|curl|apt|apt-get|apt-cache|apt-mark|kubeadm|sed|grep|export|exit|cd|ls|dpkg|sysctl|mkdir|wget|nslookup|which|watch|ETCDCTL_API=3)\b/.test(block[0] || '') && !/^\s*\S+\s+\d+\/\d+\s/.test(block[0] || '');
     flushText();
-    if (isOut) { items.push({ k: 'out', t: block.join('\n') }); continue; }
-    for (const line of block) {
+    if (looksYaml) { items.push({ k: 'yaml', t: block.join('\n') }); continue; }
+    if (endsColon && saysOutput && !(cmdStart && !/you (see|get|want)/i.test(lastLine))) { items.push({ k: 'out', t: block.join('\n') }); continue; }
+    if (endsColon && /(change|to|add|edit|line|file|becomes)\b[^.]*:\s*$/i.test(lastLine)) { items.push({ k: 'yaml', t: block.join('\n') }); continue; }
+    if (endsColon && !/^\s*(k|kubectl|helm|ssh|systemctl|journalctl|crictl|etcdctl|etcdutl|vim|cat|cp|echo|curl|apt|apt-get|kubeadm|sed|grep|export|exit|cd|ls|dpkg|sysctl|mkdir|wget|nslookup)\b/.test(block[0] || '')) { items.push({ k: 'out', t: block.join('\n') }); continue; }
+    // join "\" continued lines, keep "# comment" as a note shown after the command
+    const joined = [];
+    for (const raw of block) { if (joined.length && /\\\s*$/.test(joined[joined.length - 1])) joined[joined.length - 1] = joined[joined.length - 1].replace(/\\\s*$/, '') + ' ' + raw.trim(); else joined.push(raw); }
+    for (const line of joined) {
       if (!line.trim()) continue;
       const exam = /exam only/i.test(line) || /^ssh <host/.test(line.trim());
       const cmd = line.replace(/\s+#(\s.*)?$/, '').trim();
@@ -150,7 +160,6 @@ if (fs.existsSync(mockFile)) {
         ...(s.see ? [{ k: 'out', t: s.see }] : []),
         ...(s.why ? [{ k: 'say', h: marked.parseInline(s.why) }] : []),
       ] }));
-      steps.push({ title: 'Check it works', html: '', flow: (t.verify || []).map(c => ({ k: 'cmd', t: c })) });
       const allCmds = t.steps.flatMap(s => s.cmds).concat(t.verify || []);
       questions.push({ n, mock: mk.n, star: /very common/i.test(t.reported || ''), title: t.title, topic: t.topic, weight: t.weight,
         question: t.question, keys: t.keys || [], setup: (t.setup || '').replace(/\nclear\s*$/, '').trim(), setupNote: t.setup ? '' : html(t.beginner || ''),

@@ -1,0 +1,540 @@
+{
+  "3": {
+    "pattern": "Pod Pending → describe Events → lower resource requests",
+    "clues": [
+      {
+        "q": "stuck in Pending",
+        "means": "The scheduler cannot place it: read Events (Insufficient cpu; a control-plane taint line may appear too, counts vary)"
+      },
+      {
+        "q": "The container needs",
+        "means": "Set the CPU request to exactly 100m on the deployment"
+      }
+    ],
+    "traps": [
+      "Setting --limits instead of --requests",
+      "Editing the pod instead of deployment api",
+      "Running the closing check too early — wait until the Pending pod is gone (the deployment replaces it), then the new pod shows 1/1 Running"
+    ],
+    "verify": [
+      {
+        "need": "pod no longer Pending",
+        "cmd": "k get pods -n app",
+        "see": "new pod 1/1 Running"
+      },
+      {
+        "need": "request is 100m",
+        "cmd": "k get deploy api -n app -o jsonpath='{..resources}'",
+        "see": "\"requests\":{\"cpu\":\"100m\"}"
+      }
+    ],
+    "memorise": [
+      "k get pods -n app",
+      "k describe pod <pod> -n app   # Insufficient cpu",
+      "k set resources deploy api -n app --requests=cpu=100m",
+      "k get pods -n app"
+    ],
+    "minutes": 2
+  },
+  "4": {
+    "pattern": "Node NotReady → ssh → kubelet stopped → enable --now",
+    "clues": [
+      {
+        "q": "is in state NotReady",
+        "means": "Kubelet on that node is not reporting: ssh in and check systemctl"
+      },
+      {
+        "q": "The fix must survive a reboot",
+        "means": "Use systemctl enable (not only start)"
+      },
+      {
+        "q": "Do not reboot the node",
+        "means": "Start the service by hand: enable --now"
+      }
+    ],
+    "traps": [
+      "systemctl start only — kubelet stays disabled, lost after reboot (check: systemctl is-enabled kubelet → enabled)",
+      "Running systemctl on the control plane instead of node01 — the prompt must say node01 before you type",
+      "Forgetting to exit back before k get nodes"
+    ],
+    "verify": [
+      {
+        "need": "node Ready",
+        "cmd": "k get nodes",
+        "see": "node01 Ready"
+      },
+      {
+        "need": "survives reboot",
+        "cmd": "ssh node01 systemctl is-enabled kubelet",
+        "see": "enabled"
+      }
+    ],
+    "memorise": [
+      "k describe node node01   # Kubelet stopped posting status",
+      "ssh node01",
+      "systemctl status kubelet",
+      "systemctl enable --now kubelet",
+      "exit; k get nodes"
+    ],
+    "minutes": 2
+  },
+  "5": {
+    "pattern": "Node NotReady → kubelet fails → fix service file path",
+    "clues": [
+      {
+        "q": "is in state NotReady",
+        "means": "ssh to node01, check kubelet status and journal"
+      },
+      {
+        "q": "Do not reboot the node",
+        "means": "After editing the service file: daemon-reload + restart kubelet"
+      }
+    ],
+    "traps": [
+      "Forgetting systemctl daemon-reload after editing the service file",
+      "Editing the wrong block — systemctl cat kubelet shows two ExecStart blocks; edit the one whose path contains local (the drop-in 10-kubeadm.conf)",
+      "Only starting kubelet without fixing the bad /usr/local/bin path"
+    ],
+    "verify": [
+      {
+        "need": "kubelet running",
+        "cmd": "systemctl status kubelet",
+        "see": "Active: active (running)"
+      },
+      {
+        "need": "node Ready",
+        "cmd": "k get nodes",
+        "see": "node01 Ready"
+      }
+    ],
+    "memorise": [
+      "ssh node01; systemctl status kubelet",
+      "journalctl -u kubelet -n 30 --no-pager",
+      "which kubelet; systemctl cat kubelet",
+      "vim /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf   # /usr/local/bin/kubelet → /usr/bin/kubelet",
+      "systemctl daemon-reload; systemctl restart kubelet"
+    ],
+    "minutes": 4
+  },
+  "6": {
+    "pattern": "Service unreachable → no endpoints → fix selector to match labels",
+    "clues": [
+      {
+        "q": "cannot reach service",
+        "means": "Check k get endpoints first: empty = selector mismatch"
+      },
+      {
+        "q": "is Running",
+        "means": "Pods are fine; the Service is the problem"
+      },
+      {
+        "q": "Do not delete or recreate the service",
+        "means": "Change it in place: k set selector or k edit svc"
+      }
+    ],
+    "traps": [
+      "Relabelling the pods instead of fixing the service selector",
+      "Copying the pod-template-hash label into the selector — the hash changes on every rollout, so the Service loses its pods again",
+      "Testing with curl — busybox client has wget"
+    ],
+    "verify": [
+      {
+        "need": "service has endpoints",
+        "cmd": "k get endpoints backend-svc -n web",
+        "see": "pod IP(s):80"
+      },
+      {
+        "need": "client can reach it",
+        "cmd": "k exec client -n web -- wget -qO- -T 3 backend-svc",
+        "see": "Welcome to nginx!"
+      }
+    ],
+    "memorise": [
+      "k get endpoints backend-svc -n web",
+      "k describe svc backend-svc -n web   # Selector",
+      "k get pods -n web --show-labels",
+      "k set selector svc backend-svc app=backend -n web",
+      "k exec client -n web -- wget -qO- -T 3 backend-svc"
+    ],
+    "minutes": 3
+  },
+  "10": {
+    "pattern": "Traffic times out → deny policy → add allow NetworkPolicy",
+    "clues": [
+      {
+        "q": "Do not delete or change any existing NetworkPolicy",
+        "means": "Add a new policy; policies are additive"
+      },
+      {
+        "q": "ONLY pod",
+        "means": "from.podSelector must match only client (run=client)"
+      },
+      {
+        "q": "on TCP port 80",
+        "means": "ports: protocol TCP, port 80"
+      }
+    ],
+    "traps": [
+      "Using namespaceSelector instead of podSelector → lets every pod in",
+      "Selecting the client in spec.podSelector — spec.podSelector picks the backend pods (app=backend)",
+      "Leaving egress in policyTypes from the docs example",
+      "Pasting into vim without :set paste (indentation staircases) or running dd while still in insert mode — press Esc first"
+    ],
+    "verify": [
+      {
+        "need": "client reaches backend",
+        "cmd": "k exec client -n web -- wget -qO- -T 3 backend-svc",
+        "see": "Welcome to nginx!"
+      },
+      {
+        "need": "policies present, old untouched",
+        "cmd": "k get netpol -n web",
+        "see": "deny-all and allow-client"
+      }
+    ],
+    "memorise": [
+      "k get pods -n web --show-labels   # backend app=backend, client run=client",
+      "docs: 'network policies' → copy example → keep ingress only",
+      "name: allow-client; podSelector app=backend; from podSelector run=client; ports TCP 80",
+      "k apply -f np.yaml",
+      "k exec client -n web -- wget -qO- -T 3 backend-svc"
+    ],
+    "minutes": 6
+  },
+  "11": {
+    "pattern": "Names don't resolve, IPs work → CoreDNS down → scale it",
+    "clues": [
+      {
+        "q": "cannot resolve service names",
+        "means": "DNS problem: check CoreDNS pods in kube-system (label k8s-app=kube-dns)"
+      },
+      {
+        "q": "Connections by IP address still work",
+        "means": "Network/CNI is fine; only DNS is broken"
+      },
+      {
+        "q": "Two CoreDNS replicas must be running",
+        "means": "Scale deploy coredns to exactly 2"
+      }
+    ],
+    "traps": [
+      "Looking for pods named dns in default namespace — CoreDNS lives in kube-system",
+      "Restarting pods when the deployment is scaled to 0",
+      "Forgetting --rm on the test pod, leaving pod t behind",
+      "Testing with the short name kubernetes.default in busybox — it can print NXDOMAIN even when DNS works; use the full name"
+    ],
+    "verify": [
+      {
+        "need": "2 CoreDNS replicas",
+        "cmd": "k get pods -n kube-system -l k8s-app=kube-dns",
+        "see": "2 pods 1/1 Running"
+      },
+      {
+        "need": "names resolve",
+        "cmd": "k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup kubernetes.default.svc.cluster.local",
+        "see": "second Address line (under Name:) = 10.96.0.1; the first is the DNS server 10.96.0.10:53"
+      }
+    ],
+    "memorise": [
+      "k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup kubernetes.default.svc.cluster.local",
+      "k get pods -n kube-system -l k8s-app=kube-dns",
+      "k get deploy coredns -n kube-system   # 0/0",
+      "k scale deploy coredns -n kube-system --replicas=2"
+    ],
+    "minutes": 3
+  },
+  "12": {
+    "pattern": "Write command output to a file (logs, top)",
+    "clues": [
+      {
+        "q": "to the file `/opt/api.log`",
+        "means": "Redirect with > into exactly that path"
+      },
+      {
+        "q": "uses the most CPU across all namespaces",
+        "means": "k top pods -A --sort-by=cpu, take the first row"
+      },
+      {
+        "q": "write its name to `/opt/top.txt`",
+        "means": "Only the pod name, nothing else"
+      }
+    ],
+    "traps": [
+      "Forgetting -A, so only default namespace is compared",
+      "Writing the whole top table into /opt/top.txt instead of just the name",
+      "Missing -n app on k logs → pod not found",
+      "Ignoring 'Defaulted container' — when the question names a container, always add -c <container>"
+    ],
+    "verify": [
+      {
+        "need": "logs saved",
+        "cmd": "cat /opt/api.log",
+        "see": "log lines"
+      },
+      {
+        "need": "top pod name saved",
+        "cmd": "cat /opt/top.txt",
+        "see": "exactly one pod name"
+      }
+    ],
+    "memorise": [
+      "k logs api -n app > /opt/api.log",
+      "k top pods -A --sort-by=cpu",
+      "echo <first-row-pod-name> > /opt/top.txt",
+      "cat /opt/api.log /opt/top.txt"
+    ],
+    "minutes": 2
+  },
+  "13": {
+    "pattern": "ServiceAccount + Role + RoleBinding, imperative, then auth can-i",
+    "clues": [
+      {
+        "q": "In namespace `dev`",
+        "means": "Every command gets -n dev"
+      },
+      {
+        "q": "allows `get`, `list` and `create` on `deployments`",
+        "means": "--verb=get,list,create --resource=deployments"
+      },
+      {
+        "q": "binds the Role to the ServiceAccount",
+        "means": "--serviceaccount=dev:deploy-bot (NAMESPACE:NAME)"
+      }
+    ],
+    "traps": [
+      "Writing --serviceaccount=deploy-bot without dev: — kubectl refuses it (serviceaccount must be <namespace>:<name>)",
+      "A typo in the SA or Role NAME inside the binding — no error at all, but can-i says no; check with k describe rolebinding",
+      "Spaces in --verb list",
+      "Forgetting -n dev on the role or binding"
+    ],
+    "verify": [
+      {
+        "need": "SA can create deployments",
+        "cmd": "k auth can-i create deployments -n dev --as=system:serviceaccount:dev:deploy-bot",
+        "see": "yes"
+      },
+      {
+        "need": "nothing extra allowed",
+        "cmd": "k auth can-i delete deployments -n dev --as=system:serviceaccount:dev:deploy-bot",
+        "see": "no"
+      }
+    ],
+    "memorise": [
+      "k create sa deploy-bot -n dev",
+      "k create role deploy-manager --verb=get,list,create --resource=deployments -n dev",
+      "k create rolebinding deploy-bot-binding --role=deploy-manager --serviceaccount=dev:deploy-bot -n dev",
+      "k auth can-i create deployments -n dev --as=system:serviceaccount:dev:deploy-bot"
+    ],
+    "minutes": 3
+  },
+  "14": {
+    "pattern": "Cluster-wide permission → ClusterRole + ClusterRoleBinding",
+    "clues": [
+      {
+        "q": "in namespace `ops`",
+        "means": "Only the SA is namespaced: k create sa -n ops; serviceaccount=ops:node-viewer"
+      },
+      {
+        "q": "`get` and `list` nodes",
+        "means": "--verb=get,list --resource=nodes (nodes are cluster-scoped)"
+      },
+      {
+        "q": "ClusterRoleBinding named `node-viewer-binding`",
+        "means": "Not a RoleBinding — nodes need cluster scope"
+      }
+    ],
+    "traps": [
+      "Using a RoleBinding — nodes are not namespaced, so it won't grant access",
+      "Thinking -n matters on clusterrole/clusterrolebinding — it is ignored there; only the SA needs a namespace",
+      "Wrong --serviceaccount format (must be ops:node-viewer)"
+    ],
+    "verify": [
+      {
+        "need": "can list nodes",
+        "cmd": "k auth can-i list nodes --as=system:serviceaccount:ops:node-viewer",
+        "see": "yes"
+      },
+      {
+        "need": "cannot delete",
+        "cmd": "k auth can-i delete nodes --as=system:serviceaccount:ops:node-viewer",
+        "see": "no"
+      }
+    ],
+    "memorise": [
+      "k create sa node-viewer -n ops",
+      "k create clusterrole node-reader --verb=get,list --resource=nodes",
+      "k create clusterrolebinding node-viewer-binding --clusterrole=node-reader --serviceaccount=ops:node-viewer",
+      "k auth can-i list nodes --as=system:serviceaccount:ops:node-viewer"
+    ],
+    "minutes": 3
+  },
+  "15": {
+    "pattern": "helm template with a --set value into a file",
+    "clues": [
+      {
+        "q": "with the name `argocd`",
+        "means": "helm repo add argocd <url>"
+      },
+      {
+        "q": "The CRDs must NOT be installed by the chart",
+        "means": "Find the values key: helm show values | grep crds → --set crds.install=false"
+      },
+      {
+        "q": "Save the output to `/root/argo-helm.yaml`",
+        "means": "helm template … > /root/argo-helm.yaml (template, not install)"
+      }
+    ],
+    "traps": [
+      "Running helm install instead of helm template",
+      "Using --skip-crds (only affects crds/ folder) instead of crds.install=false for this chart",
+      "Forgetting --version 7.7.3 or --namespace argocd",
+      "Mixing up release name, repo name and namespace — release = my-argo (any name), repo = argocd, namespace = argocd"
+    ],
+    "verify": [
+      {
+        "need": "file written",
+        "cmd": "ls -l /root/argo-helm.yaml",
+        "see": "size > 0"
+      },
+      {
+        "need": "no CRDs",
+        "cmd": "grep -c \"kind: CustomResourceDefinition\" /root/argo-helm.yaml",
+        "see": "0 (grep -c exits with code 1 on 0 — that is the success case)"
+      }
+    ],
+    "memorise": [
+      "helm repo add argocd https://argoproj.github.io/argo-helm; helm repo update",
+      "helm show values argocd/argo-cd --version 7.7.3 | grep -i -A3 '^crds'",
+      "helm template my-argo argocd/argo-cd --version 7.7.3 --namespace argocd --set crds.install=false > /root/argo-helm.yaml",
+      "grep -c 'kind: CustomResourceDefinition' /root/argo-helm.yaml"
+    ],
+    "minutes": 4
+  },
+  "16": {
+    "pattern": "helm install → upgrade → rollback a release",
+    "clues": [
+      {
+        "q": "in a new namespace `demo`",
+        "means": "-n demo --create-namespace"
+      },
+      {
+        "q": "with `2` controller replicas",
+        "means": "--set controller.replicaCount=2 (find the key with helm show values)"
+      },
+      {
+        "q": "Roll the release back to revision `1`",
+        "means": "helm rollback web 1 -n demo"
+      }
+    ],
+    "traps": [
+      "grep replicaCount shows 2+ hits — use the one under controller: (controller.replicaCount), not defaultBackend.replicaCount",
+      "Forgetting -n demo on upgrade/history/rollback → release not found",
+      "Expecting REVISION 1 after rollback — it becomes revision 3",
+      "Worrying about EXTERNAL-IP <pending> on the controller Service — normal in a playground, ignore it"
+    ],
+    "verify": [
+      {
+        "need": "rollback done",
+        "cmd": "helm history web -n demo",
+        "see": "rev 3 deployed, 'Rollback to 1'"
+      },
+      {
+        "need": "2 replicas again",
+        "cmd": "k get deploy -n demo",
+        "see": "controller 2/2"
+      }
+    ],
+    "memorise": [
+      "helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx; helm repo update",
+      "helm install web ingress-nginx/ingress-nginx -n demo --create-namespace --set controller.replicaCount=2",
+      "helm upgrade web ingress-nginx/ingress-nginx -n demo --set controller.replicaCount=3",
+      "helm rollback web 1 -n demo; helm history web -n demo"
+    ],
+    "minutes": 5
+  },
+  "17": {
+    "pattern": "Change kustomization.yaml, not the YAML file it lists; apply the folder with -k",
+    "clues": [
+      {
+        "q": "runs with `3` replicas",
+        "means": "Change replicas count in kustomization.yaml to 3"
+      },
+      {
+        "q": "then apply it",
+        "means": "k apply -k /root/kust (not -f)"
+      },
+      {
+        "q": "Do not edit `deploy.yaml`",
+        "means": "Only touch kustomization.yaml"
+      }
+    ],
+    "traps": [
+      "Using k apply -f on the folder or deploy.yaml — it applies deploy.yaml unchanged into default and skips namespace + replicas",
+      "Editing deploy.yaml",
+      "Checking the default namespace — kustomization sets namespace kust"
+    ],
+    "verify": [
+      {
+        "need": "rendered output correct",
+        "cmd": "k kustomize /root/kust",
+        "see": "replicas: 3, namespace: kust"
+      },
+      {
+        "need": "applied",
+        "cmd": "k get deploy -n kust",
+        "see": "kweb 3/3"
+      }
+    ],
+    "memorise": [
+      "cat /root/kust/kustomization.yaml",
+      "vim /root/kust/kustomization.yaml   # replicas: count: 2 → 3",
+      "k kustomize /root/kust",
+      "k apply -k /root/kust",
+      "k get deploy -n kust"
+    ],
+    "minutes": 3
+  },
+  "20": {
+    "pattern": "Install CNI from manifest; NetworkPolicy needed → Calico",
+    "clues": [
+      {
+        "q": "Install ONE of the following",
+        "means": "Pick by the requirement, install only one"
+      },
+      {
+        "q": "must support NetworkPolicy enforcement",
+        "means": "Flannel can't enforce NetworkPolicy → choose Calico"
+      }
+    ],
+    "traps": [
+      "Installing Flannel — it does not enforce NetworkPolicy",
+      "k apply on the tigera-operator file → 'annotations: Too long'; use k create",
+      "Leaving the file's default 192.168.0.0/16 when the cluster has a different --cluster-cidr (keep the default only if no range is set anywhere)",
+      "Applying custom-resources.yaml too fast → no matches for kind \"Installation\"; wait 20 s and retry"
+    ],
+    "verify": [
+      {
+        "need": "CNI running",
+        "cmd": "k get pods -A | grep -i -E 'calico|tigera'",
+        "see": "all Running"
+      },
+      {
+        "need": "pods can communicate",
+        "cmd": "k get nodes",
+        "see": "all nodes Ready"
+      },
+      {
+        "need": "pods get IPs and DNS runs",
+        "cmd": "k get pods -n kube-system -l k8s-app=kube-dns",
+        "see": "coredns pods Running (no longer Pending)"
+      }
+    ],
+    "memorise": [
+      "k create -f <tigera-operator URL>",
+      "k -n kube-system get pod -l component=kube-controller-manager -o yaml | grep cluster-cidr",
+      "curl -LO <custom-resources URL>; vim custom-resources.yaml   # cidr: <cluster-cidr>",
+      "k apply -f custom-resources.yaml; k get nodes"
+    ],
+    "minutes": 6
+  }
+}

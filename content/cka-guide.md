@@ -685,7 +685,9 @@ get  ->  describe (read Events at the bottom)  ->  logs  ->  fix the OWNER  ->  
 
 - **Image** = the packaged app, stored in a registry. Written as `name:tag`, for example `nginx:1.27`. The tag is the version.
 - **Deployment** = the object that creates and re-creates the pod. It is the pod's owner.
-- **ImagePullBackOff** = the node tried to download the image, failed, and now waits longer and longer between retries.
+- **ImagePullBackOff** = the node tried to download the image, failed, and now waits longer and longer between retries. **ErrImagePull** = the same problem on the first try; you may see either.
+- **Pod** = the smallest thing Kubernetes runs: one or more containers together. **Node** = a machine that runs pods. **Namespace** = a named folder that groups objects; most commands need `-n <namespace>`.
+- **k** = short for `kubectl` (an alias the exam and Killercoda already set up).
 
 ---
 
@@ -697,6 +699,7 @@ In the real exam this is already done. Paste it once, then forget it.
 k delete ns app --ignore-not-found
 k create ns app
 k create deploy api --image=nginx:doesnotexist -n app
+sleep 20   # wait 20 s for the pull to fail
 clear
 ```
 
@@ -742,6 +745,8 @@ api-697db8cc78-hgvdr   0/1     ImagePullBackOff   0          60s
 | STATUS | `ImagePullBackOff` | the image cannot be downloaded |
 | RESTARTS | `0` | the container never started, so nothing restarted |
 
+If STATUS says `ErrImagePull` instead, it is the same problem (first try). Carry on.
+
 Copy the pod name.
 
 ---
@@ -778,6 +783,7 @@ If the question does not give a tag, use the plain image name: `nginx=nginx`.
 k rollout status deploy/api -n app
 k get pods -n app
 ```
+`rollout status` waits until the new pod is ready, then prints `successfully rolled out` and returns.
 You want a pod with a NEW name showing `1/1 Running`. The new name is correct: the deployment replaced the broken pod.
 
 ```
@@ -860,7 +866,7 @@ k get nodes                       # proves: I am on the right machine, and kubec
 ```
 k get pods -n app
 ```
-You see:
+You see (after ~30 s; in the first seconds STATUS may say `Error` with RESTARTS `1` — wait and run it again):
 ```
 NAME                   READY   STATUS             RESTARTS      AGE
 api-5d9c7b6f4-x2x9k    0/1     CrashLoopBackOff   3 (20s ago)   70s
@@ -904,14 +910,20 @@ Cause found: the command is `exit 1`. It stops at once with an error.
 ```
 k edit deploy api -n app
 ```
-This opens the deployment in vim. Type `/exit 1` and press Enter. The cursor jumps to:
+This opens the deployment in vim. Type `/exit 1` and press Enter. The cursor jumps onto the word `exit` in the line `- exit 1`:
 ```
       - command:
         - sh
         - -c
-        - exit 1
+        - exit 1        <- cursor is on the "e" of exit
 ```
-Press `i`, change `exit 1` to `sleep 3600`. Press `Esc`, type `:wq`, press Enter.
+Vim keys, exactly: press `C` (capital C = delete from the cursor to the end of the line and start typing), type `sleep 3600`, press `Esc`, type `:wq`, press Enter.
+The line must now read `- sleep 3600`.
+
+No-vim alternative (one line, same result):
+```
+k patch deploy api -n app --type=json -p='[{"op":"replace","path":"/spec/template/spec/containers/0/command","value":["sh","-c","sleep 3600"]}]'
+```
 
 You see `deployment.apps/api edited`.
 
@@ -936,8 +948,8 @@ The steps are identical. Only the message and the fix change.
 
 | What you read in steps 2 and 3 | Cause | Fix |
 |---|---|---|
-| `Reason: OOMKilled` | the memory limit is too small | `k set resources deploy api -n app --limits=memory=256Mi` |
-| STATUS `CreateContainerConfigError`, Events: `configmap "x" not found` | the ConfigMap or Secret does not exist | create it (`k create cm x --from-literal=KEY=VALUE -n app`) or fix its name with `k edit deploy` |
+| `Reason: OOMKilled` | the memory limit is too small | `k set resources deploy api -n app --limits=memory=<value the question gives>` (e.g. `256Mi`) |
+| STATUS `CreateContainerConfigError` (not a restart loop: the container never starts), Events: `configmap "x" not found` | the ConfigMap or Secret does not exist | create it (`k create cm x --from-literal=KEY=VALUE -n app`) or fix its name with `k edit deploy` |
 | Events: `Liveness probe failed` | the probe checks the wrong port or path | `k edit deploy api -n app`, fix the port under `livenessProbe:` |
 | logs show an error about a wrong argument | bad `args:` | `k edit deploy api -n app`, fix `args:` |
 
@@ -965,6 +977,7 @@ k get pods -n app                            # 1/1 Running, RESTARTS stays 0
 - **Scheduler** = the part of Kubernetes that picks a node for each new pod.
 - **Pending** = the pod exists, but no node has accepted it yet.
 - **Request** = how much CPU and memory a pod reserves. CPU is written in millicores: `1000m` = 1 CPU, `100m` = one tenth of a CPU. A plain `100` means 100 whole CPUs.
+- **Taint** = a "keep out" mark on a node. Only pods with a matching toleration may run there. The controlplane usually has one, so normal pods go to node01.
 
 ---
 
@@ -1019,9 +1032,10 @@ k describe pod <pending-pod-name> -n app
 ```
 At the bottom, under Events:
 ```
-Warning  FailedScheduling  ...  0/2 nodes are available: 2 Insufficient cpu.
+Warning  FailedScheduling  ...  0/2 nodes are available: 1 Insufficient cpu, 1 node(s) had untolerated taint {node-role.kubernetes.io/control-plane: }. preemption: ...
 ```
-How to read it: "0 of 2 nodes can take this pod. Both do not have enough CPU."
+How to read it: "0 of 2 nodes can take this pod. One (node01) does not have enough CPU. The other (controlplane) is reserved for control-plane pods by a taint."
+The counts vary: if your controlplane has no taint, you see `0/2 nodes are available: 2 Insufficient cpu.` The word that matters is `Insufficient cpu`. Ignore the `preemption:` part.
 
 Look higher up in the same output, under **Requests:** → `cpu: 100`. That is 100 whole CPUs. No node has that.
 
@@ -1040,7 +1054,7 @@ k set resources deploy api -n app --requests=cpu=100m
 ```
 k get pods -n app
 ```
-You want `1/1 Running`, and no Pending pod left.
+You want `1/1 Running`, and no Pending pod left. The Pending pod disappears on its own (the deployment replaces it); if you still see it, wait 10 s and run the command again.
 
 ```
 exit          # exam only
@@ -1055,10 +1069,10 @@ The Events line always names the cause. Match it:
 | Events says | Cause | Fix |
 |---|---|---|
 | `Insufficient cpu` or `Insufficient memory` | the request is too big | `k set resources deploy api -n app --requests=cpu=100m,memory=128Mi` |
-| `had untolerated taint {key: value}` | the node has a taint the pod does not tolerate | remove the taint: `k taint node node01 key=value:NoSchedule-` (or add a toleration, question 36) |
+| `had untolerated taint {key: value}` | the node has a taint the pod does not tolerate | remove the taint: `k taint node node01 key=value:NoSchedule-` (or add a toleration, question 36 "Taint, toleration, nodeSelector") |
 | `didn't match Pod's node affinity/selector` | the pod asks for a node label that no node has | `k edit deploy api -n app` and fix `nodeSelector:`, or `k label node node01 key=value` |
-| `unbound immediate PersistentVolumeClaims` | its PVC is not Bound | fix the PVC (questions 38 and 40) |
-| Events is empty (`<none>`) | the scheduler itself is not running | question 9 |
+| `unbound immediate PersistentVolumeClaims` | its PVC is not Bound | fix the PVC (questions 38 "PV + PVC + Pod" and 40 "Reuse an existing PV") |
+| Events is empty (`<none>`) and `Node: <none>` | the scheduler itself is not running | question 9 "Scheduler is not running" |
 
 ---
 
@@ -1089,10 +1103,11 @@ k get pods -n app                            # 1/1 Running
 ### PART A. Build the exam (Killercoda only)
 
 ```
-ssh node01 "systemctl stop kubelet"
+ssh node01 "systemctl disable --now kubelet"
 clear
 ```
-Wait 40 seconds before you start.
+(`disable --now` = stop it AND switch off start-at-boot, so the "survive a reboot" part is real.)
+Wait 60 seconds, then run `k get nodes` until node01 shows `NotReady`.
 
 ---
 
@@ -1147,9 +1162,10 @@ systemctl status kubelet
 ```
 You see:
 ```
+     Loaded: loaded (/usr/lib/systemd/system/kubelet.service; disabled; ...)
      Active: inactive (dead) since ...
 ```
-`inactive (dead)` = the service is stopped. If the screen does not return to the prompt, press `q`.
+`inactive (dead)` = the service is stopped. `disabled` = it will not start after a reboot either. If the screen does not return to the prompt, press `q`.
 
 ---
 
@@ -1164,8 +1180,9 @@ systemctl enable --now kubelet
 Check:
 ```
 systemctl status kubelet
+systemctl is-enabled kubelet
 ```
-You want `Active: active (running)`. Press `q`.
+You want `Active: active (running)` (press `q`), and `is-enabled` prints `enabled` (= survives a reboot).
 
 ---
 
@@ -1196,6 +1213,7 @@ exit          # exam only
 | You see | Cause | Fix |
 |---|---|---|
 | `The connection to the server localhost:8080 was refused` | you ran kubectl ON node01. kubectl is only set up on the control plane. | type `exit`, run it again |
+| kubelet is already `active (running)` before you fixed anything | you ran systemctl on the control plane, not node01 | look at the prompt: it must say `node01`. `exit`, then `ssh node01` |
 | after starting: `Active: activating (auto-restart)` | the kubelet is misconfigured, not just stopped | question 5 |
 | kubelet is `active (running)` but the node stays NotReady | the container runtime is stopped | on the node: `systemctl enable --now containerd` |
 
@@ -1230,10 +1248,10 @@ exit   ;   k get nodes            # Ready
 ### PART A. Build the exam (Killercoda only)
 
 ```
-ssh node01 "sed -i 's#/usr/bin/kubelet#/usr/local/bin/kubelet#' /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf && systemctl daemon-reload && systemctl restart kubelet"
-clear
+ssh node01 'f=$(ls /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf /etc/systemd/system/kubelet.service.d/10-kubeadm.conf 2>/dev/null | head -1); echo "drop-in: $f"; sed -i "s#/usr/bin/kubelet#/usr/local/bin/kubelet#" "$f" && grep -n local "$f"; systemctl daemon-reload; systemctl restart kubelet'
 ```
-Wait 40 seconds before you start.
+You should see `drop-in: ...10-kubeadm.conf` and one line containing `/usr/local/bin/kubelet`. If `drop-in:` is empty or no line is printed, nothing was broken: run `ssh node01 systemctl cat kubelet` to find where your playground keeps the file, and use that path instead.
+Wait 60 seconds, then run `k get nodes` until node01 shows `NotReady`. Then `clear`.
 
 ---
 
@@ -1312,10 +1330,15 @@ Answer: `/usr/bin/kubelet`
 ```
 systemctl cat kubelet
 ```
-It prints every file of the service, each with its path in a `#` line on top. Look for the `ExecStart=` line with the wrong path. The `#` line above that block names the file:
+It prints every file of the service, each with its path in a `#` line on top. You see TWO blocks with `ExecStart=`:
+- `# /usr/lib/systemd/system/kubelet.service` with `ExecStart=/usr/bin/kubelet` (the base file; the drop-in overrides it, leave it alone);
+- the drop-in, with an empty `ExecStart=` (that only clears the old value; normal) followed by `ExecStart=/usr/local/bin/kubelet ...`.
+
+Edit the block whose `ExecStart=` contains `local`. The `#` line above it names the file:
 ```
 # /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf
 ```
+(Some installs keep it in `/etc/systemd/system/kubelet.service.d/10-kubeadm.conf`. Use whatever path YOUR output shows.)
 
 ---
 
@@ -1324,7 +1347,7 @@ It prints every file of the service, each with its path in a `#` line on top. Lo
 ```
 vim /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf
 ```
-Type `/local` and press Enter. Change `/usr/local/bin/kubelet` to `/usr/bin/kubelet`. Save with `Esc`, `:wq`.
+Vim keys, exactly: type `/local` and press Enter (the cursor lands on the `l` of `local`). Type `6x` (deletes 6 characters: `local/`). The line now reads `ExecStart=/usr/bin/kubelet ...`. Type `:wq` and press Enter (you never entered insert mode, so no Esc is needed; pressing it anyway does no harm).
 
 ---
 
@@ -1371,7 +1394,7 @@ exit          # exam only
 | `failed to load kubelet config file` or `unable to load client CA file ...` | `/var/lib/kubelet/config.yaml` (correct CA path: `/etc/kubernetes/pki/ca.crt`) | `restart` |
 | `dial tcp ...:6553: connection refused` (wrong API server port) | `/etc/kubernetes/kubelet.conf` (correct port: `6443`) | `restart` |
 
-`daemon-reload` is only needed after changing a file under `/usr/lib/systemd/` or `/etc/systemd/`. Running it when not needed does no harm.
+`daemon-reload` is only needed after changing a service file (under `/usr/lib/systemd/` or `/etc/systemd/`). Running it when not needed does no harm.
 
 ---
 
@@ -1491,9 +1514,11 @@ k get endpoints backend-svc -n web
 You want an IP, for example `192.168.1.5:80`.
 
 ```
+k get pod client -n web                      # must be Running before you exec
 k exec client -n web -- wget -qO- -T 3 backend-svc
 ```
 You want the HTML that contains `Welcome to nginx!`.
+- `--` = everything after this runs INSIDE the pod (here: `wget ...`).
 - `-qO-` = quiet, print the page to the screen. It is the capital letter O, not a zero.
 - `-T 3` = give up after 3 seconds
 
@@ -1511,6 +1536,7 @@ exit          # exam only
 | endpoints still `<none>`, labels match | the pods are not Ready (READY `0/1`) | fix the pods first |
 | endpoints show an IP, wget still fails | the port is wrong | question 7 |
 | `wget: invalid option -- '0'` | you typed zero instead of capital O | `-qO-` |
+| `error: unable to upgrade connection: container not found` or `pod ... is not running` | the client pod is still `ContainerCreating` | wait, `k get pod client -n web` until Running |
 
 ---
 
@@ -1614,7 +1640,8 @@ Type `/targetPort` and press Enter. You see:
     protocol: TCP
     targetPort: 8080
 ```
-Change `8080` to `80`. Save with `Esc`, `:wq`.
+Change `8080` to `80`. Vim keys, exactly: type `/8080` and press Enter (cursor on the first `8`), type `cw` (delete the word and start typing), type `80`, press `Esc`, type `:wq`, press Enter.
+No-vim alternative: `k patch svc backend-svc -n web -p '{"spec":{"ports":[{"port":80,"targetPort":80}]}}'`
 
 ---
 
@@ -1712,7 +1739,8 @@ Port `6443` = the API server. So the API server is down.
 ```
 crictl ps -a | grep kube-apiserver
 ```
-`-a` = also show stopped containers. You see lines with `Exited` and a growing ATTEMPT number. Copy the first column (the container ID) of the top line.
+`-a` = also show stopped containers. You see lines with `Exited` and a growing ATTEMPT number. Copy the first column (the container ID) of the most recent one: CREATED says seconds or minutes ago, ATTEMPT is the highest. (An old line from before the break, CREATED hours ago, shows nothing useful.)
+If `crictl ps -a | grep kube-apiserver` prints nothing, go straight to the row "NO apiserver container" in the table below.
 
 ---
 
@@ -1721,6 +1749,8 @@ crictl ps -a | grep kube-apiserver
 ```
 crictl logs <container-id> 2>&1 | tail -20
 ```
+`2>&1` = send the error output to the screen too. `crictl logs` writes the container's errors to stderr, and without `2>&1` the `| tail` would not catch them.
+
 You see errors that mention `127.0.0.1:2380`, for example:
 ```
 ... dial tcp 127.0.0.1:2380: connect: connection refused
@@ -1729,16 +1759,18 @@ The API server stores everything in etcd. etcd answers on port **2379**. The API
 
 ---
 
-### Step 3. Fix the file
+### Step 3. Back up, then fix the file
 
+First a backup, OUTSIDE the manifests folder (the kubelet runs every file inside `/etc/kubernetes/manifests/`, so a copy left there becomes a second API server):
 ```
+cp /etc/kubernetes/manifests/kube-apiserver.yaml /root/kube-apiserver.yaml.orig
 vim /etc/kubernetes/manifests/kube-apiserver.yaml
 ```
-Type `/etcd-servers` and press Enter. Change:
+Type `/etcd-servers` and press Enter. You see:
 ```
     - --etcd-servers=https://127.0.0.1:2380
 ```
-to `2379`. Save with `Esc`, `:wq`.
+Change it to `2379`. Vim keys, exactly: type `/2380` and press Enter (cursor on the `2`), type `cw`, type `2379`, press `Esc`, type `:wq`, press Enter.
 
 You do NOT restart anything. The kubelet sees the changed file and restarts the pod. It takes up to 60 seconds.
 
@@ -1772,7 +1804,7 @@ exit          # exam only
 | image pull error | the image name is wrong | compare the `image:` line with `kube-scheduler.yaml` (same version number) |
 
 **Two rules for this folder:**
-- Make a backup before editing, but keep it OUTSIDE the folder: `cp /etc/kubernetes/manifests/kube-apiserver.yaml /root/`. The kubelet runs every file inside `/etc/kubernetes/manifests/`.
+- The backup goes OUTSIDE the folder (step 3). The kubelet runs every file inside `/etc/kubernetes/manifests/`.
 - Spaces only, never Tab.
 
 ---
@@ -1809,10 +1841,11 @@ Run this on the control plane:
 cp /etc/kubernetes/manifests/kube-scheduler.yaml /root/scheduler.bak
 sed -i 's/- kube-scheduler$/- kube-schedulerx/' /etc/kubernetes/manifests/kube-scheduler.yaml
 k delete pod test --ignore-not-found
-sleep 30
+sleep 30   # waits 30 s for the old scheduler to stop; the screen is quiet, this is normal
 k run test --image=nginx:1.27
 clear
 ```
+(If `test` still gets scheduled, the old scheduler had not stopped yet: run `k delete pod test`, wait 30 s, `k run test --image=nginx:1.27` again.)
 
 ---
 
@@ -1880,6 +1913,7 @@ Events:
 exec: "kube-schedulerx": executable file not found in $PATH
 ```
 Cause found: the program name in the command is misspelled.
+(`k logs` shows nothing here: the program never started, so it printed nothing. If describe shows no Events either, run `crictl ps -a | grep scheduler` and `crictl inspect <id> | grep -i -m3 message` on the control plane.)
 
 ---
 
@@ -1893,7 +1927,9 @@ Type `/schedulerx` and press Enter. You see:
   - command:
     - kube-schedulerx
 ```
-Remove the `x`. Save with `Esc`, `:wq`. Do not restart anything. Wait 30 seconds.
+Remove the `x`. Vim keys, exactly: the cursor is on the `s` of `schedulerx`; press `9l` (move 9 characters right, onto the `x`), press `x` (deletes it), type `:wq`, press Enter.
+No-vim alternative: `sed -i 's/kube-schedulerx/kube-scheduler/' /etc/kubernetes/manifests/kube-scheduler.yaml`
+Do not restart anything. Wait 30 seconds.
 
 ---
 
@@ -1915,9 +1951,9 @@ exit          # exam only
 | Symptom | Broken part | File |
 |---|---|---|
 | new pods Pending, Events `<none>` | scheduler | `/etc/kubernetes/manifests/kube-scheduler.yaml` |
-| you scale a Deployment and NO new pods appear, not even Pending | controller-manager | `/etc/kubernetes/manifests/kube-controller-manager.yaml` |
+| you scale a Deployment and NO new pods appear, not even Pending (test: `k get rs` — its DESIRED number does not change after you scale) | controller-manager | `/etc/kubernetes/manifests/kube-controller-manager.yaml` |
 
-In both cases: `k describe pod <that-pod> -n kube-system` or `k logs <that-pod> -n kube-system` names the wrong line (wrong command, wrong flag, wrong file path, wrong image). Fix the file, wait.
+In both cases: if the program started and then failed (wrong flag, wrong file path), `k logs <that-pod> -n kube-system` names the wrong line. If it never started (wrong command, wrong image), the logs are empty: read `k describe pod <that-pod> -n kube-system` Events, or `crictl ps -a` on the control plane. Fix the file, wait.
 
 ---
 
@@ -1942,7 +1978,7 @@ k get pod test                                             # Running
 
 - **NetworkPolicy** = a rule that says which traffic may reach a pod. With no policy, a pod accepts traffic from everyone. As soon as one policy selects a pod, that pod accepts ONLY what its policies allow.
 - **podSelector** (top of the policy) = which pods this policy protects. `podSelector: {}` means every pod in the namespace.
-- **Policies only add up.** There is no "deny" rule. To let traffic through, you add one more policy that allows it. You do not edit or delete the existing one.
+- **Policies only add up.** There is no "deny" rule field. A policy that selects pods and allows nothing (like `deny-all` below) blocks them, simply because it selects them. To let traffic through, you add one more policy that allows it. You do not edit or delete the existing one.
 
 ---
 
@@ -2089,7 +2125,12 @@ spec:
 ```
 vim np.yaml
 ```
-Press `i`, paste.
+Vim keys, exactly:
+1. Type `:set paste` and press Enter (stops vim from shifting each pasted line further right).
+2. Press `i`, paste (Ctrl+Shift+V in the exam terminal), then press `Esc` (back to normal mode; `dd` only works there).
+3. To delete: move with the arrow keys onto the first line of a block, then type `dd` (one line) or `7dd` (7 lines).
+4. To change a line: put the cursor on the first character to replace, press `C` (deletes to the end of the line and starts typing), type the new text, press `Esc`.
+5. When done: type `:wq`, press Enter.
 
 **Delete these 3 blocks** (`dd` deletes one line; `7dd` deletes 7 lines):
 
@@ -2133,7 +2174,9 @@ spec:
 ```
 How it reads: "Protect the pods `app=backend`. Let in the pods `run=client`. Only on TCP 80."
 
-Save. Then:
+(If vim fights you: `cat > np.yaml <<'EOF'`, paste the finished file above, then a line with only `EOF`. Same result.)
+
+Save (`Esc`, `:wq`, Enter). Then:
 ```
 k apply -f np.yaml
 ```
@@ -2164,7 +2207,8 @@ exit          # exam only
 |---|---|---|
 | still a timeout | a label in the file does not match the real label | compare with `--show-labels`, fix `np.yaml`, `k apply -f np.yaml` again |
 | `error parsing ... yaml` | indentation broke while deleting lines | compare with the finished file above, line by line |
-| In Killercoda wget worked even with `deny-all` | that playground's network plugin does not enforce policies | nothing is wrong with your YAML; the exam cluster does enforce them |
+| step 1 wget already WORKS, even with `deny-all` | your cluster's network plugin does not enforce policies (flannel alone does not; Calico, Canal and Cilium do) | check with `k get pods -A \| grep -Ei 'calico\|canal\|cilium'`. If none is listed, you can still write and apply the policy, but you cannot see it block or allow. The exam cluster enforces them. |
+| `error: unable to upgrade connection` / `container not found` | the client pod is not Running yet | `k get pod client -n web`, wait |
 
 ---
 
@@ -2189,7 +2233,7 @@ k exec client -n web -- wget -qO- -T 3 backend-svc
 ### Three words first
 
 - **CoreDNS** = the program that turns a Service name (like `backend-svc`) into an IP address. It runs as a Deployment called `coredns` in namespace `kube-system`.
-- **kube-dns** = the old name. Two things still carry it: the CoreDNS pods have the label `k8s-app=kube-dns`, and their Service is called `kube-dns`.
+- **kube-dns** = the old name. Two things still carry it: the CoreDNS pods have the label `k8s-app=kube-dns`, and their Service is called `kube-dns`. You will use both names below: `coredns` for the Deployment, `kube-dns` for the label and the Service.
 - **nslookup** = a command that asks DNS for the IP of a name. It is the test for this question.
 
 ---
@@ -2229,9 +2273,9 @@ k get nodes                       # proves: I am on the right machine, and kubec
 ### Step 1. Confirm the symptom
 
 ```
-k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup kubernetes.default
+k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup kubernetes.default.svc.cluster.local
 ```
-- `kubernetes.default` = a Service that exists in every cluster, so it is a safe test name
+- `kubernetes.default.svc.cluster.local` = the full name of the Service `kubernetes` in namespace `default`. It exists in every cluster, so it is a safe test name. Use the full name: busybox's nslookup handles short names badly and can print `NXDOMAIN` lines even when DNS works.
 - `--rm -it --restart=Never` = run once, show the output, delete the test pod
 
 You see `connection timed out; no servers could be reached`.
@@ -2272,9 +2316,17 @@ k get pods -n kube-system -l k8s-app=kube-dns
 You want 2 pods, `1/1 Running`.
 
 ```
-k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup kubernetes.default
+k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup kubernetes.default.svc.cluster.local
 ```
-You want a line `Address: 10.96.0.1` (or similar).
+You see two `Address` lines:
+```
+Server:    10.96.0.10
+Address:   10.96.0.10:53                         <- the DNS server itself, not the answer
+
+Name:      kubernetes.default.svc.cluster.local
+Address:   10.96.0.1                             <- the answer you want
+```
+The SECOND `Address` line (under `Name:`) is the proof. Numbers may differ in your cluster. An extra line like `*** Can't find ...: No answer` (the IPv6 lookup) is harmless.
 
 ```
 exit          # exam only
@@ -2287,7 +2339,7 @@ exit          # exam only
 | What you find | Cause | Fix |
 |---|---|---|
 | step 2: pods exist but `CrashLoopBackOff` | a typo in the CoreDNS config | `k logs -n kube-system -l k8s-app=kube-dns` names the line. `k edit cm coredns -n kube-system`, fix it, then `k rollout restart deploy coredns -n kube-system` |
-| step 2: pods are `1/1 Running`, DNS still fails | the Service in front of them lost its pods | `k get endpoints kube-dns -n kube-system`. If `<none>`: `k set selector svc kube-dns k8s-app=kube-dns -n kube-system` |
+| step 2: pods are `1/1 Running`, DNS still fails | the Service in front of them lost its pods | `k get endpoints kube-dns -n kube-system` (a deprecation warning here is harmless). If `<none>`: `k set selector svc kube-dns k8s-app=kube-dns -n kube-system` |
 | step 2: pods `Pending` | scheduling problem | question 3 |
 
 ---
@@ -2295,11 +2347,11 @@ exit          # exam only
 ### Mug this up: the whole answer in 5 lines
 
 ```
-k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup kubernetes.default
+k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup kubernetes.default.svc.cluster.local
 k get pods -n kube-system -l k8s-app=kube-dns
 k get deploy coredns -n kube-system
 k scale deploy coredns -n kube-system --replicas=2
-k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup kubernetes.default
+k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup kubernetes.default.svc.cluster.local
 ```
 
 **To repeat the question:** paste Part A again.
@@ -2314,6 +2366,7 @@ k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup kubernetes.def
 - **`>`** = write the output of a command into a file. It replaces what was in the file. (`>>` adds to the end instead.)
 - **k logs** = what a container printed.
 - **k top** = how much CPU and memory pods or nodes use right now. It needs the add-on `metrics-server`. The exam cluster has it.
+- **echo** = print this text. `echo abc > file` puts `abc` into the file.
 
 ---
 
@@ -2326,6 +2379,12 @@ k run api --image=nginx:1.27 -n app
 mkdir -p /opt
 clear
 ```
+Then check: `k top nodes`. If it prints numbers, you are done. If it says `error: Metrics API not available`, your playground has no metrics-server. Install it (needs internet; the patch lets it trust the playground's self-signed kubelet certificates):
+```
+k apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+k patch deploy metrics-server -n kube-system --type=json -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+```
+Wait about 60 seconds, then `k top nodes` again until it prints numbers.
 
 ---
 
@@ -2407,9 +2466,9 @@ exit          # exam only
 
 | You see | Cause | Fix |
 |---|---|---|
-| `error: Metrics API not available` | no metrics-server in this playground | nothing to fix; the exam has it |
+| `error: Metrics API not available` | no metrics-server in this playground, or it is still starting | install it (Part A), wait 60 s; the exam has it |
 | `No such file or directory` on `>` | the folder does not exist | `mkdir -p /opt` |
-| the pod has 2 containers and `k logs` complains | you must name one | `k logs api -c <container> -n app > /opt/api.log` |
+| `Defaulted container "x" out of: x, y` | the pod has 2 containers; kubectl silently took the first one | always use `-c` when the question names a container: `k logs api -c <container> -n app > /opt/api.log` |
 | the question asks for the logs of a crashed container | current logs are empty | add `--previous` |
 
 **Related commands the exam uses in the same style:**
@@ -2549,8 +2608,9 @@ exit          # exam only
 
 | You see | Cause | Fix |
 |---|---|---|
-| first test says `no` | a typo in one of the three commands. Kubernetes gives NO error for a wrong SA name in a binding. | `k describe rolebinding deploy-bot-binding -n dev` and read Role + Subjects. Delete the wrong object (`k delete rolebinding ... -n dev`), create it again. |
-| `the server doesn't have a resource type "deployment"` in the test | singular/plural typo | use `deployments` |
+| first test says `no` | a typo in a NAME (SA, Role, namespace). Kubernetes gives NO error for a binding that points to an SA or Role that does not exist. | `k describe rolebinding deploy-bot-binding -n dev` and read Role + Subjects. Delete the wrong object (`k delete rolebinding ... -n dev`), create it again. |
+| `error: serviceaccount must be <namespace>:<name>` | you wrote `--serviceaccount=deploy-bot` without `dev:` | write `--serviceaccount=dev:deploy-bot` |
+| `the server doesn't have a resource type "deploymnts"` | a spelling mistake in the resource (singular `deployment` is fine; a misspelling is not) | use `deployments` |
 | the question names a USER, not a ServiceAccount | different flag | binding: `--user=alice`. Test: `--as=alice` |
 
 ---
@@ -2650,6 +2710,7 @@ k create clusterrolebinding node-viewer-binding --clusterrole=node-reader --serv
 k auth can-i list nodes --as=system:serviceaccount:ops:node-viewer       # yes
 k auth can-i delete nodes --as=system:serviceaccount:ops:node-viewer     # no
 ```
+You want `yes` for the first and `no` for the second. (No `-n` needed: nodes have no namespace. `-n` on the clusterrole / clusterrolebinding commands is ignored; only the SA needs a namespace.)
 
 ```
 exit          # exam only
@@ -2698,17 +2759,19 @@ k auth can-i list nodes --as=system:serviceaccount:ops:node-viewer       # yes
 - **Helm** = a tool that installs packaged applications into Kubernetes.
 - **Chart** = the package. It lives in a **repo** (a URL). A chart has **values** = settings you can switch.
 - **helm template** = print the YAML the chart WOULD create. Nothing is installed. (`helm install` is the command that really installs.)
+- **Release** = one named copy of a chart (here `my-argo`). **CRD** = a file that teaches Kubernetes a new object type (question 18).
 
 ---
 
 ### PART A. Build the exam (Killercoda only)
 
 ```
-helm version || curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+helm version || curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | DESIRED_VERSION=v3.16.4 bash   # installs a pinned Helm 3 only if helm is missing
 helm repo remove argocd 2>/dev/null
 rm -f /root/argo-helm.yaml
 clear
 ```
+(If `helm version` prints a version, Helm 3 or Helm 4, nothing is installed; both work for this page. If the install URL fails, follow https://helm.sh/docs/intro/install/ .)
 
 ---
 
@@ -2765,7 +2828,7 @@ crds:
 ### Step 3. Generate the file
 
 ```
-helm template argocd argocd/argo-cd --version 7.7.3 --namespace argocd --set crds.install=false > /root/argo-helm.yaml
+helm template my-argo argocd/argo-cd --version 7.7.3 --namespace argocd --set crds.install=false > /root/argo-helm.yaml
 ```
 
 How to read it:
@@ -2773,7 +2836,7 @@ How to read it:
 | Part | Meaning |
 |---|---|
 | `helm template` | print YAML, install nothing |
-| `argocd` (first) | a release name. Any name works; the question usually gives one. |
+| `my-argo` | the release name (a label for this copy of the chart). Any name works; use the one the question gives. Do not confuse it with the repo name `argocd` or the namespace `argocd`. |
 | `argocd/argo-cd` | `<repo-name>/<chart-name>` |
 | `--version 7.7.3` | the chart version from the question |
 | `--namespace argocd` | the namespace from the question |
@@ -2789,6 +2852,7 @@ ls -l /root/argo-helm.yaml
 grep -c "kind: CustomResourceDefinition" /root/argo-helm.yaml
 ```
 You want: a file that is not empty (size > 0), and the count `0`.
+(`grep -c` prints `0` and returns exit code 1 when it finds nothing; some terminals show that as an error. Here `0` IS the success case.)
 
 ```
 exit          # exam only
@@ -2814,7 +2878,7 @@ exit          # exam only
 helm repo add argocd https://argoproj.github.io/argo-helm
 helm repo update
 helm show values argocd/argo-cd --version 7.7.3 | grep -i -A3 "^crds"
-helm template argocd argocd/argo-cd --version 7.7.3 --namespace argocd --set crds.install=false > /root/argo-helm.yaml
+helm template my-argo argocd/argo-cd --version 7.7.3 --namespace argocd --set crds.install=false > /root/argo-helm.yaml
 grep -c "kind: CustomResourceDefinition" /root/argo-helm.yaml      # 0
 ```
 
@@ -2830,18 +2894,20 @@ grep -c "kind: CustomResourceDefinition" /root/argo-helm.yaml      # 0
 - **Release** = one installed copy of a chart. It has a name and lives in a namespace.
 - **Revision** = the version number of a release. Install = revision 1. Every upgrade or rollback adds 1.
 - **--set name=value** = change one of the chart's settings on the command line.
+- **Chart** (the package), **repo** (the URL it comes from) and **values** (its settings): see question 15.
 
 ---
 
 ### PART A. Build the exam (Killercoda only)
 
 ```
-helm version || curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+helm version || curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | DESIRED_VERSION=v3.16.4 bash   # installs a pinned Helm 3 only if helm is missing
 helm uninstall web -n demo 2>/dev/null
 k delete ns demo --ignore-not-found
 helm repo remove ingress-nginx 2>/dev/null
 clear
 ```
+Note: the ingress-nginx project was retired (maintenance ended March 2026). If its repo or chart no longer installs, practise the identical steps with a maintained chart: `helm repo add podinfo https://stefanprodan.github.io/podinfo`, chart `podinfo/podinfo`, setting `replicaCount` (top level, no `controller.`). Only the names change.
 
 ---
 
@@ -2885,7 +2951,12 @@ helm repo update
 ```
 helm show values ingress-nginx/ingress-nginx | grep -n replicaCount
 ```
-You see `replicaCount: 1`, indented under `controller:`. So the setting name is **`controller.replicaCount`**.
+You see at least two hits, for example:
+```
+NNN:  replicaCount: 1          <- under controller:
+MMM:    replicaCount: 1        <- under defaultBackend:
+```
+Pick the one under `controller:` (the question says "controller replicas"; it is the first hit). To be sure, open the values with `helm show values ingress-nginx/ingress-nginx | less`, type `/replicaCount`, read the parent key above it, press `q`. So the setting name is **`controller.replicaCount`**.
 
 ---
 
@@ -2929,7 +3000,8 @@ You want STATUS `deployed`, REVISION `3` (the rollback is itself a new revision)
 ```
 k get deploy -n demo
 ```
-You want the controller deployment back at `2` replicas.
+You want the controller deployment (`web-ingress-nginx-controller`) back at `2/2`.
+(If you also look at `k get svc -n demo`: EXTERNAL-IP `<pending>` is normal. The chart asks for a cloud LoadBalancer that a playground does not have. Ignore it.)
 
 ```
 exit          # exam only
@@ -2985,9 +3057,10 @@ helm rollback web 1 -n demo
 
 ```
 k delete ns kust --ignore-not-found
-rm -rf /root/kust && mkdir -p /root/kust && cd /root/kust
-k create deploy kweb --image=nginx:1.27 --dry-run=client -o yaml > deploy.yaml
-cat > kustomization.yaml <<EOF
+rm -rf /root/kust
+mkdir -p /root/kust
+k create deploy kweb --image=nginx:1.27 --dry-run=client -o yaml > /root/kust/deploy.yaml
+cat > /root/kust/kustomization.yaml <<EOF
 resources:
 - deploy.yaml
 namespace: kust
@@ -2996,7 +3069,7 @@ replicas:
   count: 2
 EOF
 k create ns kust
-cd ; clear
+clear
 ```
 
 ---
@@ -3048,7 +3121,7 @@ How it reads: "Take `deploy.yaml`. Put everything in namespace `kust`. Set `kweb
 ```
 vim /root/kust/kustomization.yaml
 ```
-Change `count: 2` to `count: 3`. Save with `Esc`, `:wq`.
+Change `count: 2` to `count: 3`. Vim keys, exactly: type `/count` and press Enter (cursor on the `c`), press `$` (jumps to the last character, the `2`), type `r3` (replaces that one character with `3`), type `:wq`, press Enter.
 
 ---
 
@@ -3086,7 +3159,7 @@ exit          # exam only
 
 | You see | Cause | Fix |
 |---|---|---|
-| `error: ... must be a directory` or a parse error | you used `-f` with the folder | use `-k` |
+| `deployment.apps/kweb created` plus an error about `kustomization.yaml` (`kind not set` / `Object 'Kind' is missing`) | you used `-f` with the folder: kubectl applied `deploy.yaml` as-is into `default` (your changes ignored) and could not read `kustomization.yaml` | clean up: `k delete deploy kweb -n default`, then `k apply -k /root/kust` |
 | `No resources found` in `k get deploy` | you looked in the wrong namespace. The kustomization sets it. | read `namespace:` in the file |
 | the question asks for a new image tag instead | different block | add to `kustomization.yaml`: `images:` / `- name: nginx` / `  newTag: "1.28"` |
 
@@ -3123,6 +3196,7 @@ k apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.
 rm -f /root/crds.txt /root/subject.txt
 clear
 ```
+This installs only cert-manager's CRDs, not cert-manager itself. So there are no cert-manager pods; do not look for them. This question only needs the CRDs.
 
 ---
 
@@ -3183,7 +3257,15 @@ The path is written with dots: `<kind>.spec.<field>`.
 cat /root/crds.txt
 cat /root/subject.txt
 ```
-You want: the 6 lines in the first file; a text starting with `GROUP: cert-manager.io` / `KIND: Certificate` / `FIELD: subject` in the second.
+You want: the 6 lines in the first file. The second file starts like this:
+```
+GROUP:      cert-manager.io
+KIND:       Certificate
+VERSION:    v1
+
+FIELD: subject <Object>
+```
+followed by the field's DESCRIPTION.
 
 ```
 exit          # exam only
@@ -3228,11 +3310,19 @@ This question uses no kubectl at all. It is Linux work on one machine.
 
 ### PART A. Build the exam (Killercoda only)
 
-The package cannot be provided in a playground. You can practise Steps 3 to 5 anywhere:
 ```
+# 1. put the package where the question expects it (pinned release, matched to your Ubuntu version)
+. /etc/os-release; echo "Ubuntu codename: $VERSION_CODENAME"
+curl -fL -o /root/cri-dockerd.deb https://github.com/Mirantis/cri-dockerd/releases/download/v0.4.10/cri-dockerd_0.4.10.3-0.ubuntu-${VERSION_CODENAME}_amd64.deb
+ls -l /root/cri-dockerd.deb
+# 2. undo the kernel settings, so the task is real (the playground already has them at 1)
 rm -f /etc/sysctl.d/k8s.conf
+sysctl -w net.ipv4.ip_forward=0 net.ipv6.conf.all.forwarding=0 net.bridge.bridge-nf-call-iptables=0
 clear
 ```
+- If `curl` fails (404), your Ubuntu codename has no build: replace `${VERSION_CODENAME}` with `jammy` and run that line again.
+- Pod networking on this machine is broken until you finish Step 4. That is expected.
+- **What you cannot fully practise here:** the playground runs containerd, not Docker. `dpkg -i` may stop with `dependency problems` (Docker missing), and even if it installs, `cri-docker` cannot start without a Docker daemon (`Cannot connect to the Docker daemon`). In the exam Docker is already installed. Practise the commands of Steps 1 and 2 and read their messages; Steps 3 and 4 work fully. (Installing Docker with `apt-get install -f -y` may replace the playground's containerd; only do that on a playground you are going to throw away.)
 
 ---
 
@@ -3291,14 +3381,14 @@ You want `Active: active (running)`. Press `q`.
 ```
 vim /etc/sysctl.d/k8s.conf
 ```
-Press `i`, paste the four lines from the question:
+Vim keys, exactly: type `:set paste` and press Enter, press `i`, paste the four lines from the question:
 ```
 net.bridge.bridge-nf-call-iptables = 1
 net.ipv6.conf.all.forwarding = 1
 net.ipv4.ip_forward = 1
 net.netfilter.nf_conntrack_max = 131072
 ```
-Save with `Esc`, `:wq`. The file name can be anything that ends in `.conf`.
+then press `Esc`, type `:wq`, press Enter. The file name can be anything that ends in `.conf`.
 
 ---
 
@@ -3331,7 +3421,9 @@ exit                                     # exam only
 | You see | Cause | Fix |
 |---|---|---|
 | `sysctl: cannot stat /proc/sys/net/bridge/bridge-nf-call-iptables` | the kernel module for bridging is not loaded | `modprobe br_netfilter`, then `sysctl --system` again |
-| `dpkg: dependency problems` | a required package is missing | `apt-get install -f -y` |
+| `sysctl: cannot stat /proc/sys/net/netfilter/nf_conntrack_max` | the conntrack module is not loaded | `modprobe nf_conntrack`, then `sysctl --system` again |
+| `dpkg: dependency problems` | a required package (usually Docker) is missing | `apt-get install -f -y` (in the playground, see the warning in Part A) |
+| `cri-docker` fails: `Cannot connect to the Docker daemon` | Docker is not installed or not running | exam: `systemctl enable --now docker`, then restart cri-docker. Playground: expected, see Part A |
 | `Unit cri-docker.service not found` | the package did not install, or the service has another name | `systemctl list-unit-files | grep -i cri` |
 
 ---
@@ -3354,7 +3446,7 @@ sysctl net.ipv4.ip_forward                   # = 1
 
 ### Three words first
 
-- **CNI** = the network plug-in. It gives every pod an IP address and lets pods talk to each other. Without it, nodes stay `NotReady` and pods stay `Pending`.
+- **CNI** = the network plug-in. It gives every pod an IP address and lets pods talk to each other. Without it, nodes stay `NotReady`, CoreDNS pods stay `Pending`, and most other new pods sit in `ContainerCreating` (no IP can be given).
 - **Flannel** and **Calico** = two common CNIs. **Flannel does NOT enforce NetworkPolicy. Calico does.** This one fact decides the question.
 - **Pod CIDR** = the IP range the cluster uses for pods, for example `10.244.0.0/16`. The CNI must be told the same range.
 
@@ -3362,7 +3454,17 @@ sysctl net.ipv4.ip_forward                   # = 1
 
 ### PART A. Build the exam (Killercoda only)
 
-A running playground already has a CNI, so this cannot be built there. Learn the steps. Practise them in killer.sh.
+**What you cannot practise here, and why:** a running playground already has a CNI, and removing it would break the cluster. So the full task (nodes going from NotReady to Ready) can only be practised on a fresh kubeadm cluster with no CNI (for example the killer.sh simulator, or your own VMs).
+
+**What you CAN rehearse here, without changing anything** (Calico v3.29.1 as the example URLs):
+```
+k create -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.1/manifests/tigera-operator.yaml --dry-run=client | tail -3
+k -n kube-system get pod -l component=kube-controller-manager -o yaml | grep cluster-cidr
+curl -LO https://raw.githubusercontent.com/projectcalico/calico/v3.29.1/manifests/custom-resources.yaml
+vim custom-resources.yaml        # find cidr:, change it (Step 3), but do NOT apply it here
+clear
+```
+`--dry-run=client` = check the file and print what would be created, but create nothing.
 
 ---
 
@@ -3410,6 +3512,12 @@ k -n kube-system get pod -l component=kube-controller-manager -o yaml | grep clu
 ```
 You see for example `- --cluster-cidr=10.244.0.0/16`. Write it down.
 
+If it prints NOTHING, kubeadm ran without a pod range. Check the kubeadm config:
+```
+k -n kube-system get cm kubeadm-config -o yaml | grep -i podSubnet
+```
+If that is empty too (or the question gives no range), leave the `cidr:` in the file at its default (`192.168.0.0/16`) and skip the edit in Step 3.
+
 ---
 
 ### Step 3. Download the settings file and put the range in
@@ -3422,7 +3530,7 @@ Type `/cidr` and press Enter. Change the value to the range from step 2:
 ```
       cidr: 10.244.0.0/16
 ```
-Save with `Esc`, `:wq`.
+Vim keys, exactly: the cursor is on the `c` of `cidr:`; press `w` twice (onto the first digit of the value), press `C` (deletes to the end of the line and starts typing), type `10.244.0.0/16` (your range), press `Esc`, type `:wq`, press Enter.
 
 ---
 
@@ -3431,6 +3539,7 @@ Save with `Esc`, `:wq`.
 ```
 k apply -f custom-resources.yaml
 ```
+If you see `no matches for kind "Installation"` (or `"APIServer"`): the operator from step 1 is still registering its CRDs. Wait 20 seconds and run the same command again.
 
 ---
 
@@ -3479,19 +3588,30 @@ k get nodes                                                       # Ready
 
 - **kubeadm** = the tool that installed the cluster. It also upgrades it.
 - Three programs are upgraded on each machine: **kubeadm** (the tool), **kubelet** (the node agent), **kubectl** (the command line).
-- **drain / uncordon** = `drain` moves the pods off a node and closes it for new pods. `uncordon` opens it again. You drain before the upgrade and uncordon after.
+- **drain / uncordon** = `drain` moves the pods off a node and closes it for new pods. `uncordon` opens it again. You drain before the upgrade and uncordon after. Both are kubectl commands, so you run them on the control plane.
+- **apt-get / apt-mark hold** = `apt-get` is the Ubuntu package installer. `apt-mark hold` locks a package so it is never updated by accident. You unlock (`unhold`), install, lock again.
+- **Version numbers** = `1.35.2` means minor `35`, patch `2`. The apt package text adds a suffix, for example `1.35.2-1.1`. A new MINOR version (1.34 → 1.35) also needs a one-word change in the apt source file; a new patch (1.35.0 → 1.35.2) does not.
+- **ssh node01** = log in to the worker machine. `exit` brings you back to the control plane.
 
 **Do not memorise the commands. Follow the docs page line by line.** Memorise only the order:
 
 ```
-drain → new kubeadm → kubeadm upgrade → new kubelet + kubectl → restart kubelet → uncordon
+drain → apt-get update → new kubeadm → kubeadm upgrade → new kubelet + kubectl → restart kubelet → uncordon
 ```
 
 ---
 
 ### PART A. Build the exam (Killercoda only)
 
-A normal playground is already on the newest version. Use a Killercoda scenario named "cluster upgrade" (search "CKA upgrade"), or killer.sh.
+The upgrade can only be practised if a newer patch version exists than the one installed. This block shows both:
+```
+k get nodes
+apt-get update -qq
+apt-cache madison kubeadm | head -5
+```
+Compare the VERSION column of `k get nodes` with the top line of `apt-cache madison`.
+- If madison lists a newer version of the same minor (for example nodes `v1.35.0`, madison `1.35.2-1.1`): practise the full routine below with that newer version in place of `1.35.2`.
+- If the top line is the version you already run: this playground cannot create the problem. Read the steps below, and practise in a Killercoda scenario that starts on an older version (search Killercoda for "upgrade"; what is offered there changes over time) or in the killer.sh simulator that comes with the exam.
 
 ---
 
@@ -3503,7 +3623,7 @@ A normal playground is already on the newest version. Use a Killercoda scenario 
 
 **What the question is really saying:**
 
-Do the same 6-step routine twice: once on the control plane, once on the worker. Only ONE command differs between the two (step 3).
+Do the same routine twice: first on the control plane, then on the worker. Only ONE command differs: `kubeadm upgrade apply v1.35.2` on the control plane, `kubeadm upgrade node` on the worker. Drain and uncordon always run on the control plane.
 
 **Write down from the question:** target version = `1.35.2` · nodes = `controlplane`, `node01` · drain before, uncordon after
 
@@ -3531,78 +3651,200 @@ Copy each command from the page and replace the version `x` placeholders with yo
 
 ---
 
-### CONTROL PLANE
+### Step 1. Drain the control plane
 
-**Step 1. Drain** (run on the control plane)
+On the control plane. In the exam, if the prompt does not end in `#` (not root), run `sudo -i` first.
 ```
 k drain controlplane --ignore-daemonsets --delete-emptydir-data
 ```
+You see (first and last lines):
+```
+node/controlplane cordoned
+...
+node/controlplane drained
+```
+Why: the pods move to other nodes and no new pods arrive while the node's programs are replaced.
 
-**Step 2. New kubeadm**
+---
+
+### Step 2. Refresh the package list
+
 ```
+cat /etc/apt/sources.list.d/kubernetes.list
 apt-get update
-apt-cache madison kubeadm | head
 ```
-The second command lists the exact version texts. Find yours, for example `1.35.2-1.1`.
+You see:
+```
+deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.35/deb/ /
+```
+Why: each package source holds ONE minor version (here `v1.35`). For a patch upgrade (1.35.x → 1.35.2) it is already right. For a minor upgrade (for example the line says `v1.34`), change it first: `vim /etc/apt/sources.list.d/kubernetes.list`, type `:s/v1.34/v1.35/` and Enter, then `:wq`, then `apt-get update` again. Without `apt-get update` apt does not know the new version exists.
+
+---
+
+### Step 3. Find the exact package version
+
+```
+apt-cache madison kubeadm | head -3
+```
+You see:
+```
+   kubeadm | 1.35.2-1.1 | https://pkgs.k8s.io/core:/stable:/v1.35/deb  Packages
+```
+Why: apt needs the FULL text `1.35.2-1.1`, not just `1.35.2`. Write it down; the same text is used for kubeadm, kubelet and kubectl. (If your list shows a different suffix, use yours.)
+
+---
+
+### Step 4. Install the new kubeadm
+
 ```
 apt-mark unhold kubeadm
 apt-get install -y kubeadm=1.35.2-1.1
 apt-mark hold kubeadm
-kubeadm version
+kubeadm version -o short
 ```
-(`hold` = a lock against accidental updates. Unlock, install, lock again.)
+You see:
+```
+kubeadm set on hold.
+v1.35.2
+```
+Why: `kubeadm` is the program that performs the upgrade, so it is upgraded first. `unhold` unlocks the package, `hold` locks it again.
 
-**Step 3. Upgrade the cluster**
+---
+
+### Step 5. Check the upgrade plan
+
 ```
 kubeadm upgrade plan
+```
+You see, near the end:
+```
+You can now apply the upgrade by executing the following command:
+
+	kubeadm upgrade apply v1.35.2
+```
+Why: it checks that the cluster can be upgraded and prints the exact next command. Changes nothing.
+
+---
+
+### Step 6. Upgrade the control plane
+
+```
 kubeadm upgrade apply v1.35.2
 ```
-Answer `y`. It takes a few minutes. You want `SUCCESS! Your cluster was upgraded to "v1.35.2"`.
+When asked `Are you sure you want to proceed? [y/N]`, type `y` and press Enter. It takes a few minutes. You want a line containing `SUCCESS!` and `v1.35.2` at the end.
+Why: this replaces the API server, controller manager, scheduler and etcd (the static pods) with the new version. It does NOT touch the kubelet.
 
-**Step 4. New kubelet and kubectl**
+---
+
+### Step 7. Install the new kubelet and kubectl
+
 ```
 apt-mark unhold kubelet kubectl
 apt-get install -y kubelet=1.35.2-1.1 kubectl=1.35.2-1.1
 apt-mark hold kubelet kubectl
 ```
-
-**Step 5. Restart the kubelet**
+You see:
 ```
-systemctl daemon-reload
-systemctl restart kubelet
+kubelet set on hold.
+kubectl set on hold.
 ```
-
-**Step 6. Uncordon**
-```
-k uncordon controlplane
-```
+Why: the kubelet is what `k get nodes` reports as VERSION. kubectl is upgraded with it.
 
 ---
 
-### WORKER (node01)
+### Step 8. Restart the kubelet
 
-**Step 1. Drain** — run this on the CONTROL PLANE, not on node01:
+```
+systemctl daemon-reload
+systemctl restart kubelet
+systemctl is-active kubelet
+```
+You see:
+```
+active
+```
+Why: the new kubelet program is on disk, but the old one keeps running until it is restarted. `daemon-reload` makes systemd read the (possibly changed) service files first.
+
+---
+
+### Step 9. Uncordon the control plane
+
+```
+k uncordon controlplane
+k get nodes
+```
+You see:
+```
+NAME           STATUS   ROLES           AGE   VERSION
+controlplane   Ready    control-plane   ...   v1.35.2
+node01         Ready    <none>          ...   v1.35.0
+```
+Why: pods may be scheduled on the control plane again. node01 still shows its old version (your number may differ). That is the next part.
+
+---
+
+### Step 10. Drain node01 (from the control plane)
+
+Run this on the control plane, NOT on node01.
 ```
 k drain node01 --ignore-daemonsets --delete-emptydir-data
 ```
+You see:
+```
+node/node01 cordoned
+...
+node/node01 drained
+```
+Why: `k drain` needs kubectl and the admin kubeconfig, which only the control plane has.
 
-**Steps 2 to 5** — on node01:
+---
+
+### Step 11. Go to node01 and install the new kubeadm
+
 ```
 ssh node01
+cat /etc/apt/sources.list.d/kubernetes.list
 apt-get update
-apt-mark unhold kubeadm && apt-get install -y kubeadm=1.35.2-1.1 && apt-mark hold kubeadm
+apt-mark unhold kubeadm
+apt-get install -y kubeadm=1.35.2-1.1
+apt-mark hold kubeadm
+```
+The prompt now shows `node01`. (In the exam, `sudo -i` again if you are not root.) The package source must show `v1.35` here too; change it exactly as in step 2 if not.
+Why: every machine has its own packages. Same commands as steps 2 to 4.
+
+---
+
+### Step 12. Upgrade node01's configuration
+
+```
 kubeadm upgrade node
-apt-mark unhold kubelet kubectl && apt-get install -y kubelet=1.35.2-1.1 kubectl=1.35.2-1.1 && apt-mark hold kubelet kubectl
+```
+You want a line saying the configuration for this node was successfully updated.
+Why: this is the ONE different command. A worker has no control plane, so it is `kubeadm upgrade node`, never `apply`.
+
+---
+
+### Step 13. New kubelet and kubectl on node01, then restart
+
+```
+apt-mark unhold kubelet kubectl
+apt-get install -y kubelet=1.35.2-1.1 kubectl=1.35.2-1.1
+apt-mark hold kubelet kubectl
 systemctl daemon-reload
 systemctl restart kubelet
-exit
 ```
-The one difference: **`kubeadm upgrade node`** instead of `plan` + `apply`.
+Why: same as steps 7 and 8, on this machine.
 
-**Step 6. Uncordon** — back on the control plane:
+---
+
+### Step 14. Back to the control plane, uncordon node01
+
 ```
+exit
 k uncordon node01
 ```
+The prompt shows `controlplane` again after `exit`.
+Why: `uncordon` is a kubectl command, so it runs on the control plane. node01 takes new pods again.
 
 ---
 
@@ -3627,8 +3869,9 @@ exit          # exam only
 | `k drain` refuses: "cannot delete Pods with local storage" | missing flag | add `--delete-emptydir-data` |
 | `k drain` refuses: pods "not managed by a controller" | a bare pod is on the node | add `--force` |
 | `Version '1.35.2' not found` | you need the full text | copy it from `apt-cache madison kubeadm` |
+| madison does not list `1.35.2` at all | no `apt-get update`, or the source file still points at the old minor | step 2 |
 | VERSION still old after the upgrade | the kubelet was not restarted | `systemctl daemon-reload && systemctl restart kubelet` |
-| `localhost:8080 was refused` | you ran `k drain` / `k uncordon` on node01 | `exit` first |
+| `localhost:8080 was refused` | you ran `k drain` / `k uncordon` while still on node01 (no kubeconfig there) | `exit` first, run it on the control plane |
 
 ---
 
@@ -3636,10 +3879,13 @@ exit          # exam only
 
 ```
 k drain <node> --ignore-daemonsets --delete-emptydir-data        # from the control plane
+ssh node01                                                       # worker only
+apt-get update ; apt-cache madison kubeadm                       # exact version text
 apt: unhold → install kubeadm=<ver> → hold
-kubeadm upgrade apply v<ver>          # control plane          |  kubeadm upgrade node     # worker
+kubeadm upgrade plan ; kubeadm upgrade apply v<ver>   # control plane   |  kubeadm upgrade node   # worker
 apt: unhold → install kubelet=<ver> kubectl=<ver> → hold
 systemctl daemon-reload ; systemctl restart kubelet
+exit                                                             # worker only: back to the control plane
 k uncordon <node>                                                # from the control plane
 ```
 
@@ -3654,6 +3900,7 @@ k uncordon <node>                                                # from the cont
 - **etcd** = the database where the cluster stores every object. It runs as a static pod from `/etc/kubernetes/manifests/etcd.yaml`.
 - **Snapshot** = a backup file of that database. Made with `etcdctl snapshot save`.
 - **Restore** = unpack a snapshot into a NEW folder, then tell etcd to use that folder.
+- **etcdctl / etcdutl** = two command-line tools. `etcdctl` talks to the running etcd (snapshot **save**). `etcdutl` works on files only (snapshot **restore**). Kubernetes v1.35 uses etcd 3.6, where `etcdctl snapshot restore` no longer exists.
 
 etcd only accepts connections that show three certificate files. Their paths are written in `etcd.yaml`.
 
@@ -3702,11 +3949,13 @@ k get nodes                       # proves: I am on the right machine, and kubec
 
 ---
 
-### Step 2. Find the three certificate paths
+### Step 2. Check the tools, find the three certificate paths
 
 ```
+which etcdctl etcdutl
 grep -E "trusted-ca-file|cert-file|key-file" /etc/kubernetes/manifests/etcd.yaml
 ```
+`which` prints a path for each tool that is installed. In the exam both are normally there. If `etcdutl` is missing in a playground, see "If something goes wrong" below (you need it only in step 4).
 Use the three lines WITHOUT the word `peer`:
 
 | Line in etcd.yaml | Flag for etcdctl | Usual value |
@@ -3737,7 +3986,7 @@ If the question only asks for a backup, you are finished: `ls -l /opt/etcd-backu
 ```
 etcdutl snapshot restore /opt/etcd-backup.db --data-dir=/var/lib/etcd-restored
 ```
-(If `etcdutl` is not installed, the same line with `etcdctl` works.) No certificates needed: this only unpacks a file.
+No certificates needed: this only unpacks a file. Use `etcdutl`, not `etcdctl`: with etcd 3.6 (Kubernetes v1.35) `etcdctl snapshot restore` was removed.
 
 ---
 
@@ -3798,6 +4047,7 @@ exit          # exam only
 | snapshot save hangs or says `context deadline exceeded` | a certificate path or the endpoint is wrong | compare with step 2 |
 | kubectl does not come back after 2 minutes | a typo in `etcd.yaml` | `crictl ps -a | grep etcd`, `crictl logs <id>`. Or put the backup back: `cp /root/etcd.yaml.bak /etc/kubernetes/manifests/etcd.yaml` |
 | `data-dir ... not empty` on restore | the target folder already exists | choose a new folder name or `rm -rf` it first |
+| `etcdutl: command not found` (playground) | the tool is not installed there | read the etcd version: `k -n kube-system get pod etcd-controlplane -o jsonpath='{..image}'` (for example `3.6.5-0` → `v3.6.5`). Download and unpack it: `curl -sLo /tmp/etcd.tgz https://github.com/etcd-io/etcd/releases/download/v3.6.5/etcd-v3.6.5-linux-amd64.tar.gz` then `tar xzf /tmp/etcd.tgz -C /tmp`, then run `/tmp/etcd-v3.6.5-linux-amd64/etcdutl` instead of `etcdutl`. Use your version number. |
 
 ---
 
@@ -3806,7 +4056,7 @@ exit          # exam only
 ```
 grep -E "trusted-ca-file|cert-file|key-file" /etc/kubernetes/manifests/etcd.yaml
 etcdctl snapshot save /opt/etcd-backup.db --endpoints=https://127.0.0.1:2379 --cacert=... --cert=... --key=...
-etcdutl snapshot restore /opt/etcd-backup.db --data-dir=/var/lib/etcd-restored
+etcdutl snapshot restore /opt/etcd-backup.db --data-dir=/var/lib/etcd-restored    # etcdutl, never etcdctl
 vim /etc/kubernetes/manifests/etcd.yaml      # hostPath path: /var/lib/etcd-restored
 k get nodes                                  # wait up to 60 s
 ```
@@ -3897,10 +4147,11 @@ Type `/image:` and press Enter. You see:
         imagePullPolicy: IfNotPresent
         name: nginx
 ```
-Press `o` (opens a new line below) and add these two lines. `ports:` must start in the same column as `image:` / `name:`:
+Put the cursor on the line `name: nginx`. Press `o` (opens a new line below) and type these three lines. `ports:` must start in the same column as the word `imagePullPolicy:` (8 spaces), NOT at the `-` of `- image:`:
 ```
         ports:
         - containerPort: 80
+          protocol: TCP
 ```
 Save with `Esc`, `:wq`. You see `deployment.apps/np edited`.
 
@@ -3936,7 +4187,7 @@ k get svc np-svc -n web
 You want TYPE `NodePort` and PORT(S) `80:30080/TCP`.
 
 ```
-k get endpoints np-svc -n web                # an IP with :80
+k get endpointslices -n web -l kubernetes.io/service-name=np-svc     # ENDPOINTS shows a pod IP
 curl -s -m 3 node01:30080 | head -5          # the nginx page
 ```
 
@@ -3950,7 +4201,8 @@ exit          # exam only
 
 | You see | Cause | Fix |
 |---|---|---|
-| after step 1 vim reopens with an error at the top | wrong indentation, or a Tab character | `ports:` lines up with `name:`. Spaces only. |
+| after step 1 vim reopens with an error at the top | wrong indentation, or a Tab character | `ports:` lines up with `imagePullPolicy:` and `name:`. Spaces only. |
+| `k get endpoints` prints `Warning: v1 Endpoints is deprecated` | Endpoints is replaced by EndpointSlice since v1.33 | harmless; or use `k get endpointslices` as above |
 | the Service is called `np` | you forgot `--name=np-svc` | `k delete svc np -n web`, run step 2 again |
 | `provided port is not in the valid range` | nodePort outside 30000 to 32767 | use the number from the question |
 | curl fails but endpoints are fine | you curled the wrong node name | `k get nodes -o wide`, use a node IP |
@@ -3960,7 +4212,7 @@ exit          # exam only
 ### Mug this up: the whole answer in 4 lines
 
 ```
-k edit deploy np -n web                      # add ports: / - containerPort: 80
+k edit deploy np -n web                      # add ports: / - containerPort: 80 / protocol: TCP
 k expose deploy np --name=np-svc --port=80 --target-port=80 --type=NodePort -n web
 k edit svc np-svc -n web                     # nodePort: 30080
 k get svc np-svc -n web                      # 80:30080/TCP
@@ -3976,7 +4228,7 @@ k get svc np-svc -n web                      # 80:30080/TCP
 ### Three words first
 
 - **Ingress** = a rule for web traffic coming into the cluster: "host X, path Y → Service Z, port N".
-- **IngressClass** = the name of the controller that will carry out the rule (for example `nginx`). An Ingress without a class is ignored.
+- **IngressClass** = an object that points to the controller (the program) that carries out Ingress rules, for example the class `nginx` points to ingress-nginx. An Ingress without a class is ignored, unless one IngressClass is marked as the default.
 - **pathType: Prefix** = the rule matches the path and everything below it. `/` with Prefix matches every request.
 
 ---
@@ -4059,9 +4311,9 @@ You want:
 Ingress Class:    nginx
 Rules:
   Host              Path  Backends
-  shop.example.com  /     backend-svc:80 (192.168.x.x:80)
+  shop.example.com  /     backend-svc:80 (<pod IP>:80)
 ```
-The IP in brackets proves the Service name and port are right.
+The pod IP in brackets (your number differs) proves the Service name and port are right.
 
 ```
 exit          # exam only
@@ -4073,7 +4325,8 @@ exit          # exam only
 
 | You see | Cause | Fix |
 |---|---|---|
-| Backends shows `<error: services "..." not found>` | the Service name or port has a typo | `k delete ing web-ing -n web`, create again |
+| Backends shows `<error: services "..." not found>` | the Service NAME has a typo | `k delete ing web-ing -n web`, create again |
+| Backends shows empty brackets `()` instead of a pod IP | the Service PORT is wrong (the Service has no such port) | `k get svc backend-svc -n web`, check PORT(S), delete and create again |
 | `Ingress Class: <none>` | you forgot `--class` | delete and create again |
 | the question asks for TLS with secret `web-tls` | add it inside the rule | `--rule="shop.example.com/*=backend-svc:80,tls=web-tls"` |
 | the question asks for two paths | repeat the flag | `--rule="host/api*=api-svc:80" --rule="host/*=web-svc:80"` |
@@ -4101,6 +4354,7 @@ k describe ing web-ing -n web
 - **Gateway** = the entry point: which port, which protocol, which hostname, which TLS certificate. It names a **GatewayClass** (the controller), the same way an Ingress names an IngressClass.
 - **HTTPRoute** = the routing rule: which host and path go to which Service and port. It points to its Gateway with `parentRefs`.
 - Together they do what ONE Ingress did. An Ingress → Gateway migration means: read the values out of the Ingress, write them into these two objects.
+- **Path types** have new names: Ingress `pathType: Prefix` = HTTPRoute `type: PathPrefix`. Ingress `Exact` = HTTPRoute `Exact`.
 
 ---
 
@@ -4125,7 +4379,7 @@ EOF
 k create ingress web-ing --class=nginx --rule="shop.example.com/*=backend-svc:80,tls=web-tls" -n web
 clear
 ```
-(There is no real gateway controller in the playground, so traffic will not flow. You practise creating the objects correctly. That is what the exam grades.)
+(There is no real gateway controller in the playground, so traffic will not flow and the Gateway will never show `Accepted` or `Programmed`. In Killercoda you can only check that the objects exist with the right values. That is what the exam grades too, plus the status check described at the end.)
 
 ---
 
@@ -4224,7 +4478,7 @@ spec:
 ```
 vim gw.yaml
 ```
-Paste the Gateway example.
+Press `i`, then paste the Gateway example. (If the pasted lines drift further and further to the right, press `Esc`, type `:set paste`, press Enter, delete everything with `ggdG`, press `i` and paste again.)
 
 | # | The docs say | You change it to | Why |
 |---|---|---|---|
@@ -4275,7 +4529,7 @@ k apply -f gw.yaml
 ```
 vim route.yaml
 ```
-Paste the HTTPRoute example.
+Press `i`, then paste the HTTPRoute example (same `:set paste` tip as in step 3).
 
 | # | The docs say | You change it to | Why |
 |---|---|---|---|
@@ -4283,7 +4537,7 @@ Paste the HTTPRoute example.
 | 2 | (no namespace line) | add `namespace: web` under `name:` | from the question |
 | 3 | `- name: example-gateway` | `- name: web-gw` | must be the Gateway's name from step 3. This is the link between the two objects. |
 | 4 | `- "www.example.com"` | `- "shop.example.com"` | value 1 |
-| 5 | `value: /login` | `value: /` | value 3 |
+| 5 | `value: /login` | `value: /` | value 3. Keep `type: PathPrefix`: it is the Gateway name for the Ingress's `pathType: Prefix` (Exact stays Exact). |
 | 6 | `- name: example-svc` | `- name: backend-svc` | value 4 |
 | 7 | `port: 8080` | `port: 80` | value 5 |
 
@@ -4328,10 +4582,11 @@ k delete ing web-ing -n web
 
 ```
 k get gateway,httproute -n web
-k describe httproute web-route -n web | grep -A3 "Parent Refs"
+k get httproute web-route -n web -o yaml | grep -E "name: web-gw|value: /|backend-svc|port: 80"
 k get ing -n web                             # No resources found
 ```
-In the exam the Gateway shows PROGRAMMED `True` and the question usually gives a `curl` command to test with. Run it.
+In Killercoda this is all you can check: both objects exist and carry the five values. The `parentRefs` line only shows what you typed; it does not prove the route is attached, and here nothing can ever be attached (no controller).
+In the exam there is a controller. There, also run `k describe httproute web-route -n web` and look under **Status → Parents**: you want `Accepted` with Status `True`. `k get gateway -n web` should show PROGRAMMED `True`. If the question gives a `curl` command, run it.
 
 ```
 exit          # exam only
@@ -4372,6 +4627,7 @@ k delete ing web-ing -n web
 - **podSelector at the top of the policy** = the pods being protected (the destination).
 - **ingress → from** = who may send traffic to them (the source).
 - **AND vs OR inside `from`:** each `-` starts a new, separate source (OR). Two selectors under the SAME `-` must both be true (AND).
+- **Enforcement** = a NetworkPolicy is only a rule. The network plug-in (CNI) must support policies, or the rule is silently ignored.
 
 ```
   - from:                                   - from:
@@ -4409,7 +4665,7 @@ clear
 
 **What the question is really saying:**
 
-The same three blanks as in question 10:
+Fill in three blanks:
 
 | Blank | Value |
 |---|---|
@@ -4417,7 +4673,7 @@ The same three blanks as in question 10:
 | WHO may come in | `app=api` |
 | WHICH port | TCP `80` |
 
-**Write down from the question:** namespace = `prod` · policy = `db-policy` · plus the three blanks
+**Write down from the question:** namespace = `prod` · policy = `db-policy` · protected = `app=db` · allowed source = `app=api` · port = TCP `80`
 
 ---
 
@@ -4443,7 +4699,45 @@ You see `app=db`, `app=api`, `app=other`. They match the question.
 
 1. Open **https://kubernetes.io/docs** → search **`network policies`** → click **"Network Policies"**
    (direct link: https://kubernetes.io/docs/concepts/services-networking/network-policies/ )
-2. Under **"The NetworkPolicy resource"**, copy the example box. (It is the same box as in question 10.)
+2. Under **"The NetworkPolicy resource"**, copy the example box.
+
+This is what you copied:
+```
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: test-network-policy
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      role: db
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - ipBlock:
+        cidr: 172.17.0.0/16
+        except:
+        - 172.17.1.0/24
+    - namespaceSelector:
+        matchLabels:
+          project: myproject
+    - podSelector:
+        matchLabels:
+          role: frontend
+    ports:
+    - protocol: TCP
+      port: 6379
+  egress:
+  - to:
+    - ipBlock:
+        cidr: 10.0.0.0/24
+    ports:
+    - protocol: TCP
+      port: 5978
+```
 
 ---
 
@@ -4452,11 +4746,17 @@ You see `app=db`, `app=api`, `app=other`. They match the question.
 ```
 vim np.yaml
 ```
+Press `i`, paste (if lines drift to the right: `Esc`, `:set paste`, Enter, `ggdG`, `i`, paste again). Press `Esc`.
 
-**Delete:**
-- the line `- Egress`
-- the 7 lines from `- ipBlock:` to `project: myproject`
-- the 7 lines from `egress:` to the end
+**Delete 3 blocks.** In vim: put the cursor on the first line of the block, type the number of lines and `dd` (for example `7dd` deletes 7 lines).
+
+| # | First line | Last line | Lines | vim |
+|---|---|---|---|---|
+| 1 | `- Egress` | (same line) | 1 | `dd` |
+| 2 | `- ipBlock:` | `project: myproject` | 7 | `7dd` |
+| 3 | `egress:` | `port: 5978` (end of file) | 7 | `7dd` |
+
+After block 2, only the `- podSelector:` item (with `role: frontend`) is left under `from:`.
 
 **Change:**
 
@@ -4508,6 +4808,17 @@ k describe netpol db-policy -n prod
 ```
 exit          # exam only
 ```
+
+---
+
+### If something goes wrong
+
+| You see | Cause | Fix |
+|---|---|---|
+| `other` still gets the nginx page | the network plug-in does not enforce NetworkPolicy (some playgrounds) | check the policy with `k describe netpol`; if it is right, the exam cluster will enforce it |
+| `api` also times out | wrong label in `from`, or the `ports:` block is under the wrong item | compare with the finished file; `k get pods -n prod --show-labels` |
+| `error validating` / `did not find expected key` | indentation after deleting the blocks | `- podSelector:` must start 4 spaces in, under `- from:` |
+| `k describe netpol` shows `NamespaceSelector: project=myproject` | block 2 was not fully deleted | delete those lines, apply again |
 
 ---
 
@@ -4565,6 +4876,7 @@ k exec api -n prod -- wget -qO- -T 3 db-svc  # works;  from "other": times out
 - **Ingress** (in a NetworkPolicy) = traffic coming INTO the selected pods. **Egress** = traffic going OUT of them.
 - **Default deny** = a policy that selects all pods (`podSelector: {}`) and allows nothing. After it, only traffic allowed by other policies passes.
 - **Port 53** = the DNS port (UDP and TCP). If you block egress and do not allow port 53, pods can no longer look up any Service name.
+- **Egress rule without `to:`** = the listed ports are allowed to ANY destination.
 
 ---
 
@@ -4574,6 +4886,7 @@ k exec api -n prod -- wget -qO- -T 3 db-svc  # works;  from "other": times out
 k delete ns prod --ignore-not-found
 k create ns prod
 k run app --image=busybox:1.36 -n prod -- sleep 3600
+k run web --image=nginx:1.27 -n prod --port=80 --expose
 clear
 ```
 
@@ -4628,6 +4941,7 @@ spec:
 ```
 vim deny.yaml
 ```
+Press `i`, paste. Change the name, add `namespace: prod` (cursor on `name:`, press `o`, type it), then put the cursor on `- Egress`, press `o` and type the 6-line `egress:` block. 1 + 6 = 7 added lines.
 
 | # | The docs say | You change it to | Why |
 |---|---|---|---|
@@ -4670,18 +4984,24 @@ k apply -f deny.yaml
 ```
 k describe netpol default-deny -n prod
 ```
-You want:
+You want (the lower part):
 ```
-PodSelector:     <none> (Allowing the specific traffic to all pods in this namespace)
-Allowing ingress traffic:    <none> (Selected pods are isolated for ingress connectivity)
-Allowing egress traffic:     To Port: 53/UDP   To Port: 53/TCP
-Policy Types: Ingress, Egress
+Spec:
+  PodSelector:     <none> (Allowing the specific traffic to all pods in this namespace)
+  Allowing ingress traffic:
+    <none> (Selected pods are isolated for ingress connectivity)
+  Allowing egress traffic:
+    To Port: 53/UDP
+    To Port: 53/TCP
+    To: <any> (traffic not restricted by destination)
+  Policy Types: Ingress, Egress
 ```
-Test: a name lookup works, a connection does not.
+Test: a name lookup works, a connection does not. (Part A created an nginx pod and Service called `web` for this. Run the `wget` line once BEFORE applying the policy: it prints the nginx page. After the policy it must time out.)
 ```
-k exec app -n prod -- nslookup kubernetes.default               # an Address line
-k exec app -n prod -- wget -qO- -T 3 kubernetes.default:443   # download timed out
+k exec app -n prod -- nslookup web.prod.svc.cluster.local     # Name + Address: DNS still works
+k exec app -n prod -- wget -qO- -T 3 web                      # download timed out: traffic blocked
 ```
+If `wget` still prints the page after the policy, the playground's network plug-in does not enforce NetworkPolicy; the describe output is then your check.
 
 ```
 exit          # exam only
@@ -4721,20 +5041,71 @@ k describe netpol default-deny -n prod
 
 - **ConfigMap** = an object that holds configuration text. A pod can mount it as a file. Here it holds the nginx config file.
 - **ssl_protocols** = the nginx setting that lists which TLS versions the server accepts.
-- **A running pod does not re-read its config.** After you change the ConfigMap you must restart the pods: `k rollout restart`.
+- **nginx reads its config file only when it starts.** If the ConfigMap is mounted as a folder, the file inside the pod updates by itself after up to a minute, but nginx does not reload it. If it is mounted with `subPath` (as in this setup), the file never updates. Either way: restart the pods with `k rollout restart`.
+- **TLS versions** = TLSv1.2 and TLSv1.3 are versions of the HTTPS encryption. `curl --tls-max 1.2` forces the older one, so it must fail once only 1.3 is allowed.
 
 ---
 
 ### PART A. Build the exam (Killercoda only)
 
-This builds the objects so you can practise the three motions. (No real HTTPS server; the exam has one.)
+This builds a real HTTPS nginx: a self-signed certificate (Secret `nginx-tls`), the config in ConfigMap `nginx-config` mounted as `/etc/nginx/nginx.conf`, and a Service.
 ```
 k delete ns nginx-static --ignore-not-found
 k create ns nginx-static
-k create cm nginx-config -n nginx-static --from-literal=nginx.conf="server { listen 443 ssl; ssl_protocols TLSv1.2 TLSv1.3; }"
-k create deploy nginx-static --image=nginx:1.27 -n nginx-static
+openssl req -x509 -nodes -newkey rsa:2048 -days 30 -subj "/CN=nginx-static" -keyout /tmp/tls.key -out /tmp/tls.crt 2>/dev/null
+k create secret tls nginx-tls --cert=/tmp/tls.crt --key=/tmp/tls.key -n nginx-static
+cat <<'EOF' > /tmp/nginx.conf
+events {}
+http {
+  server {
+    listen 443 ssl;
+    ssl_certificate     /etc/nginx/tls/tls.crt;
+    ssl_certificate_key /etc/nginx/tls/tls.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    location / { return 200 "hello\n"; }
+  }
+}
+EOF
+k create cm nginx-config -n nginx-static --from-file=nginx.conf=/tmp/nginx.conf
+cat <<EOF | k apply -f -
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-static
+  namespace: nginx-static
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-static
+  template:
+    metadata:
+      labels:
+        app: nginx-static
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.27
+        ports:
+        - containerPort: 443
+        volumeMounts:
+        - name: config
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: tls
+          mountPath: /etc/nginx/tls
+      volumes:
+      - name: config
+        configMap:
+          name: nginx-config
+      - name: tls
+        secret:
+          secretName: nginx-tls
+EOF
+k expose deploy nginx-static --port=443 -n nginx-static
 clear
 ```
+Wait until `k get pods -n nginx-static` shows `1/1 Running`. Then the closing-routine `curl` with `--tls-max 1.2` still WORKS: that is the problem you fix.
 
 ---
 
@@ -4774,13 +5145,13 @@ k get cm nginx-config -n nginx-static -o yaml > /root/cm-backup.yaml
 ```
 k edit cm nginx-config -n nginx-static
 ```
-Type `/ssl_protocols` and press Enter.
+Type `/ssl_protocols` and press Enter. The cursor is on the line inside `nginx.conf: |`.
 
 | Before | After |
 |---|---|
 | `ssl_protocols TLSv1.2 TLSv1.3;` | `ssl_protocols TLSv1.3;` |
 
-Keep the `;` at the end. Save with `Esc`, `:wq`.
+Easiest way: type `:s/TLSv1.2 //` and press Enter (removes `TLSv1.2` and its space on this line only). Keep the `;` at the end. Save with `Esc`, `:wq`. You see `configmap/nginx-config edited`.
 
 ---
 
@@ -4800,10 +5171,11 @@ You want `successfully rolled out`.
 k get cm nginx-config -n nginx-static -o yaml | grep ssl_protocols
 k get pods -n nginx-static                   # new pod, 1/1 Running
 ```
-In the exam the question gives a test. It looks like this:
+Test the server. In Killercoda use the Service IP; in the exam the question gives the address and often this exact test.
 ```
-curl -k --tls-max 1.2 https://<address>      # must now FAIL
-curl -k --tlsv1.3 https://<address>          # must work
+IP=$(k get svc nginx-static -n nginx-static -o jsonpath='{.spec.clusterIP}')
+curl -sSk --tls-max 1.2 https://$IP          # must now FAIL (error ... protocol version)
+curl -sSk --tlsv1.3 https://$IP              # hello
 ```
 
 ```
@@ -4816,7 +5188,7 @@ exit          # exam only
 
 | You see | Cause | Fix |
 |---|---|---|
-| the edit is refused: `field is immutable` | the ConfigMap has `immutable: true` | `vim /root/cm-backup.yaml` (change the line there), `k delete cm nginx-config -n nginx-static`, `k apply -f /root/cm-backup.yaml`, then step 3 |
+| the edit is refused: `field is immutable` | the ConfigMap has `immutable: true` | `vim /root/cm-backup.yaml` (change the line there), then `k replace --force -f /root/cm-backup.yaml` (deletes and re-creates it), then step 3. Plain `k apply` after a delete fails: the backup still contains `resourceVersion`. |
 | new pod goes `CrashLoopBackOff` | you broke the nginx syntax (missing `;`) | `k logs <pod> -n nginx-static` names the line. Fix the ConfigMap, restart again. |
 | the old TLS version still works | you skipped step 3 | restart |
 
@@ -4842,6 +5214,7 @@ k rollout restart deploy nginx-static -n nginx-static
 - **Corefile** = the configuration text of CoreDNS. It is stored in ConfigMap `coredns`, namespace `kube-system`.
 - **`.:53 { ... }`** = the main block of the Corefile. Each line inside is a plug-in. The line `kubernetes cluster.local ...` is the one that answers for Service names.
 - **rewrite name A B** = a plug-in line: "when someone asks for name A, answer as if they asked for name B".
+- **reload** = a plug-in line already in the Corefile. CoreDNS notices a changed ConfigMap by itself within about a minute or two. So the lookup may work even before your restart. Restart anyway: it is immediate and it is what the question asks.
 
 ---
 
@@ -4865,7 +5238,7 @@ clear
 
 **What the question is really saying:**
 
-Add one line to the Corefile, then restart CoreDNS. Same three motions as question 28: backup, edit, restart. A mistake here breaks DNS for the whole cluster, so the backup is not optional.
+Add one line to the Corefile, then restart CoreDNS. Three motions: backup, edit, restart. A mistake here breaks DNS for the whole cluster, so the backup is not optional.
 
 **Write down from the question:** name = `api.example.com` · target = `backend-svc.web.svc.cluster.local`
 
@@ -4940,7 +5313,7 @@ exit          # exam only
 
 | You see | Cause | Fix |
 |---|---|---|
-| coredns pods `CrashLoopBackOff` after the restart | a typo in the Corefile | `k logs -n kube-system -l k8s-app=kube-dns` names the line. Or put the backup back: `k apply -f /root/coredns-backup.yaml`, then restart again. |
+| coredns pods `CrashLoopBackOff` after the restart | a typo in the Corefile | `k logs -n kube-system -l k8s-app=kube-dns` names the line. Or put the backup back: `k replace --force -f /root/coredns-backup.yaml`, then restart again. (`k apply` of the backup fails with "the object has been modified": it holds an old `resourceVersion`.) |
 | nslookup says `NXDOMAIN` | the line is outside the `.:53 { }` block, or you did not restart | check the position, restart |
 | the question asks to forward a whole domain to another DNS server | different line | add a new block at the end of the Corefile: `example.org:53 { forward . 10.0.0.53 }` (3 lines). Docs search: `customizing dns service` |
 
@@ -4955,7 +5328,7 @@ k rollout restart deploy coredns -n kube-system
 k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup api.example.com
 ```
 
-**To put the playground back afterwards:** `k apply -f /root/coredns-backup.yaml ; k rollout restart deploy coredns -n kube-system`
+**To put the playground back afterwards:** `k replace --force -f /root/coredns-backup.yaml ; k rollout restart deploy coredns -n kube-system`
 **Target time:** 5 minutes.
 
 ---
@@ -5008,6 +5381,7 @@ k get nodes                       # proves: I am on the right machine, and kubec
 
 ### Step 1. Build the full name
 
+Nothing to type here. Read it like this:
 ```
 SERVICE   . NAMESPACE . svc.cluster.local
 backend-svc . web     . svc.cluster.local     →   backend-svc.web.svc.cluster.local
@@ -5018,13 +5392,13 @@ backend-svc . web     . svc.cluster.local     →   backend-svc.web.svc.cluster.
 ### Step 2. Look it up and write the file
 
 ```
-k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup backend-svc.web.svc.cluster.local > /root/dns.txt
+k run t --image=busybox:1.36 --rm -i --restart=Never -- nslookup backend-svc.web.svc.cluster.local > /root/dns.txt
 ```
 
 | Part | Meaning |
 |---|---|
 | `k run t --image=busybox:1.36` | a temporary pod named `t` (in `default`, because there is no `-n`) |
-| `--rm -it --restart=Never` | run once, show the output, delete the pod afterwards |
+| `--rm -i --restart=Never` | run once, pass the output back to you, delete the pod afterwards. (`-i` without `-t`: no terminal is needed when the output goes into a file.) |
 | `-- nslookup <name>` | the command the pod runs |
 | `> /root/dns.txt` | write the output into the file |
 
@@ -5035,12 +5409,16 @@ k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup backend-svc.we
 ```
 cat /root/dns.txt
 ```
-You want:
+You want something like this (your IPs differ):
 ```
-Name:      backend-svc.web.svc.cluster.local
-Address:   10.x.x.x
+Server:		10.96.0.10
+Address:	10.96.0.10:53
+
+Name:	backend-svc.web.svc.cluster.local
+Address: 10.103.45.12
 ```
-Compare the address with `k get svc backend-svc -n web`. It is the same IP.
+The first `Address` (with `:53`) is the DNS server. The one that counts is the `Address` under `Name:`. Compare it with CLUSTER-IP in `k get svc backend-svc -n web`. It is the same IP.
+A line like `*** Can't find backend-svc.web.svc.cluster.local: No answer` is normal: busybox also asks for an IPv6 address, and there is none.
 
 ```
 exit          # exam only
@@ -5055,7 +5433,7 @@ exit          # exam only
 | `NXDOMAIN` / `can't resolve` | a typo in the name, or the wrong namespace in the name | build the name again from step 1 |
 | `pods "t" already exists` | an older test pod is still there | `k delete pod t`, run it again |
 | the file also contains `pod "t" deleted` | that line comes from kubectl | usually accepted. To avoid it: run the pod without `--rm`, then `k logs t > /root/dns.txt`, then `k delete pod t` |
-| every name fails | DNS itself is broken | question 11 |
+| every name fails | DNS itself is broken | `k get pods -n kube-system -l k8s-app=kube-dns` must show Running; if not, `k logs` them and check the `coredns` ConfigMap |
 
 **Good to know:** `backend-svc.web` (without the rest) also works. A pod's DNS settings are in `/etc/resolv.conf`: `k exec <pod> -- cat /etc/resolv.conf`.
 
@@ -5064,7 +5442,7 @@ exit          # exam only
 ### Mug this up: the whole answer in 2 lines
 
 ```
-k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup backend-svc.web.svc.cluster.local > /root/dns.txt
+k run t --image=busybox:1.36 --rm -i --restart=Never -- nslookup backend-svc.web.svc.cluster.local > /root/dns.txt
 cat /root/dns.txt
 ```
 
@@ -5210,7 +5588,12 @@ Type `/containers:` and press Enter. You see:
 
 ### Step 3. Add the three pieces
 
-Lines marked `# ADD` are new. Do not type the `# ADD` text.
+Where they go: `app.yaml` has two `spec:` lines. Use the SECOND one, directly above `containers:` (it belongs to `template:`), not the top `spec:` under `kind: Deployment`.
+- Before typing or pasting in vim, type `:set paste` and Enter, so vim adds no indentation of its own.
+- Pieces 1 and 3: put the cursor on that second `spec:` line, press `o`, type the 11 lines.
+- Piece 2: put the cursor on `resources: {}` of the main container, press `o`, type the 3 lines.
+
+Lines marked `# ADD` are new (do not type the `# ADD` text). The result looks like this:
 ```
     spec:
       volumes:                                        # ADD  piece 1
@@ -5385,15 +5768,17 @@ If you forget the spelling: docs search **`horizontal pod autoscaling`** → pag
 ```
 k get hpa -n shop
 ```
-You want:
+You want one of these two (both are correct):
 ```
-NAME   REFERENCE        TARGETS       MINPODS   MAXPODS   REPLICAS
-web    Deployment/web   cpu: 0%/70%   2         5         2
+NAME   REFERENCE        TARGETS              MINPODS   MAXPODS   REPLICAS
+web    Deployment/web   cpu: 0%/70%          2         5         2
+web    Deployment/web   cpu: <unknown>/70%   2         5         2
 ```
+The second line appears when the playground has no metrics-server (see the table below). MINPODS, MAXPODS and `/70%` are what you check.
 ```
-k describe hpa web -n shop | grep -A3 -i behavior
+k get hpa web -n shop -o yaml | grep -A2 scaleDown
 ```
-You want `Scale Down: Stabilization Window: 30 seconds`.
+You want `stabilizationWindowSeconds: 30` directly under `scaleDown:`.
 
 ```
 exit          # exam only
@@ -5408,7 +5793,7 @@ exit          # exam only
 | TARGETS `<unknown>/70%` for more than a minute | the deployment has no CPU request | `k set resources deploy web -n shop --requests=cpu=100m` |
 | TARGETS `<unknown>` and `k top pods` also fails | no metrics-server in this playground | nothing to fix; the exam has it |
 | the question wants a different HPA name | the command names it after the deployment | add `--name=<name>` to step 1 |
-| the question asks for MEMORY | no flag in older kubectl | create with CPU, then `k edit hpa` and change `name: cpu` to `name: memory` |
+| the question asks for MEMORY | not every kubectl version has a memory flag | run `k autoscale --help`: if it lists `--memory`, use it (for example `--memory=80%`). If not: create with CPU, then `k edit hpa` and change `name: cpu` to `name: memory` |
 
 ---
 
@@ -5522,7 +5907,7 @@ k patch deploy web -n shop -p '{"spec":{"template":{"spec":{"priorityClassName":
 k rollout status deploy web -n shop
 k get pods -n shop -o custom-columns=NAME:.metadata.name,CLASS:.spec.priorityClassName,PRIO:.spec.priority
 ```
-You want CLASS `high-priority` and PRIO `999`.
+You want CLASS `high-priority` and PRIO `999`. Old pods that are still `Terminating` show CLASS `<none>`: ignore them, or run the command again after a few seconds.
 
 ```
 exit          # exam only
@@ -5638,17 +6023,25 @@ Now the node's numbers show only what OTHER pods use.
 k describe node node01 | grep -A7 "Allocatable:"
 k describe node node01 | grep -A6 "Allocated resources:"
 ```
-Example output:
+Example output (**your numbers will differ**; Killercoda's node01 is not this example):
 ```
 Allocatable:
-  cpu:       1
-  memory:    1843756Ki
+  cpu:                1
+  ephemeral-storage:  19586931083
+  hugepages-1Gi:      0
+  hugepages-2Mi:      0
+  memory:             1843756Ki
+  pods:               110
 ...
 Allocated resources:
-  Resource   Requests     Limits
-  cpu        250m (25%)   0 (0%)
-  memory     200Mi (11%)  ...
+  (Total limits may be over 100 percent, i.e., overcommitted.)
+  Resource           Requests     Limits
+  --------           --------     ------
+  cpu                250m (25%)   0 (0%)
+  memory             200Mi (11%)  0 (0%)
+  ephemeral-storage  0 (0%)       0 (0%)
 ```
+Take `cpu` and `memory` from Allocatable, and the Requests column (not Limits) from Allocated resources.
 
 ---
 
@@ -5665,7 +6058,7 @@ Convert first: `1` CPU = `1000m`. Memory in Ki ÷ 1024 = Mi → `1843756Ki` ≈ 
 | ÷ 3 pods | 225m | 480Mi |
 | round DOWN | **220m** | **480Mi** |
 
-Use YOUR numbers. Always round down.
+**Use YOUR numbers, not this example.** Always round down.
 
 ---
 
@@ -5702,7 +6095,7 @@ exit          # exam only
 | You see | Cause | Fix |
 |---|---|---|
 | one pod `Pending`, Events: `Insufficient cpu` (or memory) | the requests are a bit too big | lower them by 10% and run step 4 again |
-| the pod has init containers too | they also need room | `k edit deploy web -n shop` and give the init containers the same `resources:` block |
+| the pod has init containers too | init containers run one at a time before the app; the scheduler reserves the BIGGER of (largest init container request) and (sum of the app containers) | usually nothing to do: keep each init container's request at or below the app's request |
 | the deployment has 2 containers per pod | `set resources` applies the values to EVERY container | divide by (pods × containers), or name one container: `-c <name>` |
 
 ---
@@ -5796,7 +6189,9 @@ spec:
 
 ---
 
-### Step 3. Where to copy the two blocks from
+### Step 3. If you forget the lines: where they are in the docs
+
+Step 4 shows every line you need. Use this table only when you cannot remember them in the exam.
 
 | Block | Docs search | Page | Copy |
 |---|---|---|---|
@@ -5807,7 +6202,11 @@ spec:
 
 ### Step 4. Add the two blocks
 
-Lines marked `# ADD` are new. Do not type the `# ADD` text.
+In `pod.yaml` (type `:set paste` and Enter first, so vim adds no indentation of its own):
+- Container level: put the cursor on `resources: {}`, press `o`, type the 6 lines `envFrom:` to `mountPath: /etc/db`. They start 4 spaces in, same column as `image:`.
+- Pod level: stay on the last line you typed, press `Esc`, `o`, type the 4 lines `volumes:` to `secretName: db-sec`. They start 2 spaces in, same column as `containers:`.
+
+Lines marked `# ADD` are new (do not type the `# ADD` text). The result looks like this:
 ```
 spec:
   containers:
@@ -5862,9 +6261,9 @@ exit          # exam only
 | You see | Cause | Fix |
 |---|---|---|
 | STATUS `CreateContainerConfigError` | the ConfigMap or Secret name in the pod does not exist | `k describe pod api -n app` names it. `k delete pod api -n app`, fix `pod.yaml`, apply again. |
-| `error validating data: unknown field "volumes"` | `volumes:` is indented under the container | move it to pod level (same column as `containers:`) |
+| `strict decoding error: unknown field "spec.containers[0].volumes"` | `volumes:` is indented under the container | move it to pod level (same column as `containers:`) |
 | `unknown field "secretName"` under configMap | wrong word | Secret volume uses `secretName:`. ConfigMap volume uses `name:`. |
-| A pod cannot be changed after creation (for these fields) | | `k delete pod api -n app`, fix the file, apply again |
+| `k apply` after a fix says `Forbidden: pod updates may not change fields other than ...` | pods are immutable: env and volumes cannot change after creation | `k delete pod api -n app`, fix the file, apply again |
 
 **Variants:**
 - Only ONE key as a variable: use `env:` with `valueFrom:` → `configMapKeyRef:` (`name:` + `key:`). Same docs page, heading "Define container environment variables using ConfigMap data".
@@ -5963,7 +6362,7 @@ vim x.yaml
 
 1. Open **https://kubernetes.io/docs** → search **`taints tolerations`** → click **"Taints and Tolerations"**
    (direct link: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/ )
-2. Near the top, copy this block:
+2. Near the top, copy this block. In `x.yaml` it goes at POD level: under `spec:`, starting in the same column as `containers:` (step 4 shows exactly where):
 ```
 tolerations:
 - key: "key1"
@@ -5976,7 +6375,9 @@ tolerations:
 
 ### Step 4. Add two blocks at pod level
 
-Lines marked `# ADD` are new.
+In `x.yaml`: type `:set paste` and Enter, put the cursor on the line `spec:` (directly above `containers:`), press `o`, and type the 7 lines. Each starts 2 spaces in, the same column as `containers:`; the toleration's lines are indented as shown.
+
+Lines marked `# ADD` are new (do not type the `# ADD` text or the comments after it). The result looks like this:
 ```
 spec:
   nodeSelector:                    # ADD  (pod level: same column as "containers:")
@@ -6159,7 +6560,7 @@ exit          # exam only
 
 | You see | Cause | Fix |
 |---|---|---|
-| `rollout status` never finishes | the new image does not exist (question 1) | `k rollout undo deploy/web -n shop` |
+| `rollout status` never finishes | the new image does not exist (typo in the image name or tag) | press `Ctrl+C`, then `k rollout undo deploy/web -n shop` |
 | `unable to find container named ...` | wrong name left of `=` | use the CONTAINERS column from step 1 |
 
 **Related commands:**
@@ -6199,7 +6600,7 @@ vim ds.yaml
 k apply -f ds.yaml
 k get ds agent                               # DESIRED = number of nodes
 ```
-If it must also run on the control plane, add a toleration for `node-role.kubernetes.io/control-plane` with `operator: "Exists"` and `effect: "NoSchedule"` (question 36).
+If it must also run on the control plane, add a toleration under `spec.template.spec` (same column as `containers:`): `key: "node-role.kubernetes.io/control-plane"`, `operator: "Exists"`, `effect: "NoSchedule"`.
 
 ---
 
@@ -6246,7 +6647,7 @@ All three questions need the docs: there is no `k create pv`, `k create pvc` or 
 
 The chain is always: **Pod → PVC → PV**
 
-In question 40 one part of the chain already existed. Here nothing exists. You build all three, from right to left: first the PV, then the PVC, then the pod.
+Here nothing exists yet. You build all three, from right to left: first the PV, then the PVC, then the pod.
 
 ---
 
@@ -6346,7 +6747,7 @@ spec:
 ```
 vim pv.yaml
 ```
-Press `i`, paste. **Change 2 lines, delete 2 lines:**
+Press `i`, paste. (If the pasted lines drift further and further to the right: `Esc`, type `:set paste` and Enter, `ggdG` to clear, `i`, paste again. The same tip works for every paste below.) **Change 2 lines, delete 2 lines:**
 
 | # | The docs say | You change it to | Why |
 |---|---|---|---|
@@ -6381,8 +6782,8 @@ k get pv
 ```
 You want:
 ```
-NAME      CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   AGE
-pv-data   1Gi        RWO            Retain           Available           manual         5s
+NAME      CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   VOLUMEATTRIBUTESCLASS   REASON   AGE
+pv-data   1Gi        RWO            Retain           Available           manual         <unset>                          5s
 ```
 STATUS `Available` = the disk exists and nobody uses it yet.
 
@@ -6443,8 +6844,8 @@ k get pvc -n storage
 ```
 You want:
 ```
-NAME       STATUS   VOLUME    CAPACITY   ACCESS MODES   STORAGECLASS   AGE
-pvc-data   Bound    pv-data   1Gi        RWO            manual         5s
+NAME       STATUS   VOLUME    CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+pvc-data   Bound    pv-data   1Gi        RWO            manual         <unset>                 5s
 ```
 Check two columns: STATUS = **`Bound`**, VOLUME = **`pv-data`**.
 
@@ -6537,7 +6938,7 @@ Pod ✓   →   PVC ✓   →   PV ✓
 | You see | Cause | Fix |
 |---|---|---|
 | PVC `Pending` | class or access mode differ between `pv.yaml` and `pvc.yaml`, or the PVC asks for MORE than the PV has | `k describe pvc pvc-data -n storage`, read Events. `k delete pvc pvc-data -n storage`, fix the file, apply again. |
-| PVC `Bound`, but VOLUME is a long name like `pvc-3f2a...` | the `storageClassName` line is missing in `pvc.yaml`, so the default class made a new disk (the question 40 trap) | delete the PVC, put `storageClassName: manual` back, apply again |
+| PVC `Pending` and `k get pv` shows `pv-data` still `Available`; once the pod exists the PVC is `Bound` to a long name like `pvc-3f2a...` | the `storageClassName` line is missing in `pvc.yaml`, so the cluster's default class is used: it ignores `pv-data` and makes a NEW empty disk (in Killercoda the default `local-path` waits for a pod first) | delete the pod and the PVC, put `storageClassName: manual` back, apply both again |
 | Pod `Pending`, Events say `persistentvolumeclaim "..." not found` | `claimName` has a typo, or the pod is in a different namespace than the PVC | `k delete pod web-store -n storage`, fix `pod.yaml`, apply again |
 | Pod `Pending`, Events say `unbound immediate PersistentVolumeClaims` | you skipped the `Bound` check in step 3 | fix the PVC first |
 | `manual` vs `Manual` | class names are case-sensitive | make them identical |
@@ -6574,7 +6975,7 @@ k get pod -n storage           # 1/1 Running
 - **Provisioner** = the program that actually makes the disk. It is just a name inside the StorageClass. You copy it from the question.
 - **Default StorageClass** = the template used when a PVC does not name any class. It shows as `(default)` in `k get sc`.
 
-You already met the default class in question 40: it is the thing that silently creates a new empty disk when a PVC forgets `storageClassName`.
+The default class is the thing that silently creates a new empty disk when a PVC forgets the `storageClassName` line.
 
 One more setting you will be asked for:
 
@@ -6660,6 +7061,7 @@ standard (default)   rancher.io/local-path   Delete          Immediate          
 ```
 
 Read one thing: **which name has `(default)` next to it.** Here: `standard`. Write it down. You need it in step 5.
+If `local-path` is not in your list, that is fine: only `standard` (and later `fast`) matter here.
 
 (`sc` is short for `storageclass`. A StorageClass has no namespace, so there is no `-n`.)
 
@@ -6812,6 +7214,7 @@ exit          # exam only: leave the machine before the next question
 | You skip step 5 | two defaults; the question says only one | always run `k get sc` at the end and count the `(default)` marks |
 | You made a typo in `sc.yaml` and already applied it | provisioner and volumeBindingMode cannot be changed afterwards | `k delete sc fast`, fix the file, `k apply -f sc.yaml` again |
 | You delete the old default class to get rid of its mark | the question said do not delete anything | only change its annotation |
+| You write `is-default-class: true` without quotes | `k apply` is rejected (`cannot unmarshal bool ... of type string`): annotation values must be strings | write `"true"` with the quotes |
 | Later a test PVC stays `Pending` | with `WaitForFirstConsumer` that is NORMAL. It waits for a pod. | do not "fix" it |
 
 ---
@@ -6950,8 +7353,8 @@ k get pv
 
 You see:
 ```
-NAME         CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   AGE
-mariadb-pv   250Mi      RWO            Retain           Available                          1m
+NAME         CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   VOLUMEATTRIBUTESCLASS   REASON   AGE
+mariadb-pv   250Mi      RWO            Retain           Available                          <unset>                          1m
 ```
 
 Read four columns:
@@ -7041,8 +7444,8 @@ k get pvc -n mariadb
 
 You want:
 ```
-NAME      STATUS   VOLUME       CAPACITY   ACCESS MODES   STORAGECLASS   AGE
-mariadb   Bound    mariadb-pv   250Mi      RWO                           5s
+NAME      STATUS   VOLUME       CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+mariadb   Bound    mariadb-pv   250Mi      RWO                           <unset>                 5s
 ```
 
 Check two columns: STATUS = **`Bound`**, and VOLUME = **`mariadb-pv`** (the old disk's name).
@@ -7112,11 +7515,12 @@ Pod ✓   →   PVC ✓   →   PV ✓
 ### One more trap the exam can set
 
 In step 1, the PV's STATUS is `Released` instead of `Available`.
-It means the disk still remembers its deleted PVC, and will refuse a new one. Fix:
+It means the disk still remembers its deleted PVC (the `claimRef`), and will refuse a new one. Fix it with one command.
 ```
-k edit pv mariadb-pv
+k patch pv mariadb-pv -p '{"spec":{"claimRef":null}}'
+k get pv mariadb-pv
 ```
-Delete the whole `claimRef:` block (the line `claimRef:` and the indented lines under it). Save. `k get pv` now shows `Available`. Carry on with step 2.
+STATUS is now `Available`. Carry on with step 2. (Same result by hand: `k edit pv mariadb-pv`, delete the line `claimRef:` and the indented lines under it, save.)
 
 Also: if in step 1 the STORAGECLASS column shows a name (for example `local-path`), then change 3 becomes that exact name instead of `""`.
 

@@ -186,36 +186,57 @@
     if (!found.length) return '';
     return `<div class="phnote">${found.map(p => { const k = p.slice(1, -1), hit = PH.find(([re]) => re.test(k)); return `<p>Replace <mark class="ph">${esc(p)}</mark> with ${hit ? hit[1] : 'the real value from the output above or from the question.'}</p>`; }).join('')}</div>`;
   };
+  const BASICS = `<details class="step basics"><summary>New here? The basics (1 min)</summary><div class="body plain">
+    <p><b>k</b> = kubectl, the command you type for everything. In the exam it's set up. In Killercoda, if you see "k: command not found", type <code>alias k=kubectl</code> once.</p>
+    <p><b>Pod</b> = your app running. <b>Deployment</b> = the instruction "always run N pods of this image": fix the Deployment, not the pod. <b>Node</b> = a machine (controlplane, node01). <b>Namespace</b> = a folder; every command needs <code>-n &lt;namespace&gt;</code> or it looks in "default". <b>Service</b> = a fixed address in front of pods, finds them by <b>label</b> (a tag like <code>app=web</code>).</p>
+    <p><b>&lt;something&gt;</b> in a command = put the real name there (yellow note under the step tells you where to find it). <b>Tab</b> completes names.</p>
+    <p><b>vim</b> (the editor that <code>k edit</code> and <code>vim file</code> open): <code>i</code> = start typing · <code>Esc</code> = stop typing · <code>:wq</code> Enter = save and quit · <code>:q!</code> = quit without saving · <code>/word</code> = search · <code>dd</code> = delete line · <code>u</code> = undo · before pasting YAML type <code>:set paste</code>.</p>
+    <p><b>Node tasks</b> (systemctl, /etc/kubernetes/…): in the real exam run <code>sudo -i</code> after ssh to become root. In Killercoda you are already root.</p>
+    <p><b>YAML</b>: spaces only, 2 per level, never Tab. Copy from kubernetes.io/docs, change only the marked lines.</p>
+  </div></details>`;
   // the whole answer in baby steps: one command, what you see, why
   function solution(q) {
     const plainWords = q.meaning || (q.story && q.story.broken ? esc(q.story.broken) : '');
     const steps = q.steps.map((s, i) => {
       const items = s.flow.filter(f => !f.skip);
-      const cmds = items.filter(f => f.k === 'cmd').map(f => f.t);
+      const cmds = items.filter(f => f.k === 'cmd').map(f => f.t + (f.note ? '      # ' + f.note : ''));
+      const yamls = items.filter(f => f.k === 'yaml').map(f => f.t);
       const outs = items.filter(f => f.k === 'out').map(f => f.t);
       const whys = items.filter(f => f.k === "say" && plain(f.h).length > 2), why = whys[0];
-      if (!cmds.length && !outs.length && !why) return '';
+      if (!cmds.length && !outs.length && !why && !yamls.length) return '';
       return `<div class="bstep"><div class="bnum">${i + 1}</div><div class="bbody">
         <b>${esc(s.title.replace(/^Step \d+\.\s*/, '').replace('Closing routine', 'Check it works'))}</b>
         ${cmds.length ? codeBlock(cmds.join('\n')) + phNotes(cmds) : ''}
+        ${yamls.map(y => `<div class="bsee">File content (YAML: spaces matter, 2 per level, never Tab):</div>${codeBlock(y)}`).join('')}
         ${outs.length ? `<div class="bsee">You see:</div><pre class="out">${paint(outs.join('\n'))}</pre>` : ''}
         ${items.filter(f => f.k === 'tbl').map(f => `<div class="btable">${f.h}</div>`).join('')}
         ${whys.length ? `<div class="bwhy">${whys.map(w => `<p>${w.h}</p>`).join("")}</div>` : ''}
       </div></div>`;
     }).join('');
-    const c = q.coach;
-    return `${q.words ? `<h2>Words you need</h2><div class="card plain">${q.words}</div>` : ""}${c ? coachTop(c) : ""}${plainWords ? `<h2>In plain words</h2><div class="card plain">${plainWords}</div>` : ''}
-      <h2>Set up in Killercoda</h2>
-      <div class="card">${q.setup ? `<a class="btn block" href="${KILLERCODA}" target="_blank" rel="noopener">Open Killercoda</a>${codeBlock(q.setup)}<p class="small">Paste this first. In the real exam it is already set up.</p>` : `<p class="small">This one can't be set up in a playground. Read the steps; practise it in killer.sh.</p>`}</div>
-      <h2>Solve it, step by step</h2>
+    const c = q.coach || {};
+    const sshLine = (q.question.match(/^ssh \S+/) || [])[0];
+    const traps = (c.traps || []).length ? `<h2>Watch out</h2><div class="card traps">${c.traps.map(t => `<div class="trap">⚠ ${esc(t)}</div>`).join('')}</div>` : '';
+    const verify = (c.verify || []).length ? `<h2>Verify against the question</h2><div class="card">${c.verify.map(v => `<div class="vrow"><div class="need">✔ ${esc(v.need)}</div>${codeBlock(v.cmd)}<div class="bsee">You must see: <code>${esc(v.see)}</code></div></div>`).join('')}</div>` : '';
+    const memorise = (c.memorise || []).length ? `<h2>Memorise: the fast version</h2><div class="card">${codeBlock(c.memorise.join('\n'))}<p class="small">Target: ${c.minutes || q.target} min in the exam. Type it from memory once a day.</p></div>` : '';
+    const solveBlock = `
       <div class="bstep routine"><div class="bnum">0</div><div class="bbody"><b>Start of every question</b>
         <div class="bwhy"><p><b>In Killercoda:</b> nothing to log into, you're already on the right machine. Just check:</p></div>
         ${codeBlock('k get nodes')}
-        <div class="bwhy"><p><b>In the real exam only:</b> each question shows its own login line at the top${(q.question.match(/^ssh \S+/) || [])[0] ? `, here <code>${(q.question.match(/^ssh \S+/) || [])[0]}</code>` : ', e.g. <code>ssh cka01001</code>'}. Type that first, then <code>k get nodes</code>. If you see <code>localhost:8080 refused</code>, you're on the wrong machine.</p></div></div></div>
+        <div class="bwhy"><p><b>In the real exam only:</b> each question shows its own login line at the top${sshLine ? `, here <code>${sshLine}</code>` : ', e.g. <code>ssh cka01001</code>'}. Type that first, then <code>k get nodes</code>. If you see <code>localhost:8080 refused</code>, you're on the wrong machine.</p></div></div></div>
       ${steps}
       <div class="bstep routine"><div class="bnum">✓</div><div class="bbody"><b>End of every question</b><div class="bwhy"><p><b>In Killercoda:</b> nothing to do; just verify (below).</p><p><b>In the real exam only:</b> after verifying, type <code>exit</code> to leave this question's machine. The next question's ssh line only works from the base machine.</p></div></div></div>
-      ${q.wrong ? `<h2>If something goes wrong</h2><div class="card btable">${q.wrong}</div>` : ""}
-      ${c ? coachBottom(c, q) : ""}`;
+      ${verify}`;
+    const tried = !!(prog()[q.n] || {}).st;
+    return `${BASICS}
+      ${plainWords ? `<h2>In plain words</h2><div class="card plain">${plainWords}</div>` : ''}
+      ${q.words ? `<h2>Words you need</h2><div class="card plain">${q.words}</div>` : ''}
+      ${q.coach ? coachTop(c) : ''}
+      ${traps}
+      <h2>Set up in Killercoda, then try it yourself</h2>
+      <div class="card">${q.setup ? `<a class="btn block" href="${KILLERCODA}" target="_blank" rel="noopener">Open Killercoda</a>${codeBlock(q.setup)}<p class="small">Paste this first. In the real exam it is already set up. Then try to solve it before you look below.</p>` : `${/no setup needed/i.test(plain(q.meaning||'')) ? '<a class="btn block" href="'+KILLERCODA+'" target="_blank" rel="noopener">Open Killercoda</a><p class="small">No setup needed: it works as is on Killercoda. Try it before you look below.</p>' : '<p class="small">This one cannot be set up in a playground. Read the steps; practise it in killer.sh.</p>'}`}</div>
+      ${tried ? `<details class="step solution"><summary>Try first, then show the solution</summary><div class="body">${solveBlock}</div></details>` : `<h2>Solution, step by step</h2>${solveBlock}`}
+      ${q.wrong ? `<h2>If something goes wrong</h2><div class="card btable">${q.wrong}</div>` : ''}
+      ${memorise}`;
   }
 
   function practice(n) {
@@ -540,7 +561,7 @@
       <div class="row"><a class="btn ghost" href="${KILLERCODA}" target="_blank" rel="noopener">Terminal</a><a class="btn ghost" href="${DOCS}" target="_blank" rel="noopener">Docs</a></div>
       <div class="row" style="margin-top:10px"><button class="btn ${s.flag[n] ? 'warn' : 'ghost'}" id="flag">${s.flag[n] ? 'Flagged' : 'Flag'}</button><button class="btn ${s.done[n] ? 'good' : ''}" id="done">${s.done[n] ? 'Done ✓' : 'Mark done'}</button></div>
       <div class="pager">${i > 1 ? `<a class="btn ghost" href="#/mock/${m}/${i - 1}">← ${i - 1}</a>` : ''}${i < ids.length ? `<a class="btn ghost" href="#/mock/${m}/${i + 1}">${i + 1} →</a>` : `<a class="btn ghost" href="#/mock/${m}">All tasks</a>`}</div>`;
-    $('#helpbox').ontoggle = () => { if (!$('#helpbox').open || $('#helpbody').children.length) return; const st = mockState(m); (st.help ||= {})[n] = 1; store.set('mock' + m, st); $('#helpbody').innerHTML = solution(q).replace(/<h2>Set up in Killercoda<\/h2>[\s\S]*?<h2>Solve it/, '<h2>Solve it'); };
+    $('#helpbox').ontoggle = () => { if (!$('#helpbox').open || $('#helpbody').children.length) return; const st = mockState(m); (st.help ||= {})[n] = 1; store.set('mock' + m, st); $('#helpbody').innerHTML = solution(q).replace(/<h2>Set up in Killercoda[\s\S]*?(?=<h2>Solution|<details class="step solution")/, '').replace('<details class="step solution">', '<details class="step solution" open>'); };
     $('#flag').onclick = () => { const st = mockState(m); st.flag[n] ? delete st.flag[n] : st.flag[n] = 1; store.set('mock' + m, st); mockTask(m, i); };
     $('#done').onclick = () => { const st = mockState(m); st.done[n] = 1; store.set('mock' + m, st); location.hash = i < ids.length ? `#/mock/${m}/${i + 1}` : `#/mock/${m}`; };
   }
