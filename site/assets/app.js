@@ -188,9 +188,12 @@
       <h2>Set up in Killercoda</h2>
       <div class="card">${q.setup ? `<a class="btn block" href="${KILLERCODA}" target="_blank" rel="noopener">Open Killercoda</a>${codeBlock(q.setup)}<p class="small">Paste this first. In the real exam it is already set up.</p>` : `<p class="small">This one can't be set up in a playground. Read the steps; practise it in killer.sh.</p>`}</div>
       <h2>Solve it, step by step</h2>
-      <div class="bstep routine"><div class="bnum">0</div><div class="bbody"><b>Start of every question</b>${codeBlock(((q.question.match(/^ssh \S+/) || [])[0] || 'ssh <host from the question>') + '      # exam only (skip in Killercoda)\nk get nodes')}<div class="bwhy"><p>In the exam each question is on a different machine: the ssh line is at the top of the question. <code>k get nodes</code> proves you're on the right machine and kubectl answers. <code>localhost:8080 refused</code> = wrong machine.</p></div></div></div>
+      <div class="bstep routine"><div class="bnum">0</div><div class="bbody"><b>Start of every question</b>
+        <div class="bwhy"><p><b>In Killercoda:</b> nothing to log into, you're already on the right machine. Just check:</p></div>
+        ${codeBlock('k get nodes')}
+        <div class="bwhy"><p><b>In the real exam only:</b> each question shows its own login line at the top${(q.question.match(/^ssh \S+/) || [])[0] ? `, here <code>${(q.question.match(/^ssh \S+/) || [])[0]}</code>` : ', e.g. <code>ssh cka01001</code>'}. Type that first, then <code>k get nodes</code>. If you see <code>localhost:8080 refused</code>, you're on the wrong machine.</p></div></div></div>
       ${steps}
-      <div class="bstep routine"><div class="bnum">✓</div><div class="bbody"><b>End of every question</b>${codeBlock('exit      # exam only: leave this machine before the next question')}<div class="bwhy"><p>Verify first (below), then exit. The next question's ssh only works from the base machine.</p></div></div></div>
+      <div class="bstep routine"><div class="bnum">✓</div><div class="bbody"><b>End of every question</b><div class="bwhy"><p><b>In Killercoda:</b> nothing to do; just verify (below).</p><p><b>In the real exam only:</b> after verifying, type <code>exit</code> to leave this question's machine. The next question's ssh line only works from the base machine.</p></div></div></div>
       ${q.wrong ? `<h2>If something goes wrong</h2><div class="card btable">${q.wrong}</div>` : ""}
       ${c ? coachBottom(c, q) : ""}`;
   }
