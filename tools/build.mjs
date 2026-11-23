@@ -165,7 +165,7 @@ if (fs.existsSync(mockFile)) {
       const allCmds = t.steps.flatMap(s => s.cmds).concat(t.verify || []);
       questions.push({ n, mock: mk.n, star: /very common/i.test(t.reported || ''), title: t.title, topic: t.topic, weight: t.weight,
         question: t.question, keys: t.keys || [], setup: (t.setup || '').replace(/\nclear\s*$/, '').trim(), setupNote: t.setup ? '' : html(t.beginner || ''),
-        meaning: html(t.beginner || ''), words: '', steps, wrong: '', mug: html('```\n' + allCmds.join('\n') + '\n```'), target: Math.max(3, Math.round(t.weight * 1.1)),
+        meaning: html((t.beginner || '').split(/Words you need:/i)[0].trim()), words: (() => { const w = (t.beginner || '').split(/Words you need:/i)[1]; return w ? '<ul>' + w.split(/;\s*/).map(x => x.trim().replace(/\.$/, '')).filter(Boolean).map(x => { const [k, ...v] = x.split(/\s=\s|\s—\s|:\s/); return v.length ? `<li><b>${marked.parseInline(ltSafe(k))}</b> = ${marked.parseInline(ltSafe(v.join(' = ')))}</li>` : `<li>${marked.parseInline(ltSafe(x))}</li>`; }).join('') + '</ul>' : ''; })(), steps, wrong: '', mug: html('```\n' + allCmds.join('\n') + '\n```'), target: Math.max(3, Math.round(t.weight * 1.1)),
         docs: t.docs || '', reported: t.reported || '',
         pic: { mode: /TROUBLESHOOT/.test(t.topic) ? 'fix' : 'build', parts: PIC_BY_TOPIC[t.topic] || [], say: t.beginner || '' } });
     });

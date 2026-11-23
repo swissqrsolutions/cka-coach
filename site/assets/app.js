@@ -101,13 +101,13 @@
       return `<a class="card mock" href="#/mock/${m}"><span><b>Mock exam ${m}</b><br><span class="small">16 tasks · 2 hours · ${state}</span></span><span class="chip ${s && s.finished && s.score >= 66 ? 'good' : ''}">${s && s.finished ? s.score + '%' : s ? 'Open' : 'Start'}</span></a>`;
     }).join('');
     app.innerHTML = `<h1>Mock exams</h1><p class="sub">Like the real exam: 2 hours, pass at 66%. Do them after the practice questions.</p>${cards}
-      <h2>Exam day: before you start</h2><div class="card plain">
-        <p><b>Where:</b> the PSI secure browser shows a Linux desktop: question panel, a terminal and Firefox (only kubernetes.io/docs allowed). Not Killercoda.</p>
-        <p><b>Already set up for you:</b> <code>k</code> = kubectl, tab completion. Don't spend time on aliases: they don't exist on the next machine.</p>
-        <p><b>Copy / paste:</b> in the terminal it's <code>Ctrl+Shift+C</code> / <code>Ctrl+Shift+V</code>. Copy names from the question, never retype them.</p>
-        <p><b>Every question:</b> run its <code>ssh</code> line → <code>k get nodes</code> → solve → verify → <code>exit</code>.</p>
-        <p><b>Time plan:</b> first 80 min all questions in order, flag anything over 8 min; last 40 min flagged ones, then re-check.</p>
-        <p><b>Real rehearsal:</b> your exam includes 2 killer.sh sessions (36 h each), almost identical to the exam. Use them in the last week.</p></div>`;
+      <h2>Exam day: before you start</h2><table class="bt">
+        <tr><td>Where</td><td>PSI secure browser: question panel, a terminal, Firefox (only kubernetes.io/docs). Not Killercoda.</td></tr>
+        <tr><td>Already set up</td><td><code>k</code> = kubectl, Tab completion. Don't make aliases.</td></tr>
+        <tr><td>Copy / paste</td><td><code>Ctrl+Shift+C</code> / <code>Ctrl+Shift+V</code> in the terminal</td></tr>
+        <tr><td>Every question</td><td><code>ssh</code> line → <code>k get nodes</code> → solve → verify → <code>exit</code></td></tr>
+        <tr><td>Time</td><td>80 min all questions (skip after 8 min) · 40 min flagged + re-check</td></tr>
+        <tr><td>Rehearsal</td><td>2 killer.sh sessions are included: use them in the last week</td></tr></table>`;
   }
 
   function topicView(i) {
@@ -549,10 +549,12 @@
     if (s.finished) return mockResult(m);
     if (!s.started) {
       app.innerHTML = `<a href="#/mocks" class="small">← Mock exams</a><h1>Mock exam ${m}</h1>
-        <div class="card"><p><b>Like the real CKA:</b> 16 tasks, 2 hours, pass at 66%. Tasks are weighted like the exam (troubleshooting 30%, architecture 25%, networking 20%, workloads 15%, storage 10%).</p>
-        <p><b>How it works:</b> open the Killercoda CKA playground. For each task, paste its setup, then solve it there. Use only the kubernetes.io docs. No hints during the exam.</p>
-        <p><b>Time plan:</b> first 80 minutes all tasks in order; stuck more than 8 minutes → flag it and move on. Last 40 minutes: flagged tasks, then check everything.</p>
-        <p class="small">At the end you check each task with its verify steps and mark it passed, partly or failed. Your score is weighted like the real exam.</p></div>
+        <div class="card"><ul class="quick">
+        <li><b>16 tasks · 2 hours · pass at 66%</b>, weighted like the real exam</li>
+        <li>Open Killercoda, paste each task's setup, solve it there</li>
+        <li>No help: only kubernetes.io/docs (help is marked "used")</li>
+        <li>Stuck over 8 min → <b>Flag</b> and move on</li>
+        <li>At the end: run each task's checks and mark Passed / Partly / Failed</li></ul></div>
         <button class="btn block" id="start">Start the 2-hour exam</button>`;
       $('#start').onclick = () => { store.set('mock' + m, { ...s, started: Date.now(), deadline: Date.now() + 120 * 60000 }); headerTimer(); mockView(m); };
       return;
