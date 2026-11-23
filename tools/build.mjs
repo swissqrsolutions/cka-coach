@@ -12,8 +12,9 @@ const lines = md.split('\n');
 // code blocks get a copy button (rendered by the app)
 const renderer = new marked.Renderer();
 renderer.code = ({ text }) => `<div class="code"><button class="copy" type="button">Copy</button><pre><code>${text.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))}</code></pre></div>`;
+const ltSafe = s => String(s || '').split(/(`[^`]*`)/).map((p, i) => i % 2 ? p : p.replace(/<(?=[A-Za-z\/])/g, '&lt;')).join('');
 const pipeSafe = s => s.split('\n').map(l => l.trim().startsWith('|') ? l.replace(/`[^`]*`/g, c => c.replace(/\|/g, '\\|')) : l).join('\n');
-const html = s => marked.parse(pipeSafe(s.trim()), { renderer });
+const html = s => marked.parse(ltSafe(pipeSafe(s.trim())), { renderer });
 
 // ---- split top-level parts: everything before PART 4 is reference material
 const p4 = lines.findIndex(l => l.startsWith('# PART 4'));
@@ -61,7 +62,7 @@ function flowOf(body) {
     for (const par of t.split(/\n\s*\n/)) {
       const p = par.trim(); if (!p) continue;
       if (p.split('\n').every(l => l.trim().startsWith('|'))) items.push({ k: 'tbl', h: marked.parse(pipeSafe(p)) });
-      else items.push({ k: 'say', h: marked.parseInline(p.replace(/\n/g, ' ')) });
+      else items.push({ k: 'say', h: marked.parseInline(ltSafe(p.replace(/\n/g, ' '))) });
     }
   };
   const ls = body.split('\n');
@@ -158,7 +159,7 @@ if (fs.existsSync(mockFile)) {
       const steps = t.steps.map(s => ({ title: s.title, html: '', flow: [
         ...s.cmds.flatMap(c => c.includes('\n') ? [{ k: 'cmd', t: c, multi: true }] : [{ k: 'cmd', t: c }]),
         ...(s.see ? [{ k: 'out', t: s.see }] : []),
-        ...(s.why ? [{ k: 'say', h: marked.parseInline(s.why) }] : []),
+        ...(s.why ? [{ k: 'say', h: marked.parseInline(ltSafe(s.why)) }] : []),
       ] }));
       const allCmds = t.steps.flatMap(s => s.cmds).concat(t.verify || []);
       questions.push({ n, mock: mk.n, star: /very common/i.test(t.reported || ''), title: t.title, topic: t.topic, weight: t.weight,

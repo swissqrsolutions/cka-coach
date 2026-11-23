@@ -394,7 +394,7 @@
         "dpkg -i /root/cri-dockerd.deb"
        ],
        "see": "Setting up cri-dockerd ...",
-       "why": "dpkg installs a local .deb file."
+       "why": "dpkg installs a local .deb file. If dpkg stops with missing dependencies, run `apt-get -f install -y` and check again: status `iU` means unpacked but not configured yet, `ii` means installed."
       },
       {
        "title": "Enable and start the service",

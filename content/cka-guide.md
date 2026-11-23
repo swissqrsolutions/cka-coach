@@ -381,7 +381,7 @@ metadata:
 provisioner: rancher.io/local-path                          # <- from the question
 volumeBindingMode: WaitForFirstConsumer                     # <- or Immediate
 ```
-Take the default mark off the OLD class. **Search:** `change default storage class` → copy the `kubectl patch` line, change the name:
+Take the default mark off the OLD class. **Search:** `change default storage class` → copy the `kubectl patch` command and put in the old class's name.
 ```
 k patch storageclass OLD-NAME -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
 ```
@@ -920,12 +920,12 @@ This opens the deployment in vim. Type `/exit 1` and press Enter. The cursor jum
 Vim keys, exactly: press `C` (capital C = delete from the cursor to the end of the line and start typing), type `sleep 3600`, press `Esc`, type `:wq`, press Enter.
 The line must now read `- sleep 3600`.
 
-No-vim alternative (one line, same result):
+No-vim alternative, one command with the same result. Type it instead of the vim steps above.
 ```
 k patch deploy api -n app --type=json -p='[{"op":"replace","path":"/spec/template/spec/containers/0/command","value":["sh","-c","sleep 3600"]}]'
 ```
 
-You see `deployment.apps/api edited`.
+You see `deployment.apps/api edited` (after vim) or `deployment.apps/api patched` (after `k patch`).
 
 ---
 
@@ -1104,10 +1104,12 @@ k get pods -n app                            # 1/1 Running
 
 ```
 ssh node01 "systemctl disable --now kubelet"
+sleep 60          # wait until node01 shows NotReady (takes about 40 s)
 clear
+k get nodes
 ```
 (`disable --now` = stop it AND switch off start-at-boot, so the "survive a reboot" part is real.)
-Wait 60 seconds, then run `k get nodes` until node01 shows `NotReady`.
+If node01 still shows `Ready`, wait 20 seconds and run `k get nodes` again.
 
 ---
 
@@ -1761,7 +1763,7 @@ The API server stores everything in etcd. etcd answers on port **2379**. The API
 
 ### Step 3. Back up, then fix the file
 
-First a backup, OUTSIDE the manifests folder (the kubelet runs every file inside `/etc/kubernetes/manifests/`, so a copy left there becomes a second API server):
+First a backup, OUTSIDE the manifests folder (the kubelet runs every file inside `/etc/kubernetes/manifests/`, so a copy left there becomes a second API server). Then open the original in vim.
 ```
 cp /etc/kubernetes/manifests/kube-apiserver.yaml /root/kube-apiserver.yaml.orig
 vim /etc/kubernetes/manifests/kube-apiserver.yaml
@@ -2207,7 +2209,7 @@ exit          # exam only
 |---|---|---|
 | still a timeout | a label in the file does not match the real label | compare with `--show-labels`, fix `np.yaml`, `k apply -f np.yaml` again |
 | `error parsing ... yaml` | indentation broke while deleting lines | compare with the finished file above, line by line |
-| step 1 wget already WORKS, even with `deny-all` | your cluster's network plugin does not enforce policies (flannel alone does not; Calico, Canal and Cilium do) | check with `k get pods -A \| grep -Ei 'calico\|canal\|cilium'`. If none is listed, you can still write and apply the policy, but you cannot see it block or allow. The exam cluster enforces them. |
+| step 1 wget already WORKS, even with `deny-all` | your cluster's network plugin does not enforce policies (flannel alone does not; Calico, Canal and Cilium do) | run `k get pods -A`, then look for calico, canal or cilium in the NAME column. If none is listed, you can still write and apply the policy, but you cannot see it block or allow. The exam cluster enforces them. |
 | `error: unable to upgrade connection` / `container not found` | the client pod is not Running yet | `k get pod client -n web`, wait |
 
 ---
@@ -2377,14 +2379,16 @@ k delete ns app --ignore-not-found
 k create ns app
 k run api --image=nginx:1.27 -n app
 mkdir -p /opt
-clear
-```
-Then check: `k top nodes`. If it prints numbers, you are done. If it says `error: Metrics API not available`, your playground has no metrics-server. Install it (needs internet; the patch lets it trust the playground's self-signed kubelet certificates):
-```
-k apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+# install metrics-server (the playground has none; k top needs it). Pinned version:
+k apply -f https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.8.0/components.yaml
+# let it trust the playground's self-signed kubelet certificates
 k patch deploy metrics-server -n kube-system --type=json -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+# wait until it runs, then give it 60 s to collect the first numbers
+k -n kube-system rollout status deploy metrics-server --timeout=180s
+sleep 60
+k top nodes
 ```
-Wait about 60 seconds, then `k top nodes` again until it prints numbers.
+The last line should list each node with CPU and memory numbers. If it still says `error: Metrics API not available`, wait 30 seconds and run `k top nodes` again. (If the playground already had metrics-server, the lines above simply update it. That is fine.)
 
 ---
 
@@ -2466,7 +2470,7 @@ exit          # exam only
 
 | You see | Cause | Fix |
 |---|---|---|
-| `error: Metrics API not available` | no metrics-server in this playground, or it is still starting | install it (Part A), wait 60 s; the exam has it |
+| `error: Metrics API not available` | no metrics-server in this playground, or it is still starting | run the metrics-server lines of Part A again, wait 60 s; the exam has it |
 | `No such file or directory` on `>` | the folder does not exist | `mkdir -p /opt` |
 | `Defaulted container "x" out of: x, y` | the pod has 2 containers; kubectl silently took the first one | always use `-c` when the question names a container: `k logs api -c <container> -n app > /opt/api.log` |
 | the question asks for the logs of a crashed container | current logs are empty | add `--previous` |
@@ -3310,6 +3314,8 @@ This question uses no kubectl at all. It is Linux work on one machine.
 
 ### PART A. Build the exam (Killercoda only)
 
+**Playground warning, read first:** the free Killercoda playground has NO Docker (it runs containerd). So Step 1 (`dpkg -i`) may stop with `dependency problems`, and Step 2 can NOT finish: `cri-docker` will not start (`Cannot connect to the Docker daemon`). Type those commands for practice and read the messages, then move on. Steps 3 and 4 (the kernel settings) work fully here. Do NOT run `apt-get install -f -y` or install Docker on the playground: it can replace the playground's containerd and break the cluster. In the exam, Docker is already installed and every step works.
+
 ```
 # 1. put the package where the question expects it (pinned release, matched to your Ubuntu version)
 . /etc/os-release; echo "Ubuntu codename: $VERSION_CODENAME"
@@ -3322,7 +3328,6 @@ clear
 ```
 - If `curl` fails (404), your Ubuntu codename has no build: replace `${VERSION_CODENAME}` with `jammy` and run that line again.
 - Pod networking on this machine is broken until you finish Step 4. That is expected.
-- **What you cannot fully practise here:** the playground runs containerd, not Docker. `dpkg -i` may stop with `dependency problems` (Docker missing), and even if it installs, `cri-docker` cannot start without a Docker daemon (`Cannot connect to the Docker daemon`). In the exam Docker is already installed. Practise the commands of Steps 1 and 2 and read their messages; Steps 3 and 4 work fully. (Installing Docker with `apt-get install -f -y` may replace the playground's containerd; only do that on a playground you are going to throw away.)
 
 ---
 
@@ -3422,9 +3427,9 @@ exit                                     # exam only
 |---|---|---|
 | `sysctl: cannot stat /proc/sys/net/bridge/bridge-nf-call-iptables` | the kernel module for bridging is not loaded | `modprobe br_netfilter`, then `sysctl --system` again |
 | `sysctl: cannot stat /proc/sys/net/netfilter/nf_conntrack_max` | the conntrack module is not loaded | `modprobe nf_conntrack`, then `sysctl --system` again |
-| `dpkg: dependency problems` | a required package (usually Docker) is missing | `apt-get install -f -y` (in the playground, see the warning in Part A) |
-| `cri-docker` fails: `Cannot connect to the Docker daemon` | Docker is not installed or not running | exam: `systemctl enable --now docker`, then restart cri-docker. Playground: expected, see Part A |
-| `Unit cri-docker.service not found` | the package did not install, or the service has another name | `systemctl list-unit-files | grep -i cri` |
+| `dpkg: dependency problems` | a required package (usually Docker) is missing | exam: `apt-get install -f -y`. Playground: expected (no Docker), do not run it, go on to Step 3 |
+| `cri-docker` fails: `Cannot connect to the Docker daemon` | Docker is not installed or not running | exam: `systemctl enable --now docker`, then restart cri-docker. Playground: expected (no Docker), go on to Step 3 |
+| `Unit cri-docker.service not found` | the package did not install, or the service has another name | run `systemctl list-unit-files`, then look for cri |
 
 ---
 
@@ -3454,7 +3459,7 @@ sysctl net.ipv4.ip_forward                   # = 1
 
 ### PART A. Build the exam (Killercoda only)
 
-**What you cannot practise here, and why:** a running playground already has a CNI, and removing it would break the cluster. So the full task (nodes going from NotReady to Ready) can only be practised on a fresh kubeadm cluster with no CNI (for example the killer.sh simulator, or your own VMs).
+**Playground warning, read first:** the free Killercoda playground already has a CNI. Installing Calico on top of it would break pod networking. So in the playground: do ONLY the rehearsal below (dry-run, find the range, edit `cidr:`). Do NOT run Step 1 (`k create -f` tigera-operator) or Step 4 (`k apply -f custom-resources.yaml`). Just read them. Nodes will already be `Ready` here. The full task (nodes going from NotReady to Ready) needs a fresh kubeadm cluster with no CNI (for example the killer.sh simulator, or your own VMs).
 
 **What you CAN rehearse here, without changing anything** (Calico v3.29.1 as the example URLs):
 ```
@@ -3492,12 +3497,13 @@ Pick the right one, then install it. "Must support NetworkPolicy" means Calico.
 ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
 k get nodes                       # proves: I am on the right machine, and kubectl answers
 ```
-Here the nodes show `NotReady`. That is expected: there is no network yet.
+In the exam the nodes show `NotReady`. That is expected: there is no network yet. (In the playground they are already `Ready`.)
 
 ---
 
 ### Step 1. Install the Calico operator
 
+**Exam only. Do not run this step in the Killercoda playground.**
 ```
 k create -f <tigera-operator URL from the question>
 ```
@@ -3536,6 +3542,7 @@ Vim keys, exactly: the cursor is on the `c` of `cidr:`; press `w` twice (onto th
 
 ### Step 4. Apply it
 
+**Exam only. Do not run this step in the Killercoda playground.**
 ```
 k apply -f custom-resources.yaml
 ```
@@ -4915,6 +4922,15 @@ k get nodes                       # proves: I am on the right machine, and kubec
 
 ---
 
+### Step 0. Test once BEFORE the policy
+
+Run this line now, before you create any policy. It prints the nginx welcome page, because nothing blocks traffic yet. Remember it: after the policy, the same line must time out.
+```
+k exec app -n prod -- wget -qO- -T 3 web
+```
+
+---
+
 ### Step 1. Get the policy text from the docs
 
 1. Open **https://kubernetes.io/docs** → search **`network policies`** → click **"Network Policies"**
@@ -4996,7 +5012,7 @@ Spec:
     To: <any> (traffic not restricted by destination)
   Policy Types: Ingress, Egress
 ```
-Test: a name lookup works, a connection does not. (Part A created an nginx pod and Service called `web` for this. Run the `wget` line once BEFORE applying the policy: it prints the nginx page. After the policy it must time out.)
+Test: a name lookup works, a connection does not. (In Step 0 the `wget` line printed the nginx page. Now it must time out.)
 ```
 k exec app -n prod -- nslookup web.prod.svc.cluster.local     # Name + Address: DNS still works
 k exec app -n prod -- wget -qO- -T 3 web                      # download timed out: traffic blocked
@@ -5863,7 +5879,7 @@ k get nodes                       # proves: I am on the right machine, and kubec
 ```
 k get pc
 ```
-(`pc` = short for `priorityclass`. No namespace.)
+(`pc` = short for `priorityclass`. No namespace.) For example, you see:
 ```
 NAME                      VALUE        GLOBAL-DEFAULT   AGE
 low-prio                  100          false            1m
@@ -5894,7 +5910,7 @@ Type `/containers:` and press Enter. Press `O` (capital o: new line ABOVE) and t
 ```
 Save with `Esc`, `:wq`.
 
-One-line alternative (same result, no editor):
+One-command alternative, same result, no editor.
 ```
 k patch deploy web -n shop -p '{"spec":{"template":{"spec":{"priorityClassName":"high-priority"}}}}'
 ```
@@ -6678,6 +6694,7 @@ What does NOT exist: the PV, the PVC, the pod. All three are your job.
 
 **What the question is really saying:**
 
+Right now the chain shows nothing built yet, for example:
 ```
 Pod ✗   →   PVC ✗   →   PV ✗
 ```
@@ -6787,6 +6804,7 @@ pv-data   1Gi        RWO            Retain           Available           manual 
 ```
 STATUS `Available` = the disk exists and nobody uses it yet.
 
+The chain now looks like this:
 ```
 Pod ✗   →   PVC ✗   →   PV ✓
 ```
@@ -6853,6 +6871,7 @@ CAPACITY shows `1Gi` although you asked for 500Mi. That is correct. The PVC gets
 
 **Do not go to step 4 until you see `Bound`.** If the PVC is not bound, the pod will never start.
 
+The chain now looks like this:
 ```
 Pod ✗   →   PVC ✓   →   PV ✓
 ```
