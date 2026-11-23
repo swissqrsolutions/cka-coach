@@ -46,7 +46,7 @@
     try { await navigator.clipboard.writeText(txt); } catch { const ta = document.createElement('textarea'); ta.value = txt; document.body.append(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
     b.textContent = 'Copied'; b.classList.add('done'); setTimeout(() => { b.textContent = 'Copy'; b.classList.remove('done'); }, 1500);
   });
-  const codeBlock = txt => `<div class="code"><button class="copy" type="button">Copy</button><pre><code>${esc(txt)}</code></pre></div>`;
+  const codeBlock = txt => `<div class="code"><button class="copy" type="button">Copy</button><pre><code>${esc(txt).replace(/&lt;(?!none&gt;)([a-zA-Z][^&]{0,44}?)&gt;/g, '<mark class="ph">&lt;$1&gt;</mark>')}</code></pre></div>`;
   const Q = n => D.questions.find(x => x.n === n);
   const PQ = () => D.questions.filter(x => x.n <= 40);
   const prog = () => store.get('progress', {});
@@ -166,6 +166,26 @@
   const coachBottom = (c, q) => `<h2>Traps to avoid</h2><div class="card traps">${(c.traps || []).map(t => `<div class="trap">⚠ ${esc(t)}</div>`).join('')}</div>
     <h2>Verify against the question</h2><div class="card">${(c.verify || []).map(v => `<div class="vrow"><div class="need">✔ ${esc(v.need)}</div>${codeBlock(v.cmd)}<div class="bsee">You must see: <code>${esc(v.see)}</code></div></div>`).join('')}</div>
     <h2>Memorise: the fast version</h2><div class="card">${codeBlock((c.memorise || []).join('\n'))}<p class="small">Target: ${c.minutes || q.target} min in the exam. Type it from memory once a day.</p></div>`;
+  const PH = [
+    [/^(pod|pod-name|first-row-pod-name|pending-pod-name)$/i, "the pod's real name: first column of <code>k get pods -n &lt;namespace&gt;</code> (looks like <code>api-697db8cc78-hgvdr</code>). Type the first letters and press Tab."],
+    [/^(id|container-id)$/i, 'the container ID: first column of the <code>crictl ps -a</code> output (top line).'],
+    [/^highest-1$/i, 'the highest value in <code>k get pc</code> (ignore the system- ones) minus 1.'],
+    [/^(X|Y)$/i, 'the number you worked out in the step above.'],
+    [/^(ip|pod IP)$/i, 'the IP column of <code>k get pods -o wide -n &lt;namespace&gt;</code>.'],
+    [/^node$/i, 'the node name from <code>k get nodes</code>.'],
+    [/^old$/i, 'the old name or value shown in the question or the previous output.'],
+    [/URL/i, 'the URL written in the question: copy it from there.'],
+    [/^(cluster-cidr|podSubnet|YOUR-podSubnet)$/i, 'the pod network range: <code>k -n kube-system get pod -l component=kube-controller-manager -o yaml | grep cluster-cidr</code>.'],
+    [/^secret$/i, 'the Secret name from the question (or <code>k get secret -n &lt;namespace&gt;</code>).'],
+    [/^same as PV$/i, 'the same value the PV shows in <code>k get pv</code>.'],
+    [/^old PV name$/i, 'the PV name from <code>k get pv</code>.'],
+    [/^svc-clusterIP$/i, 'the CLUSTER-IP column of <code>k get svc -n &lt;namespace&gt;</code>.'],
+  ];
+  const phNotes = cmds => {
+    const found = [...new Set(cmds.join('\n').match(/<(?!none>)[a-zA-Z][^<>]{0,44}>/g) || [])];
+    if (!found.length) return '';
+    return `<div class="phnote">${found.map(p => { const k = p.slice(1, -1), hit = PH.find(([re]) => re.test(k)); return `<p>Replace <mark class="ph">${esc(p)}</mark> with ${hit ? hit[1] : 'the real value from the output above or from the question.'}</p>`; }).join('')}</div>`;
+  };
   // the whole answer in baby steps: one command, what you see, why
   function solution(q) {
     const plainWords = q.meaning || (q.story && q.story.broken ? esc(q.story.broken) : '');
@@ -177,7 +197,7 @@
       if (!cmds.length && !outs.length && !why) return '';
       return `<div class="bstep"><div class="bnum">${i + 1}</div><div class="bbody">
         <b>${esc(s.title.replace(/^Step \d+\.\s*/, '').replace('Closing routine', 'Check it works'))}</b>
-        ${cmds.length ? codeBlock(cmds.join('\n')) : ''}
+        ${cmds.length ? codeBlock(cmds.join('\n')) + phNotes(cmds) : ''}
         ${outs.length ? `<div class="bsee">You see:</div><pre class="out">${paint(outs.join('\n'))}</pre>` : ''}
         ${items.filter(f => f.k === 'tbl').map(f => `<div class="btable">${f.h}</div>`).join('')}
         ${whys.length ? `<div class="bwhy">${whys.map(w => `<p>${w.h}</p>`).join("")}</div>` : ''}
