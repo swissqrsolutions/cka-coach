@@ -231,7 +231,9 @@
     }).join('');
     const c = q.coach || {};
     const sshLine = (q.question.match(/^ssh \S+/) || [])[0];
-    const traps = (c.traps || []).length ? `<h2>Watch out</h2><div class="card traps">${c.traps.map(t => `<div class="trap">⚠ ${esc(t)}</div>`).join('')}</div>` : '';
+    // traps as Don't / Do pairs (old plain-string traps still shown as one line)
+    const tick = t => esc(t).replace(/`([^`]+)`/g, '<code>$1</code>');
+    const traps = (c.traps || []).length ? `<h2>Watch out</h2><div class="card traps">${c.traps.map(t => typeof t === 'string' ? `<div class="trap">⚠ ${tick(t)}</div>` : `<div class="trap pair"><div class="dont">❌ <b>Don't:</b> ${tick(t.dont)}</div><div class="do">✅ <b>Do:</b> ${tick(t.do)}</div></div>`).join('')}</div>` : '';
     const verify = (c.verify || []).length ? `<h2>Verify against the question</h2><div class="card">${c.verify.map(v => `<div class="vrow"><div class="need">✔ ${esc(v.need)}</div>${codeBlock(v.cmd)}<div class="bsee">You must see: <code>${esc(v.see)}</code></div></div>`).join('')}</div>` : '';
     const memorise = (c.memorise || []).length ? `<h2>Memorise: the fast version</h2><div class="card">${codeBlock(c.memorise.join('\n'))}<p class="small">Target: ${c.minutes || q.target} min in the exam. Type it from memory once a day.</p></div>` : '';
     const solveBlock = `

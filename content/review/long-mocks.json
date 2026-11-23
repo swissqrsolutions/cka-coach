@@ -1,0 +1,249 @@
+{
+ "101": [
+  "kubelet = the agent on every node that starts pods and reports to the control plane .",
+  "`systemctl enable --now kubelet`, because start alone is lost after reboot; check with `systemctl is-enabled kubelet`",
+  "`sudo -i` right after `ssh node01`, because the exam user is not root and systemctl says Access denied",
+  "`exit; exit` (leave root, then node01), then `k get nodes`, because kubectl works only on the cka01001 host",
+  "If it still says Ready, wait 30 s and run it again (the control plane waits ~50 s before marking a node NotReady).",
+  "systemctl changes need root: the real exam requires sudo -i (Killercoda is already root, so it changes nothing there)."
+ ],
+ "102": [
+  "Fix the Service selector with `k -n shop patch svc cart ...`, because the task forbids changing the Deployment",
+  "`k -n shop edit svc cart` and fix the key, because a merge patch adds a second key that must also match"
+ ],
+ "103": [
+  "scheduler = the part that picks a node, only one with that much free memory .",
+  "If a limit exists, raise it to at least 128Mi too, because a limit below the request is invalid"
+ ],
+ "104": [
+  "Change `livenessProbe: httpGet: port: 8080` to `80`, because nginx listens on 80 and the probe checks the wrong port",
+  "Keep the probe and fix only its port, because removing it changes the behaviour the checker may test"
+ ],
+ "105": [
+  "The host you ssh'd into IS this task's controlplane: redirect > there; mkdir -p the folder first (exam: sudo if Permission denied)",
+  "`k -n ops logs legacy-app | grep ERROR > /opt/course/5/errors.txt`, because -i also matches lowercase 'error'"
+ ],
+ "106": [
+  "Use Helm to print Argo CD YAML into a file and install it, telling the chart not to add CRDs.",
+  "Add `--set crds.install=false`, because the CRDs already exist and Helm would clash trying to own them",
+  "Pods may take 2-3 min; on the small playground some can stay Pending for lack of resources - that is OK, the release is what counts."
+ ],
+ "107": [
+  "On Killercoda Docker is absent, so cri-docker will not start (and the jammy .deb may not match a newer Ubuntu); dpkg, enable and sysctl still practise.",
+  "kernel module = a driver loaded with modprobe (some sysctl settings only exist once their module is loaded)",
+  "Write the 4 lines to /etc/sysctl.d/k8s.conf, then `sysctl --system`, because `sysctl -w` is lost on reboot",
+  "dpkg, systemctl and /etc need root: the real exam requires sudo -i (Killercoda is already root).",
+  "If the file is missing on Killercoda, the setup download failed - download a .deb from the cri-dockerd releases page or just practise the commands.",
+  "If dpkg stops with missing dependencies, run apt-get -f install -y and check again: status iU means unpacked but not configured yet, ii means installed.",
+  "Paste the whole block at once, including the final EOF line (everything between the two EOFs goes into the file).",
+  "modprobe loads them now; the modules-load.d file loads them after a reboot, so the sysctl settings really persist."
+ ],
+ "108": [
+  "Show installed custom resource types in a file, and save the help text for one field.",
+  "`k get crd -l app.kubernetes.io/name=cert-manager > /root/resources.yaml`, because default output is asked; .yaml is just the file name",
+  "List with `k get crd`, because the task wants the type definitions (CRDs), not Certificate objects"
+ ],
+ "109": [
+  "`k -n finance create role pod-reader --verb=get,list,watch --resource=pods`, because the task asks for a namespaced Role"
+ ],
+ "110": [
+  "Name the container port and open it to the outside on port 30080 of every node.",
+  "Check `k -n front get pods --show-labels` and use `app: front-end`, otherwise the Service has no endpoints",
+  "Add `name: http` next to `containerPort: 80`, because `targetPort: http` finds the port by that name"
+ ],
+ "111": [
+  "Rebuild the HTTPS Ingress as a Gateway (door + certificate) and an HTTPRoute (path to service).",
+  "Gateway = the entry point, its listener = port + protocol + hostname (+ TLS certificate) .",
+  "HTTPRoute = rules that send matching requests to a Service, attached to a Gateway via parentRefs",
+  "Add `tls: mode: Terminate` with `certificateRefs: - name: web-tls`, because an HTTPS listener needs a certificate",
+  "`parentRefs: - name: web-gateway`, the exact Gateway name; no namespace needed since both are in web-app",
+  "Ingress host -> listener hostname; Ingress tls.secretName -> certificateRefs; Terminate = the Gateway decrypts HTTPS with that Secret."
+ ],
+ "112": [
+  "Choose the file naming the frontend namespace, frontend Pods and port 80, because `{}` means every namespace",
+  "Both selectors in ONE `- from` item, because two items mean OR (too open), one item means AND",
+  "If this already works, your playground's network plugin ignores NetworkPolicies - continue anyway, the choice of file is what is graded.",
+  "Key rule: namespaceSelector and podSelector in the SAME \"- from\" item = BOTH must match (AND); as separate items = either one (OR).",
+  "1 opens everything to all pods, 3 opens all namespaces on all ports, 2 = only frontend pods from namespace frontend, only TCP 80."
+ ],
+ "113": [
+  "Make a new priority level just under the top one and give it to a deployment.",
+  "pods with a higher number are scheduled first and can push out (preempt) lower ones .",
+  "If you see \"0 4999\", the old pod is still terminating - run it again after a few seconds."
+ ],
+ "114": [
+  "Set `namespace: autoscale` in metadata (or `k -n autoscale apply -f hpa.yaml`), otherwise it lands in default",
+  "<unknown> = no metrics-server is installed in the playground, so there are no CPU numbers yet; the HPA object itself is still correct."
+ ],
+ "115": [
+  "Repeat this command for each other class step 1 showed as (default), changing only the name."
+ ],
+ "116": [
+  "Make a storage claim that grabs the old disk, then plug it into the database deployment.",
+  "If STATUS is Released (common in the exam), the PV still remembers its old claim: run kubectl patch pv mariadb-pv -p '{\"spec\":{\"claimRef\":null}}' and it becomes Available.",
+  "Empty class \"\" stops the default class grabbing it; volumeName: mariadb-pv guarantees it binds to exactly that PV.",
+  "sed -i 's/OLD/NEW/' file = replace text inside the file (here claimName: \"\" becomes claimName: mariadb)."
+ ],
+ "201": [
+  "Edit the 10-kubeadm.conf drop-in (path from `systemctl cat kubelet`), because its ExecStart is the one used",
+  "If it still says Ready, wait 30 s and run it again (~50 s grace period)."
+ ],
+ "202": [
+  "static pod = a pod the kubelet runs straight from a YAML file in /etc/kubernetes/manifests (edit the file, not the pod) .",
+  "`k -n kube-system describe pod -l component=kube-scheduler`, because a binary that never started writes no logs",
+  "Fix the scheduler instead, because the Pod is fine; nothing is assigning it to a node",
+  "Wait about 30 s, then `k get pod stuck -o wide`, because kubelet needs time to recreate the static pod",
+  "The error is in the pod status (describe) - or in journalctl -u kubelet | grep scheduler."
+ ],
+ "203": [
+  "CoreDNS = the pods (Deployment coredns in kube-system) that answer name lookups inside the cluster .",
+  "Fix CoreDNS first, then `k -n lookup exec dns-test -- nslookup kubernetes.default > /root/dns.txt`, so it shows success",
+  "Check `k -n kube-system get cm coredns` and the kube-dns Service endpoints, because the Corefile or Service may be broken",
+  "busybox also prints lines like \"** server can't find kubernetes.default.cluster.local: NXDOMAIN\" (it tries several suffixes) and may end with exit code 1 - ignore that; success = a Name/Address line for kubernetes.default.svc.cluster.local."
+ ],
+ "204": [
+  "Copy key and value from `k -n data get deploy analytics -o jsonpath='{.spec.template.spec.nodeSelector}'`, so they match exactly"
+ ],
+ "205": [
+  "volume = storage mounted into the pod - a ConfigMap volume turns each key into a file .",
+  "`k -n stock create cm inventory-config --from-literal=ready=yes`, because Pods only read ConfigMaps in their own namespace",
+  "The pod cannot even mount its volume, so the init container never runs: the ConfigMap behind the volume is missing."
+ ],
+ "206": [
+  "Killercoda already has a CNI, so DO NOT run the \"exam only\" steps there (setup empty) - only run step 1 and the download/grep, and rehearse the rest.",
+  "Installation = the custom object that tells the Tigera operator how to set up Calico (incl.",
+  "Compare `cidr:` with podSubnet from `k -n kube-system get cm kubeadm-config -o yaml`; fix it with sed if different",
+  "In the sed, replace 10.244.0.0/16 with YOUR podSubnet from step 1; skip the sed if it is already 192.168.0.0/16."
+ ],
+ "207": [
+  "On Killercoda the setup installs a distro etcdctl that may be older than the cluster's etcd - fine for practice"
+ ],
+ "208": [
+  "Make a \"prod\" version of some YAML with a different namespace, name prefix and replica count.",
+  "The --dry-run | apply form also works on a re-run (plain create would say AlreadyExists, which is harmless)."
+ ],
+ "209": [
+  "`helm upgrade web podinfo/podinfo --version 6.7.1 ...`, because without it Helm moves to the newest chart",
+  "`echo 2 > /root/helm-rev.txt` (last REVISION from `helm -n helm-web history web`), because only the number is wanted",
+  "The question says \"keeping the same chart version\", so repeat --version 6.7.1 (without it helm takes the newest chart)."
+ ],
+ "211": [
+  "Edit nginx settings stored in a ConfigMap to allow only TLS 1.3, lock the ConfigMap, restart nginx.",
+  "subPath = mount one single file from a volume (it does not update until the pod restarts)",
+  "Edit to `ssl_protocols TLSv1.3;` first, then make it immutable, because an immutable ConfigMap cannot be edited",
+  "`k -n nginx-static rollout restart deploy nginx-static`, because running Pods keep the old config until restarted",
+  "curl: -s quiet, -k accept the self-signed cert, --tls-max 1.2 = offer at most TLS 1.2."
+ ],
+ "212": [
+  "Let only the api pods from the api namespace talk to the database on port 80.",
+  "EOF (a \"heredoc\") writes every line up to EOF into /root/np.yaml, same as pasting into vim.",
+  "If none is listed, the \"blocked\" test will not time out even though your YAML is right."
+ ],
+ "213": [
+  "with restartPolicy = Always it keeps running beside the app = native sidecar (stable since v1.33) .",
+  "Add it under `initContainers:` with `restartPolicy: Always`, because that is the native sidecar the task asks for",
+  "Add `volumeMounts: - {name: logs, mountPath: /var/log}` to the app container too, so both share the files",
+  "Under spec.template.spec add initContainers and volumes, and add volumeMounts to the existing app container (do not touch its command)."
+ ],
+ "214": [
+  "Also `k -n wp set resources deploy wordpress -c init --requests=...`, because a bigger init request still blocks scheduling",
+  "`echo $(( / 1024 ))` to get Mi, and always write `Mi`, because M means 1000-based units",
+  "The init container asks 4 CPU / 8Gi - more than node01 has - so no Pod fits, even though the main container is small.",
+  "Put YOUR numbers in: allocatable memory Ki ÷ 1024 = Mi; (allocatable - requested) × 90 / 100 keeps 10% headroom; / 3 = one Pod's share."
+ ],
+ "215": [
+  "The storage request names a storage type that does not exist; recreate it with the right type.",
+  "Delete and recreate logs-pvc with `storageClassName: local-path`, because that field cannot change on an existing PVC",
+  "`k -n storage-fix get pod log-writer -o yaml > /root/log-writer.yaml` first, so you can recreate it",
+  "(local-path uses WaitForFirstConsumer: it creates the disk only when a Pod uses the claim, so even a correct PVC shows Pending until its Pod exists.)",
+  "storageClassName cannot be edited on a PVC, so it must be recreated; the Pod goes first (a PVC used by a Pod is not removed).",
+  "EOF (a \"heredoc\") writes every line up to EOF into /root/logs-pvc.yaml, same as pasting into vim.",
+  "A saved object still carries resourceVersion; the API refuses to create an object that has one (\"resourceVersion should not be set on objects to be created\")."
+ ],
+ "216": [
+  "Leave namespace out of app-pv, because PersistentVolumes are cluster-wide; only the PVC and Pod use app-store",
+  "EOF (a \"heredoc\") writes every line up to EOF into /root/all.yaml, same as pasting into vim.",
+  "PVC gets the 1Gi PV (bigger is OK), so the PVC also shows CAPACITY 1Gi - the PV's size."
+ ],
+ "301": [
+  "static pod = a pod that kubelet starts from a file in /etc/kubernetes/manifests (edit the file, kubelet restarts it) .",
+  "sudo -i = become root (needed for node files; on Killercoda you already are root, so it is harmless)."
+ ],
+ "302": [
+  "Fix kube-controller-manager, because no new Pods are created at all; a scheduler problem leaves Pending Pods",
+  "sudo -i = become root (needed for node files; on Killercoda you already are root, so it is harmless).",
+  "The flag names a file that does not exist (*.conf = every name ending in .conf); point it to the real one."
+ ],
+ "303": [
+  "sudo -i = become root (needed for node files; on Killercoda you already are root, so it is harmless)."
+ ],
+ "304": [
+  "List both UDP 53 and TCP 53, because DNS falls back to TCP for large answers",
+  "EOF (a \"heredoc\") writes every line up to EOF into /root/dns.yaml, same as pasting into vim."
+ ],
+ "305": [
+  "Undo, wait for `rollout status`, then save the image with jsonpath, so the file shows the working image"
+ ],
+ "306": [
+  "Install a runtime package, make it start at boot, and set 4 kernel network switches permanently.",
+  "Docker is absent on Killercoda, so the service may fail to stay active; the rest still practises.",
+  "`modprobe br_netfilter` first, then `sysctl --system`, because the bridge setting exists only once the module is loaded",
+  "sudo -i = become root (needed for node files; on Killercoda you already are root, so it is harmless).",
+  "EOF (a \"heredoc\") writes every line up to EOF into /etc/sysctl.d/99-cri.conf, same as pasting into vim."
+ ],
+ "307": [
+  "Print Argo CD YAML with Helm using two settings, save it, and apply it with kubectl.",
+  "sed -n '/^server:/,/^[a-z]/p' prints only the server: section (up to the next top-level key), so grep finds server.service and not the dex/redis services.",
+  "helm template only PRINTS the YAML - nothing goes to the cluster (helm install would deploy it and track a release).",
+  "Argo CD is big for a playground: ContainerCreating/Pending for a few minutes is a resource limit, not your mistake."
+ ],
+ "308": [
+  "custom-columns prints two columns, NAME and GROUP; awk '$2==\"cert-manager.io\"{print $1}' keeps rows whose 2nd column is exactly cert-manager.io and prints the 1st; sort orders them; > saves.",
+  "EOF (a \"heredoc\") writes every line up to EOF into /root/ci.yaml, same as pasting into vim."
+ ],
+ "309": [
+  "Check certificate dates, renew the API server certificate, and print the command a new node would use to join.",
+  "Move kube-apiserver.yaml out of manifests and back, so the apiserver restarts and loads the new cert",
+  "sudo -i = become root (needed for node files; on Killercoda you already are root, so it is harmless).",
+  "File out of manifests = kubelet stops the static pod; file back = it starts again and loads the new cert.",
+  "s_client asks the LIVE API server for its certificate; the second line reads the file on disk."
+ ],
+ "310": [
+  "HTTPRoute = routing rules attached to a Gateway (parentRefs = which Gateway, backendRefs = which Services get the traffic)",
+  "Two rules: one with `headers: x-version: v2` to shop-v2, one with weights, so header requests skip the split",
+  "EOF (a \"heredoc\") writes every line up to EOF into /root/route.yaml, same as pasting into vim.",
+  "With equal paths, Gateway API picks the rule with more header matches, so x-version: v2 requests go 100% to shop-v2.",
+  "Status stays empty: the playground GatewayClass points to a fake controller, so nothing sets Accepted - check the spec only."
+ ],
+ "311": [
+  "a = OR (every pod in edge, OR app=gateway pods in payments - podSelector alone means the policy's own namespace); b = AND + TCP 80; c = right senders but EVERY port; d = all edge pods to all payments pods.",
+  "If the intruder is NOT blocked, check the network plugin enforces policies: kubectl -n kube-system get pods | grep -E 'calico|canal|cilium'."
+ ],
+ "312": [
+  "--rm -i prints the output, then deletes the pod; > saves the output into the file.",
+  "Normal extras: a line pod \"dnsq\" deleted, and \"*** Can't find ...: No answer\" (the empty IPv6 query)."
+ ],
+ "313": [
+  "Autoscale on CPU and memory, add at most 2 pods a minute, remove pods only after 2 calm minutes.",
+  "Write autoscaling/v2 YAML with cpu 60 and memory 70, because `k autoscale` cannot set the behavior rules",
+  "EOF (a \"heredoc\") writes every line up to EOF into /root/hpa.yaml, same as pasting into vim.",
+  "scaleUp policy Pods 2 / 60 s = add at most 2 pods per minute; scaleDown stabilizationWindowSeconds 120 = act on the highest recommendation of the last 2 min before removing pods."
+ ],
+ "314": [
+  "Create a priority just under the top one, allowed to push others out, and give it to a deployment.",
+  "`k -n prio rollout status deploy payments-api` first, because old Pods keep the old priority until replaced",
+  "--sort-by sorts ascending; custom-columns prints only name and value; grep -v system- hides the system-* classes.",
+  "EOF (a \"heredoc\") writes every line up to EOF into /root/pc.yaml, same as pasting into vim."
+ ],
+ "315": [
+  "Make a storage type that keeps disks after delete, and a 2-pod database that gets one disk each.",
+  "EOF (a \"heredoc\") writes every line up to EOF into /root/sc.yaml, same as pasting into vim."
+ ],
+ "316": [
+  "An old disk is \"locked\" to a deleted claim; unlock it, claim it again, start the database.",
+  "Released = the old claim is gone but the PV is still reserved for it .",
+  "Set `namespace: postgres` on PVC pg-data, because a Pod can only use claims in its own namespace",
+  "--type=json patch: {\"op\":\"remove\",\"path\":\"/spec/claimRef\"} deletes the claimRef field (or: kubectl edit pv pg-data-pv and delete the claimRef block).",
+  "EOF (a \"heredoc\") writes every line up to EOF into /root/pvc.yaml, same as pasting into vim."
+ ]
+}

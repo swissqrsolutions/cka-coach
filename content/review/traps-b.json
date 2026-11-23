@@ -1,0 +1,672 @@
+{
+ "105": {
+  "question": "ssh cka01005\nPod legacy-app in namespace ops writes log lines to stdout. Write all log lines that contain the string ERROR into the file /opt/course/5/errors.txt on the controlplane node.",
+  "traps": [
+   "Writing the file on the wrong host",
+   "Using grep -i (would also catch 'error' lowercase)",
+   "Folder missing → 'No such file or directory'"
+  ],
+  "memorise": [
+   "ssh cka01005",
+   "mkdir -p /opt/course/5",
+   "k -n ops logs legacy-app | grep ERROR > /opt/course/5/errors.txt",
+   "grep -vc ERROR /opt/course/5/errors.txt"
+  ]
+ },
+ "106": {
+  "question": "ssh cka01006\nInstall Argo CD in the cluster using Helm:\n- Add the official Argo CD Helm repository with the name argocd (https://argoproj.github.io/argo-helm).\n- Generate a Helm template of the Argo CD chart version 7.7.3 for namespace argocd and save it to /root/argo-helm.yaml. Configure the chart so that it does NOT install CRDs (the CRDs are already installed in the cluster).\n- Install Argo CD with Helm as release argocd, same version and configuration, in namespace argocd.",
+  "traps": [
+   "Installing without --set crds.install=false → CRD ownership conflict",
+   "Forgetting --version 7.7.3 on install",
+   "Missing namespace argocd (use --create-namespace if it doesn't exist)"
+  ],
+  "memorise": [
+   "ssh cka01006",
+   "helm repo add argocd https://argoproj.github.io/argo-helm; helm repo update",
+   "helm show values argocd/argo-cd --version 7.7.3 | grep -A6 '^crds:'",
+   "helm template argocd argocd/argo-cd --version 7.7.3 --namespace argocd --set crds.install=false > /root/argo-helm.yaml",
+   "helm install argocd argocd/argo-cd --version 7.7.3 --namespace argocd --set crds.install=false"
+  ]
+ },
+ "107": {
+  "question": "ssh cka01007\nPrepare this node for a Docker-based container runtime:\n- Install the Debian package /root/cri-dockerd.deb using dpkg.\n- Enable and start the cri-docker service.\n- Configure these kernel parameters so they persist across reboots (file /etc/sysctl.d/k8s.conf):\n  net.bridge.bridge-nf-call-iptables = 1\n  net.ipv4.ip_forward = 1\n  net.ipv6.conf.all.forwarding = 1\n  net.netfilter.nf_conntrack_max = 131072",
+  "traps": [
+   "sysctl -w (not persistent)",
+   "modprobe br_netfilter only → gone after reboot; also write br_netfilter (and nf_conntrack) to /etc/modules-load.d/k8s.conf",
+   "Wrong file name — the question names /etc/sysctl.d/k8s.conf",
+   "On Killercoda (no Docker) cri-docker fails to START — enable still worked; check is-enabled"
+  ],
+  "memorise": [
+   "ssh cka01007; sudo -i",
+   "dpkg -i /root/cri-dockerd.deb",
+   "systemctl enable --now cri-docker; systemctl is-enabled cri-docker",
+   "cat <<'EOF' > /etc/sysctl.d/k8s.conf   # paste the 4 lines, then EOF",
+   "modprobe br_netfilter; modprobe nf_conntrack; printf 'br_netfilter\\nnf_conntrack\\n' > /etc/modules-load.d/k8s.conf",
+   "sysctl --system"
+  ]
+ },
+ "108": {
+  "question": "ssh cka01008\ncert-manager CRDs are installed in the cluster.\n- Create a list of all cert-manager Custom Resource Definitions and save it to /root/resources.yaml. Use kubectl's default output format; do not set an output format.\n- Using kubectl, extract the documentation for the subject specification field of the Certificate custom resource and save it to /root/subject.yaml.",
+  "traps": [
+   "Adding -o yaml because of the .yaml file name",
+   "Explaining certificate.subject (missing spec)",
+   "Listing certificates instead of CRDs"
+  ],
+  "memorise": [
+   "ssh cka01008",
+   "k get crd -l app.kubernetes.io/name=cert-manager > /root/resources.yaml   # fallback: k get crd | grep cert-manager",
+   "k explain certificate.spec.subject > /root/subject.yaml"
+  ]
+ },
+ "109": {
+  "question": "ssh cka01009\nIn namespace finance create a ServiceAccount named reporter. Create a Role named pod-reader that allows only get, list and watch on pods. Bind the Role to the ServiceAccount with a RoleBinding named reporter-binding.",
+  "traps": [
+   "--serviceaccount=reporter without finance: → kubectl error (must be <namespace>:<name>)",
+   "Forgetting -n finance on the rolebinding → it lands in default",
+   "Creating a ClusterRole instead of a Role",
+   "Spaces in the --verb list"
+  ],
+  "memorise": [
+   "ssh cka01009",
+   "k -n finance create sa reporter",
+   "k -n finance create role pod-reader --verb=get,list,watch --resource=pods",
+   "k -n finance create rolebinding reporter-binding --role=pod-reader --serviceaccount=finance:reporter",
+   "k -n finance auth can-i watch pods --as=system:serviceaccount:finance:reporter"
+  ]
+ },
+ "110": {
+  "question": "ssh cka01010\nReconfigure the existing Deployment front-end in namespace front: add a port specification named http exposing port 80/tcp of the existing container nginx.\nCreate a new Service named front-end-svc of type NodePort exposing the container port http, with nodePort 30080. The Service must reach the Pods of the Deployment.",
+  "traps": [
+   "Service selector not matching pod labels → no endpoints",
+   "Leaving out nodePort: 30080 → a random port is chosen",
+   "Forgetting name: http on the containerPort, so targetPort: http fails"
+  ],
+  "memorise": [
+   "ssh cka01010",
+   "k -n front patch deploy front-end --type=json -p='[{\"op\":\"add\",\"path\":\"/spec/template/spec/containers/0/ports\",\"value\":[{\"name\":\"http\",\"containerPort\":80,\"protocol\":\"TCP\"}]}]'",
+   "cat <<'EOF' | k apply -f -   # Service: type NodePort, selector app: front-end, ports: name http, port 80, targetPort http, nodePort 30080",
+   "k -n front get endpointslices -l kubernetes.io/service-name=front-end-svc"
+  ]
+ },
+ "111": {
+  "question": "ssh cka01011\nMigrate the existing Ingress web in namespace web-app to the Gateway API, keeping HTTPS:\n- Create a Gateway named web-gateway using GatewayClass nginx, with an HTTPS listener on port 443 for hostname gateway.web.example. Use the TLS Secret web-tls already referenced by the Ingress.\n- Create an HTTPRoute named web-route bound to web-gateway that sends all paths (/) for gateway.web.example to Service web on port 80.\n- Delete the Ingress web when done.",
+  "traps": [
+   "HTTPS listener without a tls block → apply fails with a validation error",
+   "parentRefs name typo (must be web-gateway; no namespace needed, same namespace)",
+   "Forgetting namespace web-app in metadata"
+  ],
+  "memorise": [
+   "ssh cka01011",
+   "k -n web-app get ingress web -o yaml | grep -A12 '^spec'",
+   "vim gw.yaml   # Gateway: gatewayClassName nginx; listener https/HTTPS/443/hostname gateway.web.example; tls: mode Terminate, certificateRefs Secret web-tls",
+   "vim route.yaml   # HTTPRoute: parentRefs web-gateway; hostnames gateway.web.example; PathPrefix /; backendRefs web 80",
+   "k apply -f gw.yaml -f route.yaml; k -n web-app delete ingress web"
+  ]
+ },
+ "112": {
+  "question": "ssh cka01012\nPods of Deployment frontend (namespace frontend) must be able to reach Pods of Deployment backend (namespace backend) on port 80. A deny-all policy already exists in namespace backend.\nReview the NetworkPolicy files in /root/netpol/ and apply the ONE that allows this traffic with the least permissions. Do not delete or modify the existing policies.",
+  "traps": [
+   "Choosing a policy with namespaceSelector: {} (all namespaces) or no ports",
+   "namespaceSelector and podSelector as SEPARATE '- from' items = OR (too open); in ONE item = AND",
+   "Applying more than one file"
+  ],
+  "memorise": [
+   "ssh cka01012",
+   "cat /root/netpol/*.yaml   # narrow namespace+pod selector AND port 80",
+   "k apply -f /root/netpol/policy-2.yaml",
+   "k -n frontend exec deploy/frontend -- wget -qO- -T2 backend.backend"
+  ]
+ },
+ "113": {
+  "question": "ssh cka01013\nCreate a new PriorityClass named urgent for user workloads. Its value must be exactly one less than the highest existing user-defined PriorityClass value (ignore the system-* classes).\nPatch the existing Deployment busybox-logger in namespace priority to use PriorityClass urgent. Ensure the Deployment rolls out successfully.",
+  "traps": [
+   "Taking a system-* value",
+   "Putting priorityClassName at deployment spec level instead of template.spec",
+   "Not checking rollout (new pods may be Pending)"
+  ],
+  "memorise": [
+   "ssh cka01013",
+   "k get pc",
+   "k create pc urgent --value=<highest-1>",
+   "k -n priority patch deploy busybox-logger -p '{\"spec\":{\"template\":{\"spec\":{\"priorityClassName\":\"urgent\"}}}}'",
+   "k -n priority rollout status deploy busybox-logger"
+  ]
+ },
+ "114": {
+  "question": "ssh cka01014\nCreate a HorizontalPodAutoscaler named apache-server in namespace autoscale for the existing Deployment apache-server. It must target 50% CPU utilisation per Pod, with a minimum of 1 and a maximum of 4 replicas. Set the scale-down stabilization window to 30 seconds.",
+  "traps": [
+   "behavior under metrics instead of directly under spec",
+   "scaleUp instead of scaleDown",
+   "Forgetting -n autoscale"
+  ],
+  "memorise": [
+   "ssh cka01014",
+   "vim hpa.yaml   # autoscaling/v2 HPA: scaleTargetRef Deployment apache-server; minReplicas 1; maxReplicas 4; cpu averageUtilization 50",
+   "# in hpa.yaml under spec:\nspec:\n  behavior:\n    scaleDown:\n      stabilizationWindowSeconds: 30",
+   "k apply -f hpa.yaml; k -n autoscale get hpa apache-server"
+  ]
+ },
+ "115": {
+  "question": "ssh cka01015\nCreate a StorageClass named local-fast with provisioner rancher.io/local-path and volume binding mode WaitForFirstConsumer. Make it the default StorageClass; it must be the ONLY default. Do not modify existing PersistentVolumeClaims.",
+  "traps": [
+   "Leaving the old default → two (default)",
+   "Deleting/recreating the old SC",
+   "Unquoted \"true\" in the annotation"
+  ],
+  "memorise": [
+   "ssh cka01015",
+   "k get sc   # note every (default)",
+   "k patch sc local-path -p '{\"metadata\":{\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"false\"}}}'   # repeat for each old default",
+   "docs: 'storage classes' → name local-fast; annotation storageclass.kubernetes.io/is-default-class: \"true\"; provisioner rancher.io/local-path; volumeBindingMode: WaitForFirstConsumer → k apply",
+   "k get sc   # only local-fast (default)"
+  ]
+ },
+ "116": {
+  "question": "ssh cka01016\nA MariaDB Deployment in namespace mariadb was deleted by mistake, but its PersistentVolume mariadb-pv was kept.\n- Create a PersistentVolumeClaim named mariadb in namespace mariadb: access mode ReadWriteOnce, storage 250Mi, so that it binds to the existing PV.\n- Edit /root/mariadb-deploy.yaml so the Deployment uses this PVC, then apply it. Ensure the Pod is Running.",
+  "traps": [
+   "Omitting storageClassName → default SC is used and PVC won't bind to mariadb-pv",
+   "PV stuck Released with an old claimRef → k patch pv mariadb-pv -p '{\"spec\":{\"claimRef\":null}}'",
+   "Forgetting to change claimName in the deploy file"
+  ],
+  "memorise": [
+   "ssh cka01016",
+   "k get pv mariadb-pv   # Released? → k patch pv mariadb-pv -p '{\"spec\":{\"claimRef\":null}}'",
+   "PVC YAML: name mariadb, ns mariadb, RWO, 250Mi, storageClassName: \"\", volumeName: mariadb-pv → k apply",
+   "sed -i 's/claimName: \"\"/claimName: mariadb/' /root/mariadb-deploy.yaml   # replace text in the file",
+   "k apply -f /root/mariadb-deploy.yaml; k -n mariadb get pods"
+  ]
+ },
+ "201": {
+  "question": "ssh cka02001\nNode node01 is NotReady after a maintenance change. Find out why the kubelet does not start on node01 and fix it. Do not reinstall any packages.",
+  "traps": [
+   "Forgetting systemctl daemon-reload after editing the drop-in",
+   "Editing kubelet.service instead of the 10-kubeadm.conf drop-in that holds ExecStart",
+   "No sudo -i on node01 in the exam → Permission denied",
+   "Reinstalling kubelet (forbidden)"
+  ],
+  "memorise": [
+   "ssh cka02001; ssh node01; sudo -i",
+   "systemctl status kubelet --no-pager; journalctl -u kubelet --no-pager | tail -5",
+   "which kubelet; systemctl cat kubelet | grep ExecStart=   # LAST one wins",
+   "systemctl cat kubelet | grep '^# /'   # path of 10-kubeadm.conf",
+   "vim <that 10-kubeadm.conf path>   # /usr/local/bin/kubelet → /usr/bin/kubelet; Esc :wq",
+   "systemctl daemon-reload; systemctl restart kubelet; exit; exit"
+  ]
+ },
+ "202": {
+  "question": "ssh cka02002\nA new Pod named stuck in namespace default stays Pending, even though nodes have free resources. Diagnose and repair the cluster component responsible so that the Pod is scheduled.",
+  "traps": [
+   "crictl logs is EMPTY when the binary never started — read describe pod (Message) or journalctl -u kubelet",
+   "Recreating the pod — it's the scheduler that's broken",
+   "Editing the mirror pod with kubectl edit instead of the manifest file",
+   "Not waiting ~30 s for kubelet to recreate the static pod"
+  ],
+  "memorise": [
+   "ssh cka02002",
+   "k get pod stuck -o wide   # NODE <none>",
+   "k -n kube-system get pods | grep scheduler",
+   "k -n kube-system describe pod -l component=kube-scheduler | grep -iE 'reason|message'",
+   "sudo -i; vim /etc/kubernetes/manifests/kube-scheduler.yaml   # kube-schedulerr → kube-scheduler; exit"
+  ]
+ },
+ "203": {
+  "question": "ssh cka02003\nPods can no longer resolve Service names. Fix cluster DNS so that, from Pod dns-test in namespace lookup, the name kubernetes.default resolves. Save the output of that nslookup to /root/dns.txt.",
+  "traps": [
+   "Saving the failed lookup before fixing DNS",
+   "Using a new temp pod instead of dns-test",
+   "Restarting pods when replicas are 0",
+   "Panicking at NXDOMAIN lines — success = Name/Address for kubernetes.default.svc.cluster.local",
+   "If replicas are fine, check k -n kube-system get cm coredns (Corefile) and the kube-dns Service endpoints"
+  ],
+  "memorise": [
+   "ssh cka02003",
+   "k -n kube-system get deploy coredns   # 0/0",
+   "k -n kube-system scale deploy coredns --replicas=2",
+   "k -n kube-system rollout status deploy coredns",
+   "k -n lookup exec dns-test -- nslookup kubernetes.default > /root/dns.txt"
+  ]
+ },
+ "204": {
+  "question": "ssh cka02004\nPods of Deployment analytics in namespace data are Pending. Make them run on node01 WITHOUT changing the Deployment.",
+  "traps": [
+   "Editing nodeSelector in the deployment (forbidden)",
+   "Typo in label key/value — copy it from the jsonpath output",
+   "Labelling the control plane instead of node01"
+  ],
+  "memorise": [
+   "ssh cka02004",
+   "k -n data describe pod -l app=analytics | grep -A3 Events",
+   "k -n data get deploy analytics -o jsonpath='{.spec.template.spec.nodeSelector}'",
+   "k label node node01 disktype=ssd --overwrite",
+   "k -n data get pods -o wide"
+  ]
+ },
+ "205": {
+  "question": "ssh cka02005\nDeployment inventory in namespace stock never becomes ready. Investigate and fix it. The application expects a ConfigMap named inventory-config with key ready and value yes. Do not modify the Deployment.",
+  "traps": [
+   "Removing the init container (forbidden)",
+   "Wrong key/value case (ready=yes)",
+   "Creating the ConfigMap in the default namespace"
+  ],
+  "memorise": [
+   "ssh cka02005",
+   "k -n stock get pods   # Init:0/1",
+   "k -n stock describe pod -l app=inventory | tail -5",
+   "k -n stock create cm inventory-config --from-literal=ready=yes",
+   "k -n stock rollout status deploy inventory --timeout=180s   # re-run if it times out"
+  ]
+ },
+ "206": {
+  "question": "ssh cka02006\nInstall and configure a CNI of your choice that supports NetworkPolicy enforcement. Use Calico v3.29.2:\n- Operator manifest: https://raw.githubusercontent.com/projectcalico/calico/v3.29.2/manifests/tigera-operator.yaml\n- Custom resources: https://raw.githubusercontent.com/projectcalico/calico/v3.29.2/manifests/custom-resources.yaml\nThe Pod CIDR must match the cluster's configured pod subnet.",
+  "traps": [
+   "k apply on tigera-operator.yaml → annotations Too long; use k create",
+   "Not CHECKING the cidr in custom-resources.yaml against podSubnet",
+   "Applying custom-resources before the operator CRDs exist → k wait --for=condition=Established crd/installations.operator.tigera.io"
+  ],
+  "memorise": [
+   "ssh cka02006",
+   "k -n kube-system get cm kubeadm-config -o yaml | grep podSubnet   # or: ps aux | grep -o 'cluster-cidr=[0-9][^ ]*'",
+   "k create -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.2/manifests/tigera-operator.yaml",
+   "k wait --for=condition=Established crd/installations.operator.tigera.io --timeout=60s",
+   "curl -fsSLO https://raw.githubusercontent.com/projectcalico/calico/v3.29.2/manifests/custom-resources.yaml; sed -i 's#cidr: 192.168.0.0/16#cidr: 10.244.0.0/16#' custom-resources.yaml   # use YOUR podSubnet",
+   "k create -f custom-resources.yaml; k get tigerastatus; k get nodes"
+  ]
+ },
+ "207": {
+  "question": "ssh cka02007\nCreate a snapshot of the etcd instance running at https://127.0.0.1:2379 and save it to /opt/backup/etcd-snap.db.\nUse: CA /etc/kubernetes/pki/etcd/ca.crt, cert /etc/kubernetes/pki/etcd/server.crt, key /etc/kubernetes/pki/etcd/server.key.",
+  "traps": [
+   "Mixing up --cert and --cacert",
+   "Old etcdctl without ETCDCTL_API=3 → v2 API, snapshot save fails",
+   "No sudo -i in the exam → cannot read /etc/kubernetes/pki",
+   "Folder /opt/backup missing → mkdir -p first",
+   "Using peer.crt instead of server.crt"
+  ],
+  "memorise": [
+   "ssh cka02007; sudo -i",
+   "export ETCDCTL_API=3",
+   "etcdctl --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key snapshot save /opt/backup/etcd-snap.db",
+   "etcdctl --write-out=table snapshot status /opt/backup/etcd-snap.db   # deprecation warning is OK"
+  ]
+ },
+ "208": {
+  "question": "ssh cka02008\nA Kustomize base exists in /root/shop-kustomize/base. Create an overlay in /root/shop-kustomize/overlays/prod that:\n- uses the base,\n- puts all resources in namespace shop-prod,\n- adds the name prefix prod-,\n- sets the replicas of Deployment shop to 3.\nApply the overlay with kubectl.",
+  "traps": [
+   "Using name prod-shop in replicas (use the base name shop)",
+   "k apply -f instead of -k",
+   "Namespace shop-prod doesn't exist → apply fails"
+  ],
+  "memorise": [
+   "ssh cka02008",
+   "mkdir -p /root/shop-kustomize/overlays/prod",
+   "# /root/shop-kustomize/overlays/prod/kustomization.yaml:\nresources:\n- ../../base\nnamespace: shop-prod\nnamePrefix: prod-\nreplicas:\n- name: shop\n  count: 3",
+   "k create ns shop-prod --dry-run=client -o yaml | k apply -f -",
+   "k apply -k /root/shop-kustomize/overlays/prod; k -n shop-prod get deploy prod-shop"
+  ]
+ },
+ "209": {
+  "question": "ssh cka02009\nAdd the Helm repository podinfo (https://stefanprodan.github.io/podinfo). Install chart podinfo/podinfo version 6.7.1 as release web in namespace helm-web (create it) with 2 replicas.\nThen upgrade the release, keeping the same chart version, so that the UI message is \"hello cka\" (value ui.message). Write the current revision number of the release to /root/helm-rev.txt.",
+  "traps": [
+   "Upgrading without --reuse-values → replicaCount resets to 1",
+   "Forgetting --version on upgrade → newest chart (the question says \"keeping the same chart version\")",
+   "Writing more than the number into the file"
+  ],
+  "memorise": [
+   "ssh cka02009",
+   "helm repo add podinfo https://stefanprodan.github.io/podinfo; helm repo update",
+   "helm install web podinfo/podinfo --version 6.7.1 -n helm-web --create-namespace --set replicaCount=2",
+   "helm upgrade web podinfo/podinfo --version 6.7.1 -n helm-web --reuse-values --set ui.message=\"hello cka\"",
+   "helm -n helm-web history web   # last REVISION → echo 2 > /root/helm-rev.txt"
+  ]
+ },
+ "210": {
+  "question": "ssh cka02010\nCreate an Ingress named echo in namespace echo-sound that exposes Service echo on port 8080 at http://example.org/echo using ingressClassName nginx and pathType Prefix.",
+  "traps": [
+   "Forgetting the * → pathType Exact",
+   "Port 80 instead of 8080",
+   "Missing -n echo-sound"
+  ],
+  "memorise": [
+   "ssh cka02010",
+   "k -n echo-sound get svc echo",
+   "k -n echo-sound create ingress echo --class=nginx --rule=\"example.org/echo*=echo:8080\"",
+   "k -n echo-sound describe ingress echo"
+  ]
+ },
+ "211": {
+  "question": "ssh cka02011\nDeployment nginx-static in namespace nginx-static serves HTTPS using configuration from ConfigMap nginx-config. It currently allows TLSv1.2 and TLSv1.3.\nChange the configuration so that ONLY TLSv1.3 is accepted, then make the ConfigMap immutable. Make sure the running Pods use the new configuration.",
+  "traps": [
+   "Setting immutable before editing → you must delete/recreate it",
+   "Forgetting the rollout restart",
+   "Breaking the trailing ; in the nginx line"
+  ],
+  "memorise": [
+   "ssh cka02011",
+   "IP=$(k -n nginx-static get svc nginx-static -o jsonpath='{.spec.clusterIP}'); curl -sk --tls-max 1.2 https://$IP",
+   "k -n nginx-static edit cm nginx-config   # ssl_protocols TLSv1.3;",
+   "k -n nginx-static patch cm nginx-config -p '{\"immutable\":true}'",
+   "k -n nginx-static rollout restart deploy nginx-static; k -n nginx-static rollout status deploy nginx-static",
+   "curl -sk --tls-max 1.2 https://$IP || echo refused"
+  ]
+ },
+ "212": {
+  "question": "ssh cka02012\nIn namespace db create a NetworkPolicy named db-allow-api that allows incoming traffic to Pods labelled app=db ONLY from Pods labelled role=api in namespace api, on TCP port 80. All other incoming traffic to app=db Pods must be denied.",
+  "traps": [
+   "Writing '- podSelector' as a second list item → OR (allows role=api pods in ns db + every pod of ns api)",
+   "podSelector alone → only same namespace db",
+   "Using a namespace label that doesn't exist — kubernetes.io/metadata.name is automatic"
+  ],
+  "memorise": [
+   "ssh cka02012",
+   "docs: 'network policies' → copy example → keep Ingress only",
+   "podSelector app: db; from: - namespaceSelector: matchLabels kubernetes.io/metadata.name: api   (no dash) podSelector: matchLabels role: api",
+   "ports: - protocol: TCP port: 80",
+   "cat <<'EOF' > /root/np.yaml (or vim) → k apply -f /root/np.yaml; k -n db describe networkpolicy db-allow-api"
+  ]
+ },
+ "213": {
+  "question": "ssh cka02013\nUpdate Deployment order-app in namespace logging: add a sidecar container named log-shipper using image busybox:1.36 that runs: tail -n+1 -F /var/log/order.log\nUse the native sidecar pattern (an init container with restartPolicy: Always). Share the log directory using a volume named logs mounted at /var/log in both containers. Do not change the existing container's command.",
+  "traps": [
+   "Adding it under containers: (not the native pattern asked)",
+   "Mount missing in the main container",
+   "Wrong command quoting — use [sh, -c, \"tail -n+1 -F /var/log/order.log\"]"
+  ],
+  "memorise": [
+   "ssh cka02013",
+   "k -n logging get deploy order-app -o yaml > /root/order-app.yaml   # backup",
+   "k -n logging edit deploy order-app   # add:\n    spec:\n      initContainers:\n      - name: log-shipper\n        image: busybox:1.36\n        restartPolicy: Always\n        command: [sh, -c, \"tail -n+1 -F /var/log/order.log\"]\n        volumeMounts:\n        - {name: logs, mountPath: /var/log}\n      containers:\n      - name: app\n        ...existing lines stay...\n        volumeMounts:\n        - {name: logs, mountPath: /var/log}\n      volumes:\n      - {name: logs, emptyDir: {}}",
+   "k -n logging get pods   # 2/2 Running"
+  ]
+ },
+ "214": {
+  "question": "ssh cka02014\nDeployment wordpress in namespace wp runs 3 replicas on node01 (it has an init container). Its Pods stay Pending.\nScale the Deployment to 0. Then give each Pod an equal share of node01's remaining CPU and memory: take node01's allocatable minus what is already requested by other Pods, keep 10% as headroom, and divide the rest by 3. Use identical requests for the init container and the main container. Scale back to 3 and ensure all Pods are Running.",
+  "traps": [
+   "Forgetting the init container → its larger request still blocks scheduling (a Pod needs max(init, sum of main containers))",
+   "Using Capacity instead of Allocatable",
+   "Taking the Limits column instead of Requests under \"Allocated resources\"",
+   "Not converting Ki to Mi (÷1024), or mixing Mi and M"
+  ],
+  "memorise": [
+   "ssh cka02014; k -n wp scale deploy wordpress --replicas=0",
+   "k describe node node01 | grep -A7 Allocatable; k describe node node01 | grep -A6 'Allocated resources'   # Requests column",
+   "echo $(( <memKi> / 1024 ))   # Mi;  echo $(( (<alloc> - <requested>) * 90 / 100 / 3 ))   # cpu in m, memory in Mi",
+   "k -n wp set resources deploy wordpress -c init --requests=cpu=<X>m,memory=<Y>Mi",
+   "k -n wp set resources deploy wordpress -c wordpress --requests=cpu=<X>m,memory=<Y>Mi",
+   "k -n wp scale deploy wordpress --replicas=3; k -n wp get pods -o wide"
+  ]
+ },
+ "215": {
+  "question": "ssh cka02015\nPVC logs-pvc in namespace storage-fix stays Pending and Pod log-writer cannot start. Fix it so the PVC is Bound using StorageClass local-path (same name, size 200Mi, ReadWriteOnce) and the Pod is Running.",
+  "traps": [
+   "Trying k edit pvc storageClassName — forbidden on an existing PVC",
+   "Deleting the pod without saving its YAML first",
+   "Re-creating from saved YAML that still has resourceVersion → \"resourceVersion should not be set on objects to be created\"",
+   "PVC with WaitForFirstConsumer stays Pending until the pod exists — that's normal"
+  ],
+  "memorise": [
+   "ssh cka02015",
+   "k -n storage-fix describe pvc logs-pvc | tail -3",
+   "k -n storage-fix get pod log-writer -o yaml > /root/log-writer.yaml",
+   "k -n storage-fix delete pod log-writer; k -n storage-fix delete pvc logs-pvc",
+   "cat <<'EOF' > /root/logs-pvc.yaml (or vim): logs-pvc, RWO, 200Mi, storageClassName: local-path → k apply -f /root/logs-pvc.yaml",
+   "sed -i '/^  resourceVersion:/d; /^  uid:/d' /root/log-writer.yaml; k apply -f /root/log-writer.yaml; k -n storage-fix get pvc,pod"
+  ]
+ },
+ "216": {
+  "question": "ssh cka02016\nCreate a PersistentVolume app-pv: 1Gi, ReadWriteOnce, hostPath /srv/app-data, storageClassName manual.\nCreate a PersistentVolumeClaim app-pvc in namespace app-store requesting 500Mi from class manual.\nCreate a Pod app-writer (image busybox:1.36, command sleep 3600) in namespace app-store mounting the claim at /data.",
+  "traps": [
+   "Namespace on the PV",
+   "PVC without storageClassName won't match a PV with class manual",
+   "Pod command as a string instead of [sleep, \"3600\"]"
+  ],
+  "memorise": [
+   "ssh cka02016",
+   "docs: 'configure persistent volume storage' → PV, PVC, Pod boxes",
+   "PV app-pv 1Gi RWO manual hostPath /srv/app-data; PVC app-pvc ns app-store 500Mi manual",
+   "Pod app-writer busybox:1.36 command [sleep, \"3600\"], claimName app-pvc, mountPath /data",
+   "cat <<'EOF' > /root/all.yaml (PV --- PVC --- Pod) → k apply -f /root/all.yaml; k -n app-store get pvc,pod"
+  ]
+ },
+ "301": {
+  "question": "ssh cka03001\nAfter a migration, kubectl on the controlplane can no longer reach the cluster (\"connection refused\"). The kube-apiserver is configured incorrectly. Find the problem and repair the cluster. Do not restore any backup.",
+  "traps": [
+   "Restoring etcd (forbidden, and not the cause)",
+   "Using port 2380 (peer) instead of 2379 (client)",
+   "Editing a copy in another folder — kubelet only reads /etc/kubernetes/manifests"
+  ],
+  "memorise": [
+   "ssh cka03001; sudo -i",
+   "crictl ps -a | grep kube-apiserver; crictl logs <id> 2>&1 | tail -5",
+   "grep -E \"listen-client-urls|listen-peer-urls\" /etc/kubernetes/manifests/etcd.yaml; grep etcd-servers /etc/kubernetes/manifests/kube-apiserver.yaml",
+   "sed -i 's#--etcd-servers=https://127.0.0.1:2380#--etcd-servers=https://127.0.0.1:2379#' /etc/kubernetes/manifests/kube-apiserver.yaml   # or vim",
+   "watch -n3 crictl ps --name kube-apiserver   # Ctrl+C when Running; k get nodes"
+  ]
+ },
+ "302": {
+  "question": "ssh cka03002\nDeployment scale-test in namespace cm-test was scaled to 3 replicas, but only 1 Pod exists and no new ReplicaSet activity happens. Find the responsible control plane component and fix it.",
+  "traps": [
+   "Blaming the scheduler — Pending pods would exist; here pods aren't even created",
+   "Scaling the deployment again instead of fixing the component",
+   "Fixing the wrong path — compare with ls /etc/kubernetes/*.conf"
+  ],
+  "memorise": [
+   "ssh cka03002; sudo -i",
+   "k -n kube-system get pods | grep controller-manager",
+   "k -n kube-system logs kube-controller-manager-controlplane | tail -3",
+   "grep kubeconfig /etc/kubernetes/manifests/kube-controller-manager.yaml; ls /etc/kubernetes/*.conf",
+   "sed -i 's#controller-manager.cfg#controller-manager.conf#' /etc/kubernetes/manifests/kube-controller-manager.yaml   # or vim",
+   "k -n cm-test get deploy scale-test   # 3/3 after ~1 min"
+  ]
+ },
+ "303": {
+  "question": "ssh cka03003\nnode01 is NotReady. The kubelet service fails to start. Repair the kubelet configuration on node01 so that the node becomes Ready. Do not re-join the node.",
+  "traps": [
+   "kubeadm reset/join (forbidden)",
+   "Editing the file on the control plane instead of node01",
+   "Forgetting systemctl restart kubelet"
+  ],
+  "memorise": [
+   "ssh cka03003; ssh node01; sudo -i",
+   "journalctl -u kubelet --no-pager -n 30 | grep -i -E 'ca|error'",
+   "ls /etc/kubernetes/pki/; grep clientCAFile /var/lib/kubelet/config.yaml",
+   "sed -i 's#ca-wrong.crt#ca.crt#' /var/lib/kubelet/config.yaml   # or vim",
+   "systemctl restart kubelet; systemctl is-active kubelet; exit; exit; k get nodes"
+  ]
+ },
+ "304": {
+  "question": "ssh cka03004\nIn namespace secure, Pod client can reach Service backend by IP but not by name. Existing NetworkPolicies must stay unchanged. Create an additional NetworkPolicy named allow-dns in namespace secure that allows all Pods in the namespace to send DNS queries (UDP and TCP 53) to the cluster DNS Pods in kube-system.",
+  "traps": [
+   "Splitting namespaceSelector and podSelector into two items (OR)",
+   "Only UDP 53",
+   "Adding Ingress to policyTypes → blocks incoming traffic for every pod"
+  ],
+  "memorise": [
+   "ssh cka03004",
+   "k -n kube-system get pods -l k8s-app=kube-dns --show-labels",
+   "docs: 'network policies' → name allow-dns, ns secure, podSelector: {}, policyTypes [Egress]",
+   "egress: - to: - namespaceSelector: matchLabels kubernetes.io/metadata.name: kube-system  podSelector: matchLabels k8s-app: kube-dns; ports UDP 53, TCP 53",
+   "cat <<'EOF' > /root/dns.yaml (or vim) → k apply -f /root/dns.yaml; k -n secure exec client -- wget -qO- -T3 backend"
+  ]
+ },
+ "305": {
+  "question": "ssh cka03005\nA recent update of Deployment checkout in namespace release is broken: its new Pods cannot start. Roll the Deployment back to the last working revision. Then write the image used by the running Pods to /root/checkout-image.txt.",
+  "traps": [
+   "Undoing twice → back to the broken one",
+   "Writing the image before rolling back",
+   "Forgetting -n release"
+  ],
+  "memorise": [
+   "ssh cka03005",
+   "k -n release rollout history deploy checkout",
+   "k -n release rollout undo deploy checkout",
+   "k -n release rollout status deploy checkout",
+   "k -n release get deploy checkout -o jsonpath='{.spec.template.spec.containers[0].image}' > /root/checkout-image.txt"
+  ]
+ },
+ "306": {
+  "question": "ssh cka03006\nSet up cri-dockerd on this node:\n- Install /root/cri-dockerd.deb with dpkg.\n- Enable and start the cri-docker socket and service so they start on boot.\n- Persist these kernel settings in /etc/sysctl.d/99-cri.conf and load them now:\n  net.bridge.bridge-nf-call-iptables = 1, net.ipv6.conf.all.forwarding = 1, net.ipv4.ip_forward = 1, net.netfilter.nf_conntrack_max = 131072\n- Make sure the br_netfilter module is loaded at boot (/etc/modules-load.d/cri.conf).",
+  "traps": [
+   "Enabling only the service, not the socket",
+   "sysctl --system before modprobe br_netfilter → bridge key missing",
+   "Wrong file names (must be 99-cri.conf and cri.conf)"
+  ],
+  "memorise": [
+   "ssh cka03006; sudo -i",
+   "dpkg -i /root/cri-dockerd.deb; systemctl daemon-reload",
+   "systemctl enable --now cri-docker.socket cri-docker.service",
+   "echo br_netfilter > /etc/modules-load.d/cri.conf; modprobe br_netfilter",
+   "cat <<'EOF' > /etc/sysctl.d/99-cri.conf (4 lines, or vim) → sysctl --system"
+  ]
+ },
+ "307": {
+  "question": "ssh cka03007\nUsing the Helm repository argocd (https://argoproj.github.io/argo-helm), render chart argo-cd version 7.7.3 as release argo for namespace gitops:\n- CRDs must NOT be part of the output (they are pre-installed).\n- The argocd-server Service must be of type NodePort.\nSave the rendered manifests to /root/argocd-template.yaml and deploy them with kubectl (not helm install) into namespace gitops.",
+  "traps": [
+   "Running helm install",
+   "Release name argocd instead of argo (changes resource names)",
+   "Namespace gitops not created → apply fails"
+  ],
+  "memorise": [
+   "ssh cka03007",
+   "helm repo add argocd https://argoproj.github.io/argo-helm; helm repo update",
+   "helm show values argocd/argo-cd --version 7.7.3 > /root/argocd-values.yaml; grep -n -A3 \"^crds:\" /root/argocd-values.yaml",
+   "sed -n '/^server:/,/^[a-z]/p' /root/argocd-values.yaml | grep -n -A8 '^  service:'",
+   "helm template argo argocd/argo-cd --version 7.7.3 --namespace gitops --set crds.install=false --set server.service.type=NodePort > /root/argocd-template.yaml",
+   "k create ns gitops; k apply -n gitops -f /root/argocd-template.yaml; k -n gitops get svc argo-argocd-server"
+  ]
+ },
+ "308": {
+  "question": "ssh cka03008\ncert-manager CRDs are installed.\n- Write the names of all CRDs belonging to API group cert-manager.io, one per line and sorted, to /root/cm-crds.txt.\n- Create a ClusterIssuer named selfsigned with apiVersion cert-manager.io/v1 that uses the selfSigned issuer type.\n- Save the output of kubectl explain for clusterissuer.spec.selfSigned to /root/selfsigned.txt.",
+  "traps": [
+   "grep cert-manager also catches acme.cert-manager.io CRDs — filter by exact group",
+   "Adding a namespace to the ClusterIssuer (cluster-scoped)",
+   "Lowercase selfsigned in the field path"
+  ],
+  "memorise": [
+   "ssh cka03008",
+   "k get crd -o custom-columns=NAME:.metadata.name,GROUP:.spec.group --no-headers | awk '$2==\"cert-manager.io\"{print $1}' | sort > /root/cm-crds.txt",
+   "cat <<'EOF' > /root/ci.yaml: apiVersion cert-manager.io/v1, kind ClusterIssuer, metadata.name selfsigned, spec: selfSigned: {} → k apply -f /root/ci.yaml",
+   "k explain clusterissuer.spec.selfSigned > /root/selfsigned.txt"
+  ]
+ },
+ "309": {
+  "question": "ssh cka03009\nOn the controlplane:\n- Save the certificate expiration overview of the cluster to /root/cert-expiry.txt.\n- Renew ONLY the kube-apiserver serving certificate and make the API server use it.\n- Save a complete kubeadm join command for a new worker node to /root/join.sh.",
+  "traps": [
+   "kubeadm certs renew all (renews more than asked)",
+   "Not restarting the apiserver — it keeps the old cert in memory",
+   "Saving only the token instead of the full join command"
+  ],
+  "memorise": [
+   "ssh cka03009; sudo -i",
+   "kubeadm certs check-expiration > /root/cert-expiry.txt",
+   "kubeadm certs renew apiserver",
+   "mv /etc/kubernetes/manifests/kube-apiserver.yaml /root/; watch crictl ps --name kube-apiserver   # gone → Ctrl+C",
+   "mv /root/kube-apiserver.yaml /etc/kubernetes/manifests/; watch crictl ps --name kube-apiserver   # Running → Ctrl+C",
+   "kubeadm token create --print-join-command > /root/join.sh"
+  ]
+ },
+ "310": {
+  "question": "ssh cka03010\nIn namespace shop-gw a Gateway shop-gw (HTTP, port 80) and Services shop-v1 and shop-v2 exist.\nCreate an HTTPRoute named shop-route attached to shop-gw for hostname shop.example.com:\n- Requests with header x-version: v2 go 100% to shop-v2.\n- All other requests are split 80% shop-v1 and 20% shop-v2.\nBoth Services listen on port 80.",
+  "traps": [
+   "Putting both matches in ONE rule (then header requests also get split)",
+   "Forgetting port: 80 in backendRefs",
+   "Weights as percent strings instead of integers"
+  ],
+  "memorise": [
+   "ssh cka03010",
+   "docs: 'gateway api' → HTTPRoute (gateway-api.sigs.k8s.io: 'HTTP header matching', 'traffic splitting')",
+   "rules: - matches: - headers: - name: x-version value: v2  backendRefs: - name: shop-v2 port: 80",
+   "- backendRefs: - name: shop-v1 port: 80 weight: 80 / - name: shop-v2 port: 80 weight: 20",
+   "cat <<'EOF' > /root/route.yaml (or vim) → k apply -f /root/route.yaml"
+  ]
+ },
+ "311": {
+  "question": "ssh cka03011\nPods labelled app=api in namespace payments must accept traffic ONLY from Pods labelled app=gateway in namespace edge, on TCP port 80. A default deny-ingress policy exists in payments.\nSeveral candidate policies are in /root/netpols-ex/. Apply the single file that meets the requirement with the least privilege. Do not modify any file or existing policy.",
+  "traps": [
+   "Picking the file with '- namespaceSelector' and '- podSelector' as two items (OR)",
+   "Picking one with no ports block",
+   "Editing a file to 'fix' it (forbidden)"
+  ],
+  "memorise": [
+   "ssh cka03011",
+   "for f in /root/netpols-ex/*.yaml; do echo \"== $f\"; cat $f; done   # look for ONE '-' before namespaceSelector, podSelector without '-', ports 80",
+   "k apply -f /root/netpols-ex/b.yaml",
+   "k -n payments get networkpolicy"
+  ]
+ },
+ "312": {
+  "question": "ssh cka03012\nIn namespace dns-lab, Deployment catalog (2 replicas, nginx on port 80) exists.\n- Expose it with a ClusterIP Service catalog-svc on port 8080 targeting port 80.\n- Create a headless Service catalog-headless for the same Pods on port 80.\n- From a temporary busybox:1.36 Pod, save the nslookup output of catalog-svc.dns-lab.svc.cluster.local to /root/svc-dns.txt, and of catalog-headless.dns-lab.svc.cluster.local to /root/headless-dns.txt.",
+  "traps": [
+   "Using -it with redirect → TTY junk in the file; use -i",
+   "Headless with a ClusterIP (must be None)",
+   "Swapping port and target-port"
+  ],
+  "memorise": [
+   "ssh cka03012",
+   "k -n dns-lab rollout status deploy catalog",
+   "k -n dns-lab expose deploy catalog --name=catalog-svc --port=8080 --target-port=80",
+   "k -n dns-lab expose deploy catalog --name=catalog-headless --port=80 --cluster-ip=None",
+   "k -n dns-lab run dnsq --rm -i --restart=Never --image=busybox:1.36 -- nslookup catalog-svc.dns-lab.svc.cluster.local > /root/svc-dns.txt",
+   "(same with catalog-headless… > /root/headless-dns.txt)"
+  ]
+ },
+ "313": {
+  "question": "ssh cka03013\nCreate a HorizontalPodAutoscaler named worker-hpa in namespace metrics-app for Deployment worker:\n- min 2, max 6 replicas,\n- target 60% average CPU utilisation AND 70% average memory utilisation,\n- scale up by at most 2 Pods per 60 seconds,\n- scale-down stabilization window of 120 seconds.",
+  "traps": [
+   "Using type: Percent instead of Pods for the scale-up policy",
+   "Only one metric (k autoscale)",
+   "apiVersion autoscaling/v1 (no memory, no behavior)"
+  ],
+  "memorise": [
+   "ssh cka03013",
+   "docs: 'horizontal pod autoscale walkthrough' / k explain hpa.spec.behavior",
+   "autoscaling/v2; scaleTargetRef Deployment worker; min 2 max 6; metrics cpu 60 + memory 70 (type Utilization)",
+   "behavior: scaleUp: policies: - {type: Pods, value: 2, periodSeconds: 60}; scaleDown: stabilizationWindowSeconds: 120",
+   "cat <<'EOF' > /root/hpa.yaml (or vim) → k apply -f /root/hpa.yaml; k -n metrics-app get hpa"
+  ]
+ },
+ "314": {
+  "question": "ssh cka03014\nCreate a PriorityClass named critical-jobs:\n- value exactly one less than the highest existing user-defined PriorityClass (ignore system-*),\n- preemptionPolicy PreemptLowerPriority, not the global default,\n- description \"critical batch\".\nPatch Deployment payments-api in namespace prio to use it, and verify that the running Pods have the new priority value.",
+  "traps": [
+   "Copying preemptionPolicy: Never from team-b — the task wants PreemptLowerPriority (the default)",
+   "Taking the value from a system-* class (2000000000) instead of the user classes",
+   "Setting globalDefault: true",
+   "Old pods still have the old priority until the rollout finishes"
+  ],
+  "memorise": [
+   "ssh cka03014",
+   "k get pc --sort-by=.value",
+   "cat <<'EOF' > /root/pc.yaml: scheduling.k8s.io/v1 PriorityClass critical-jobs; value: <highest-1>; globalDefault: false; preemptionPolicy: PreemptLowerPriority; description: \"critical batch\" → k apply -f /root/pc.yaml",
+   "k -n prio patch deploy payments-api -p '{\"spec\":{\"template\":{\"spec\":{\"priorityClassName\":\"critical-jobs\"}}}}'",
+   "k -n prio rollout status deploy payments-api"
+  ]
+ },
+ "315": {
+  "question": "ssh cka03015\nCreate a StorageClass named retain-local: provisioner rancher.io/local-path, reclaimPolicy Retain, volumeBindingMode WaitForFirstConsumer, allowVolumeExpansion true. It must NOT be the default.\nIn namespace cache create a StatefulSet cache (2 replicas, image redis:7-alpine, headless Service cache) with a volumeClaimTemplate named data requesting 100Mi from retain-local, mounted at /data.",
+  "traps": [
+   "Putting SC fields under spec: (SC has no spec)",
+   "serviceName not matching the headless Service cache",
+   "volumeMounts name not matching the template name data"
+  ],
+  "memorise": [
+   "ssh cka03015",
+   "docs: 'storage classes' → name retain-local, provisioner rancher.io/local-path, reclaimPolicy: Retain, volumeBindingMode: WaitForFirstConsumer, allowVolumeExpansion: true",
+   "docs: 'statefulset' example → Service clusterIP: None name cache + StatefulSet cache, ns cache, replicas 2, redis:7-alpine",
+   "volumeClaimTemplates: name data, storageClassName retain-local, 100Mi; mountPath /data",
+   "cat <<'EOF' > /root/sc.yaml and /root/sts.yaml (or vim) → k apply -f /root/sc.yaml -f /root/sts.yaml; k -n cache get pods,pvc"
+  ]
+ },
+ "316": {
+  "question": "ssh cka03016\nThe PostgreSQL data PersistentVolume pg-data-pv still holds data, but it is in Released state after its old claim was deleted.\n- Make the PV available again WITHOUT deleting it or its data.\n- Create PVC pg-data in namespace postgres (1Gi, ReadWriteOnce, storageClassName manual) that binds to it.\n- Deploy /root/pg-deploy.yaml (already uses claim pg-data) and make sure the Pod is Running.",
+  "traps": [
+   "Deleting/recreating the PV",
+   "Not checking the PV shows Available before creating the PVC — you will not know whether the patch worked",
+   "Wrong namespace postgres"
+  ],
+  "memorise": [
+   "ssh cka03016",
+   "k patch pv pg-data-pv --type=json -p='[{\"op\":\"remove\",\"path\":\"/spec/claimRef\"}]'",
+   "k get pv pg-data-pv   # Available",
+   "cat <<'EOF' > /root/pvc.yaml: pg-data, ns postgres, RWO, manual, 1Gi → k apply -f /root/pvc.yaml",
+   "k apply -f /root/pg-deploy.yaml; k -n postgres get pvc,pods"
+  ]
+ }
+}

@@ -1,0 +1,138 @@
+{
+ "2": [
+  "The reason is in one of two places: what the container printed before it stopped (logs), or the command it was told to run (describe).",
+  "`k logs -n app --previous`, because it shows the crashed container's output, not the fresh, still empty one",
+  "`k edit deploy api -n app`, because the deployment owns the pod and replaces any pod you edit",
+  "Indent every `command:` item evenly (`- sleep`, `- \"3600\"`), because broken indentation makes kubectl reject the edit",
+  "You see (after ~30 s; in the first seconds STATUS may say Error with RESTARTS 1 — wait and run it again):",
+  "In the exam you often see a real message here, for example file not found or missing variable .",
+  "Vim keys, exactly: press C (capital C = delete from the cursor to the end of the line and start typing), type sleep 3600 , press Esc , type :wq , press Enter."
+ ],
+ "3": [
+  "CPU is written in millicores: 1000m = 1 CPU, 100m = one tenth of a CPU.",
+  "The scheduler cannot place it: read Events (Insufficient cpu; a control-plane taint line may appear too, counts vary)",
+  "`k set resources deploy api -n app --requests=cpu=100m`, because the scheduler places pods by their requests, not their limits",
+  "`k set resources deploy api -n app ...`, because the deployment owns the pod and recreates it from its template",
+  "Rerun `k get pods -n app` until the Pending pod is gone and the new pod shows 1/1 Running",
+  "You may also see an older pod still Running : the deployment keeps the old pod until the new one works.",
+  "The other (controlplane) is reserved for control-plane pods by a taint.\" The counts vary: if your controlplane has no taint, you see 0/2 nodes are available: 2 Insufficient cpu.",
+  "The Pending pod disappears on its own (the deployment replaces it); if you still see it, wait 10 s and run the command again."
+ ],
+ "4": [
+  "It starts the containers, and every few seconds it reports \"this node is alive\" to the control plane.",
+  "NotReady = the control plane has not heard from that node's kubelet for about 40 seconds.",
+  "`systemctl enable --now kubelet`, because enable makes it start after a reboot; check with `systemctl is-enabled kubelet`",
+  "`ssh node01` first and check the prompt says node01, because the broken kubelet is on node01",
+  "`exit` first, then `k get nodes`, because kubectl is set up only on the control plane",
+  "You want Active: active (running) (press q ), and is-enabled prints enabled (= survives a reboot)."
+ ],
+ "5": [
+  "You only find out on the node that this one is harder: the kubelet is not just stopped, it cannot start.",
+  "Change `/usr/local/bin/kubelet` to `/usr/bin/kubelet` (see `which kubelet`), because the service points to a file that does not exist",
+  "It prints every file of the service, each with its path in a # line on top.",
+  "the drop-in, with an empty ExecStart= (that only clears the old value; normal) followed by ExecStart=/usr/local/bin/kubelet ...",
+  "Vim keys, exactly: type /local and press Enter (the cursor lands on the l of local ).",
+  "Type :wq and press Enter (you never entered insert mode, so no Esc is needed; pressing it anyway does no harm)."
+ ],
+ "6": [
+  "`k set selector svc backend-svc app=backend -n web`, because the service selector is wrong, not the pods",
+  "Use only `app=backend` as selector, because pod-template-hash changes on every rollout and the service would lose its pods",
+  "`k exec client -n web -- wget -qO- -T 3 backend-svc`, because the busybox client has wget but no curl"
+ ],
+ "7": [
+  "Change `targetPort:` to 80, because targetPort is the pod's port (nginx listens on 80); port is the service's own port",
+  "Read the port after the IP in `k get endpoints backend-svc -n web`, because a wrong targetPort still lists endpoints",
+  "Vim keys, exactly: type /8080 and press Enter (cursor on the first 8 ), type cw (delete the word and start typing), type 80 , press Esc , type :wq , press Enter."
+ ],
+ "8": [
+  "`crictl ps -a | grep kube-apiserver`, then `crictl logs `, because kubectl needs a working API server to answer",
+  "Save `kube-apiserver.yaml` and wait up to 60 s, because kubelet watches the manifests folder and restarts the pod itself",
+  "Copy the first column (the container ID) of the most recent one: CREATED says seconds or minutes ago, ATTEMPT is the highest.",
+  "(An old line from before the break, CREATED hours ago, shows nothing useful.) If crictl ps -a | grep kube-apiserver prints nothing, go straight to the row \"NO apiserver container\" in the table below.",
+  "crictl logs writes the container's errors to stderr, and without 2>&1 the | tail would not catch them.",
+  "First a backup, OUTSIDE the manifests folder (the kubelet runs every file inside /etc/kubernetes/manifests/ , so a copy left there becomes a second API server).",
+  "Vim keys, exactly: type /2380 and press Enter (cursor on the 2 ), type cw , type 2379 , press Esc , type :wq , press Enter."
+ ],
+ "9": [
+  "Fix the scheduler, because `k describe pod test` shows `Node: `: nothing is placing pods, the pod itself is fine",
+  "Just save the file and wait, because kubelet notices the change and restarts the scheduler by itself",
+  "If describe shows no Events either, run crictl ps -a | grep scheduler and crictl inspect <id> | grep -i -m3 message on the control plane.)",
+  "Vim keys, exactly: the cursor is on the s of schedulerx ; press 9l (move 9 characters right, onto the x ), press x (deletes it), type :wq , press Enter."
+ ],
+ "10": [
+  "Add one new policy that protects the backend pods and lets in exactly one source: the client pod, on port 80.",
+  "You need three facts for the new policy: Blank Meaning You find it with WHO is protected the label of the backend pods --show-labels WHO may come in the label of the client pod --show-labels WHICH port from the question 80",
+  "As soon as one policy selects a pod, that pod accepts ONLY what its policies allow.",
+  "A policy that selects pods and allows nothing (like deny-all below) blocks them, simply because it selects them.",
+  "`from: - podSelector: matchLabels: run: client`, because a namespaceSelector lets in every pod of those namespaces",
+  "`policyTypes: - Ingress` only, because Egress with no egress rules blocks all outgoing traffic of the backend pods",
+  "Type `:set paste` before pasting and press Esc before `dd`, because otherwise indentation breaks or `dd` becomes text",
+  "You see PodSelector: <none> (Allowing the specific traffic to all pods in this namespace) and Allowing ingress traffic: <none> .",
+  "Press i , paste (Ctrl+Shift+V in the exam terminal), then press Esc (back to normal mode; dd only works there).",
+  "To delete: move with the arrow keys onto the first line of a block, then type dd (one line) or 7dd (7 lines).",
+  "To change a line: put the cursor on the first character to replace, press C (deletes to the end of the line and starts typing), type the new text, press Esc .",
+  "(If vim fights you: cat > np.yaml <<'EOF' , paste the finished file above, then a line with only EOF ."
+ ],
+ "11": [
+  "Check the three parts of CoreDNS in this order: the pods, the Deployment that owns them, the Service in front of them.",
+  "CoreDNS = the program that turns a Service name (like backend-svc ) into an IP address.",
+  "Two things still carry it: the CoreDNS pods have the label k8s-app=kube-dns , and their Service is called kube-dns .",
+  "You will use both names below: coredns for the Deployment, kube-dns for the label and the Service.",
+  "`k scale deploy coredns -n kube-system --replicas=2`, because `k get deploy coredns` shows 0/0: it was scaled to zero",
+  "Add `--rm` to `k run t ...`, because it deletes the test pod t when the command ends",
+  "Use the full name: busybox's nslookup handles short names badly and can print NXDOMAIN lines even when DNS works."
+ ],
+ "12": [
+  "`k logs api -n app > /opt/api.log`, because pod api lives in namespace app, not default",
+  "Add `-c ` when the question names a container, because otherwise kubectl picks the first container for you"
+ ],
+ "13": [
+  "Check names with `k describe rolebinding deploy-bot-binding -n dev`, because a typo gives no error; only can-i says no",
+  "Add `-n dev` to the role and rolebinding, because otherwise they land in default and do nothing in dev"
+ ],
+ "14": [
+  "The only difference: nodes are cluster-wide, so the Role and the binding are the \"Cluster\" versions, and they take no -n .",
+  "How to check which kind a resource is: Copy k api-resources | grep -i nodes Read the NAMESPACED column: false = cluster-wide.",
+  "Use `-n ops` only in `k create sa node-viewer -n ops`, because cluster objects have no namespace; kubectl ignores `-n` there"
+ ],
+ "15": [
+  "Three jobs: add the repo, find the name of the setting that switches CRDs off, write the YAML to a file.",
+  "`--set crds.install=false`, because this chart makes CRDs from templates; `--skip-crds` only skips the chart's crds/ folder",
+  "Add `--version 7.7.3 --namespace argocd`, because without them you get the latest chart for the default namespace",
+  "`helm template my-argo argocd/argo-cd --namespace argocd`: my-argo is the release (any name), `argocd/` the repo, argocd the namespace",
+  "You want: a file that is not empty (size > 0), and the count 0 .",
+  "( grep -c prints 0 and returns exit code 1 when it finds nothing; some terminals show that as an error."
+ ],
+ "16": [
+  "Chart (the package), repo (the URL it comes from) and values (its settings): see question 15.",
+  "`--set controller.replicaCount=2`, because grep shows several replicaCount keys and only the one under controller: is right",
+  "Add `-n demo` to upgrade, history and rollback, because Helm otherwise looks in default and says release not found",
+  "Expect a new revision 3 with revision 1's settings, because Helm records every rollback as a new revision",
+  "Ignore ` `, because the playground has no cloud load balancer to give out an external IP",
+  "To be sure, open the values with helm show values ingress-nginx/ingress-nginx | less , type /replicaCount , read the parent key above it, press q ."
+ ],
+ "17": [
+  "Kustomize = a way to take a normal YAML file and apply changes to it without editing that file.",
+  "kustomization.yaml = the file that lists which YAML files to use ( resources: ) and what to change (namespace, replicas, image...).",
+  "`k apply -k /root/kust`, because `-k` uses kustomization.yaml, which adds namespace kust and the replicas change",
+  "Vim keys, exactly: type /count and press Enter (cursor on the c ), press $ (jumps to the last character, the 2 ), type r3 (replaces that one character with 3 ), type :wq , press Enter."
+ ],
+ "18": [
+  "`k get crd | grep cert-manager > /root/crds.txt`, because certificates are objects; the task wants the CRD types themselves"
+ ],
+ "19": [
+  "Three separate Linux jobs: install a package, switch a service on, write four settings into a file and load them.",
+  "Put the 4 lines in `/etc/sysctl.d/k8s.conf`, then `sysctl --system`, because `sysctl -w` is lost after reboot",
+  "`systemctl enable --now cri-docker`, because the service is named cri-docker, even though the package is cri-dockerd",
+  "Copy and paste the 4 lines from the question, because one typo means that setting is not applied",
+  "Vim keys, exactly: type :set paste and press Enter, press i , paste the four lines from the question:"
+ ],
+ "20": [
+  "Without it, nodes stay NotReady , CoreDNS pods stay Pending , and most other new pods sit in ContainerCreating (no IP can be given).",
+  "Set `cidr:` to the `--cluster-cidr` of kube-controller-manager, because pod IPs must match the cluster's pod range",
+  "Wait 20 s and retry `k apply -f custom-resources.yaml`, because the Installation type exists only once the operator is ready",
+  "If that is empty too (or the question gives no range), leave the cidr: in the file at its default ( 192.168.0.0/16 ) and skip the edit in Step 3.",
+  "Vim keys, exactly: the cursor is on the c of cidr: ; press w twice (onto the first digit of the value), press C (deletes to the end of the line and starts typing), type 10.244.0.0/16 (your range), press Esc , type :wq , press Enter.",
+  "If you see no matches for kind \"Installation\" (or \"APIServer\" ): the operator from step 1 is still registering its CRDs."
+ ]
+}

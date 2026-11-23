@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { marked } from 'marked';
+marked.setOptions({ breaks: true }); // one line in the guide = one line on the page
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1')), '..');
 const md = fs.readFileSync(path.join(ROOT, 'content', 'cka-guide.md'), 'utf8').replace(/\r\n/g, '\n');

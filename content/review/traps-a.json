@@ -1,0 +1,651 @@
+{
+ "1": {
+  "question": "In namespace `app`, the pod of deployment `api` is not Running. Find the cause and fix it so the pod reaches Running. Do not delete the deployment.",
+  "traps": [
+   "Using the deployment name (api) as the container name in set image — the container is nginx",
+   "Forgetting -n app → 'No resources found'",
+   "Fixing the pod instead of the deployment — the deployment recreates the broken pod"
+  ],
+  "memorise": [
+   "k get pods -n app",
+   "k describe pod <pod> -n app   # Events: ImagePullBackOff, bad tag",
+   "k set image deploy/api nginx=nginx:1.27 -n app",
+   "k rollout status deploy/api -n app"
+  ]
+ },
+ "2": {
+  "question": "In namespace `app`, the pod of deployment `api` keeps restarting. Find the cause and fix it so the pod stays Running. Do not delete the deployment. The container should run `sleep 3600`.",
+  "traps": [
+   "Reading k logs without --previous (the new container may have no output yet)",
+   "Editing the pod instead of the deployment",
+   "Breaking YAML indentation in the command list"
+  ],
+  "memorise": [
+   "k get pods -n app",
+   "k logs <pod> -n app --previous",
+   "k describe pod <pod> -n app",
+   "k edit deploy api -n app   # exit 1 → sleep 3600",
+   "k get pods -n app"
+  ]
+ },
+ "3": {
+  "question": "In namespace `app`, a pod of deployment `api` is stuck in Pending. Find the cause and fix it. The container needs `100m` CPU.",
+  "traps": [
+   "Setting --limits instead of --requests",
+   "Editing the pod instead of deployment api",
+   "Running the closing check too early — wait until the Pending pod is gone (the deployment replaces it), then the new pod shows 1/1 Running"
+  ],
+  "memorise": [
+   "k get pods -n app",
+   "k describe pod <pod> -n app   # Insufficient cpu",
+   "k set resources deploy api -n app --requests=cpu=100m",
+   "k get pods -n app"
+  ]
+ },
+ "4": {
+  "question": "Node `node01` is in state NotReady. Find the cause and bring the node back to Ready. The fix must survive a reboot. Do not reboot the node.",
+  "traps": [
+   "systemctl start only — kubelet stays disabled, lost after reboot (check: systemctl is-enabled kubelet → enabled)",
+   "Running systemctl on the control plane instead of node01 — the prompt must say node01 before you type",
+   "Forgetting to exit back before k get nodes"
+  ],
+  "memorise": [
+   "k describe node node01   # Kubelet stopped posting status",
+   "ssh node01",
+   "systemctl status kubelet",
+   "systemctl enable --now kubelet",
+   "exit; k get nodes"
+  ]
+ },
+ "5": {
+  "question": "Node `node01` is in state NotReady. Find the cause and bring the node back to Ready. Do not reboot the node.",
+  "traps": [
+   "Forgetting systemctl daemon-reload after editing the service file",
+   "Editing the wrong block — systemctl cat kubelet shows two ExecStart blocks; edit the one whose path contains local (the drop-in 10-kubeadm.conf)",
+   "Only starting kubelet without fixing the bad /usr/local/bin path"
+  ],
+  "memorise": [
+   "ssh node01; systemctl status kubelet",
+   "journalctl -u kubelet -n 30 --no-pager",
+   "which kubelet; systemctl cat kubelet",
+   "vim /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf   # /usr/local/bin/kubelet → /usr/bin/kubelet",
+   "systemctl daemon-reload; systemctl restart kubelet"
+  ]
+ },
+ "6": {
+  "question": "In namespace `web`, pod `client` cannot reach service `backend-svc` on port 80. The deployment `backend` is Running. Find and fix the issue. Do not delete or recreate the service.",
+  "traps": [
+   "Relabelling the pods instead of fixing the service selector",
+   "Copying the pod-template-hash label into the selector — the hash changes on every rollout, so the Service loses its pods again",
+   "Testing with curl — busybox client has wget"
+  ],
+  "memorise": [
+   "k get endpoints backend-svc -n web",
+   "k describe svc backend-svc -n web   # Selector",
+   "k get pods -n web --show-labels",
+   "k set selector svc backend-svc app=backend -n web",
+   "k exec client -n web -- wget -qO- -T 3 backend-svc"
+  ]
+ },
+ "7": {
+  "question": "In namespace `web`, pod `client` cannot reach service `backend-svc` on port 80. The backend pods are Running and run nginx, which listens on port 80. Fix the issue without recreating the service.",
+  "traps": [
+   "Changing port instead of targetPort",
+   "Deleting and re-exposing the service (forbidden)",
+   "Thinking endpoints present means everything is fine — check the port after the IP"
+  ],
+  "memorise": [
+   "k get endpoints backend-svc -n web   # IP:wrongport",
+   "k exec client -n web -- wget -qO- -T 3 backend-svc",
+   "k edit svc backend-svc -n web   # targetPort: 80",
+   "k exec client -n web -- wget -qO- -T 3 backend-svc"
+  ]
+ },
+ "8": {
+  "question": "On the control plane node, `kubectl` commands fail. The cluster was working before a configuration change. Find the cause and fix it so the cluster works again.",
+  "traps": [
+   "Trying kubectl/k logs while the API is down — use crictl ps -a / crictl logs",
+   "Restarting kubelet or moving the file — just save and wait up to 60 s",
+   "Changing etcd-servers to 2380 — etcd clients use 2379"
+  ],
+  "memorise": [
+   "crictl ps -a | grep kube-apiserver",
+   "crictl logs <id> 2>&1 | tail -20   # 127.0.0.1:2380",
+   "vim /etc/kubernetes/manifests/kube-apiserver.yaml   # --etcd-servers=https://127.0.0.1:2379",
+   "k get nodes   # retry every 15 s"
+  ]
+ },
+ "9": {
+  "question": "A pod named `test` in namespace `default` stays in Pending. Other pods that were already running are fine. Find the cause and fix it so that `test` is Running.",
+  "traps": [
+   "Deleting/recreating test — the pod is fine, the scheduler is not",
+   "Editing the scheduler pod with kubectl edit — edit the static manifest file",
+   "Restarting kubelet instead of just saving and waiting"
+  ],
+  "memorise": [
+   "k describe pod test   # Node: <none>",
+   "k get pods -n kube-system",
+   "k describe pod kube-scheduler-controlplane -n kube-system",
+   "vim /etc/kubernetes/manifests/kube-scheduler.yaml   # kube-schedulerx → kube-scheduler",
+   "k get pod test"
+  ]
+ },
+ "10": {
+  "question": "In namespace `web`, pod `client` cannot reach service `backend-svc` on port 80. The service and its pods are healthy. Do not delete or change any existing NetworkPolicy. Create a NetworkPolicy named `allow-client` so that ONLY pod `client` can reach the backend pods on TCP port 80.",
+  "traps": [
+   "Using namespaceSelector instead of podSelector → lets every pod in",
+   "Selecting the client in spec.podSelector — spec.podSelector picks the backend pods (app=backend)",
+   "Leaving egress in policyTypes from the docs example",
+   "Pasting into vim without :set paste (indentation staircases) or running dd while still in insert mode — press Esc first"
+  ],
+  "memorise": [
+   "k get pods -n web --show-labels   # backend app=backend, client run=client",
+   "docs: 'network policies' → copy example → keep ingress only",
+   "name: allow-client; podSelector app=backend; from podSelector run=client; ports TCP 80",
+   "k apply -f np.yaml",
+   "k exec client -n web -- wget -qO- -T 3 backend-svc"
+  ]
+ },
+ "11": {
+  "question": "Pods in the cluster cannot resolve service names. Connections by IP address still work. Find the cause and fix it. Two CoreDNS replicas must be running.",
+  "traps": [
+   "Looking for pods named dns in default namespace — CoreDNS lives in kube-system",
+   "Restarting pods when the deployment is scaled to 0",
+   "Forgetting --rm on the test pod, leaving pod t behind",
+   "Testing with the short name kubernetes.default in busybox — it can print NXDOMAIN even when DNS works; use the full name"
+  ],
+  "memorise": [
+   "k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup kubernetes.default.svc.cluster.local",
+   "k get pods -n kube-system -l k8s-app=kube-dns",
+   "k get deploy coredns -n kube-system   # 0/0",
+   "k scale deploy coredns -n kube-system --replicas=2"
+  ]
+ },
+ "12": {
+  "question": "1. Write the logs of pod `api` in namespace `app` to the file `/opt/api.log`.\n2. Find the pod that uses the most CPU across all namespaces and write its name to `/opt/top.txt`.",
+  "traps": [
+   "Forgetting -A, so only default namespace is compared",
+   "Writing the whole top table into /opt/top.txt instead of just the name",
+   "Missing -n app on k logs → pod not found",
+   "Ignoring 'Defaulted container' — when the question names a container, always add -c <container>"
+  ],
+  "memorise": [
+   "k logs api -n app > /opt/api.log",
+   "k top pods -A --sort-by=cpu",
+   "echo <first-row-pod-name> > /opt/top.txt",
+   "cat /opt/api.log /opt/top.txt"
+  ]
+ },
+ "13": {
+  "question": "In namespace `dev`:\n1. Create a ServiceAccount named `deploy-bot`.\n2. Create a Role named `deploy-manager` that allows `get`, `list` and `create` on `deployments`.\n3. Create a RoleBinding named `deploy-bot-binding` that binds the Role to the ServiceAccount.",
+  "traps": [
+   "Writing --serviceaccount=deploy-bot without dev: — kubectl refuses it (serviceaccount must be <namespace>:<name>)",
+   "A typo in the SA or Role NAME inside the binding — no error at all, but can-i says no; check with k describe rolebinding",
+   "Spaces in --verb list",
+   "Forgetting -n dev on the role or binding"
+  ],
+  "memorise": [
+   "k create sa deploy-bot -n dev",
+   "k create role deploy-manager --verb=get,list,create --resource=deployments -n dev",
+   "k create rolebinding deploy-bot-binding --role=deploy-manager --serviceaccount=dev:deploy-bot -n dev",
+   "k auth can-i create deployments -n dev --as=system:serviceaccount:dev:deploy-bot"
+  ]
+ },
+ "14": {
+  "question": "Create a ServiceAccount named `node-viewer` in namespace `ops`. It must be able to `get` and `list` nodes. Use a ClusterRole named `node-reader` and a ClusterRoleBinding named `node-viewer-binding`.",
+  "traps": [
+   "Using a RoleBinding — nodes are not namespaced, so it won't grant access",
+   "Thinking -n matters on clusterrole/clusterrolebinding — it is ignored there; only the SA needs a namespace",
+   "Wrong --serviceaccount format (must be ops:node-viewer)"
+  ],
+  "memorise": [
+   "k create sa node-viewer -n ops",
+   "k create clusterrole node-reader --verb=get,list --resource=nodes",
+   "k create clusterrolebinding node-viewer-binding --clusterrole=node-reader --serviceaccount=ops:node-viewer",
+   "k auth can-i list nodes --as=system:serviceaccount:ops:node-viewer"
+  ]
+ },
+ "15": {
+  "question": "1. Add the Helm repository `https://argoproj.github.io/argo-helm` with the name `argocd`.\n2. Generate a template of the chart `argo-cd`, version `7.7.3`, for namespace `argocd`. The CRDs must NOT be installed by the chart.\n3. Save the output to `/root/argo-helm.yaml`.",
+  "traps": [
+   "Running helm install instead of helm template",
+   "Using --skip-crds (only affects crds/ folder) instead of crds.install=false for this chart",
+   "Forgetting --version 7.7.3 or --namespace argocd",
+   "Mixing up release name, repo name and namespace — release = my-argo (any name), repo = argocd, namespace = argocd"
+  ],
+  "memorise": [
+   "helm repo add argocd https://argoproj.github.io/argo-helm; helm repo update",
+   "helm show values argocd/argo-cd --version 7.7.3 | grep -i -A3 '^crds'",
+   "helm template my-argo argocd/argo-cd --version 7.7.3 --namespace argocd --set crds.install=false > /root/argo-helm.yaml",
+   "grep -c 'kind: CustomResourceDefinition' /root/argo-helm.yaml"
+  ]
+ },
+ "16": {
+  "question": "1. Add the Helm repository `https://kubernetes.github.io/ingress-nginx` with the name `ingress-nginx`.\n2. Install the chart `ingress-nginx` as release `web` in a new namespace `demo`, with `2` controller replicas.\n3. Upgrade the release to `3` controller replicas.\n4. Roll the release back to revision `1`.",
+  "traps": [
+   "grep replicaCount shows 2+ hits — use the one under controller: (controller.replicaCount), not defaultBackend.replicaCount",
+   "Forgetting -n demo on upgrade/history/rollback → release not found",
+   "Expecting REVISION 1 after rollback — it becomes revision 3",
+   "Worrying about EXTERNAL-IP <pending> on the controller Service — normal in a playground, ignore it"
+  ],
+  "memorise": [
+   "helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx; helm repo update",
+   "helm install web ingress-nginx/ingress-nginx -n demo --create-namespace --set controller.replicaCount=2",
+   "helm upgrade web ingress-nginx/ingress-nginx -n demo --set controller.replicaCount=3",
+   "helm rollback web 1 -n demo; helm history web -n demo"
+  ]
+ },
+ "17": {
+  "question": "A Kustomize configuration exists in `/root/kust`. Change it so that deployment `kweb` runs with `3` replicas, then apply it. Do not edit `deploy.yaml`.",
+  "traps": [
+   "Using k apply -f on the folder or deploy.yaml — it applies deploy.yaml unchanged into default and skips namespace + replicas",
+   "Editing deploy.yaml",
+   "Checking the default namespace — kustomization sets namespace kust"
+  ],
+  "memorise": [
+   "cat /root/kust/kustomization.yaml",
+   "vim /root/kust/kustomization.yaml   # replicas: count: 2 → 3",
+   "k kustomize /root/kust",
+   "k apply -k /root/kust",
+   "k get deploy -n kust"
+  ]
+ },
+ "18": {
+  "question": "cert-manager is installed in the cluster.\n1. Write a list of all cert-manager CRDs to `/root/crds.txt`.\n2. Write the documentation of the field `subject` in the `spec` of the `Certificate` resource to `/root/subject.txt`.",
+  "traps": [
+   "Using k get certificates (instances) instead of k get crd",
+   "Explaining certificate.subject (missing spec)",
+   "Typing the output instead of redirecting with >"
+  ],
+  "memorise": [
+   "k get crd | grep cert-manager > /root/crds.txt",
+   "k explain certificate.spec.subject > /root/subject.txt",
+   "cat /root/crds.txt /root/subject.txt"
+  ]
+ },
+ "19": {
+  "question": "Prepare this node for Kubernetes:\n1. Install the package `/root/cri-dockerd.deb`.\n2. Enable and start the service `cri-docker`.\n3. Set these kernel parameters so that they persist across reboots:\n   `net.bridge.bridge-nf-call-iptables = 1`\n   `net.ipv6.conf.all.forwarding = 1`\n   `net.ipv4.ip_forward = 1`\n   `net.netfilter.nf_conntrack_max = 131072`",
+  "traps": [
+   "Using sysctl -w — lost after reboot",
+   "Service name is cri-docker, not cri-dockerd",
+   "Retyping parameters with typos instead of copying them"
+  ],
+  "memorise": [
+   "dpkg -i /root/cri-dockerd.deb",
+   "systemctl enable --now cri-docker",
+   "vim /etc/sysctl.d/k8s.conf   # paste the 4 lines",
+   "sysctl --system"
+  ]
+ },
+ "20": {
+  "question": "The cluster has no CNI installed. Install ONE of the following, from the given manifest:\n- Flannel: `<URL 1>`\n- Calico: `<URL 2>` (tigera-operator) and `<URL 3>` (custom-resources)\nThe CNI must let pods communicate AND must support NetworkPolicy enforcement.",
+  "traps": [
+   "Installing Flannel — it does not enforce NetworkPolicy",
+   "k apply on the tigera-operator file → 'annotations: Too long'; use k create",
+   "Leaving the file's default 192.168.0.0/16 when the cluster has a different --cluster-cidr (keep the default only if no range is set anywhere)",
+   "Applying custom-resources.yaml too fast → no matches for kind \"Installation\"; wait 20 s and retry"
+  ],
+  "memorise": [
+   "k create -f <tigera-operator URL>",
+   "k -n kube-system get pod -l component=kube-controller-manager -o yaml | grep cluster-cidr",
+   "curl -LO <custom-resources URL>; vim custom-resources.yaml   # cidr: <cluster-cidr>",
+   "k apply -f custom-resources.yaml; k get nodes"
+  ]
+ },
+ "21": {
+  "question": "Upgrade the control plane node to Kubernetes `1.35.2`. Then upgrade the worker node `node01` to the same version. Drain each node before upgrading it and make it schedulable again afterwards.",
+  "traps": [
+   "Skipping apt-get update → apt says the version is not found",
+   "Minor upgrade (1.34 → 1.35) without changing v1.34 → v1.35 in /etc/apt/sources.list.d/kubernetes.list",
+   "Running kubeadm upgrade apply on the worker — workers use kubeadm upgrade node",
+   "Forgetting apt-mark unhold/hold, so apt refuses to install",
+   "Forgetting daemon-reload + restart kubelet, so VERSION stays old",
+   "Running k drain/uncordon on node01 (no kubeconfig there) — exit back to the control plane first"
+  ],
+  "memorise": [
+   "k drain <node> --ignore-daemonsets --delete-emptydir-data   # always on the control plane",
+   "apt-get update; apt-cache madison kubeadm   # exact text, e.g. 1.35.2-1.1",
+   "apt-mark unhold kubeadm; apt-get install -y kubeadm=1.35.2-1.1; apt-mark hold kubeadm",
+   "kubeadm upgrade plan; kubeadm upgrade apply v1.35.2   # worker (after ssh node01): kubeadm upgrade node",
+   "apt-mark unhold kubelet kubectl; apt-get install -y kubelet=1.35.2-1.1 kubectl=1.35.2-1.1; apt-mark hold kubelet kubectl",
+   "systemctl daemon-reload; systemctl restart kubelet",
+   "exit   # back from node01; then k uncordon <node>"
+  ]
+ },
+ "22": {
+  "question": "1. Create a snapshot of etcd, which runs at `https://127.0.0.1:2379`, and save it to `/opt/etcd-backup.db`.\n2. Restore the snapshot into the directory `/var/lib/etcd-restored` and configure etcd to use it.",
+  "traps": [
+   "Using the peer-cert/peer-key files instead of server.crt/server.key",
+   "Changing --data-dir or the mountPath instead of only the hostPath path",
+   "Panicking when kubectl is silent for ~60 s after saving etcd.yaml",
+   "Using etcdctl snapshot restore — removed in etcd 3.6 (Kubernetes v1.35); restore with etcdutl"
+  ],
+  "memorise": [
+   "docs: 'etcd backup' → Operating etcd clusters",
+   "grep -E 'trusted-ca-file|cert-file|key-file' /etc/kubernetes/manifests/etcd.yaml",
+   "etcdctl snapshot save /opt/etcd-backup.db --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key",
+   "etcdutl snapshot restore /opt/etcd-backup.db --data-dir=/var/lib/etcd-restored",
+   "vim /etc/kubernetes/manifests/etcd.yaml   # etcd-data hostPath path: /var/lib/etcd-restored"
+  ]
+ },
+ "23": {
+  "question": "In namespace `web`:\n1. Edit deployment `np` so that the container declares port `80` (TCP).\n2. Create a Service named `np-svc` of type `NodePort` that exposes the deployment on port `80`, using node port `30080`.",
+  "traps": [
+   "Wrong indentation of ports: (must line up with imagePullPolicy:, not with the dash of - image:)",
+   "Leaving the random nodePort from k expose",
+   "Forgetting -n web"
+  ],
+  "memorise": [
+   "k edit deploy np -n web   # under image: ports: - containerPort: 80 / protocol: TCP",
+   "k expose deploy np --name=np-svc --port=80 --target-port=80 --type=NodePort -n web",
+   "k edit svc np-svc -n web   # nodePort: 30080",
+   "k get svc np-svc -n web"
+  ]
+ },
+ "24": {
+  "question": "In namespace `web`, create an Ingress named `web-ing` that uses the existing IngressClass. Requests for host `shop.example.com` with path `/` (type Prefix) must go to service `backend-svc` on port `80`.",
+  "traps": [
+   "Writing host/ instead of host/* → creates pathType Exact",
+   "Forgetting --class, so no controller picks it up",
+   "Forgetting quotes around --rule"
+  ],
+  "memorise": [
+   "k get ingressclass",
+   "k create ingress web-ing --class=nginx --rule=\"shop.example.com/*=backend-svc:80\" -n web",
+   "k describe ing web-ing -n web"
+  ]
+ },
+ "25": {
+  "question": "In namespace `web`, an Ingress named `web-ing` exposes an application over HTTPS. Migrate it to the Gateway API:\n1. Create a Gateway named `web-gw` that uses the existing GatewayClass and keeps the same hostname and TLS configuration as the Ingress.\n2. Create an HTTPRoute named `web-route` that keeps the same routing rules as the Ingress.\n3. Delete the Ingress.",
+  "traps": [
+   "Forgetting the tls block (mode: Terminate + certificateRefs) on the listener",
+   "parentRefs name not matching web-gw",
+   "Forgetting namespace: web in both YAMLs",
+   "Changing type: PathPrefix — Ingress pathType Prefix = HTTPRoute PathPrefix"
+  ],
+  "memorise": [
+   "k get ing web-ing -n web -o yaml   # host, secretName, path, service, port",
+   "k get gatewayclass",
+   "docs: 'gateway api' → copy Gateway example → listener HTTPS 443 + hostname + tls: mode Terminate, certificateRefs: - name <secret>",
+   "docs: copy HTTPRoute example → parentRefs web-gw, hostnames, path, backendRefs",
+   "k apply -f gw.yaml -f route.yaml; k delete ing web-ing -n web"
+  ]
+ },
+ "26": {
+  "question": "In namespace `prod`, create a NetworkPolicy named `db-policy`. Pods with label `app=db` must accept incoming traffic ONLY from pods with label `app=api` in the same namespace, and only on TCP port `80`.",
+  "traps": [
+   "Leaving namespaceSelector/ipBlock from the docs example in the from list",
+   "Keeping the namespaceSelector item — leave only the podSelector item under from:",
+   "Keeping Egress in policyTypes → blocks db's outgoing traffic"
+  ],
+  "memorise": [
+   "k get pods -n prod --show-labels",
+   "docs: 'network policies' → copy example → delete '- Egress', the 7 lines ipBlock…project: myproject, the 7 lines egress:…end",
+   "name: db-policy; namespace: prod; podSelector app: db; from podSelector app: api; ports TCP 80",
+   "k apply -f np.yaml"
+  ]
+ },
+ "27": {
+  "question": "In namespace `prod`, create a NetworkPolicy named `default-deny` that blocks all incoming and all outgoing traffic for every pod in the namespace. DNS lookups (port 53, UDP and TCP) must still work.",
+  "traps": [
+   "Adding an empty ingress rule '- {}' which ALLOWS all ingress",
+   "Only UDP 53 — TCP 53 is also required",
+   "Forgetting namespace: prod in metadata"
+  ],
+  "memorise": [
+   "docs: 'network policies' → 'Default deny all ingress and all egress traffic' example",
+   "name: default-deny; namespace: prod; podSelector: {}; policyTypes: [Ingress, Egress]",
+   "egress: - ports: - protocol: UDP port: 53 / - protocol: TCP port: 53",
+   "k apply -f deny.yaml; k describe netpol default-deny -n prod"
+  ]
+ },
+ "28": {
+  "question": "In namespace `nginx-static`, deployment `nginx-static` gets its configuration from ConfigMap `nginx-config`. The server currently accepts TLSv1.2 and TLSv1.3. Change the configuration so that ONLY TLSv1.3 is accepted, and make sure the running pods use the new configuration.",
+  "traps": [
+   "Not restarting the deployment — old config stays in nginx",
+   "Deleting the trailing ; → nginx fails to start",
+   "Editing the deployment instead of the ConfigMap",
+   "Immutable ConfigMap: delete + k apply of the backup fails on resourceVersion — use k replace --force -f /root/cm-backup.yaml"
+  ],
+  "memorise": [
+   "k get cm nginx-config -n nginx-static -o yaml > /root/cm-backup.yaml",
+   "k edit cm nginx-config -n nginx-static   # ssl_protocols TLSv1.3;",
+   "k rollout restart deploy nginx-static -n nginx-static",
+   "k rollout status deploy nginx-static -n nginx-static"
+  ]
+ },
+ "29": {
+  "question": "Configure cluster DNS so that the name `api.example.com` resolves to the service `backend-svc` in namespace `web`, for all pods in the cluster. Make sure CoreDNS uses the new configuration.",
+  "traps": [
+   "Putting the rewrite line outside the .:53 { } block or with broken indentation → CoreDNS CrashLoop",
+   "Rewriting to backend-svc without .web.svc.cluster.local",
+   "Not backing up the ConfigMap first",
+   "Restoring the backup with k apply → 'the object has been modified'; use k replace --force -f /root/coredns-backup.yaml"
+  ],
+  "memorise": [
+   "k get cm coredns -n kube-system -o yaml > /root/coredns-backup.yaml",
+   "k edit cm coredns -n kube-system   # under ready: rewrite name api.example.com backend-svc.web.svc.cluster.local",
+   "k rollout restart deploy coredns -n kube-system",
+   "k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup api.example.com"
+  ]
+ },
+ "30": {
+  "question": "From a temporary pod in namespace `default` (image `busybox:1.36`), look up the DNS name of service `backend-svc` that lives in namespace `web`. Save the output of the lookup to `/root/dns.txt`.",
+  "traps": [
+   "Looking up just backend-svc from default → NXDOMAIN",
+   "Wrong image (must be busybox:1.36)",
+   "Running the pod in namespace web"
+  ],
+  "memorise": [
+   "# SERVICE.NAMESPACE.svc.cluster.local",
+   "k run t --image=busybox:1.36 --rm -i --restart=Never -- nslookup backend-svc.web.svc.cluster.local > /root/dns.txt",
+   "cat /root/dns.txt"
+  ]
+ },
+ "31": {
+  "question": "In namespace `work`, deployment `app` writes its log to `/var/log/app.log`. Add a sidecar container named `log-shipper` with image `busybox:1.36` that runs `tail -f /var/log/app.log`. Use a shared volume named `logs` mounted at `/var/log` in both containers. Do not change the existing container's image or command.",
+  "traps": [
+   "Mounting the volume only in the sidecar — the main app writes to its own /var/log",
+   "Putting volumes: under the container instead of at pod spec level",
+   "Forgetting restartPolicy: Always → it becomes a normal init container that blocks forever"
+  ],
+  "memorise": [
+   "k get deploy app -n work -o yaml > app.yaml",
+   "vim app.yaml   # volumes: - name: logs emptyDir: {}; main: volumeMounts logs → /var/log",
+   "initContainers: - name: log-shipper image: busybox:1.36 restartPolicy: Always command: [sh,-c,'tail -f /var/log/app.log'] volumeMounts logs → /var/log",
+   "k apply -f app.yaml; k get pods -n work"
+  ]
+ },
+ "32": {
+  "question": "In namespace `shop`, create a HorizontalPodAutoscaler named `web` for deployment `web`: minimum `2` replicas, maximum `5` replicas, target average CPU utilization `70`%. Set the scale-down stabilization window to `30` seconds.",
+  "traps": [
+   "Putting stabilizationWindowSeconds under scaleUp",
+   "Putting behavior: inside metrics: instead of directly under spec:",
+   "Forgetting -n shop"
+  ],
+  "memorise": [
+   "k autoscale deploy web --min=2 --max=5 --cpu-percent=70 -n shop",
+   "k edit hpa web -n shop   # spec: behavior: scaleDown: stabilizationWindowSeconds: 30",
+   "k get hpa -n shop"
+  ]
+ },
+ "33": {
+  "question": "1. Create a PriorityClass named `high-priority` whose value is exactly ONE LESS than the highest existing user-defined PriorityClass.\n2. Configure deployment `web` in namespace `shop` to use this PriorityClass.",
+  "traps": [
+   "Using system-cluster-critical / system-node-critical values",
+   "Putting priorityClassName in the container instead of the pod spec",
+   "Setting globalDefault: true (not asked)"
+  ],
+  "memorise": [
+   "k get pc",
+   "k create pc high-priority --value=<highest-1>",
+   "k edit deploy web -n shop   # priorityClassName: high-priority (above containers:)",
+   "k get pods -n shop -o custom-columns=NAME:.metadata.name,CLASS:.spec.priorityClassName"
+  ]
+ },
+ "34": {
+  "question": "In namespace `shop`, deployment `web` runs `3` replicas, all on node `node01`. Set CPU and memory requests so that the three pods share the node's available resources equally. Leave roughly 10% headroom so the node stays stable. All 3 pods must be Running afterwards.",
+  "traps": [
+   "Using Capacity instead of Allocatable",
+   "Counting web's own current requests as used (scale to 0 first)",
+   "Setting limits instead of requests"
+  ],
+  "memorise": [
+   "k scale deploy web --replicas=0 -n shop",
+   "k describe node node01 | grep -A7 'Allocatable:'",
+   "k describe node node01 | grep -A6 'Allocated resources:'",
+   "k set resources deploy web -n shop --requests=cpu=<X>m,memory=<Y>Mi   # (free × 0.9) ÷ 3",
+   "k scale deploy web --replicas=3 -n shop; k get pods -n shop"
+  ]
+ },
+ "35": {
+  "question": "In namespace `app`:\n1. Create a ConfigMap named `app-cfg` with the key `LOG_LEVEL` and value `debug`.\n2. Create a Secret named `db-sec` with the key `password` and value `s3cret`.\n3. Create a pod named `api` with image `nginx:1.27`. All keys of the ConfigMap must be available as environment variables. The Secret must be mounted as files under `/etc/db`.",
+  "traps": [
+   "Using env/valueFrom for a single key instead of envFrom",
+   "secretName vs name: secret volumes use secretName",
+   "Forgetting -n app on cm/secret/pod"
+  ],
+  "memorise": [
+   "k create cm app-cfg --from-literal=LOG_LEVEL=debug -n app",
+   "k create secret generic db-sec --from-literal=password=s3cret -n app",
+   "k run api --image=nginx:1.27 -n app --dry-run=client -o yaml > pod.yaml",
+   "vim pod.yaml   # envFrom: - configMapRef: name: app-cfg; volumeMounts /etc/db; volumes: secret: secretName: db-sec",
+   "k apply -f pod.yaml"
+  ]
+ },
+ "36": {
+  "question": "1. Taint node `node01` with `env=prod:NoSchedule`.\n2. Label node `node01` with `env=prod`.\n3. Create a pod named `x` with image `nginx:1.27` in namespace `default` that tolerates the taint and is scheduled on `node01`.",
+  "traps": [
+   "Only adding the toleration — pod may land on another node",
+   "Putting tolerations under the container",
+   "Typo in effect (NoSchedule is case-sensitive)"
+  ],
+  "memorise": [
+   "k taint node node01 env=prod:NoSchedule",
+   "k label node node01 env=prod",
+   "k run x --image=nginx:1.27 --dry-run=client -o yaml > x.yaml",
+   "vim x.yaml   # spec: nodeSelector: env: prod; tolerations: - key: env operator: Equal value: prod effect: NoSchedule",
+   "k apply -f x.yaml; k get pod x -o wide"
+  ]
+ },
+ "37": {
+  "question": "In namespace `shop`:\n1. Update deployment `web` to image `nginx:1.28` and wait until the rollout is complete.\n2. Then roll the deployment back to the previous revision.\n3. Write the image that is in use after the rollback to `/root/image.txt`.",
+  "traps": [
+   "Wrong container name in set image — check with -o wide first",
+   "Writing nginx:1.28 to the file (that's before rollback)",
+   "Forgetting -n shop"
+  ],
+  "memorise": [
+   "k get deploy web -n shop -o wide   # container name",
+   "k set image deploy/web nginx=nginx:1.28 -n shop",
+   "k rollout status deploy/web -n shop",
+   "k rollout undo deploy/web -n shop",
+   "k get deploy web -n shop -o jsonpath='{.spec.template.spec.containers[0].image}' > /root/image.txt"
+  ]
+ },
+ "38": {
+  "question": "1. Create a PersistentVolume named `pv-data`: capacity `1Gi`, access mode `ReadWriteOnce`, hostPath `/mnt/data`, storage class `manual`.\n2. In namespace `storage`, create a PersistentVolumeClaim named `pvc-data` that requests `500Mi`, access mode `ReadWriteOnce`, storage class `manual`.\n3. In namespace `storage`, create a pod named `web-store` with image `nginx:1.27` that mounts the claim at `/usr/share/nginx/html`.",
+  "traps": [
+   "Putting namespace on the PV (PVs are cluster-scoped)",
+   "PVC storageClassName missing → default class makes a NEW disk (not pv-data); pv-data stays Available",
+   "Continuing before PVC shows Bound"
+  ],
+  "memorise": [
+   "docs: 'configure persistent volume storage' → 3 boxes: PV, PVC, Pod",
+   "pv.yaml: name pv-data, 1Gi, RWO, storageClassName manual, hostPath /mnt/data (no namespace)",
+   "pvc.yaml: name pvc-data, namespace storage, 500Mi, RWO, manual",
+   "pod.yaml: web-store, namespace storage, nginx:1.27, claimName pvc-data, mountPath /usr/share/nginx/html",
+   "k get pvc -n storage; k get pod -n storage"
+  ]
+ },
+ "39": {
+  "question": "1. Create a StorageClass named `fast` with provisioner `rancher.io/local-path` and volume binding mode `WaitForFirstConsumer`.\n2. Make `fast` the default StorageClass.\n3. No other StorageClass may be marked as default. Do not delete or modify anything else.",
+  "traps": [
+   "Forgetting to un-default the old class → two (default)",
+   "Deleting the old StorageClass (forbidden)",
+   "Annotation value unquoted (true) → rejected: annotation values must be strings, write \"true\""
+  ],
+  "memorise": [
+   "k get sc   # note current (default)",
+   "docs: 'storage classes' → copy example; annotations: storageclass.kubernetes.io/is-default-class: \"true\"",
+   "name: fast; provisioner: rancher.io/local-path; volumeBindingMode: WaitForFirstConsumer",
+   "k apply -f sc.yaml",
+   "k patch sc <old> -p '{\"metadata\":{\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"false\"}}}'"
+  ]
+ },
+ "40": {
+  "question": "A MariaDB deployment in namespace `mariadb` was deleted by accident. Its PersistentVolume still exists and holds the data.\n1. Create a PersistentVolumeClaim named `mariadb` in namespace `mariadb`, with access mode `ReadWriteOnce` and `250Mi` of storage. It must bind to the existing PersistentVolume.\n2. Edit `/root/mariadb-deploy.yaml` so the deployment uses this PVC.\n3. Apply the file and make sure the deployment is running.",
+  "traps": [
+   "storageClassName mismatch → PVC Pending",
+   "PV Released with an old claimRef → k patch pv <name> -p '{\"spec\":{\"claimRef\":null}}' → Available",
+   "Forgetting namespace: mariadb in the PVC"
+  ],
+  "memorise": [
+   "k get pv   # size, access mode, storage class",
+   "docs: 'persistent volume pod' → PVC box → name mariadb, namespace mariadb, RWO, 250Mi, storageClassName: \"\" if the PV has no class (never delete the line)",
+   "k apply -f pvc.yaml; k get pvc -n mariadb",
+   "vim /root/mariadb-deploy.yaml   # claimName: mariadb",
+   "k apply -f /root/mariadb-deploy.yaml; k get pods -n mariadb"
+  ]
+ },
+ "101": {
+  "question": "ssh cka01001\nThe worker node node01 is reported as NotReady. Investigate the cause and bring node01 back to the Ready state. Your fix must survive a reboot of node01.",
+  "traps": [
+   "systemctl start only — not enabled after reboot",
+   "Skipping ssh cka01001 → you work on the wrong cluster",
+   "No sudo -i on node01 in the exam → systemctl says Access denied",
+   "Forgetting to exit (root, then node01) before kubectl"
+  ],
+  "memorise": [
+   "ssh cka01001; k get nodes   # NotReady (wait ~60 s if still Ready)",
+   "ssh node01; sudo -i",
+   "systemctl status kubelet --no-pager",
+   "systemctl enable --now kubelet; systemctl is-enabled kubelet",
+   "exit; exit; k get nodes"
+  ]
+ },
+ "102": {
+  "question": "ssh cka01002\nIn namespace shop the Service cart does not forward traffic to the Pods of Deployment cart. Fix the Service so that it routes to the Deployment's Pods. Do not modify the Deployment.",
+  "traps": [
+   "Relabelling pods/deployment (forbidden)",
+   "If the selector KEY itself is wrong, a merge patch ADDS a second key (selector = AND, still no match); then k edit svc and fix the key instead",
+   "Forgetting -n shop"
+  ],
+  "memorise": [
+   "ssh cka01002",
+   "k -n shop get pods --show-labels",
+   "k -n shop get svc cart -o wide   # SELECTOR",
+   "k -n shop patch svc cart -p '{\"spec\":{\"selector\":{\"app\":\"cart\"}}}'",
+   "k -n shop get endpointslices -l kubernetes.io/service-name=cart"
+  ]
+ },
+ "103": {
+  "question": "ssh cka01003\nThe Pods of Deployment reporter in namespace batch stay Pending. Find the reason and fix it so that all replicas are Running. Set the memory request of the container to 128Mi. Keep the number of replicas unchanged.",
+  "traps": [
+   "Scaling replicas down instead of fixing requests",
+   "Setting --limits instead of --requests",
+   "If a memory limit exists, it must be ≥ 128Mi or the spec is invalid"
+  ],
+  "memorise": [
+   "ssh cka01003",
+   "k -n batch get pods",
+   "k -n batch describe pod -l app=reporter | grep -A3 Events",
+   "k -n batch set resources deploy reporter --requests=memory=128Mi",
+   "k -n batch get pods"
+  ]
+ },
+ "104": {
+  "question": "ssh cka01004\nDeployment api in namespace web keeps restarting its Pods. Identify the cause and fix it. The nginx container listens on port 80. Do not delete the Deployment.",
+  "traps": [
+   "Changing containerPort instead of the probe port",
+   "Removing the probe entirely (changes behaviour, may fail the check)",
+   "Editing the pod instead of the deployment"
+  ],
+  "memorise": [
+   "ssh cka01004",
+   "k -n web describe pod -l app=api | grep -i -A2 liveness",
+   "k -n web edit deploy api   # livenessProbe: httpGet: port: 8080 → 80; Esc :wq",
+   "k -n web rollout status deploy api; k -n web get pods   # new pod RESTARTS 0"
+  ]
+ }
+}

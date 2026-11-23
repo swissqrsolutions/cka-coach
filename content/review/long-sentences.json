@@ -1,0 +1,2312 @@
+[
+ {
+  "q": 311,
+  "sec": "step text",
+  "w": 57,
+  "s": "Each \"-\" under from: starts a separate OR item. a = OR (every pod in edge, OR app=gateway pods in payments - podSelector alone means the policy's own namespace); b = AND + TCP 80; c = right senders but EVERY port; d = all edge pods to all payments pods. b is the only least-privilege match."
+ },
+ {
+  "q": 8,
+  "sec": "step text",
+  "w": 56,
+  "s": "Copy the first column (the container ID) of the most recent one: CREATED says seconds or minutes ago, ATTEMPT is the highest. (An old line from before the break, CREATED hours ago, shows nothing useful.) If crictl ps -a | grep kube-apiserver prints nothing, go straight to the row \"NO apiserver container\" in the table below."
+ },
+ {
+  "q": 19,
+  "sec": "words",
+  "w": 56,
+  "s": "Container runtime = the program on a node that actually runs containers. cri-dockerd is an adapter that lets Kubernetes use Docker as that runtime. .deb file = an installer package for Debian/Ubuntu. dpkg -i <file> installs it. sysctl = a Linux kernel setting, written name = value . sysctl -w sets it until the next reboot."
+ },
+ {
+  "q": 39,
+  "sec": "plain words",
+  "w": 48,
+  "s": "Three small jobs: Copy 1. make a new template called fast 2. put the \"default\" mark on fast 3. take the \"default\" mark OFF the old one The \"default\" mark is an annotation (a note on the object) with this exact text: storageclass.kubernetes.io/is-default-class: \"true\" You never type it."
+ },
+ {
+  "q": 206,
+  "sec": "words",
+  "w": 48,
+  "s": "CNI = the network plugin that gives pods IPs and connects them operator = a controller pod that installs and manages software for you Installation = the custom object that tells the Tigera operator how to set up Calico (incl. the pod CIDR) tigerastatus = its health report"
+ },
+ {
+  "q": 17,
+  "sec": "words",
+  "w": 47,
+  "s": "It is built into kubectl. kustomization.yaml = the file that lists which YAML files to use ( resources: ) and what to change (namespace, replicas, image...). -k <folder> = tell kubectl to read a folder that contains a kustomization.yaml . ( -f is for a normal file.)"
+ },
+ {
+  "q": 40,
+  "sec": "step text",
+  "w": 47,
+  "s": "Open https://kubernetes.io/docs In the search box type: persistent volume pod Click the result named: \"Configure a Pod to Use a PersistentVolume for Storage\" (direct link: https://kubernetes.io/docs/tutorials/configuration/configure-persistent-volume-storage/ ) On the right side of the page, click the heading: \"Create a PersistentVolumeClaim\" You see a box labelled pods/storage/pv-claim.yaml ."
+ },
+ {
+  "q": 20,
+  "sec": "step text",
+  "w": 46,
+  "s": "Vim keys, exactly: the cursor is on the c of cidr: ; press w twice (onto the first digit of the value), press C (deletes to the end of the line and starts typing), type 10.244.0.0/16 (your range), press Esc , type :wq , press Enter."
+ },
+ {
+  "q": 202,
+  "sec": "words",
+  "w": 46,
+  "s": "scheduler = the control-plane part that picks a node for each new pod static pod = a pod the kubelet runs straight from a YAML file in /etc/kubernetes/manifests (edit the file, not the pod) mirror pod = the read-only copy of it you see in kubectl"
+ },
+ {
+  "q": 213,
+  "sec": "step text",
+  "w": 46,
+  "s": "Spaces matter: spec: initContainers: - name: log-shipper image: busybox:1.36 restartPolicy: Always command: [sh, -c, \"tail -n+1 -F /var/log/order.log\"] volumeMounts: - {name: logs, mountPath: /var/log} containers: - name: app ...existing lines stay... volumeMounts: - {name: logs, mountPath: /var/log} volumes: - {name: logs, emptyDir: {}} Save with :wq."
+ },
+ {
+  "q": 201,
+  "sec": "words",
+  "w": 45,
+  "s": "unit file = systemd's recipe for starting a service drop-in = an extra file in kubelet.service.d/ that overrides parts of the main unit daemon-reload = tell systemd to re-read changed unit files. sudo -i = become root (needed in the exam Killercoda is already root)"
+ },
+ {
+  "q": 29,
+  "sec": "words",
+  "w": 44,
+  "s": "The line kubernetes cluster.local ... is the one that answers for Service names. rewrite name A B = a plug-in line: \"when someone asks for name A, answer as if they asked for name B\". reload = a plug-in line already in the Corefile."
+ },
+ {
+  "q": 35,
+  "sec": "step text",
+  "w": 44,
+  "s": "How it reads: envFrom → \"take every key of ConfigMap app-cfg and make it an environment variable\" volumes → \"this pod has storage called db , and its content is Secret db-sec \" volumeMounts → \"show storage db inside the container at /etc/db \""
+ },
+ {
+  "q": 39,
+  "sec": "step text",
+  "w": 43,
+  "s": "Open https://kubernetes.io/docs In the search box type: storage classes Click the result named: \"Storage Classes\" (direct link: https://kubernetes.io/docs/concepts/storage/storage-classes/ ) Near the top, under the heading \"StorageClass objects\" , find the sentence \"Here's an example of a StorageClass:\" Copy the box right below it."
+ },
+ {
+  "q": 106,
+  "sec": "words",
+  "w": 43,
+  "s": "chart = a package of YAML templates repo = the web address where charts live release = one installed copy of a chart values = the chart's settings (--set changes one) CRD = a definition that adds a new object type to Kubernetes"
+ },
+ {
+  "q": 313,
+  "sec": "step text",
+  "w": 43,
+  "s": "Two metrics: HPA computes replicas for each and uses the higher. scaleUp policy Pods 2 / 60 s = add at most 2 pods per minute; scaleDown stabilizationWindowSeconds 120 = act on the highest recommendation of the last 2 min before removing pods."
+ },
+ {
+  "q": 21,
+  "sec": "words",
+  "w": 42,
+  "s": "A new MINOR version (1.34 → 1.35) also needs a one-word change in the apt source file; a new patch (1.35.0 → 1.35.2) does not. ssh node01 = log in to the worker machine. exit brings you back to the control plane."
+ },
+ {
+  "q": 10,
+  "sec": "plain words",
+  "w": 41,
+  "s": "You need three facts for the new policy: Blank Meaning You find it with WHO is protected the label of the backend pods --show-labels WHO may come in the label of the client pod --show-labels WHICH port from the question 80"
+ },
+ {
+  "q": 22,
+  "sec": "words",
+  "w": 40,
+  "s": "Restore = unpack a snapshot into a NEW folder, then tell etcd to use that folder. etcdctl / etcdutl = two command-line tools. etcdctl talks to the running etcd (snapshot save ). etcdutl works on files only (snapshot restore )."
+ },
+ {
+  "q": 5,
+  "sec": "step text",
+  "w": 39,
+  "s": "You see TWO blocks with ExecStart= : # /usr/lib/systemd/system/kubelet.service with ExecStart=/usr/bin/kubelet (the base file; the drop-in overrides it, leave it alone); the drop-in, with an empty ExecStart= (that only clears the old value; normal) followed by ExecStart=/usr/local/bin/kubelet ... ."
+ },
+ {
+  "q": 21,
+  "sec": "words",
+  "w": 39,
+  "s": "Three programs are upgraded on each machine: kubeadm (the tool), kubelet (the node agent), kubectl (the command line). drain / uncordon = drain moves the pods off a node and closes it for new pods. uncordon opens it again."
+ },
+ {
+  "q": 111,
+  "sec": "words",
+  "w": 39,
+  "s": "GatewayClass = which controller runs the Gateway Gateway = the entry point, its listener = port + protocol + hostname (+ TLS certificate) HTTPRoute = rules that send matching requests to a Service, attached to a Gateway via parentRefs"
+ },
+ {
+  "q": 315,
+  "sec": "words",
+  "w": 39,
+  "s": "StatefulSet = pods with stable names (cache-0, cache-1) and one disk each headless Service = gives those pods DNS names volumeClaimTemplates = the PVC pattern copied per pod reclaimPolicy Retain = keep the disk after its claim is deleted"
+ },
+ {
+  "q": 18,
+  "sec": "words",
+  "w": 38,
+  "s": "Example: after installing cert-manager's CRDs, the cluster knows the kind Certificate . k get crd = lists all CRDs installed in the cluster. k explain = prints the documentation of a kind or of one of its fields."
+ },
+ {
+  "q": 25,
+  "sec": "step text",
+  "w": 38,
+  "s": "Press i , then paste the Gateway example. (If the pasted lines drift further and further to the right, press Esc , type :set paste , press Enter, delete everything with ggdG , press i and paste again.)"
+ },
+ {
+  "q": 115,
+  "sec": "words",
+  "w": 38,
+  "s": "StorageClass = a type of disk Kubernetes can create on demand default class = the one used by a PVC that names no class WaitForFirstConsumer = create the disk only when a pod that uses it is scheduled"
+ },
+ {
+  "q": 215,
+  "sec": "step text",
+  "w": 38,
+  "s": "A saved object still carries resourceVersion; the API refuses to create an object that has one (\"resourceVersion should not be set on objects to be created\"). sed deletes that line (and uid). status and creationTimestamp are simply ignored."
+ },
+ {
+  "q": 301,
+  "sec": "words",
+  "w": 38,
+  "s": "static pod = a pod that kubelet starts from a file in /etc/kubernetes/manifests (edit the file, kubelet restarts it) etcd = the cluster database 2379 = etcd client port (for the API server), 2380 = peer port (etcd-to-etcd)"
+ },
+ {
+  "q": 15,
+  "sec": "step text",
+  "w": 37,
+  "s": "You want: a file that is not empty (size > 0), and the count 0 . ( grep -c prints 0 and returns exit code 1 when it finds nothing; some terminals show that as an error."
+ },
+ {
+  "q": 17,
+  "sec": "step text",
+  "w": 37,
+  "s": "Vim keys, exactly: type /count and press Enter (cursor on the c ), press $ (jumps to the last character, the 2 ), type r3 (replaces that one character with 3 ), type :wq , press Enter."
+ },
+ {
+  "q": 23,
+  "sec": "words",
+  "w": 37,
+  "s": "Three numbers are involved: port = the Service's own port targetPort = the container's port nodePort = the port on every node (30000 to 32767) k expose = the command that creates a Service for a Deployment."
+ },
+ {
+  "q": 35,
+  "sec": "step text",
+  "w": 37,
+  "s": "In pod.yaml (type :set paste and Enter first, so vim adds no indentation of its own): Container level: put the cursor on resources: {} , press o , type the 6 lines envFrom: to mountPath: /etc/db ."
+ },
+ {
+  "q": 38,
+  "sec": "plain words",
+  "w": 37,
+  "s": "They are all in the question: Value PV (the disk) PVC (the request) Rule storageClassName manual manual must be the same accessModes ReadWriteOnce ReadWriteOnce must be the same size 1Gi 500Mi the disk must be big enough."
+ },
+ {
+  "q": 38,
+  "sec": "step text",
+  "w": 37,
+  "s": "How the pod file reads, in plain words: volumes: = \"this pod has a disk, and it comes from the PVC called pvc-data \" volumeMounts: = \"show that disk inside the container at the folder /usr/share/nginx/html \""
+ },
+ {
+  "q": 213,
+  "sec": "words",
+  "w": 37,
+  "s": "init container = runs before the app starts with restartPolicy = Always it keeps running beside the app = native sidecar (stable since v1.33) emptyDir = an empty shared folder that lives as long as the Pod"
+ },
+ {
+  "q": 110,
+  "sec": "words",
+  "w": 36,
+  "s": "containerPort = the port inside the pod (here named http) port = the Service's own port targetPort = where the Service sends traffic (the name http works) nodePort = the port opened on every node (30000-32767)"
+ },
+ {
+  "q": 205,
+  "sec": "words",
+  "w": 36,
+  "s": "ConfigMap = a key/value settings object volume = storage mounted into the pod - a ConfigMap volume turns each key into a file init container = a container that must finish before the main one starts"
+ },
+ {
+  "q": 316,
+  "sec": "words",
+  "w": 36,
+  "s": "Released = the old claim is gone but the PV is still reserved for it claimRef = that reservation inside the PV reclaimPolicy Retain = the disk and data are kept when the claim is deleted"
+ },
+ {
+  "q": 4,
+  "sec": "words",
+  "w": 35,
+  "s": "NotReady = the control plane has not heard from that node's kubelet for about 40 seconds. systemctl = the Linux command that starts, stops and checks services. kubelet is a Linux service, not a pod."
+ },
+ {
+  "q": 10,
+  "sec": "words",
+  "w": 35,
+  "s": "As soon as one policy selects a pod, that pod accepts ONLY what its policies allow. podSelector (top of the policy) = which pods this policy protects. podSelector: {} means every pod in the namespace."
+ },
+ {
+  "q": 12,
+  "sec": "words",
+  "w": 35,
+  "s": "It replaces what was in the file. ( >> adds to the end instead.) k logs = what a container printed. k top = how much CPU and memory pods or nodes use right now."
+ },
+ {
+  "q": 21,
+  "sec": "words",
+  "w": 35,
+  "s": "Both are kubectl commands, so you run them on the control plane. apt-get / apt-mark hold = apt-get is the Ubuntu package installer. apt-mark hold locks a package so it is never updated by accident."
+ },
+ {
+  "q": 40,
+  "sec": "plain words",
+  "w": 35,
+  "s": "Only the last part is left: Copy Pod ✗ → PVC ✗ → PV ✓ You rebuild the two missing parts, so the new database uses the OLD disk and gets its old data back."
+ },
+ {
+  "q": 101,
+  "sec": "words",
+  "w": 35,
+  "s": "kubelet = the agent on every node that starts pods and reports to the control plane NotReady = the control plane stopped hearing from that kubelet systemctl enable = start the service at every boot"
+ },
+ {
+  "q": 203,
+  "sec": "step text",
+  "w": 35,
+  "s": "Proves DNS works. busybox also prints lines like \"** server can't find kubernetes.default.cluster.local: NXDOMAIN\" (it tries several suffixes) and may end with exit code 1 - ignore that; success = a Name/Address line for kubernetes.default.svc.cluster.local."
+ },
+ {
+  "q": 310,
+  "sec": "words",
+  "w": 35,
+  "s": "Gateway = the entry point that listens (HTTP port 80) GatewayClass = which controller runs it HTTPRoute = routing rules attached to a Gateway (parentRefs = which Gateway, backendRefs = which Services get the traffic)"
+ },
+ {
+  "q": 312,
+  "sec": "words",
+  "w": 35,
+  "s": "ClusterIP Service = one fixed virtual IP in front of the pods headless Service (clusterIP = None) = no virtual IP, DNS returns every pod IP DNS A record = a name → IP answer"
+ },
+ {
+  "q": 21,
+  "sec": "step text",
+  "w": 34,
+  "s": "The prompt now shows node01 . (In the exam, sudo -i again if you are not root.) The package source must show v1.35 here too; change it exactly as in step 2 if not."
+ },
+ {
+  "q": 31,
+  "sec": "plain words",
+  "w": 34,
+  "s": "Add three things to the Deployment: Copy 1. a volume (pod level) 2. a mount of it in the main container (container level) 3. the sidecar, which also mounts it (pod level, under initContainers)"
+ },
+ {
+  "q": 107,
+  "sec": "words",
+  "w": 34,
+  "s": ".deb = an Ubuntu install package (dpkg -i installs it) sysctl = a Linux kernel setting kernel module = a driver loaded with modprobe (some sysctl settings only exist once their module is loaded)"
+ },
+ {
+  "q": 108,
+  "sec": "words",
+  "w": 34,
+  "s": "CRD (Custom Resource Definition) = adds a new object type, like Certificate, to Kubernetes kubectl explain = prints the built-in help for any field default output = the normal table you get without -o"
+ },
+ {
+  "q": 208,
+  "sec": "words",
+  "w": 34,
+  "s": "base = the original YAML folder overlay = a folder of changes applied on top of the base kustomization.yaml = the file that lists both ../../base = go up two folders, then into base"
+ },
+ {
+  "q": 211,
+  "sec": "words",
+  "w": 34,
+  "s": "TLS = the encryption behind https (versions 1.2, 1.3) immutable = locked, can never be edited again subPath = mount one single file from a volume (it does not update until the pod restarts)"
+ },
+ {
+  "q": 2,
+  "sec": "step text",
+  "w": 33,
+  "s": "Vim keys, exactly: press C (capital C = delete from the cursor to the end of the line and start typing), type sleep 3600 , press Esc , type :wq , press Enter."
+ },
+ {
+  "q": 7,
+  "sec": "step text",
+  "w": 33,
+  "s": "Vim keys, exactly: type /8080 and press Enter (cursor on the first 8 ), type cw (delete the word and start typing), type 80 , press Esc , type :wq , press Enter."
+ },
+ {
+  "q": 14,
+  "sec": "step text",
+  "w": 33,
+  "s": "You want yes for the first and no for the second. (No -n needed: nodes have no namespace. -n on the clusterrole / clusterrolebinding commands is ignored; only the SA needs a namespace.)"
+ },
+ {
+  "q": 23,
+  "sec": "step text",
+  "w": 33,
+  "s": "Press o (opens a new line below) and type these three lines. ports: must start in the same column as the word imagePullPolicy: (8 spaces), NOT at the - of - image: :"
+ },
+ {
+  "q": 24,
+  "sec": "words",
+  "w": 33,
+  "s": "An Ingress without a class is ignored, unless one IngressClass is marked as the default. pathType: Prefix = the rule matches the path and everything below it. / with Prefix matches every request."
+ },
+ {
+  "q": 25,
+  "sec": "step text",
+  "w": 33,
+  "s": "There, also run k describe httproute web-route -n web and look under Status → Parents : you want Accepted with Status True . k get gateway -n web should show PROGRAMMED True ."
+ },
+ {
+  "q": 39,
+  "sec": "step text",
+  "w": 33,
+  "s": "Same search box, type: change default storage class Click the result named: \"Change the default StorageClass\" (direct link: https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/ ) Find step 2 on that page: \"Mark the default StorageClass as non-default\" ."
+ },
+ {
+  "q": 202,
+  "sec": "step text",
+  "w": 33,
+  "s": "Files in /etc/kubernetes/manifests need root (exam: sudo -i; Killercoda is already root). sed -i 's#OLD#NEW#' replaces text in the file. kubelet notices the change and recreates the scheduler pod by itself (~30 s)."
+ },
+ {
+  "q": 307,
+  "sec": "words",
+  "w": 33,
+  "s": "Helm chart = an app package with settings (values) helm template = render to YAML only, helm install = render and deploy CRD = adds a new object kind to Kubernetes (pre-installed here)"
+ },
+ {
+  "q": 308,
+  "sec": "step text",
+  "w": 33,
+  "s": "custom-columns prints two columns, NAME and GROUP; awk '$2==\"cert-manager.io\"{print $1}' keeps rows whose 2nd column is exactly cert-manager.io and prints the 1st; sort orders them; > saves. acme.cert-manager.io items are a different group."
+ },
+ {
+  "q": 309,
+  "sec": "step text",
+  "w": 33,
+  "s": "sudo -i = become root (needed for node files; on Killercoda you already are root, so it is harmless). kubeadm reads all certs for you. > saves the output; ; then runs head."
+ },
+ {
+  "q": 6,
+  "sec": "step text",
+  "w": 32,
+  "s": "You want the HTML that contains Welcome to nginx! . -- = everything after this runs INSIDE the pod (here: wget ... ). -qO- = quiet, print the page to the screen."
+ },
+ {
+  "q": 10,
+  "sec": "step text",
+  "w": 32,
+  "s": "To change a line: put the cursor on the first character to replace, press C (deletes to the end of the line and starts typing), type the new text, press Esc ."
+ },
+ {
+  "q": 11,
+  "sec": "step text",
+  "w": 32,
+  "s": "Use the full name: busybox's nslookup handles short names badly and can print NXDOMAIN lines even when DNS works. --rm -it --restart=Never = run once, show the output, delete the test pod"
+ },
+ {
+  "q": 39,
+  "sec": "words",
+  "w": 32,
+  "s": "One more setting you will be asked for: volumeBindingMode Meaning Immediate create the disk the moment the PVC appears WaitForFirstConsumer wait until a pod actually uses the PVC, then create the disk"
+ },
+ {
+  "q": 114,
+  "sec": "words",
+  "w": 32,
+  "s": "HPA (HorizontalPodAutoscaler) = changes a Deployment's replica count based on load metrics-server = the add-on that measures pod CPU for it stabilization window = how long the HPA waits before scaling down"
+ },
+ {
+  "q": 215,
+  "sec": "words",
+  "w": 32,
+  "s": "PVC = a request for a disk StorageClass = the kind of disk and who creates it (here local-path) WaitForFirstConsumer = the disk is made only when a Pod uses the claim"
+ },
+ {
+  "q": 309,
+  "sec": "words",
+  "w": 32,
+  "s": "serving certificate = the HTTPS certificate the API server shows to clients static pod = started by kubelet from /etc/kubernetes/manifests join token = a temporary password a new node uses to join"
+ },
+ {
+  "q": 9,
+  "sec": "step text",
+  "w": 31,
+  "s": "Vim keys, exactly: the cursor is on the s of schedulerx ; press 9l (move 9 characters right, onto the x ), press x (deletes it), type :wq , press Enter."
+ },
+ {
+  "q": 27,
+  "sec": "step text",
+  "w": 31,
+  "s": "Change the name, add namespace: prod (cursor on name: , press o , type it), then put the cursor on - Egress , press o and type the 6-line egress: block."
+ },
+ {
+  "q": 203,
+  "sec": "words",
+  "w": 31,
+  "s": "DNS = turns a name into an IP CoreDNS = the pods (Deployment coredns in kube-system) that answer name lookups inside the cluster kube-dns = the Service in front of them"
+ },
+ {
+  "q": 303,
+  "sec": "words",
+  "w": 31,
+  "s": "kubelet = the agent on each node that runs the pods client CA file = the certificate kubelet uses to trust callers NotReady = the node's kubelet is not reporting healthy"
+ },
+ {
+  "q": 311,
+  "sec": "words",
+  "w": 31,
+  "s": "least privilege = allow only what is needed, nothing more AND = both namespace and pod label must match (one list item) OR = either one is enough (two list items)"
+ },
+ {
+  "q": 11,
+  "sec": "words",
+  "w": 30,
+  "s": "You will use both names below: coredns for the Deployment, kube-dns for the label and the Service. nslookup = a command that asks DNS for the IP of a name."
+ },
+ {
+  "q": 20,
+  "sec": "step text",
+  "w": 30,
+  "s": "If that is empty too (or the question gives no range), leave the cidr: in the file at its default ( 192.168.0.0/16 ) and skip the edit in Step 3."
+ },
+ {
+  "q": 22,
+  "sec": "step text",
+  "w": 30,
+  "s": "Open https://kubernetes.io/docs Search: etcd backup Click: \"Operating etcd clusters for Kubernetes\" (direct link: https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/ ) Go to the heading \"Backing up an etcd cluster\" → \"Snapshot using etcdctl options\" ."
+ },
+ {
+  "q": 27,
+  "sec": "step text",
+  "w": 30,
+  "s": "Open https://kubernetes.io/docs → search network policies → click \"Network Policies\" (direct link: https://kubernetes.io/docs/concepts/services-networking/network-policies/ ) Scroll to the heading \"Default policies\" → \"Default deny all ingress and all egress traffic\" ."
+ },
+ {
+  "q": 37,
+  "sec": "step text",
+  "w": 30,
+  "s": "If you cannot remember the jsonpath, this is just as good: read the image with k get deploy web -n shop -o wide , then echo nginx:1.27 > /root/image.txt ."
+ },
+ {
+  "q": 101,
+  "sec": "step text",
+  "w": 30,
+  "s": "The kubelet runs on the node itself, not as a pod. systemctl changes need root: the real exam requires sudo -i (Killercoda is already root, so it changes nothing there)."
+ },
+ {
+  "q": 112,
+  "sec": "words",
+  "w": 30,
+  "s": "NetworkPolicy = a firewall rule for pods default-deny = blocks all incoming traffic to the namespace's pods ingress from = who may connect, picked by namespace label and/or pod label"
+ },
+ {
+  "q": 211,
+  "sec": "step text",
+  "w": 30,
+  "s": "IP=$(...) stores the inner command's output in variable IP; -o jsonpath='{...}' prints one field. curl: -s quiet, -k accept the self-signed cert, --tls-max 1.2 = offer at most TLS 1.2."
+ },
+ {
+  "q": 215,
+  "sec": "step text",
+  "w": 30,
+  "s": "The class does not exist. (local-path uses WaitForFirstConsumer: it creates the disk only when a Pod uses the claim, so even a correct PVC shows Pending until its Pod exists.)"
+ },
+ {
+  "q": 216,
+  "sec": "words",
+  "w": 30,
+  "s": "PV = a piece of storage PVC = a request that binds to a matching PV hostPath = a folder on the node where the Pod runs (here usually node01)"
+ },
+ {
+  "q": 3,
+  "sec": "step text",
+  "w": 29,
+  "s": "The other (controlplane) is reserved for control-plane pods by a taint.\" The counts vary: if your controlplane has no taint, you see 0/2 nodes are available: 2 Insufficient cpu."
+ },
+ {
+  "q": 28,
+  "sec": "words",
+  "w": 29,
+  "s": "Here it holds the nginx config file. ssl_protocols = the nginx setting that lists which TLS versions the server accepts. nginx reads its config file only when it starts."
+ },
+ {
+  "q": 38,
+  "sec": "step text",
+  "w": 29,
+  "s": "Press i , paste. (If the pasted lines drift further and further to the right: Esc , type :set paste and Enter, ggdG to clear, i , paste again."
+ },
+ {
+  "q": 102,
+  "sec": "traps",
+  "w": 29,
+  "s": "If the selector KEY itself is wrong, a merge patch ADDS a second key (selector = AND, still no match); then k edit svc and fix the key instead"
+ },
+ {
+  "q": 103,
+  "sec": "words",
+  "w": 29,
+  "s": "request = memory a pod reserves up front scheduler = the part that picks a node, only one with that much free memory Pending = no node chosen yet"
+ },
+ {
+  "q": 104,
+  "sec": "words",
+  "w": 29,
+  "s": "livenessProbe = a URL the kubelet calls again and again if it fails N times in a row the container is restarted RESTARTS = how many times that happened"
+ },
+ {
+  "q": 109,
+  "sec": "words",
+  "w": 29,
+  "s": "ServiceAccount = an identity for programs, not people Role = a list of allowed actions (verbs) on resources in one namespace RoleBinding = gives that Role to an account"
+ },
+ {
+  "q": 113,
+  "sec": "words",
+  "w": 29,
+  "s": "PriorityClass = a named number pods with a higher number are scheduled first and can push out (preempt) lower ones system-* classes belong to Kubernetes itself, so ignore them"
+ },
+ {
+  "q": 116,
+  "sec": "words",
+  "w": 29,
+  "s": "PV (PersistentVolume) = the disk PVC (PersistentVolumeClaim) = a request for a disk Bound = request matched to a disk RWO (ReadWriteOnce) = one node can mount it read-write"
+ },
+ {
+  "q": 209,
+  "sec": "words",
+  "w": 29,
+  "s": "chart = an app package release = one installed copy of a chart (here = web) revision = the release's version number (1 = install, +1 on every upgrade)"
+ },
+ {
+  "q": 210,
+  "sec": "words",
+  "w": 29,
+  "s": "Ingress = web-address rules (host + path → Service:port) ingress controller = the program that really routes the traffic (none here) ingressClassName = which controller should handle the rules"
+ },
+ {
+  "q": 302,
+  "sec": "step text",
+  "w": 29,
+  "s": "The flag names a file that does not exist (*.conf = every name ending in .conf); point it to the real one. kubelet restarts the static pod by itself."
+ },
+ {
+  "q": 308,
+  "sec": "words",
+  "w": 29,
+  "s": "CRD = adds a new object kind to Kubernetes custom resource = an object of that kind (your ClusterIssuer) API group = the family name of the kinds (cert-manager.io)."
+ },
+ {
+  "q": 1,
+  "sec": "words",
+  "w": 28,
+  "s": "Namespace = a named folder that groups objects; most commands need -n <namespace> . k = short for kubectl (an alias the exam and Killercoda already set up)."
+ },
+ {
+  "q": 8,
+  "sec": "step text",
+  "w": 28,
+  "s": "2>&1 = send the error output to the screen too. crictl logs writes the container's errors to stderr, and without 2>&1 the | tail would not catch them."
+ },
+ {
+  "q": 21,
+  "sec": "step text",
+  "w": 28,
+  "s": "For a minor upgrade (for example the line says v1.34 ), change it first: vim /etc/apt/sources.list.d/kubernetes.list , type :s/v1.34/v1.35/ and Enter, then :wq , then apt-get update again."
+ },
+ {
+  "q": 21,
+  "sec": "step text",
+  "w": 28,
+  "s": "Why: the new kubelet program is on disk, but the old one keeps running until it is restarted. daemon-reload makes systemd read the (possibly changed) service files first."
+ },
+ {
+  "q": 25,
+  "sec": "step text",
+  "w": 28,
+  "s": "Open https://kubernetes.io/docs Search: gateway api Click: \"Gateway API\" (direct link: https://kubernetes.io/docs/concepts/services-networking/gateway/ ) Copy the example under the heading \"Gateway\" , and the example under the heading \"HTTPRoute\" ."
+ },
+ {
+  "q": 28,
+  "sec": "words",
+  "w": 28,
+  "s": "TLS versions = TLSv1.2 and TLSv1.3 are versions of the HTTPS encryption. curl --tls-max 1.2 forces the older one, so it must fail once only 1.3 is allowed."
+ },
+ {
+  "q": 107,
+  "sec": "step text",
+  "w": 28,
+  "s": "bridge-nf-call-iptables only exists when br_netfilter is loaded, nf_conntrack_max needs nf_conntrack. modprobe loads them now; the modules-load.d file loads them after a reboot, so the sysctl settings really persist."
+ },
+ {
+  "q": 204,
+  "sec": "words",
+  "w": 28,
+  "s": "node label = a key=value tag on a node nodeSelector = the labels a pod demands from its node Pending = the scheduler found no node that fits"
+ },
+ {
+  "q": 206,
+  "sec": "plain words",
+  "w": 28,
+  "s": "Killercoda already has a CNI, so DO NOT run the \"exam only\" steps there (setup empty) - only run step 1 and the download/grep, and rehearse the rest."
+ },
+ {
+  "q": 207,
+  "sec": "words",
+  "w": 28,
+  "s": "etcd = the cluster's database (every object lives there) snapshot = a one-file copy of it CA/cert/key = the ID card etcdctl shows so etcd lets it in."
+ },
+ {
+  "q": 307,
+  "sec": "step text",
+  "w": 28,
+  "s": "Look up keys, never guess. sed -n '/^server:/,/^[a-z]/p' prints only the server: section (up to the next top-level key), so grep finds server.service and not the dex/redis services."
+ },
+ {
+  "q": 7,
+  "sec": "words",
+  "w": 27,
+  "s": "It must be the port the app really listens on (nginx: 80). nodePort = only for NodePort Services: a port (30000 to 32767) opened on every node."
+ },
+ {
+  "q": 8,
+  "sec": "step text",
+  "w": 27,
+  "s": "Vim keys, exactly: type /2380 and press Enter (cursor on the 2 ), type cw , type 2379 , press Esc , type :wq , press Enter."
+ },
+ {
+  "q": 16,
+  "sec": "step text",
+  "w": 27,
+  "s": "You want the controller deployment ( web-ingress-nginx-controller ) back at 2/2 . (If you also look at k get svc -n demo : EXTERNAL-IP <pending> is normal."
+ },
+ {
+  "q": 28,
+  "sec": "words",
+  "w": 27,
+  "s": "If the ConfigMap is mounted as a folder, the file inside the pod updates by itself after up to a minute, but nginx does not reload it."
+ },
+ {
+  "q": 36,
+  "sec": "step text",
+  "w": 27,
+  "s": "In x.yaml : type :set paste and Enter, put the cursor on the line spec: (directly above containers: ), press o , and type the 7 lines."
+ },
+ {
+  "q": 38,
+  "sec": "step text",
+  "w": 27,
+  "s": "Open https://kubernetes.io/docs In the search box type: persistent volume pod Click the result named: \"Configure a Pod to Use a PersistentVolume for Storage\" (direct link: https://kubernetes.io/docs/tutorials/configuration/configure-persistent-volume-storage/ )"
+ },
+ {
+  "q": 102,
+  "sec": "words",
+  "w": 27,
+  "s": "label = a name tag on a Pod (app=cart) selector = the label a Service looks for EndpointSlice = the list of Pod IPs the Service found"
+ },
+ {
+  "q": 105,
+  "sec": "words",
+  "w": 27,
+  "s": "stdout = what the container prints, read with kubectl logs grep = keep only lines containing a word > file = write the output into that file"
+ },
+ {
+  "q": 111,
+  "sec": "step text",
+  "w": 27,
+  "s": "Route = which traffic goes to which Service (Ingress paths/backend -> rules/backendRefs). parentRefs needs no namespace because the route is in the same namespace as the Gateway."
+ },
+ {
+  "q": 214,
+  "sec": "words",
+  "w": 27,
+  "s": "requests = the CPU/memory the scheduler reserves for a container Allocatable = what node01 can give to pods 1000m (millicores) = 1 CPU, and 1024Ki = 1Mi"
+ },
+ {
+  "q": 214,
+  "sec": "step text",
+  "w": 27,
+  "s": "Put YOUR numbers in: allocatable memory Ki ÷ 1024 = Mi; (allocatable - requested) × 90 / 100 keeps 10% headroom; / 3 = one Pod's share."
+ },
+ {
+  "q": 307,
+  "sec": "step text",
+  "w": 27,
+  "s": "helm template only PRINTS the YAML - nothing goes to the cluster (helm install would deploy it and track a release). > saves it into the file."
+ },
+ {
+  "q": 314,
+  "sec": "words",
+  "w": 27,
+  "s": "PriorityClass = a named number, higher = scheduled first preemption = evicting lower-priority pods to make room globalDefault = the class used by pods that name none"
+ },
+ {
+  "q": 8,
+  "sec": "words",
+  "w": 26,
+  "s": "Change the file, and the kubelet restarts the pod by itself. crictl = a command that lists containers and shows their logs directly on the node."
+ },
+ {
+  "q": 9,
+  "sec": "step text",
+  "w": 26,
+  "s": "If describe shows no Events either, run crictl ps -a | grep scheduler and crictl inspect <id> | grep -i -m3 message on the control plane.)"
+ },
+ {
+  "q": 16,
+  "sec": "step text",
+  "w": 26,
+  "s": "To be sure, open the values with helm show values ingress-nginx/ingress-nginx | less , type /replicaCount , read the parent key above it, press q ."
+ },
+ {
+  "q": 26,
+  "sec": "words",
+  "w": 26,
+  "s": "podSelector at the top of the policy = the pods being protected (the destination). ingress → from = who may send traffic to them (the source)."
+ },
+ {
+  "q": 31,
+  "sec": "words",
+  "w": 26,
+  "s": "That one line is what makes it a sidecar: it starts first and keeps running. emptyDir volume = an empty folder that belongs to the pod."
+ },
+ {
+  "q": 39,
+  "sec": "step text",
+  "w": 26,
+  "s": "If you prefer no long command: k edit sc standard , find the line storageclass.kubernetes.io/is-default-class: \"true\" , change \"true\" to \"false\" , save with :wq ."
+ },
+ {
+  "q": 106,
+  "sec": "step text",
+  "w": 26,
+  "s": "Pods may take 2-3 min; on the small playground some can stay Pending for lack of resources - that is OK, the release is what counts."
+ },
+ {
+  "q": 107,
+  "sec": "plain words",
+  "w": 26,
+  "s": "On Killercoda Docker is absent, so cri-docker will not start (and the jammy .deb may not match a newer Ubuntu); dpkg, enable and sysctl still practise."
+ },
+ {
+  "q": 116,
+  "sec": "step text",
+  "w": 26,
+  "s": "If STATUS is Released (common in the exam), the PV still remembers its old claim: run kubectl patch pv mariadb-pv -p '{\"spec\":{\"claimRef\":null}}' and it becomes Available."
+ },
+ {
+  "q": 207,
+  "sec": "step text",
+  "w": 26,
+  "s": "/etc/kubernetes/pki and /opt/backup need root (exam: sudo -i; Killercoda is already root). export ETCDCTL_API=3 makes older etcdctl (v3.3) use the v3 API; newer ones ignore it."
+ },
+ {
+  "q": 306,
+  "sec": "words",
+  "w": 26,
+  "s": "sysctl = a kernel setting kernel module = a driver loaded into Linux (br_netfilter) socket unit = systemd listens and starts the service when something connects"
+ },
+ {
+  "q": 306,
+  "sec": "step text",
+  "w": 26,
+  "s": "sudo -i = become root (needed for node files; on Killercoda you already are root, so it is harmless). dpkg -i installs a local .deb package."
+ },
+ {
+  "q": 2,
+  "sec": "plain words",
+  "w": 25,
+  "s": "The reason is in one of two places: what the container printed before it stopped (logs), or the command it was told to run (describe)."
+ },
+ {
+  "q": 3,
+  "sec": "traps",
+  "w": 25,
+  "s": "Running the closing check too early — wait until the Pending pod is gone (the deployment replaces it), then the new pod shows 1/1 Running"
+ },
+ {
+  "q": 8,
+  "sec": "step text",
+  "w": 25,
+  "s": "First a backup, OUTSIDE the manifests folder (the kubelet runs every file inside /etc/kubernetes/manifests/ , so a copy left there becomes a second API server)."
+ },
+ {
+  "q": 13,
+  "sec": "traps",
+  "w": 25,
+  "s": "A typo in the SA or Role NAME inside the binding — no error at all, but can-i says no; check with k describe rolebinding"
+ },
+ {
+  "q": 21,
+  "sec": "words",
+  "w": 25,
+  "s": "Memorise only the order: Copy drain → apt-get update → new kubeadm → kubeadm upgrade → new kubelet + kubectl → restart kubelet → uncordon"
+ },
+ {
+  "q": 25,
+  "sec": "step text",
+  "w": 25,
+  "s": "The parentRefs line only shows what you typed; it does not prove the route is attached, and here nothing can ever be attached (no controller)."
+ },
+ {
+  "q": 26,
+  "sec": "step text",
+  "w": 25,
+  "s": "In vim: put the cursor on the first line of the block, type the number of lines and dd (for example 7dd deletes 7 lines)."
+ },
+ {
+  "q": 107,
+  "sec": "step text",
+  "w": 25,
+  "s": "If the file is missing on Killercoda, the setup download failed - download a .deb from the cri-dockerd releases page or just practise the commands."
+ },
+ {
+  "q": 107,
+  "sec": "step text",
+  "w": 25,
+  "s": "If dpkg stops with missing dependencies, run apt-get -f install -y and check again: status iU means unpacked but not configured yet, ii means installed."
+ },
+ {
+  "q": 214,
+  "sec": "step text",
+  "w": 25,
+  "s": "The init container asks 4 CPU / 8Gi - more than node01 has - so no Pod fits, even though the main container is small."
+ },
+ {
+  "q": 215,
+  "sec": "step text",
+  "w": 25,
+  "s": "storageClassName cannot be edited on a PVC, so it must be recreated; the Pod goes first (a PVC used by a Pod is not removed)."
+ },
+ {
+  "q": 302,
+  "sec": "words",
+  "w": 25,
+  "s": "controller-manager = the control-plane program whose loops create Pods for Deployments/ReplicaSets kubeconfig = the login file a component uses to talk to the API server"
+ },
+ {
+  "q": 304,
+  "sec": "words",
+  "w": 25,
+  "s": "egress = outgoing traffic default-deny-egress blocks everything going out, DNS too DNS = turns a name like backend into an IP (CoreDNS pods, label k8s-app=kube-dns)"
+ },
+ {
+  "q": 3,
+  "sec": "step text",
+  "w": 24,
+  "s": "The Pending pod disappears on its own (the deployment replaces it); if you still see it, wait 10 s and run the command again."
+ },
+ {
+  "q": 9,
+  "sec": "step text",
+  "w": 24,
+  "s": "Cause found: the program name in the command is misspelled. ( k logs shows nothing here: the program never started, so it printed nothing."
+ },
+ {
+  "q": 20,
+  "sec": "words",
+  "w": 24,
+  "s": "Without it, nodes stay NotReady , CoreDNS pods stay Pending , and most other new pods sit in ContainerCreating (no IP can be given)."
+ },
+ {
+  "q": 22,
+  "sec": "step text",
+  "w": 24,
+  "s": "It is shown INSIDE the etcd container at /var/lib/etcd (that is the mountPath ). etcd reads /var/lib/etcd inside the container (that is --data-dir )."
+ },
+ {
+  "q": 24,
+  "sec": "words",
+  "w": 24,
+  "s": "IngressClass = an object that points to the controller (the program) that carries out Ingress rules, for example the class nginx points to ingress-nginx."
+ },
+ {
+  "q": 27,
+  "sec": "step text",
+  "w": 24,
+  "s": "If wget still prints the page after the policy, the playground's network plug-in does not enforce NetworkPolicy; the describe output is then your check."
+ },
+ {
+  "q": 35,
+  "sec": "plain words",
+  "w": 24,
+  "s": "Two one-line commands, then a pod YAML to which you add two blocks: envFrom (for the ConfigMap) and volumes + volumeMounts (for the Secret)."
+ },
+ {
+  "q": 36,
+  "sec": "words",
+  "w": 24,
+  "s": "It does not send the pod there. nodeSelector = lines in a pod that say \"only put me on a node with this label\"."
+ },
+ {
+  "q": 39,
+  "sec": "step text",
+  "w": 24,
+  "s": "Change ONE word: standard → the name you wrote down in step 1. (In this practice it already is standard .) Then run it."
+ },
+ {
+  "q": 112,
+  "sec": "step text",
+  "w": 24,
+  "s": "1 opens everything to all pods, 3 opens all namespaces on all ports, 2 = only frontend pods from namespace frontend, only TCP 80."
+ },
+ {
+  "q": 208,
+  "sec": "step text",
+  "w": 24,
+  "s": "The --dry-run | apply form also works on a re-run (plain create would say AlreadyExists, which is harmless). -k = apply a kustomization folder."
+ },
+ {
+  "q": 212,
+  "sec": "words",
+  "w": 24,
+  "s": "NetworkPolicy = a firewall rule for pods ingress = incoming traffic namespaceSelector / podSelector = pick allowed senders by namespace label / pod label"
+ },
+ {
+  "q": 213,
+  "sec": "step text",
+  "w": 24,
+  "s": "If vim reopens with an error at the top, fix the indentation and save again. restartPolicy Always turns the init container into a sidecar."
+ },
+ {
+  "q": 304,
+  "sec": "step text",
+  "w": 24,
+  "s": "The first wget takes a few seconds before \"bad address\". $(...) pastes the pod IP printed by the inner command (jsonpath prints one field)."
+ },
+ {
+  "q": 304,
+  "sec": "step text",
+  "w": 24,
+  "s": "EOF (a \"heredoc\") writes every line up to EOF into /root/dns.yaml, same as pasting into vim. podSelector: {} = every pod in the namespace."
+ },
+ {
+  "q": 312,
+  "sec": "step text",
+  "w": 24,
+  "s": "Wait until both pods are Ready (headless DNS lists only Ready pods). port = what clients call (8080); target-port = the container port (80)."
+ },
+ {
+  "q": 10,
+  "sec": "step text",
+  "w": 23,
+  "s": "Open https://kubernetes.io/docs Search: network policies Click: \"Network Policies\" (direct link: https://kubernetes.io/docs/concepts/services-networking/network-policies/ ) Under the heading \"The NetworkPolicy resource\" , copy the example box."
+ },
+ {
+  "q": 10,
+  "sec": "step text",
+  "w": 23,
+  "s": "To delete: move with the arrow keys onto the first line of a block, then type dd (one line) or 7dd (7 lines)."
+ },
+ {
+  "q": 15,
+  "sec": "words",
+  "w": 23,
+  "s": "Nothing is installed. ( helm install is the command that really installs.) Release = one named copy of a chart (here my-argo )."
+ },
+ {
+  "q": 26,
+  "sec": "step text",
+  "w": 23,
+  "s": "Open https://kubernetes.io/docs → search network policies → click \"Network Policies\" (direct link: https://kubernetes.io/docs/concepts/services-networking/network-policies/ ) Under \"The NetworkPolicy resource\" , copy the example box."
+ },
+ {
+  "q": 31,
+  "sec": "step text",
+  "w": 23,
+  "s": "Open https://kubernetes.io/docs → search sidecar containers → click \"Sidecar Containers\" (direct link: https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/ ) Under the heading \"Example application\" there is a Deployment."
+ },
+ {
+  "q": 35,
+  "sec": "step text",
+  "w": 23,
+  "s": "Pod level: stay on the last line you typed, press Esc , o , type the 4 lines volumes: to secretName: db-sec ."
+ },
+ {
+  "q": 37,
+  "sec": "words",
+  "w": 23,
+  "s": "Rolling update = when you change a Deployment's image, it replaces the pods a few at a time, so the app stays available."
+ },
+ {
+  "q": 39,
+  "sec": "step text",
+  "w": 23,
+  "s": "Extra settings copied from an example can make the grader mark it wrong, and parameters meant for another provisioner can break disk creation."
+ },
+ {
+  "q": 101,
+  "sec": "step text",
+  "w": 23,
+  "s": "If it still says Ready, wait 30 s and run it again (the control plane waits ~50 s before marking a node NotReady)."
+ },
+ {
+  "q": 112,
+  "sec": "step text",
+  "w": 23,
+  "s": "Key rule: namespaceSelector and podSelector in the SAME \"- from\" item = BOTH must match (AND); as separate items = either one (OR)."
+ },
+ {
+  "q": 114,
+  "sec": "step text",
+  "w": 23,
+  "s": "<unknown> = no metrics-server is installed in the playground, so there are no CPU numbers yet; the HPA object itself is still correct."
+ },
+ {
+  "q": 116,
+  "sec": "step text",
+  "w": 23,
+  "s": "sed -i 's/OLD/NEW/' file = replace text inside the file (here claimName: \"\" becomes claimName: mariadb). grep shows the result before you apply."
+ },
+ {
+  "q": 303,
+  "sec": "step text",
+  "w": 23,
+  "s": "sudo -i = become root (needed for node files; on Killercoda you already are root, so it is harmless). kubelet starts then crashes."
+ },
+ {
+  "q": 313,
+  "sec": "words",
+  "w": 23,
+  "s": "HPA = HorizontalPodAutoscaler, adds/removes pods automatically utilisation = usage ÷ request, in % stabilization window = how long HPA waits before scaling down"
+ },
+ {
+  "q": 2,
+  "sec": "step text",
+  "w": 22,
+  "s": "You see (after ~30 s; in the first seconds STATUS may say Error with RESTARTS 1 — wait and run it again):"
+ },
+ {
+  "q": 5,
+  "sec": "traps",
+  "w": 22,
+  "s": "Editing the wrong block — systemctl cat kubelet shows two ExecStart blocks; edit the one whose path contains local (the drop-in 10-kubeadm.conf)"
+ },
+ {
+  "q": 5,
+  "sec": "step text",
+  "w": 22,
+  "s": "-u kubelet = only this service -n 30 = the last 30 lines --no-pager = print it, do not open a viewer"
+ },
+ {
+  "q": 11,
+  "sec": "plain words",
+  "w": 22,
+  "s": "Check the three parts of CoreDNS in this order: the pods, the Deployment that owns them, the Service in front of them."
+ },
+ {
+  "q": 14,
+  "sec": "plain words",
+  "w": 22,
+  "s": "The only difference: nodes are cluster-wide, so the Role and the binding are the \"Cluster\" versions, and they take no -n ."
+ },
+ {
+  "q": 14,
+  "sec": "words",
+  "w": 22,
+  "s": "How to check which kind a resource is: Copy k api-resources | grep -i nodes Read the NAMESPACED column: false = cluster-wide."
+ },
+ {
+  "q": 20,
+  "sec": "traps",
+  "w": 22,
+  "s": "Leaving the file's default 192.168.0.0/16 when the cluster has a different --cluster-cidr (keep the default only if no range is set anywhere)"
+ },
+ {
+  "q": 21,
+  "sec": "step text",
+  "w": 22,
+  "s": "Write it down; the same text is used for kubeadm, kubelet and kubectl. (If your list shows a different suffix, use yours.)"
+ },
+ {
+  "q": 21,
+  "sec": "step text",
+  "w": 22,
+  "s": "Why: kubeadm is the program that performs the upgrade, so it is upgraded first. unhold unlocks the package, hold locks it again."
+ },
+ {
+  "q": 26,
+  "sec": "step text",
+  "w": 22,
+  "s": "Press i , paste (if lines drift to the right: Esc , :set paste , Enter, ggdG , i , paste again)."
+ },
+ {
+  "q": 29,
+  "sec": "step text",
+  "w": 22,
+  "s": "Put the cursor on the line ready , press o (new line below), and type, with the same indentation as ready :"
+ },
+ {
+  "q": 30,
+  "sec": "step text",
+  "w": 22,
+  "s": "A line like *** Can't find backend-svc.web.svc.cluster.local: No answer is normal: busybox also asks for an IPv6 address, and there is none."
+ },
+ {
+  "q": 35,
+  "sec": "words",
+  "w": 22,
+  "s": "As files (a volume) = every key becomes a file in a folder inside the container; the file's content is the value."
+ },
+ {
+  "q": 36,
+  "sec": "step text",
+  "w": 22,
+  "s": "In x.yaml it goes at POD level: under spec: , starting in the same column as containers: (step 4 shows exactly where):"
+ },
+ {
+  "q": 38,
+  "sec": "plain words",
+  "w": 22,
+  "s": "Right now the chain shows nothing built yet, for example: Copy Pod ✗ → PVC ✗ → PV ✗ Make a disk."
+ },
+ {
+  "q": 39,
+  "sec": "step text",
+  "w": 22,
+  "s": "Check three columns on the fast row: the name has (default) , PROVISIONER is what the question gave, VOLUMEBINDINGMODE is WaitForFirstConsumer ."
+ },
+ {
+  "q": 105,
+  "sec": "pattern",
+  "w": 22,
+  "s": "The host you ssh'd into IS this task's controlplane: redirect > there; mkdir -p the folder first (exam: sudo if Permission denied)"
+ },
+ {
+  "q": 105,
+  "sec": "step text",
+  "w": 22,
+  "s": "Exam: /opt needs root - if you get Permission denied, use sudo mkdir -p ... and sudo -i (Killercoda is already root)."
+ },
+ {
+  "q": 212,
+  "sec": "traps",
+  "w": 22,
+  "s": "Writing '- podSelector' as a second list item → OR (allows role=api pods in ns db + every pod of ns api)"
+ },
+ {
+  "q": 216,
+  "sec": "step text",
+  "w": 22,
+  "s": "EOF (a \"heredoc\") writes every line up to EOF into /root/all.yaml, same as pasting into vim. --- separates objects in one file."
+ },
+ {
+  "q": 3,
+  "sec": "step text",
+  "w": 21,
+  "s": "You may also see an older pod still Running : the deployment keeps the old pod until the new one works."
+ },
+ {
+  "q": 5,
+  "sec": "plain words",
+  "w": 21,
+  "s": "You only find out on the node that this one is harder: the kubelet is not just stopped, it cannot start."
+ },
+ {
+  "q": 5,
+  "sec": "step text",
+  "w": 21,
+  "s": "Type :wq and press Enter (you never entered insert mode, so no Esc is needed; pressing it anyway does no harm)."
+ },
+ {
+  "q": 6,
+  "sec": "traps",
+  "w": 21,
+  "s": "Copying the pod-template-hash label into the selector — the hash changes on every rollout, so the Service loses its pods again"
+ },
+ {
+  "q": 7,
+  "sec": "step text",
+  "w": 21,
+  "s": "The rule: ENDPOINTS <none> → selector problem (question 6) ENDPOINTS has an IP but no answer → port problem (this question)"
+ },
+ {
+  "q": 10,
+  "sec": "plain words",
+  "w": 21,
+  "s": "Add one new policy that protects the backend pods and lets in exactly one source: the client pod, on port 80."
+ },
+ {
+  "q": 10,
+  "sec": "step text",
+  "w": 21,
+  "s": "(If vim fights you: cat > np.yaml <<'EOF' , paste the finished file above, then a line with only EOF ."
+ },
+ {
+  "q": 11,
+  "sec": "traps",
+  "w": 21,
+  "s": "Testing with the short name kubernetes.default in busybox — it can print NXDOMAIN even when DNS works; use the full name"
+ },
+ {
+  "q": 15,
+  "sec": "plain words",
+  "w": 21,
+  "s": "Three jobs: add the repo, find the name of the setting that switches CRDs off, write the YAML to a file."
+ },
+ {
+  "q": 17,
+  "sec": "traps",
+  "w": 21,
+  "s": "Using k apply -f on the folder or deploy.yaml — it applies deploy.yaml unchanged into default and skips namespace + replicas"
+ },
+ {
+  "q": 20,
+  "sec": "step text",
+  "w": 21,
+  "s": "If you see no matches for kind \"Installation\" (or \"APIServer\" ): the operator from step 1 is still registering its CRDs."
+ },
+ {
+  "q": 22,
+  "sec": "words",
+  "w": 21,
+  "s": "Kubernetes v1.35 uses etcd 3.6, where etcdctl snapshot restore no longer exists. etcd only accepts connections that show three certificate files."
+ },
+ {
+  "q": 29,
+  "sec": "words",
+  "w": 21,
+  "s": "It is stored in ConfigMap coredns , namespace kube-system . .:53 { ... } = the main block of the Corefile."
+ },
+ {
+  "q": 31,
+  "sec": "words",
+  "w": 21,
+  "s": "Every container in the pod that mounts it sees the same files. volumeMounts = where a volume appears inside a container."
+ },
+ {
+  "q": 32,
+  "sec": "words",
+  "w": 21,
+  "s": "Stabilization window = how long the HPA waits before it removes pods, so the count does not jump up and down."
+ },
+ {
+  "q": 32,
+  "sec": "step text",
+  "w": 21,
+  "s": "Press O (capital o: new line ABOVE) and type these 3 lines. behavior: starts in the same column as maxReplicas: :"
+ },
+ {
+  "q": 33,
+  "sec": "plain words",
+  "w": 21,
+  "s": "Look at the existing numbers, ignore the two system- ones, subtract 1, create the class, add one line to the Deployment."
+ },
+ {
+  "q": 33,
+  "sec": "step text",
+  "w": 21,
+  "s": "Old pods that are still Terminating show CLASS <none> : ignore them, or run the command again after a few seconds."
+ },
+ {
+  "q": 36,
+  "sec": "step text",
+  "w": 21,
+  "s": "Open https://kubernetes.io/docs → search taints tolerations → click \"Taints and Tolerations\" (direct link: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/ ) Near the top, copy this block."
+ },
+ {
+  "q": 39,
+  "sec": "words",
+  "w": 21,
+  "s": "When a PVC asks for a disk and no PV exists, Kubernetes uses the template to CREATE a new PV automatically."
+ },
+ {
+  "q": 112,
+  "sec": "step text",
+  "w": 21,
+  "s": "If this already works, your playground's network plugin ignores NetworkPolicies - continue anyway, the choice of file is what is graded."
+ },
+ {
+  "q": 305,
+  "sec": "words",
+  "w": 21,
+  "s": "rollout = a Deployment update revision = a numbered version of the Pod template ImagePullBackOff = the image cannot be downloaded"
+ },
+ {
+  "q": 309,
+  "sec": "step text",
+  "w": 21,
+  "s": "File out of manifests = kubelet stops the static pod; file back = it starts again and loads the new cert."
+ },
+ {
+  "q": 311,
+  "sec": "step text",
+  "w": 21,
+  "s": "If the intruder is NOT blocked, check the network plugin enforces policies: kubectl -n kube-system get pods | grep -E 'calico|canal|cilium'."
+ },
+ {
+  "q": 5,
+  "sec": "words",
+  "w": 20,
+  "s": "The line ExecStart= holds the path of the program to run. journalctl = the command that shows a service's log."
+ },
+ {
+  "q": 10,
+  "sec": "traps",
+  "w": 20,
+  "s": "Pasting into vim without :set paste (indentation staircases) or running dd while still in insert mode — press Esc first"
+ },
+ {
+  "q": 10,
+  "sec": "step text",
+  "w": 20,
+  "s": "You see PodSelector: <none> (Allowing the specific traffic to all pods in this namespace) and Allowing ingress traffic: <none> ."
+ },
+ {
+  "q": 10,
+  "sec": "step text",
+  "w": 20,
+  "s": "Press i , paste (Ctrl+Shift+V in the exam terminal), then press Esc (back to normal mode; dd only works there)."
+ },
+ {
+  "q": 11,
+  "sec": "words",
+  "w": 20,
+  "s": "Two things still carry it: the CoreDNS pods have the label k8s-app=kube-dns , and their Service is called kube-dns ."
+ },
+ {
+  "q": 15,
+  "sec": "traps",
+  "w": 20,
+  "s": "Mixing up release name, repo name and namespace — release = my-argo (any name), repo = argocd, namespace = argocd"
+ },
+ {
+  "q": 19,
+  "sec": "plain words",
+  "w": 20,
+  "s": "Three separate Linux jobs: install a package, switch a service on, write four settings into a file and load them."
+ },
+ {
+  "q": 21,
+  "sec": "step text",
+  "w": 20,
+  "s": "Why: pods may be scheduled on the control plane again. node01 still shows its old version (your number may differ)."
+ },
+ {
+  "q": 22,
+  "sec": "step text",
+  "w": 20,
+  "s": "If etcdutl is missing in a playground, see \"If something goes wrong\" below (you need it only in step 4)."
+ },
+ {
+  "q": 22,
+  "sec": "step text",
+  "w": 20,
+  "s": "By changing only the hostPath , etcd keeps reading the same place, but that place now shows the restored folder."
+ },
+ {
+  "q": 24,
+  "sec": "words",
+  "w": 20,
+  "s": "Ingress = a rule for web traffic coming into the cluster: \"host X, path Y → Service Z, port N\"."
+ },
+ {
+  "q": 31,
+  "sec": "words",
+  "w": 20,
+  "s": "Sidecar = a second container in the same pod that helps the main one (for example: reads its log file)."
+ },
+ {
+  "q": 31,
+  "sec": "step text",
+  "w": 20,
+  "s": "Use the SECOND one, directly above containers: (it belongs to template: ), not the top spec: under kind: Deployment ."
+ },
+ {
+  "q": 32,
+  "sec": "step text",
+  "w": 20,
+  "s": "If you forget the spelling: docs search horizontal pod autoscaling → page \"Horizontal Pod Autoscaling\" → heading \"Stabilization window\" ."
+ },
+ {
+  "q": 33,
+  "sec": "words",
+  "w": 20,
+  "s": "They do NOT count as user-defined. priorityClassName = the line in the pod template (pod level) that names the class."
+ },
+ {
+  "q": 39,
+  "sec": "words",
+  "w": 20,
+  "s": "The default class is the thing that silently creates a new empty disk when a PVC forgets the storageClassName line."
+ },
+ {
+  "q": 106,
+  "sec": "plain words",
+  "w": 20,
+  "s": "Use Helm to print Argo CD YAML into a file and install it, telling the chart not to add CRDs."
+ },
+ {
+  "q": 107,
+  "sec": "step text",
+  "w": 20,
+  "s": "Paste the whole block at once, including the final EOF line (everything between the two EOFs goes into the file)."
+ },
+ {
+  "q": 205,
+  "sec": "step text",
+  "w": 20,
+  "s": "The pod cannot even mount its volume, so the init container never runs: the ConfigMap behind the volume is missing."
+ },
+ {
+  "q": 207,
+  "sec": "words",
+  "w": 20,
+  "s": "On Killercoda the setup installs a distro etcdctl that may be older than the cluster's etcd - fine for practice"
+ },
+ {
+  "q": 310,
+  "sec": "step text",
+  "w": 20,
+  "s": "With equal paths, Gateway API picks the rule with more header matches, so x-version: v2 requests go 100% to shop-v2."
+ },
+ {
+  "q": 310,
+  "sec": "step text",
+  "w": 20,
+  "s": "Status stays empty: the playground GatewayClass points to a fake controller, so nothing sets Accepted - check the spec only."
+ },
+ {
+  "q": 2,
+  "sec": "step text",
+  "w": 19,
+  "s": "In the exam you often see a real message here, for example file not found or missing variable ."
+ },
+ {
+  "q": 5,
+  "sec": "words",
+  "w": 19,
+  "s": "It tells you WHY a service fails. daemon-reload = tells Linux \"I changed a service file, read it again\"."
+ },
+ {
+  "q": 12,
+  "sec": "words",
+  "w": 19,
+  "s": "The exam cluster has it. echo = print this text. echo abc > file puts abc into the file."
+ },
+ {
+  "q": 15,
+  "sec": "words",
+  "w": 19,
+  "s": "A chart has values = settings you can switch. helm template = print the YAML the chart WOULD create."
+ },
+ {
+  "q": 16,
+  "sec": "words",
+  "w": 19,
+  "s": "Every upgrade or rollback adds 1. --set name=value = change one of the chart's settings on the command line."
+ },
+ {
+  "q": 17,
+  "sec": "words",
+  "w": 19,
+  "s": "Kustomize = a way to take a normal YAML file and apply changes to it without editing that file."
+ },
+ {
+  "q": 19,
+  "sec": "step text",
+  "w": 19,
+  "s": "Vim keys, exactly: type :set paste and press Enter, press i , paste the four lines from the question:"
+ },
+ {
+  "q": 25,
+  "sec": "words",
+  "w": 19,
+  "s": "An Ingress → Gateway migration means: read the values out of the Ingress, write them into these two objects."
+ },
+ {
+  "q": 26,
+  "sec": "plain words",
+  "w": 19,
+  "s": "Fill in three blanks: Blank Value WHO is protected app=db WHO may come in app=api WHICH port TCP 80"
+ },
+ {
+  "q": 27,
+  "sec": "words",
+  "w": 19,
+  "s": "If you block egress and do not allow port 53, pods can no longer look up any Service name."
+ },
+ {
+  "q": 27,
+  "sec": "step text",
+  "w": 19,
+  "s": "Test: a name lookup works, a connection does not. (In Step 0 the wget line printed the nginx page."
+ },
+ {
+  "q": 28,
+  "sec": "traps",
+  "w": 19,
+  "s": "Immutable ConfigMap: delete + k apply of the backup fails on resourceVersion — use k replace --force -f /root/cm-backup.yaml"
+ },
+ {
+  "q": 28,
+  "sec": "step text",
+  "w": 19,
+  "s": "In Killercoda use the Service IP; in the exam the question gives the address and often this exact test."
+ },
+ {
+  "q": 31,
+  "sec": "step text",
+  "w": 19,
+  "s": "Before typing or pasting in vim, type :set paste and Enter, so vim adds no indentation of its own."
+ },
+ {
+  "q": 31,
+  "sec": "step text",
+  "w": 19,
+  "s": "Pieces 1 and 3: put the cursor on that second spec: line, press o , type the 11 lines."
+ },
+ {
+  "q": 31,
+  "sec": "step text",
+  "w": 19,
+  "s": "Piece 2: put the cursor on resources: {} of the main container, press o , type the 3 lines."
+ },
+ {
+  "q": 32,
+  "sec": "words",
+  "w": 19,
+  "s": "HPA (HorizontalPodAutoscaler) = an object that changes the number of replicas of a Deployment automatically, based on CPU use."
+ },
+ {
+  "q": 32,
+  "sec": "step text",
+  "w": 19,
+  "s": "If the flag is refused, run k autoscale --help and use the newer spelling shown there ( --cpu=70% )."
+ },
+ {
+  "q": 33,
+  "sec": "words",
+  "w": 19,
+  "s": "When the cluster is full, higher numbers are scheduled first, and lower ones can be evicted to make room."
+ },
+ {
+  "q": 34,
+  "sec": "words",
+  "w": 19,
+  "s": "The scheduler only places a pod on a node if allocatable − already requested ≥ the pod's request ."
+ },
+ {
+  "q": 36,
+  "sec": "words",
+  "w": 19,
+  "s": "With effect NoSchedule , the scheduler puts no new pod on that node, unless the pod tolerates the taint."
+ },
+ {
+  "q": 113,
+  "sec": "step text",
+  "w": 19,
+  "s": "If you see \"0 4999\", the old pod is still terminating - run it again after a few seconds."
+ },
+ {
+  "q": 206,
+  "sec": "step text",
+  "w": 19,
+  "s": "In the sed, replace 10.244.0.0/16 with YOUR podSubnet from step 1; skip the sed if it is already 192.168.0.0/16."
+ },
+ {
+  "q": 209,
+  "sec": "step text",
+  "w": 19,
+  "s": "The question says \"keeping the same chart version\", so repeat --version 6.7.1 (without it helm takes the newest chart)."
+ },
+ {
+  "q": 213,
+  "sec": "step text",
+  "w": 19,
+  "s": "Under spec.template.spec add initContainers and volumes, and add volumeMounts to the existing app container (do not touch its command)."
+ },
+ {
+  "q": 214,
+  "sec": "traps",
+  "w": 19,
+  "s": "Forgetting the init container → its larger request still blocks scheduling (a Pod needs max(init, sum of main containers))"
+ },
+ {
+  "q": 214,
+  "sec": "step text",
+  "w": 19,
+  "s": "In \"Allocated resources\" take the Requests column (first number), not Limits. cpu 1 = 1000m (cpu 2 = 2000m)."
+ },
+ {
+  "q": 215,
+  "sec": "traps",
+  "w": 19,
+  "s": "Re-creating from saved YAML that still has resourceVersion → \"resourceVersion should not be set on objects to be created\""
+ },
+ {
+  "q": 216,
+  "sec": "step text",
+  "w": 19,
+  "s": "PVC gets the 1Gi PV (bigger is OK), so the PVC also shows CAPACITY 1Gi - the PV's size."
+ },
+ {
+  "q": 301,
+  "sec": "step text",
+  "w": 19,
+  "s": "sudo -i = become root (needed for node files; on Killercoda you already are root, so it is harmless)."
+ },
+ {
+  "q": 302,
+  "sec": "step text",
+  "w": 19,
+  "s": "sudo -i = become root (needed for node files; on Killercoda you already are root, so it is harmless)."
+ },
+ {
+  "q": 307,
+  "sec": "step text",
+  "w": 19,
+  "s": "Argo CD is big for a playground: ContainerCreating/Pending for a few minutes is a resource limit, not your mistake."
+ },
+ {
+  "q": 309,
+  "sec": "plain words",
+  "w": 19,
+  "s": "Check certificate dates, renew the API server certificate, and print the command a new node would use to join."
+ },
+ {
+  "q": 313,
+  "sec": "plain words",
+  "w": 19,
+  "s": "Autoscale on CPU and memory, add at most 2 pods a minute, remove pods only after 2 calm minutes."
+ },
+ {
+  "q": 314,
+  "sec": "plain words",
+  "w": 19,
+  "s": "Create a priority just under the top one, allowed to push others out, and give it to a deployment."
+ },
+ {
+  "q": 316,
+  "sec": "traps",
+  "w": 19,
+  "s": "Not checking the PV shows Available before creating the PVC — you will not know whether the patch worked"
+ },
+ {
+  "q": 1,
+  "sec": "words",
+  "w": 18,
+  "s": "ImagePullBackOff = the node tried to download the image, failed, and now waits longer and longer between retries."
+ },
+ {
+  "q": 3,
+  "sec": "pattern",
+  "w": 18,
+  "s": "The scheduler cannot place it: read Events (Insufficient cpu; a control-plane taint line may appear too, counts vary)"
+ },
+ {
+  "q": 4,
+  "sec": "words",
+  "w": 18,
+  "s": "It starts the containers, and every few seconds it reports \"this node is alive\" to the control plane."
+ },
+ {
+  "q": 4,
+  "sec": "traps",
+  "w": 18,
+  "s": "Running systemctl on the control plane instead of node01 — the prompt must say node01 before you type"
+ },
+ {
+  "q": 4,
+  "sec": "step text",
+  "w": 18,
+  "s": "--now = start it immediately enable = also start it after every reboot (the question asked for this)"
+ },
+ {
+  "q": 9,
+  "sec": "words",
+  "w": 18,
+  "s": "That means the scheduler is not working. kube-controller-manager = the control plane program that creates pods for Deployments."
+ },
+ {
+  "q": 10,
+  "sec": "words",
+  "w": 18,
+  "s": "A policy that selects pods and allows nothing (like deny-all below) blocks them, simply because it selects them."
+ },
+ {
+  "q": 10,
+  "sec": "step text",
+  "w": 18,
+  "s": "Vim keys, exactly: Type :set paste and press Enter (stops vim from shifting each pasted line further right)."
+ },
+ {
+  "q": 16,
+  "sec": "step text",
+  "w": 18,
+  "s": "Reading it: helm install <release> <repo>/<chart> -n <namespace> . --create-namespace makes the namespace if it does not exist."
+ },
+ {
+  "q": 21,
+  "sec": "plain words",
+  "w": 18,
+  "s": "Only ONE command differs: kubeadm upgrade apply v1.35.2 on the control plane, kubeadm upgrade node on the worker."
+ },
+ {
+  "q": 21,
+  "sec": "step text",
+  "w": 18,
+  "s": "Why: the pods move to other nodes and no new pods arrive while the node's programs are replaced."
+ },
+ {
+  "q": 21,
+  "sec": "step text",
+  "w": 18,
+  "s": "Why: this replaces the API server, controller manager, scheduler and etcd (the static pods) with the new version."
+ },
+ {
+  "q": 21,
+  "sec": "step text",
+  "w": 18,
+  "s": "Why: uncordon is a kubectl command, so it runs on the control plane. node01 takes new pods again."
+ },
+ {
+  "q": 23,
+  "sec": "plain words",
+  "w": 18,
+  "s": "Create a Service, then set its node port to a fixed number (Kubernetes picks a random one otherwise)."
+ },
+ {
+  "q": 29,
+  "sec": "traps",
+  "w": 18,
+  "s": "Restoring the backup with k apply → 'the object has been modified'; use k replace --force -f /root/coredns-backup.yaml"
+ },
+ {
+  "q": 31,
+  "sec": "step text",
+  "w": 18,
+  "s": "A long edit is safer in a file: if the YAML is wrong, you still have the file."
+ },
+ {
+  "q": 34,
+  "sec": "plain words",
+  "w": 18,
+  "s": "A calculation, then one command: Copy (allocatable − already requested) × 0.9 ÷ 3 = request per pod"
+ },
+ {
+  "q": 35,
+  "sec": "words",
+  "w": 18,
+  "s": "Needs two blocks: volumes: at POD level and volumeMounts: at CONTAINER level, linked by the same name: ."
+ },
+ {
+  "q": 36,
+  "sec": "words",
+  "w": 18,
+  "s": "To get a pod onto a tainted node for sure, you need both: toleration (allowed) + nodeSelector (sent)."
+ },
+ {
+  "q": 36,
+  "sec": "step text",
+  "w": 18,
+  "s": "Each starts 2 spaces in, the same column as containers: ; the toleration's lines are indented as shown."
+ },
+ {
+  "q": 36,
+  "sec": "step text",
+  "w": 18,
+  "s": "Lines marked # ADD are new (do not type the # ADD text or the comments after it)."
+ },
+ {
+  "q": 39,
+  "sec": "step text",
+  "w": 18,
+  "s": "If local-path is not in your list, that is fine: only standard (and later fast ) matter here."
+ },
+ {
+  "q": 40,
+  "sec": "step text",
+  "w": 18,
+  "s": "Your PVC shows \"Bound\", everything looks fine, but the database has no data and you lose the points."
+ },
+ {
+  "q": 111,
+  "sec": "step text",
+  "w": 18,
+  "s": "Ingress host -> listener hostname; Ingress tls.secretName -> certificateRefs; Terminate = the Gateway decrypts HTTPS with that Secret."
+ },
+ {
+  "q": 116,
+  "sec": "step text",
+  "w": 18,
+  "s": "Empty class \"\" stops the default class grabbing it; volumeName: mariadb-pv guarantees it binds to exactly that PV."
+ },
+ {
+  "q": 202,
+  "sec": "traps",
+  "w": 18,
+  "s": "crictl logs is EMPTY when the binary never started — read describe pod (Message) or journalctl -u kubelet"
+ },
+ {
+  "q": 202,
+  "sec": "step text",
+  "w": 18,
+  "s": "Typo in the command. crictl logs shows NOTHING here: the program never started, so it printed no log."
+ },
+ {
+  "q": 312,
+  "sec": "step text",
+  "w": 18,
+  "s": "Normal extras: a line pod \"dnsq\" deleted, and \"*** Can't find ...: No answer\" (the empty IPv6 query)."
+ },
+ {
+  "q": 315,
+  "sec": "plain words",
+  "w": 18,
+  "s": "Make a storage type that keeps disks after delete, and a 2-pod database that gets one disk each."
+ },
+ {
+  "q": 1,
+  "sec": "traps",
+  "w": 17,
+  "s": "Using the deployment name (api) as the container name in set image — the container is nginx"
+ },
+ {
+  "q": 4,
+  "sec": "step text",
+  "w": 17,
+  "s": "inactive (dead) = the service is stopped. disabled = it will not start after a reboot either."
+ },
+ {
+  "q": 5,
+  "sec": "step text",
+  "w": 17,
+  "s": "It prints every file of the service, each with its path in a # line on top."
+ },
+ {
+  "q": 5,
+  "sec": "step text",
+  "w": 17,
+  "s": "Vim keys, exactly: type /local and press Enter (the cursor lands on the l of local )."
+ },
+ {
+  "q": 6,
+  "sec": "step text",
+  "w": 17,
+  "s": "It is the capital letter O, not a zero. -T 3 = give up after 3 seconds"
+ },
+ {
+  "q": 21,
+  "sec": "step text",
+  "w": 17,
+  "s": "In the exam, if the prompt does not end in # (not root), run sudo -i first."
+ },
+ {
+  "q": 26,
+  "sec": "step text",
+  "w": 17,
+  "s": "After block 2, only the - podSelector: item (with role: frontend ) is left under from: ."
+ },
+ {
+  "q": 28,
+  "sec": "step text",
+  "w": 17,
+  "s": "Easiest way: type :s/TLSv1.2 // and press Enter (removes TLSv1.2 and its space on this line only)."
+ },
+ {
+  "q": 29,
+  "sec": "traps",
+  "w": 17,
+  "s": "Putting the rewrite line outside the .:53 { } block or with broken indentation → CoreDNS CrashLoop"
+ },
+ {
+  "q": 31,
+  "sec": "words",
+  "w": 17,
+  "s": "Two containers in one pod do NOT see each other's files unless both mount the same volume."
+ },
+ {
+  "q": 33,
+  "sec": "step text",
+  "w": 17,
+  "s": "Press O (capital o: new line ABOVE) and type, starting in the same column as containers: :"
+ },
+ {
+  "q": 38,
+  "sec": "words",
+  "w": 17,
+  "s": "You build all three, from right to left: first the PV, then the PVC, then the pod."
+ },
+ {
+  "q": 112,
+  "sec": "traps",
+  "w": 17,
+  "s": "namespaceSelector and podSelector as SEPARATE '- from' items = OR (too open); in ONE item = AND"
+ },
+ {
+  "q": 202,
+  "sec": "step text",
+  "w": 17,
+  "s": "The error is in the pod status (describe) - or in journalctl -u kubelet | grep scheduler."
+ },
+ {
+  "q": 203,
+  "sec": "traps",
+  "w": 17,
+  "s": "If replicas are fine, check k -n kube-system get cm coredns (Corefile) and the kube-dns Service endpoints"
+ },
+ {
+  "q": 209,
+  "sec": "step text",
+  "w": 17,
+  "s": "Take the number on the last line (deployed). > writes the output into the file (overwrites it)."
+ },
+ {
+  "q": 211,
+  "sec": "plain words",
+  "w": 17,
+  "s": "Edit nginx settings stored in a ConfigMap to allow only TLS 1.3, lock the ConfigMap, restart nginx."
+ },
+ {
+  "q": 212,
+  "sec": "step text",
+  "w": 17,
+  "s": "If none is listed, the \"blocked\" test will not time out even though your YAML is right."
+ },
+ {
+  "q": 215,
+  "sec": "plain words",
+  "w": 17,
+  "s": "The storage request names a storage type that does not exist; recreate it with the right type."
+ },
+ {
+  "q": 306,
+  "sec": "plain words",
+  "w": 17,
+  "s": "Docker is absent on Killercoda, so the service may fail to stay active; the rest still practises."
+ },
+ {
+  "q": 309,
+  "sec": "step text",
+  "w": 17,
+  "s": "s_client asks the LIVE API server for its certificate; the second line reads the file on disk."
+ },
+ {
+  "q": 316,
+  "sec": "plain words",
+  "w": 17,
+  "s": "An old disk is \"locked\" to a deleted claim; unlock it, claim it again, start the database."
+ },
+ {
+  "q": 316,
+  "sec": "step text",
+  "w": 17,
+  "s": "--type=json patch: {\"op\":\"remove\",\"path\":\"/spec/claimRef\"} deletes the claimRef field (or: kubectl edit pv pg-data-pv and delete the claimRef block)."
+ },
+ {
+  "q": 1,
+  "sec": "step text",
+  "w": 16,
+  "s": "At the bottom, under Events: you see Failed to pull image \"nginx:doesnotexist\" ... not found ."
+ },
+ {
+  "q": 1,
+  "sec": "step text",
+  "w": 16,
+  "s": "The left side of = is the CONTAINER name from step 2, not the deployment name."
+ },
+ {
+  "q": 1,
+  "sec": "step text",
+  "w": 16,
+  "s": "rollout status waits until the new pod is ready, then prints successfully rolled out and returns."
+ },
+ {
+  "q": 3,
+  "sec": "words",
+  "w": 16,
+  "s": "CPU is written in millicores: 1000m = 1 CPU, 100m = one tenth of a CPU."
+ },
+ {
+  "q": 4,
+  "sec": "traps",
+  "w": 16,
+  "s": "systemctl start only — kubelet stays disabled, lost after reboot (check: systemctl is-enabled kubelet → enabled)"
+ },
+ {
+  "q": 4,
+  "sec": "step text",
+  "w": 16,
+  "s": "You want Active: active (running) (press q ), and is-enabled prints enabled (= survives a reboot)."
+ },
+ {
+  "q": 8,
+  "sec": "traps",
+  "w": 16,
+  "s": "Trying kubectl/k logs while the API is down — use crictl ps -a / crictl logs"
+ },
+ {
+  "q": 10,
+  "sec": "step text",
+  "w": 16,
+  "s": "backend pod: app=backend client pod: run=client (pods made with k run get the label run=<name> )"
+ },
+ {
+  "q": 11,
+  "sec": "words",
+  "w": 16,
+  "s": "CoreDNS = the program that turns a Service name (like backend-svc ) into an IP address."
+ },
+ {
+  "q": 11,
+  "sec": "words",
+  "w": 16,
+  "s": "It runs as a Deployment called coredns in namespace kube-system . kube-dns = the old name."
+ },
+ {
+  "q": 14,
+  "sec": "traps",
+  "w": 16,
+  "s": "Thinking -n matters on clusterrole/clusterrolebinding — it is ignored there; only the SA needs a namespace"
+ },
+ {
+  "q": 16,
+  "sec": "words",
+  "w": 16,
+  "s": "Chart (the package), repo (the URL it comes from) and values (its settings): see question 15."
+ },
+ {
+  "q": 21,
+  "sec": "traps",
+  "w": 16,
+  "s": "Running k drain/uncordon on node01 (no kubeconfig there) — exit back to the control plane first"
+ },
+ {
+  "q": 21,
+  "sec": "step text",
+  "w": 16,
+  "s": "When asked Are you sure you want to proceed? [y/N] , type y and press Enter."
+ },
+ {
+  "q": 21,
+  "sec": "step text",
+  "w": 16,
+  "s": "Why: the kubelet is what k get nodes reports as VERSION. kubectl is upgraded with it."
+ },
+ {
+  "q": 21,
+  "sec": "step text",
+  "w": 16,
+  "s": "A worker has no control plane, so it is kubeadm upgrade node , never apply ."
+ },
+ {
+  "q": 22,
+  "sec": "step text",
+  "w": 16,
+  "s": "Use etcdutl , not etcdctl : with etcd 3.6 (Kubernetes v1.35) etcdctl snapshot restore was removed."
+ },
+ {
+  "q": 23,
+  "sec": "words",
+  "w": 16,
+  "s": "containerPort = a line in the pod template that states which port the container listens on."
+ },
+ {
+  "q": 23,
+  "sec": "traps",
+  "w": 16,
+  "s": "Wrong indentation of ports: (must line up with imagePullPolicy:, not with the dash of - image:)"
+ },
+ {
+  "q": 24,
+  "sec": "step text",
+  "w": 16,
+  "s": "The pod IP in brackets (your number differs) proves the Service name and port are right."
+ },
+ {
+  "q": 25,
+  "sec": "step text",
+  "w": 16,
+  "s": "Press i , then paste the HTTPRoute example (same :set paste tip as in step 3)."
+ },
+ {
+  "q": 25,
+  "sec": "step text",
+  "w": 16,
+  "s": "In Killercoda this is all you can check: both objects exist and carry the five values."
+ },
+ {
+  "q": 26,
+  "sec": "words",
+  "w": 16,
+  "s": "Copy - from: - from: - namespaceSelector: ... - namespaceSelector: ... podSelector: ... - podSelector: ..."
+ },
+ {
+  "q": 27,
+  "sec": "plain words",
+  "w": 16,
+  "s": "One policy: select every pod, list both directions, allow nothing in, allow only port 53 out."
+ },
+ {
+  "q": 27,
+  "sec": "words",
+  "w": 16,
+  "s": "Default deny = a policy that selects all pods ( podSelector: {} ) and allows nothing."
+ },
+ {
+  "q": 31,
+  "sec": "traps",
+  "w": 16,
+  "s": "Mounting the volume only in the sidecar — the main app writes to its own /var/log"
+ },
+ {
+  "q": 32,
+  "sec": "plain words",
+  "w": 16,
+  "s": "One small edit adds the 3-line \"behavior\" block, because the command has no flag for it."
+ },
+ {
+  "q": 39,
+  "sec": "step text",
+  "w": 16,
+  "s": "Delete 6 lines (the question did not ask for them; dd deletes a line in vim):"
+ },
+ {
+  "q": 107,
+  "sec": "step text",
+  "w": 16,
+  "s": "dpkg, systemctl and /etc need root: the real exam requires sudo -i (Killercoda is already root)."
+ },
+ {
+  "q": 108,
+  "sec": "plain words",
+  "w": 16,
+  "s": "Show installed custom resource types in a file, and save the help text for one field."
+ },
+ {
+  "q": 110,
+  "sec": "plain words",
+  "w": 16,
+  "s": "Name the container port and open it to the outside on port 30080 of every node."
+ },
+ {
+  "q": 111,
+  "sec": "plain words",
+  "w": 16,
+  "s": "Rebuild the HTTPS Ingress as a Gateway (door + certificate) and an HTTPRoute (path to service)."
+ },
+ {
+  "q": 113,
+  "sec": "plain words",
+  "w": 16,
+  "s": "Make a new priority level just under the top one and give it to a deployment."
+ },
+ {
+  "q": 115,
+  "sec": "step text",
+  "w": 16,
+  "s": "Repeat this command for each other class step 1 showed as (default), changing only the name."
+ },
+ {
+  "q": 116,
+  "sec": "plain words",
+  "w": 16,
+  "s": "Make a storage claim that grabs the old disk, then plug it into the database deployment."
+ },
+ {
+  "q": 201,
+  "sec": "step text",
+  "w": 16,
+  "s": "If it still says Ready, wait 30 s and run it again (~50 s grace period)."
+ },
+ {
+  "q": 208,
+  "sec": "plain words",
+  "w": 16,
+  "s": "Make a \"prod\" version of some YAML with a different namespace, name prefix and replica count."
+ },
+ {
+  "q": 212,
+  "sec": "plain words",
+  "w": 16,
+  "s": "Let only the api pods from the api namespace talk to the database on port 80."
+ },
+ {
+  "q": 212,
+  "sec": "step text",
+  "w": 16,
+  "s": "EOF (a \"heredoc\") writes every line up to EOF into /root/np.yaml, same as pasting into vim."
+ },
+ {
+  "q": 212,
+  "sec": "step text",
+  "w": 16,
+  "s": "db.db = Service db in namespace db (short DNS name service.namespace). role=api in ns api passes."
+ },
+ {
+  "q": 213,
+  "sec": "step text",
+  "w": 16,
+  "s": "Sidecar sees the app log file. (Mounting at /var/log hides busybox's own empty /var/log - harmless.)"
+ },
+ {
+  "q": 215,
+  "sec": "step text",
+  "w": 16,
+  "s": "EOF (a \"heredoc\") writes every line up to EOF into /root/logs-pvc.yaml, same as pasting into vim."
+ },
+ {
+  "q": 306,
+  "sec": "plain words",
+  "w": 16,
+  "s": "Install a runtime package, make it start at boot, and set 4 kernel network switches permanently."
+ },
+ {
+  "q": 306,
+  "sec": "step text",
+  "w": 16,
+  "s": "EOF (a \"heredoc\") writes every line up to EOF into /etc/sysctl.d/99-cri.conf, same as pasting into vim."
+ },
+ {
+  "q": 307,
+  "sec": "plain words",
+  "w": 16,
+  "s": "Print Argo CD YAML with Helm using two settings, save it, and apply it with kubectl."
+ },
+ {
+  "q": 308,
+  "sec": "step text",
+  "w": 16,
+  "s": "EOF (a \"heredoc\") writes every line up to EOF into /root/ci.yaml, same as pasting into vim."
+ },
+ {
+  "q": 310,
+  "sec": "step text",
+  "w": 16,
+  "s": "EOF (a \"heredoc\") writes every line up to EOF into /root/route.yaml, same as pasting into vim."
+ },
+ {
+  "q": 312,
+  "sec": "step text",
+  "w": 16,
+  "s": "--rm -i prints the output, then deletes the pod; > saves the output into the file."
+ },
+ {
+  "q": 313,
+  "sec": "step text",
+  "w": 16,
+  "s": "EOF (a \"heredoc\") writes every line up to EOF into /root/hpa.yaml, same as pasting into vim."
+ },
+ {
+  "q": 314,
+  "sec": "step text",
+  "w": 16,
+  "s": "--sort-by sorts ascending; custom-columns prints only name and value; grep -v system- hides the system-* classes."
+ },
+ {
+  "q": 314,
+  "sec": "step text",
+  "w": 16,
+  "s": "EOF (a \"heredoc\") writes every line up to EOF into /root/pc.yaml, same as pasting into vim."
+ },
+ {
+  "q": 315,
+  "sec": "step text",
+  "w": 16,
+  "s": "EOF (a \"heredoc\") writes every line up to EOF into /root/sc.yaml, same as pasting into vim."
+ },
+ {
+  "q": 316,
+  "sec": "step text",
+  "w": 16,
+  "s": "EOF (a \"heredoc\") writes every line up to EOF into /root/pvc.yaml, same as pasting into vim."
+ }
+]

@@ -1,0 +1,172 @@
+{
+ "21": [
+  "Only ONE command differs: kubeadm upgrade apply v1.35.2 on the control plane, kubeadm upgrade node on the worker.",
+  "Three programs are upgraded on each machine: kubeadm (the tool), kubelet (the node agent), kubectl (the command line).",
+  "drain / uncordon = drain moves the pods off a node and closes it for new pods.",
+  "A new MINOR version (1.34 → 1.35) also needs a one-word change in the apt source file; a new patch (1.35.0 → 1.35.2) does not.",
+  "Memorise only the order: Copy drain → apt-get update → new kubeadm → kubeadm upgrade → new kubelet + kubectl → restart kubelet → uncordon",
+  "Change `v1.34` to `v1.35` there, then `apt-get update`, because each minor version has its own package repository",
+  "`exit` to the control plane, then `k uncordon node01`, because node01 has no kubeconfig for kubectl",
+  "In the exam, if the prompt does not end in # (not root), run sudo -i first.",
+  "Why: the pods move to other nodes and no new pods arrive while the node's programs are replaced.",
+  "For a minor upgrade (for example the line says v1.34 ), change it first: vim /etc/apt/sources.list.d/kubernetes.list , type :s/v1.34/v1.35/ and Enter, then :wq , then apt-get update again.",
+  "Why: this replaces the API server, controller manager, scheduler and etcd (the static pods) with the new version.",
+  "Why: the new kubelet program is on disk, but the old one keeps running until it is restarted.",
+  "(In the exam, sudo -i again if you are not root.) The package source must show v1.35 here too; change it exactly as in step 2 if not.",
+  "A worker has no control plane, so it is kubeadm upgrade node , never apply ."
+ ],
+ "22": [
+  "Restore = unpack a snapshot into a NEW folder, then tell etcd to use that folder.",
+  "Change only the etcd-data `hostPath` `path:` to `/var/lib/etcd-restored`, because the container still finds data at the same place",
+  "Wait about 60 s, because etcd and the API server restart from their manifests and are briefly down",
+  "If etcdutl is missing in a playground, see \"If something goes wrong\" below (you need it only in step 4).",
+  "Use etcdutl , not etcdctl : with etcd 3.6 (Kubernetes v1.35) etcdctl snapshot restore was removed.",
+  "By changing only the hostPath , etcd keeps reading the same place, but that place now shows the restored folder."
+ ],
+ "23": [
+  "Create a Service, then set its node port to a fixed number (Kubernetes picks a random one otherwise).",
+  "containerPort = a line in the pod template that states which port the container listens on.",
+  "`k edit svc np-svc -n web` and set `nodePort: 30080`, because `k expose` cannot choose the node port",
+  "ports: must start in the same column as the word imagePullPolicy: (8 spaces), NOT at the - of - image: :"
+ ],
+ "24": [
+  "Ingress = a rule for web traffic coming into the cluster: \"host X, path Y → Service Z, port N\".",
+  "IngressClass = an object that points to the controller (the program) that carries out Ingress rules, for example the class nginx points to ingress-nginx.",
+  "`--class=nginx` (name from `k get ingressclass`), because without a class no controller picks up the Ingress",
+  "The pod IP in brackets (your number differs) proves the Service name and port are right."
+ ],
+ "25": [
+  "An Ingress → Gateway migration means: read the values out of the Ingress, write them into these two objects.",
+  "Add `tls: mode: Terminate` with `certificateRefs: - name: ` to the listener, because HTTPS needs the Ingress's certificate",
+  "`parentRefs: - name: web-gw`, because the route attaches only to the Gateway with that exact name",
+  "Copy the example under the heading \"Gateway\" , and the example under the heading \"HTTPRoute\" .",
+  "(If the pasted lines drift further and further to the right, press Esc , type :set paste , press Enter, delete everything with ggdG , press i and paste again.)",
+  "Press i , then paste the HTTPRoute example (same :set paste tip as in step 3).",
+  "In Killercoda this is all you can check: both objects exist and carry the five values.",
+  "The parentRefs line only shows what you typed; it does not prove the route is attached, and here nothing can ever be attached (no controller).",
+  "There, also run k describe httproute web-route -n web and look under Status → Parents : you want Accepted with Status True ."
+ ],
+ "26": [
+  "Fill in three blanks: Blank Value WHO is protected app=db WHO may come in app=api WHICH port TCP 80",
+  "Delete the ipBlock lines, because they let in traffic from IP ranges, not only from app=api pods",
+  "Keep only `- podSelector: matchLabels: app: api` under `from:`, because a namespaceSelector item lets in pods from other namespaces",
+  "`policyTypes: - Ingress` only, because Egress with no rules blocks all outgoing traffic of the db pods",
+  "Press i , paste (if lines drift to the right: Esc , :set paste , Enter, ggdG , i , paste again).",
+  "In vim: put the cursor on the first line of the block, type the number of lines and dd (for example 7dd deletes 7 lines).",
+  "After block 2, only the - podSelector: item (with role: frontend ) is left under from: ."
+ ],
+ "27": [
+  "One policy: select every pod, list both directions, allow nothing in, allow only port 53 out.",
+  "Default deny = a policy that selects all pods ( podSelector: {} ) and allows nothing.",
+  "If you block egress and do not allow port 53, pods can no longer look up any Service name.",
+  "Leave out `ingress:` and keep `policyTypes: [Ingress, Egress]`, because `- {}` is a rule that allows all incoming traffic",
+  "Allow `protocol: UDP` and `protocol: TCP` on `port: 53`, because DNS also uses TCP, for example for large answers",
+  "Scroll to the heading \"Default policies\" → \"Default deny all ingress and all egress traffic\" .",
+  "Change the name, add namespace: prod (cursor on name: , press o , type it), then put the cursor on - Egress , press o and type the 6-line egress: block.",
+  "If wget still prints the page after the policy, the playground's network plug-in does not enforce NetworkPolicy; the describe output is then your check."
+ ],
+ "28": [
+  "If the ConfigMap is mounted as a folder, the file inside the pod updates by itself after up to a minute, but nginx does not reload it.",
+  "curl --tls-max 1.2 forces the older one, so it must fail once only 1.3 is allowed.",
+  "`k rollout restart deploy nginx-static -n nginx-static`, because running pods keep the old config until they restart",
+  "`k replace --force -f /root/cm-backup.yaml`, because apply fails on the old resourceVersion saved in the backup",
+  "Easiest way: type :s/TLSv1.2 // and press Enter (removes TLSv1.2 and its space on this line only).",
+  "In Killercoda use the Service IP; in the exam the question gives the address and often this exact test."
+ ],
+ "29": [
+  "rewrite name A B = a plug-in line: \"when someone asks for name A, answer as if they asked for name B\".",
+  "`k get cm coredns -n kube-system -o yaml > /root/coredns-backup.yaml` first, because a broken edit can stop all DNS",
+  "Put the cursor on the line ready , press o (new line below), and type, with the same indentation as ready :"
+ ],
+ "30": [
+  "Run the pod in default (no `-n`), because the task asks for the lookup from namespace default",
+  "A line like *** Can't find backend-svc.web.svc.cluster.local: No answer is normal: busybox also asks for an IPv6 address, and there is none."
+ ],
+ "31": [
+  "Sidecar = a second container in the same pod that helps the main one (for example: reads its log file).",
+  "Two containers in one pod do NOT see each other's files unless both mount the same volume.",
+  "Mount `logs` at `/var/log` in both containers, because the app must write its log into the shared volume",
+  "Put `volumes: - name: logs emptyDir: {}` at pod spec level, next to `containers:`, because volumes belong to the pod",
+  "Add `restartPolicy: Always` to log-shipper, because without it the endless tail blocks the app from ever starting",
+  "A long edit is safer in a file: if the YAML is wrong, you still have the file.",
+  "Use the SECOND one, directly above containers: (it belongs to template: ), not the top spec: under kind: Deployment .",
+  "Before typing or pasting in vim, type :set paste and Enter, so vim adds no indentation of its own.",
+  "Pieces 1 and 3: put the cursor on that second spec: line, press o , type the 11 lines.",
+  "Piece 2: put the cursor on resources: {} of the main container, press o , type the 3 lines."
+ ],
+ "32": [
+  "One small edit adds the 3-line \"behavior\" block, because the command has no flag for it.",
+  "HPA (HorizontalPodAutoscaler) = an object that changes the number of replicas of a Deployment automatically, based on CPU use.",
+  "Stabilization window = how long the HPA waits before it removes pods, so the count does not jump up and down.",
+  "If the flag is refused, run k autoscale --help and use the newer spelling shown there ( --cpu=70% ).",
+  "If you forget the spelling: docs search horizontal pod autoscaling → page \"Horizontal Pod Autoscaling\" → heading \"Stabilization window\" ."
+ ],
+ "33": [
+  "Look at the existing numbers, ignore the two system- ones, subtract 1, create the class, add one line to the Deployment.",
+  "When the cluster is full, higher numbers are scheduled first, and lower ones can be evicted to make room.",
+  "`k create pc high-priority --value= ` only, because globalDefault would affect every new pod (not asked)",
+  "Press O (capital o: new line ABOVE) and type, starting in the same column as containers: :",
+  "Old pods that are still Terminating show CLASS <none> : ignore them, or run the command again after a few seconds."
+ ],
+ "34": [
+  "A calculation, then one command: Copy (allocatable − already requested) × 0.9 ÷ 3 = request per pod",
+  "The scheduler only places a pod on a node if allocatable − already requested ≥ the pod's request .",
+  "`k scale deploy web --replicas=0 -n shop` first, because web's old requests would count as used",
+  "`k set resources deploy web -n shop --requests=cpu= m,memory= Mi`, because the task asks for requests"
+ ],
+ "35": [
+  "Two one-line commands, then a pod YAML to which you add two blocks: envFrom (for the ConfigMap) and volumes + volumeMounts (for the Secret).",
+  "As files (a volume) = every key becomes a file in a folder inside the container; the file's content is the value.",
+  "Needs two blocks: volumes: at POD level and volumeMounts: at CONTAINER level, linked by the same name: .",
+  "Add `-n app` to the cm, secret and pod, because a pod can only use ConfigMaps and Secrets from its own namespace",
+  "In pod.yaml (type :set paste and Enter first, so vim adds no indentation of its own): .",
+  "Container level: put the cursor on resources: {} , press o , type the 6 lines envFrom: to mountPath: /etc/db .",
+  "Pod level: stay on the last line you typed, press Esc , o , type the 4 lines volumes: to secretName: db-sec .",
+  "volumes → \"this pod has storage called db , and its content is Secret db-sec \" ."
+ ],
+ "36": [
+  "With effect NoSchedule , the scheduler puts no new pod on that node, unless the pod tolerates the taint.",
+  "nodeSelector = lines in a pod that say \"only put me on a node with this label\".",
+  "To get a pod onto a tainted node for sure, you need both: toleration (allowed) + nodeSelector (sent).",
+  "Also add `nodeSelector: env: prod`, because a toleration only allows node01; it does not force the pod there",
+  "In x.yaml it goes at POD level: under spec: , starting in the same column as containers: (step 4 shows exactly where):",
+  "In x.yaml : type :set paste and Enter, put the cursor on the line spec: (directly above containers: ), press o , and type the 7 lines.",
+  "Each starts 2 spaces in, the same column as containers: ; the toleration's lines are indented as shown.",
+  "Lines marked # ADD are new (do not type the # ADD text or the comments after it)."
+ ],
+ "37": [
+  "Rolling update = when you change a Deployment's image, it replaces the pods a few at a time, so the app stays available.",
+  "`k set image deploy/web nginx=nginx:1.28 -n shop`, because left of `=` is the container name; check it with `-o wide`",
+  "Read the image with `k get deploy web -n shop -o jsonpath=...` after `k rollout undo`, because rollback restored the old image",
+  "If you cannot remember the jsonpath, this is just as good: read the image with k get deploy web -n shop -o wide , then echo nginx:1.27 > /root/image.txt ."
+ ],
+ "38": [
+  "Right now the chain shows nothing built yet, for example: Copy Pod ✗ → PVC ✗ → PV ✗ Make a disk.",
+  "They are all in the question: Value PV (the disk) PVC (the request) Rule storageClassName manual manual must be the same accessModes ReadWriteOnce ReadWriteOnce must be the same size 1Gi 500Mi the disk must be big enough.",
+  "You build all three, from right to left: first the PV, then the PVC, then the pod.",
+  "Leave namespace out of the PV, because PersistentVolumes are cluster-wide; only the PVC and pod get `namespace: storage`",
+  "Add `storageClassName: manual` to the PVC, because otherwise the default class makes a new disk and pv-data stays Available",
+  "Wait until `k get pvc -n storage` shows Bound, because an unbound claim keeps the pod Pending",
+  "(If the pasted lines drift further and further to the right: Esc , type :set paste and Enter, ggdG to clear, i , paste again.",
+  "volumes: = \"this pod has a disk, and it comes from the PVC called pvc-data \" ."
+ ],
+ "39": [
+  "take the \"default\" mark OFF the old one The \"default\" mark is an annotation (a note on the object) with this exact text:.",
+  "When a PVC asks for a disk and no PV exists, Kubernetes uses the template to CREATE a new PV automatically.",
+  "The default class is the thing that silently creates a new empty disk when a PVC forgets the storageClassName line.",
+  "One more setting you will be asked for: volumeBindingMode Meaning Immediate create the disk the moment the PVC appears WaitForFirstConsumer wait until a pod actually uses the PVC, then create the disk",
+  "If local-path is not in your list, that is fine: only standard (and later fast ) matter here.",
+  "Near the top, under the heading \"StorageClass objects\" , find the sentence \"Here's an example of a StorageClass:\" .",
+  "Delete 6 lines (the question did not ask for them; dd deletes a line in vim):",
+  "Extra settings copied from an example can make the grader mark it wrong, and parameters meant for another provisioner can break disk creation.",
+  "If you prefer no long command: k edit sc standard , find the line storageclass.kubernetes.io/is-default-class: \"true\" , change \"true\" to \"false\" , save with :wq .",
+  "Check three columns on the fast row: the name has (default) , PROVISIONER is what the question gave, VOLUMEBINDINGMODE is WaitForFirstConsumer ."
+ ],
+ "40": [
+  "Only the last part is left: Copy Pod ✗ → PVC ✗ → PV ✓ You rebuild the two missing parts, so the new database uses the OLD disk and gets its old data back.",
+  "Copy the class from `k get pv` (`storageClassName: \"\"` if empty), because a mismatch leaves the PVC Pending",
+  "`k patch pv -p '{\"spec\":{\"claimRef\":null}}'`, because the old claimRef blocks binding; this makes the PV Available",
+  "Add `namespace: mariadb` to the PVC, because the deployment can only use a claim in its own namespace",
+  "Your PVC shows \"Bound\", everything looks fine, but the database has no data and you lose the points."
+ ]
+}

@@ -4,21 +4,30 @@
   "clues": [
    {
     "q": "is not Running",
-    "means": "Look at STATUS, then read Events with describe"
+    "means": "Look at STATUS. Then read Events with describe."
    },
    {
     "q": "Do not delete the deployment",
-    "means": "Fix it in place: k set image / k edit deploy"
+    "means": "Change it in place: k set image."
    },
    {
     "q": "so the pod reaches Running",
-    "means": "Done only when the NEW pod shows 1/1 Running"
+    "means": "Done when the NEW pod shows 1/1 Running."
    }
   ],
   "traps": [
-   "Using the deployment name (api) as the container name in set image — the container is nginx",
-   "Forgetting -n app → 'No resources found'",
-   "Fixing the pod instead of the deployment — the deployment recreates the broken pod"
+   {
+    "dont": "`k set image deploy/api api=nginx:1.27 -n app`",
+    "do": "`k set image deploy/api nginx=nginx:1.27 -n app`. Left of = is the container (nginx)."
+   },
+   {
+    "dont": "`k get pods` without `-n app`",
+    "do": "`k get pods -n app`. Without -n you see \"No resources found\"."
+   },
+   {
+    "dont": "Delete or edit the broken pod",
+    "do": "Fix the deployment. It recreates the pod anyway."
+   }
   ],
   "verify": [
    {
@@ -57,9 +66,18 @@
    }
   ],
   "traps": [
-   "Reading k logs without --previous (the new container may have no output yet)",
-   "Editing the pod instead of the deployment",
-   "Breaking YAML indentation in the command list"
+   {
+    "dont": "`k logs <pod> -n app` without `--previous`",
+    "do": "`k logs <pod> -n app --previous`, because it shows the crashed container's output, not the fresh, still empty one"
+   },
+   {
+    "dont": "`k edit pod <pod> -n app`",
+    "do": "`k edit deploy api -n app`, because the deployment owns the pod and replaces any pod you edit"
+   },
+   {
+    "dont": "Misaligning the items of the `command:` list in vim",
+    "do": "Indent every `command:` item evenly (`- sleep`, `- \"3600\"`), because broken indentation makes kubectl reject the edit"
+   }
   ],
   "verify": [
    {
@@ -95,9 +113,18 @@
    }
   ],
   "traps": [
-   "Setting --limits instead of --requests",
-   "Editing the pod instead of deployment api",
-   "Running the closing check too early — wait until the Pending pod is gone (the deployment replaces it), then the new pod shows 1/1 Running"
+   {
+    "dont": "`k set resources deploy api -n app --limits=cpu=100m`",
+    "do": "`k set resources deploy api -n app --requests=cpu=100m`, because the scheduler places pods by their requests, not their limits"
+   },
+   {
+    "dont": "`k edit pod <pod> -n app`",
+    "do": "`k set resources deploy api -n app ...`, because the deployment owns the pod and recreates it from its template"
+   },
+   {
+    "dont": "Checking `k get pods -n app` once, right after the fix",
+    "do": "Rerun `k get pods -n app` until the Pending pod is gone and the new pod shows 1/1 Running"
+   }
   ],
   "verify": [
    {
@@ -136,9 +163,18 @@
    }
   ],
   "traps": [
-   "systemctl start only — kubelet stays disabled, lost after reboot (check: systemctl is-enabled kubelet → enabled)",
-   "Running systemctl on the control plane instead of node01 — the prompt must say node01 before you type",
-   "Forgetting to exit back before k get nodes"
+   {
+    "dont": "`systemctl start kubelet` only",
+    "do": "`systemctl enable --now kubelet`, because enable makes it start after a reboot; check with `systemctl is-enabled kubelet`"
+   },
+   {
+    "dont": "Running `systemctl` on the control plane",
+    "do": "`ssh node01` first and check the prompt says node01, because the broken kubelet is on node01"
+   },
+   {
+    "dont": "Running `k get nodes` while still inside node01",
+    "do": "`exit` first, then `k get nodes`, because kubectl is set up only on the control plane"
+   }
   ],
   "verify": [
    {
@@ -174,9 +210,18 @@
    }
   ],
   "traps": [
-   "Forgetting systemctl daemon-reload after editing the service file",
-   "Editing the wrong block — systemctl cat kubelet shows two ExecStart blocks; edit the one whose path contains local (the drop-in 10-kubeadm.conf)",
-   "Only starting kubelet without fixing the bad /usr/local/bin path"
+   {
+    "dont": "Editing the service file, then only `systemctl restart kubelet`",
+    "do": "`systemctl daemon-reload; systemctl restart kubelet`, because systemd rereads changed service files only after daemon-reload"
+   },
+   {
+    "dont": "Editing the first `ExecStart` block shown by `systemctl cat kubelet`",
+    "do": "Edit `/usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf`, because that drop-in file holds the bad `/usr/local/bin/kubelet` path"
+   },
+   {
+    "dont": "`systemctl restart kubelet` without fixing the path",
+    "do": "Change `/usr/local/bin/kubelet` to `/usr/bin/kubelet` (see `which kubelet`), because the service points to a file that does not exist"
+   }
   ],
   "verify": [
    {
@@ -216,9 +261,18 @@
    }
   ],
   "traps": [
-   "Relabelling the pods instead of fixing the service selector",
-   "Copying the pod-template-hash label into the selector — the hash changes on every rollout, so the Service loses its pods again",
-   "Testing with curl — busybox client has wget"
+   {
+    "dont": "`k label pod <pod> -n web ...` to match the service",
+    "do": "`k set selector svc backend-svc app=backend -n web`, because the service selector is wrong, not the pods"
+   },
+   {
+    "dont": "Adding `pod-template-hash=...` to the service selector",
+    "do": "Use only `app=backend` as selector, because pod-template-hash changes on every rollout and the service would lose its pods"
+   },
+   {
+    "dont": "`k exec client -n web -- curl backend-svc`",
+    "do": "`k exec client -n web -- wget -qO- -T 3 backend-svc`, because the busybox client has wget but no curl"
+   }
   ],
   "verify": [
    {
@@ -254,9 +308,18 @@
    }
   ],
   "traps": [
-   "Changing port instead of targetPort",
-   "Deleting and re-exposing the service (forbidden)",
-   "Thinking endpoints present means everything is fine — check the port after the IP"
+   {
+    "dont": "Changing `port:` in `k edit svc backend-svc -n web`",
+    "do": "Change `targetPort:` to 80, because targetPort is the pod's port (nginx listens on 80); port is the service's own port"
+   },
+   {
+    "dont": "`k delete svc backend-svc -n web`, then `k expose` again",
+    "do": "`k edit svc backend-svc -n web`, because the task forbids recreating the service"
+   },
+   {
+    "dont": "Seeing endpoints listed and assuming the service works",
+    "do": "Read the port after the IP in `k get endpoints backend-svc -n web`, because a wrong targetPort still lists endpoints"
+   }
   ],
   "verify": [
    {
@@ -291,9 +354,18 @@
    }
   ],
   "traps": [
-   "Trying kubectl/k logs while the API is down — use crictl ps -a / crictl logs",
-   "Restarting kubelet or moving the file — just save and wait up to 60 s",
-   "Changing etcd-servers to 2380 — etcd clients use 2379"
+   {
+    "dont": "`k logs` or `k get pods` while the API server is down",
+    "do": "`crictl ps -a | grep kube-apiserver`, then `crictl logs <id>`, because kubectl needs a working API server to answer"
+   },
+   {
+    "dont": "Restarting kubelet or moving the manifest after editing",
+    "do": "Save `kube-apiserver.yaml` and wait up to 60 s, because kubelet watches the manifests folder and restarts the pod itself"
+   },
+   {
+    "dont": "`--etcd-servers=https://127.0.0.1:2380`",
+    "do": "`--etcd-servers=https://127.0.0.1:2379`, because 2379 is etcd's client port; 2380 is only for etcd members talking together"
+   }
   ],
   "verify": [
    {
@@ -328,9 +400,18 @@
    }
   ],
   "traps": [
-   "Deleting/recreating test — the pod is fine, the scheduler is not",
-   "Editing the scheduler pod with kubectl edit — edit the static manifest file",
-   "Restarting kubelet instead of just saving and waiting"
+   {
+    "dont": "`k delete pod test` and creating it again",
+    "do": "Fix the scheduler, because `k describe pod test` shows `Node: <none>`: nothing is placing pods, the pod itself is fine"
+   },
+   {
+    "dont": "`k edit pod kube-scheduler-controlplane -n kube-system`",
+    "do": "`vim /etc/kubernetes/manifests/kube-scheduler.yaml` (`kube-schedulerx` to `kube-scheduler`), because it is a static pod built from that file"
+   },
+   {
+    "dont": "`systemctl restart kubelet` after saving the manifest",
+    "do": "Just save the file and wait, because kubelet notices the change and restarts the scheduler by itself"
+   }
   ],
   "verify": [
    {
@@ -370,10 +451,22 @@
    }
   ],
   "traps": [
-   "Using namespaceSelector instead of podSelector → lets every pod in",
-   "Selecting the client in spec.podSelector — spec.podSelector picks the backend pods (app=backend)",
-   "Leaving egress in policyTypes from the docs example",
-   "Pasting into vim without :set paste (indentation staircases) or running dd while still in insert mode — press Esc first"
+   {
+    "dont": "`from: - namespaceSelector: {}`",
+    "do": "`from: - podSelector: matchLabels: run: client`, because a namespaceSelector lets in every pod of those namespaces"
+   },
+   {
+    "dont": "`spec.podSelector: matchLabels: run: client`",
+    "do": "`spec.podSelector: matchLabels: app: backend`, because spec.podSelector picks the protected pods; the client goes under `from:`"
+   },
+   {
+    "dont": "Keeping `- Egress` in policyTypes from the docs example",
+    "do": "`policyTypes: - Ingress` only, because Egress with no egress rules blocks all outgoing traffic of the backend pods"
+   },
+   {
+    "dont": "Pasting into vim without `:set paste`, or `dd` in insert mode",
+    "do": "Type `:set paste` before pasting and press Esc before `dd`, because otherwise indentation breaks or `dd` becomes text"
+   }
   ],
   "verify": [
    {
@@ -413,10 +506,22 @@
    }
   ],
   "traps": [
-   "Looking for pods named dns in default namespace — CoreDNS lives in kube-system",
-   "Restarting pods when the deployment is scaled to 0",
-   "Forgetting --rm on the test pod, leaving pod t behind",
-   "Testing with the short name kubernetes.default in busybox — it can print NXDOMAIN even when DNS works; use the full name"
+   {
+    "dont": "`k get pods | grep dns` in the default namespace",
+    "do": "`k get pods -n kube-system -l k8s-app=kube-dns`, because CoreDNS runs in the kube-system namespace"
+   },
+   {
+    "dont": "`k delete pod` on CoreDNS pods that do not exist",
+    "do": "`k scale deploy coredns -n kube-system --replicas=2`, because `k get deploy coredns` shows 0/0: it was scaled to zero"
+   },
+   {
+    "dont": "`k run t --image=busybox:1.36 -it ...` without `--rm`",
+    "do": "Add `--rm` to `k run t ...`, because it deletes the test pod t when the command ends"
+   },
+   {
+    "dont": "`nslookup kubernetes.default` in busybox",
+    "do": "`nslookup kubernetes.default.svc.cluster.local`, because busybox can print NXDOMAIN for the short name even when DNS works"
+   }
   ],
   "verify": [
    {
@@ -455,10 +560,22 @@
    }
   ],
   "traps": [
-   "Forgetting -A, so only default namespace is compared",
-   "Writing the whole top table into /opt/top.txt instead of just the name",
-   "Missing -n app on k logs → pod not found",
-   "Ignoring 'Defaulted container' — when the question names a container, always add -c <container>"
+   {
+    "dont": "`k top pods --sort-by=cpu`",
+    "do": "`k top pods -A --sort-by=cpu`, because `-A` compares pods in all namespaces, not only default"
+   },
+   {
+    "dont": "`k top pods -A --sort-by=cpu > /opt/top.txt`",
+    "do": "`echo <first-row-pod-name> > /opt/top.txt`, because the file must hold only the pod name"
+   },
+   {
+    "dont": "`k logs api > /opt/api.log`",
+    "do": "`k logs api -n app > /opt/api.log`, because pod api lives in namespace app, not default"
+   },
+   {
+    "dont": "Ignoring the 'Defaulted container' message from `k logs`",
+    "do": "Add `-c <container>` when the question names a container, because otherwise kubectl picks the first container for you"
+   }
   ],
   "verify": [
    {
@@ -497,10 +614,22 @@
    }
   ],
   "traps": [
-   "Writing --serviceaccount=deploy-bot without dev: — kubectl refuses it (serviceaccount must be <namespace>:<name>)",
-   "A typo in the SA or Role NAME inside the binding — no error at all, but can-i says no; check with k describe rolebinding",
-   "Spaces in --verb list",
-   "Forgetting -n dev on the role or binding"
+   {
+    "dont": "`--serviceaccount=deploy-bot`",
+    "do": "`--serviceaccount=dev:deploy-bot`, because kubectl needs the format <namespace>:<name> and refuses the short one"
+   },
+   {
+    "dont": "A typo like `--role=deploy-manger` in the rolebinding",
+    "do": "Check names with `k describe rolebinding deploy-bot-binding -n dev`, because a typo gives no error; only can-i says no"
+   },
+   {
+    "dont": "`--verb=get, list, create`",
+    "do": "`--verb=get,list,create`, because spaces split the list and kubectl rejects the command"
+   },
+   {
+    "dont": "`k create role deploy-manager ...` without `-n dev`",
+    "do": "Add `-n dev` to the role and rolebinding, because otherwise they land in default and do nothing in dev"
+   }
   ],
   "verify": [
    {
@@ -539,9 +668,18 @@
    }
   ],
   "traps": [
-   "Using a RoleBinding — nodes are not namespaced, so it won't grant access",
-   "Thinking -n matters on clusterrole/clusterrolebinding — it is ignored there; only the SA needs a namespace",
-   "Wrong --serviceaccount format (must be ops:node-viewer)"
+   {
+    "dont": "`k create rolebinding ... --clusterrole=node-reader`",
+    "do": "`k create clusterrolebinding node-viewer-binding --clusterrole=node-reader --serviceaccount=ops:node-viewer`, because nodes are cluster-wide, so a RoleBinding grants nothing"
+   },
+   {
+    "dont": "Worrying about `-n ops` on clusterrole and clusterrolebinding",
+    "do": "Use `-n ops` only in `k create sa node-viewer -n ops`, because cluster objects have no namespace; kubectl ignores `-n` there"
+   },
+   {
+    "dont": "`--serviceaccount=node-viewer`",
+    "do": "`--serviceaccount=ops:node-viewer`, because kubectl needs the format <namespace>:<name>"
+   }
   ],
   "verify": [
    {
@@ -580,10 +718,22 @@
    }
   ],
   "traps": [
-   "Running helm install instead of helm template",
-   "Using --skip-crds (only affects crds/ folder) instead of crds.install=false for this chart",
-   "Forgetting --version 7.7.3 or --namespace argocd",
-   "Mixing up release name, repo name and namespace — release = my-argo (any name), repo = argocd, namespace = argocd"
+   {
+    "dont": "`helm install my-argo argocd/argo-cd ...`",
+    "do": "`helm template my-argo argocd/argo-cd ... > /root/argo-helm.yaml`, because the task wants the YAML only, not an install"
+   },
+   {
+    "dont": "`helm template ... --skip-crds`",
+    "do": "`--set crds.install=false`, because this chart makes CRDs from templates; `--skip-crds` only skips the chart's crds/ folder"
+   },
+   {
+    "dont": "`helm template my-argo argocd/argo-cd` without version or namespace",
+    "do": "Add `--version 7.7.3 --namespace argocd`, because without them you get the latest chart for the default namespace"
+   },
+   {
+    "dont": "Mixing up release, repo and namespace, e.g. `--namespace my-argo`",
+    "do": "`helm template my-argo argocd/argo-cd --namespace argocd`: my-argo is the release (any name), `argocd/` the repo, argocd the namespace"
+   }
   ],
   "verify": [
    {
@@ -622,10 +772,22 @@
    }
   ],
   "traps": [
-   "grep replicaCount shows 2+ hits — use the one under controller: (controller.replicaCount), not defaultBackend.replicaCount",
-   "Forgetting -n demo on upgrade/history/rollback → release not found",
-   "Expecting REVISION 1 after rollback — it becomes revision 3",
-   "Worrying about EXTERNAL-IP <pending> on the controller Service — normal in a playground, ignore it"
+   {
+    "dont": "`--set replicaCount=2` or `--set defaultBackend.replicaCount=2`",
+    "do": "`--set controller.replicaCount=2`, because grep shows several replicaCount keys and only the one under controller: is right"
+   },
+   {
+    "dont": "`helm rollback web 1` without `-n demo`",
+    "do": "Add `-n demo` to upgrade, history and rollback, because Helm otherwise looks in default and says release not found"
+   },
+   {
+    "dont": "Expecting REVISION 1 in `helm history web -n demo` after rollback",
+    "do": "Expect a new revision 3 with revision 1's settings, because Helm records every rollback as a new revision"
+   },
+   {
+    "dont": "Trying to fix EXTERNAL-IP `<pending>` on the controller Service",
+    "do": "Ignore `<pending>`, because the playground has no cloud load balancer to give out an external IP"
+   }
   ],
   "verify": [
    {
@@ -664,9 +826,18 @@
    }
   ],
   "traps": [
-   "Using k apply -f on the folder or deploy.yaml — it applies deploy.yaml unchanged into default and skips namespace + replicas",
-   "Editing deploy.yaml",
-   "Checking the default namespace — kustomization sets namespace kust"
+   {
+    "dont": "`k apply -f /root/kust/deploy.yaml`",
+    "do": "`k apply -k /root/kust`, because `-k` uses kustomization.yaml, which adds namespace kust and the replicas change"
+   },
+   {
+    "dont": "Changing `replicas:` inside `deploy.yaml`",
+    "do": "Edit `/root/kust/kustomization.yaml` (`replicas: count: 3`), because the task forbids editing deploy.yaml"
+   },
+   {
+    "dont": "`k get deploy` in the default namespace",
+    "do": "`k get deploy -n kust`, because kustomization.yaml puts the deployment in namespace kust"
+   }
   ],
   "verify": [
    {
@@ -702,9 +873,18 @@
    }
   ],
   "traps": [
-   "Using k get certificates (instances) instead of k get crd",
-   "Explaining certificate.subject (missing spec)",
-   "Typing the output instead of redirecting with >"
+   {
+    "dont": "`k get certificates > /root/crds.txt`",
+    "do": "`k get crd | grep cert-manager > /root/crds.txt`, because certificates are objects; the task wants the CRD types themselves"
+   },
+   {
+    "dont": "`k explain certificate.subject`",
+    "do": "`k explain certificate.spec.subject > /root/subject.txt`, because subject sits inside spec"
+   },
+   {
+    "dont": "Typing the output into the file by hand",
+    "do": "Redirect with `> /root/subject.txt`, because it copies the exact output with no typos"
+   }
   ],
   "verify": [
    {
@@ -742,9 +922,18 @@
    }
   ],
   "traps": [
-   "Using sysctl -w — lost after reboot",
-   "Service name is cri-docker, not cri-dockerd",
-   "Retyping parameters with typos instead of copying them"
+   {
+    "dont": "`sysctl -w net.ipv4.ip_forward=1`",
+    "do": "Put the 4 lines in `/etc/sysctl.d/k8s.conf`, then `sysctl --system`, because `sysctl -w` is lost after reboot"
+   },
+   {
+    "dont": "`systemctl enable --now cri-dockerd`",
+    "do": "`systemctl enable --now cri-docker`, because the service is named cri-docker, even though the package is cri-dockerd"
+   },
+   {
+    "dont": "Retyping the 4 kernel parameters by hand",
+    "do": "Copy and paste the 4 lines from the question, because one typo means that setting is not applied"
+   }
   ],
   "verify": [
    {
@@ -779,10 +968,22 @@
    }
   ],
   "traps": [
-   "Installing Flannel — it does not enforce NetworkPolicy",
-   "k apply on the tigera-operator file → 'annotations: Too long'; use k create",
-   "Leaving the file's default 192.168.0.0/16 when the cluster has a different --cluster-cidr (keep the default only if no range is set anywhere)",
-   "Applying custom-resources.yaml too fast → no matches for kind \"Installation\"; wait 20 s and retry"
+   {
+    "dont": "`k apply -f <Flannel URL>`",
+    "do": "Install Calico: `k create -f <tigera-operator URL>`, because Flannel does not enforce NetworkPolicy and Calico does"
+   },
+   {
+    "dont": "`k apply -f <tigera-operator URL>`",
+    "do": "`k create -f <tigera-operator URL>`, because apply stores a huge annotation and fails with 'Too long'"
+   },
+   {
+    "dont": "Keeping `cidr: 192.168.0.0/16` without checking",
+    "do": "Set `cidr:` to the `--cluster-cidr` of kube-controller-manager, because pod IPs must match the cluster's pod range"
+   },
+   {
+    "dont": "Applying `custom-resources.yaml` right after the operator",
+    "do": "Wait 20 s and retry `k apply -f custom-resources.yaml`, because the Installation type exists only once the operator is ready"
+   }
   ],
   "verify": [
    {
@@ -826,12 +1027,30 @@
    }
   ],
   "traps": [
-   "Skipping apt-get update → apt says the version is not found",
-   "Minor upgrade (1.34 → 1.35) without changing v1.34 → v1.35 in /etc/apt/sources.list.d/kubernetes.list",
-   "Running kubeadm upgrade apply on the worker — workers use kubeadm upgrade node",
-   "Forgetting apt-mark unhold/hold, so apt refuses to install",
-   "Forgetting daemon-reload + restart kubelet, so VERSION stays old",
-   "Running k drain/uncordon on node01 (no kubeconfig there) — exit back to the control plane first"
+   {
+    "dont": "`apt-get install -y kubeadm=1.35.2-1.1` without `apt-get update`",
+    "do": "`apt-get update`, then `apt-cache madison kubeadm`, because otherwise apt says the version is not found"
+   },
+   {
+    "dont": "Leaving `v1.34` in `/etc/apt/sources.list.d/kubernetes.list`",
+    "do": "Change `v1.34` to `v1.35` there, then `apt-get update`, because each minor version has its own package repository"
+   },
+   {
+    "dont": "`kubeadm upgrade apply v1.35.2` on node01",
+    "do": "`kubeadm upgrade node` on node01, because `upgrade apply` is only for the control plane node"
+   },
+   {
+    "dont": "`apt-get install -y kubeadm=1.35.2-1.1` while kubeadm is held",
+    "do": "`apt-mark unhold kubeadm`, install, then `apt-mark hold kubeadm`, because apt refuses to upgrade held packages"
+   },
+   {
+    "dont": "Skipping the kubelet restart after installing the new kubelet",
+    "do": "`systemctl daemon-reload; systemctl restart kubelet`, because the old kubelet keeps running and VERSION stays old"
+   },
+   {
+    "dont": "`k drain node01` or `k uncordon node01` while inside node01",
+    "do": "`exit` to the control plane, then `k uncordon node01`, because node01 has no kubeconfig for kubectl"
+   }
   ],
   "verify": [
    {
@@ -873,10 +1092,22 @@
    }
   ],
   "traps": [
-   "Using the peer-cert/peer-key files instead of server.crt/server.key",
-   "Changing --data-dir or the mountPath instead of only the hostPath path",
-   "Panicking when kubectl is silent for ~60 s after saving etcd.yaml",
-   "Using etcdctl snapshot restore — removed in etcd 3.6 (Kubernetes v1.35); restore with etcdutl"
+   {
+    "dont": "`--cert=/etc/kubernetes/pki/etcd/peer.crt --key=/etc/kubernetes/pki/etcd/peer.key`",
+    "do": "`--cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key`, as listed by `grep cert-file` in etcd.yaml"
+   },
+   {
+    "dont": "Changing `--data-dir` or `mountPath` in etcd.yaml",
+    "do": "Change only the etcd-data `hostPath` `path:` to `/var/lib/etcd-restored`, because the container still finds data at the same place"
+   },
+   {
+    "dont": "Panicking when kubectl is silent after saving etcd.yaml",
+    "do": "Wait about 60 s, because etcd and the API server restart from their manifests and are briefly down"
+   },
+   {
+    "dont": "`etcdctl snapshot restore /opt/etcd-backup.db ...`",
+    "do": "`etcdutl snapshot restore /opt/etcd-backup.db --data-dir=/var/lib/etcd-restored`, because etcd 3.6 (Kubernetes v1.35) removed restore from etcdctl"
+   }
   ],
   "verify": [
    {
@@ -921,9 +1152,18 @@
    }
   ],
   "traps": [
-   "Wrong indentation of ports: (must line up with imagePullPolicy:, not with the dash of - image:)",
-   "Leaving the random nodePort from k expose",
-   "Forgetting -n web"
+   {
+    "dont": "Lining up `ports:` with the dash of `- image:`",
+    "do": "Line `ports:` up with `imagePullPolicy:`, because it belongs inside the same container entry"
+   },
+   {
+    "dont": "Keeping the random nodePort that `k expose` picked",
+    "do": "`k edit svc np-svc -n web` and set `nodePort: 30080`, because `k expose` cannot choose the node port"
+   },
+   {
+    "dont": "`k expose deploy np ...` without `-n web`",
+    "do": "Add `-n web` to every command, because otherwise kubectl looks for np in default"
+   }
   ],
   "verify": [
    {
@@ -967,9 +1207,18 @@
    }
   ],
   "traps": [
-   "Writing host/ instead of host/* → creates pathType Exact",
-   "Forgetting --class, so no controller picks it up",
-   "Forgetting quotes around --rule"
+   {
+    "dont": "`--rule=\"shop.example.com/=backend-svc:80\"`",
+    "do": "`--rule=\"shop.example.com/*=backend-svc:80\"`, because `/*` gives pathType Prefix; `/` alone gives Exact"
+   },
+   {
+    "dont": "`k create ingress web-ing ...` without `--class`",
+    "do": "`--class=nginx` (name from `k get ingressclass`), because without a class no controller picks up the Ingress"
+   },
+   {
+    "dont": "`--rule=shop.example.com/*=backend-svc:80` without quotes",
+    "do": "Wrap the rule in double quotes, because the shell may turn `*` into file names"
+   }
   ],
   "verify": [
    {
@@ -1011,10 +1260,22 @@
    }
   ],
   "traps": [
-   "Forgetting the tls block (mode: Terminate + certificateRefs) on the listener",
-   "parentRefs name not matching web-gw",
-   "Forgetting namespace: web in both YAMLs",
-   "Changing type: PathPrefix — Ingress pathType Prefix = HTTPRoute PathPrefix"
+   {
+    "dont": "An HTTPS listener without a `tls:` block",
+    "do": "Add `tls: mode: Terminate` with `certificateRefs: - name: <secret>` to the listener, because HTTPS needs the Ingress's certificate"
+   },
+   {
+    "dont": "`parentRefs: - name: gateway` copied from the docs",
+    "do": "`parentRefs: - name: web-gw`, because the route attaches only to the Gateway with that exact name"
+   },
+   {
+    "dont": "Leaving out `namespace: web` in gw.yaml or route.yaml",
+    "do": "Add `namespace: web` in both metadata blocks, because otherwise both are created in default"
+   },
+   {
+    "dont": "Changing `type: PathPrefix` to `Prefix` in the HTTPRoute",
+    "do": "Keep `type: PathPrefix`, because it is the HTTPRoute word for Ingress pathType Prefix"
+   }
   ],
   "verify": [
    {
@@ -1059,9 +1320,18 @@
    }
   ],
   "traps": [
-   "Leaving namespaceSelector/ipBlock from the docs example in the from list",
-   "Keeping the namespaceSelector item — leave only the podSelector item under from:",
-   "Keeping Egress in policyTypes → blocks db's outgoing traffic"
+   {
+    "dont": "Leaving the `ipBlock:` lines from the docs example under `from:`",
+    "do": "Delete the ipBlock lines, because they let in traffic from IP ranges, not only from app=api pods"
+   },
+   {
+    "dont": "Keeping the `- namespaceSelector:` item under `from:`",
+    "do": "Keep only `- podSelector: matchLabels: app: api` under `from:`, because a namespaceSelector item lets in pods from other namespaces"
+   },
+   {
+    "dont": "Keeping `- Egress` in policyTypes",
+    "do": "`policyTypes: - Ingress` only, because Egress with no rules blocks all outgoing traffic of the db pods"
+   }
   ],
   "verify": [
    {
@@ -1100,9 +1370,18 @@
    }
   ],
   "traps": [
-   "Adding an empty ingress rule '- {}' which ALLOWS all ingress",
-   "Only UDP 53 — TCP 53 is also required",
-   "Forgetting namespace: prod in metadata"
+   {
+    "dont": "`ingress: - {}`",
+    "do": "Leave out `ingress:` and keep `policyTypes: [Ingress, Egress]`, because `- {}` is a rule that allows all incoming traffic"
+   },
+   {
+    "dont": "Allowing only `protocol: UDP` on port 53",
+    "do": "Allow `protocol: UDP` and `protocol: TCP` on `port: 53`, because DNS also uses TCP, for example for large answers"
+   },
+   {
+    "dont": "Leaving out `namespace: prod` in metadata",
+    "do": "Add `namespace: prod` under metadata, because otherwise the policy lands in default"
+   }
   ],
   "verify": [
    {
@@ -1142,10 +1421,22 @@
    }
   ],
   "traps": [
-   "Not restarting the deployment — old config stays in nginx",
-   "Deleting the trailing ; → nginx fails to start",
-   "Editing the deployment instead of the ConfigMap",
-   "Immutable ConfigMap: delete + k apply of the backup fails on resourceVersion — use k replace --force -f /root/cm-backup.yaml"
+   {
+    "dont": "Editing the ConfigMap and stopping there",
+    "do": "`k rollout restart deploy nginx-static -n nginx-static`, because running pods keep the old config until they restart"
+   },
+   {
+    "dont": "`ssl_protocols TLSv1.3` without the semicolon",
+    "do": "`ssl_protocols TLSv1.3;`, because nginx needs the `;` or it fails to start"
+   },
+   {
+    "dont": "`k edit deploy nginx-static -n nginx-static`",
+    "do": "`k edit cm nginx-config -n nginx-static`, because the TLS setting lives in the ConfigMap"
+   },
+   {
+    "dont": "`k delete cm nginx-config`, then `k apply -f /root/cm-backup.yaml`",
+    "do": "`k replace --force -f /root/cm-backup.yaml`, because apply fails on the old resourceVersion saved in the backup"
+   }
   ],
   "verify": [
    {
@@ -1189,10 +1480,22 @@
    }
   ],
   "traps": [
-   "Putting the rewrite line outside the .:53 { } block or with broken indentation → CoreDNS CrashLoop",
-   "Rewriting to backend-svc without .web.svc.cluster.local",
-   "Not backing up the ConfigMap first",
-   "Restoring the backup with k apply → 'the object has been modified'; use k replace --force -f /root/coredns-backup.yaml"
+   {
+    "dont": "Adding the `rewrite` line outside `.:53 { }` or badly indented",
+    "do": "Put `rewrite name api.example.com backend-svc.web.svc.cluster.local` inside `.:53 {`, under `ready`, because otherwise CoreDNS crashes"
+   },
+   {
+    "dont": "`rewrite name api.example.com backend-svc`",
+    "do": "`rewrite name api.example.com backend-svc.web.svc.cluster.local`, because CoreDNS needs the full name to find the service"
+   },
+   {
+    "dont": "`k edit cm coredns -n kube-system` without a backup",
+    "do": "`k get cm coredns -n kube-system -o yaml > /root/coredns-backup.yaml` first, because a broken edit can stop all DNS"
+   },
+   {
+    "dont": "`k apply -f /root/coredns-backup.yaml` to restore",
+    "do": "`k replace --force -f /root/coredns-backup.yaml`, because apply fails with 'the object has been modified'"
+   }
   ],
   "verify": [
    {
@@ -1231,9 +1534,18 @@
    }
   ],
   "traps": [
-   "Looking up just backend-svc from default → NXDOMAIN",
-   "Wrong image (must be busybox:1.36)",
-   "Running the pod in namespace web"
+   {
+    "dont": "`nslookup backend-svc` from namespace default",
+    "do": "`nslookup backend-svc.web.svc.cluster.local`, because the short name only works inside namespace web"
+   },
+   {
+    "dont": "`k run t --image=busybox ...`",
+    "do": "`k run t --image=busybox:1.36 ...`, because the task asks for that exact image"
+   },
+   {
+    "dont": "`k run t -n web ...`",
+    "do": "Run the pod in default (no `-n`), because the task asks for the lookup from namespace default"
+   }
   ],
   "verify": [
    {
@@ -1275,9 +1587,18 @@
    }
   ],
   "traps": [
-   "Mounting the volume only in the sidecar — the main app writes to its own /var/log",
-   "Putting volumes: under the container instead of at pod spec level",
-   "Forgetting restartPolicy: Always → it becomes a normal init container that blocks forever"
+   {
+    "dont": "Adding `volumeMounts:` only to the log-shipper container",
+    "do": "Mount `logs` at `/var/log` in both containers, because the app must write its log into the shared volume"
+   },
+   {
+    "dont": "Putting `volumes:` inside a container",
+    "do": "Put `volumes: - name: logs emptyDir: {}` at pod spec level, next to `containers:`, because volumes belong to the pod"
+   },
+   {
+    "dont": "log-shipper in `initContainers:` without `restartPolicy: Always`",
+    "do": "Add `restartPolicy: Always` to log-shipper, because without it the endless tail blocks the app from ever starting"
+   }
   ],
   "verify": [
    {
@@ -1316,9 +1637,18 @@
    }
   ],
   "traps": [
-   "Putting stabilizationWindowSeconds under scaleUp",
-   "Putting behavior: inside metrics: instead of directly under spec:",
-   "Forgetting -n shop"
+   {
+    "dont": "`behavior: scaleUp: stabilizationWindowSeconds: 30`",
+    "do": "`behavior: scaleDown: stabilizationWindowSeconds: 30`, because the task asks for the scale-down window"
+   },
+   {
+    "dont": "Putting `behavior:` inside `metrics:`",
+    "do": "Put `behavior:` directly under `spec:`, because it is its own field of the HPA spec"
+   },
+   {
+    "dont": "`k autoscale deploy web --min=2 --max=5 --cpu-percent=70`",
+    "do": "Add `-n shop`, because deployment web lives in namespace shop"
+   }
   ],
   "verify": [
    {
@@ -1352,9 +1682,18 @@
    }
   ],
   "traps": [
-   "Using system-cluster-critical / system-node-critical values",
-   "Putting priorityClassName in the container instead of the pod spec",
-   "Setting globalDefault: true (not asked)"
+   {
+    "dont": "Using the value of `system-cluster-critical` from `k get pc`",
+    "do": "Take the highest non-system value minus 1, because system-* classes are built in, not user-defined"
+   },
+   {
+    "dont": "`priorityClassName:` inside the container block",
+    "do": "`priorityClassName: high-priority` in the pod spec, above `containers:`, because it is a pod setting"
+   },
+   {
+    "dont": "`globalDefault: true` on high-priority",
+    "do": "`k create pc high-priority --value=<highest-1>` only, because globalDefault would affect every new pod (not asked)"
+   }
   ],
   "verify": [
    {
@@ -1393,9 +1732,18 @@
    }
   ],
   "traps": [
-   "Using Capacity instead of Allocatable",
-   "Counting web's own current requests as used (scale to 0 first)",
-   "Setting limits instead of requests"
+   {
+    "dont": "Reading `Capacity:` from `k describe node node01`",
+    "do": "Use `Allocatable:`, because that is what pods may use after the system's own reserve"
+   },
+   {
+    "dont": "Calculating while web's 3 pods still hold requests",
+    "do": "`k scale deploy web --replicas=0 -n shop` first, because web's old requests would count as used"
+   },
+   {
+    "dont": "`k set resources deploy web -n shop --limits=...`",
+    "do": "`k set resources deploy web -n shop --requests=cpu=<X>m,memory=<Y>Mi`, because the task asks for requests"
+   }
   ],
   "verify": [
    {
@@ -1435,9 +1783,18 @@
    }
   ],
   "traps": [
-   "Using env/valueFrom for a single key instead of envFrom",
-   "secretName vs name: secret volumes use secretName",
-   "Forgetting -n app on cm/secret/pod"
+   {
+    "dont": "`env: - name: LOG_LEVEL valueFrom: configMapKeyRef: ...`",
+    "do": "`envFrom: - configMapRef: name: app-cfg`, because envFrom loads all keys of the ConfigMap at once"
+   },
+   {
+    "dont": "`volumes: - name: db secret: name: db-sec`",
+    "do": "`secret: secretName: db-sec`, because secret volumes use `secretName`, not `name`"
+   },
+   {
+    "dont": "`k create cm app-cfg --from-literal=LOG_LEVEL=debug` without `-n app`",
+    "do": "Add `-n app` to the cm, secret and pod, because a pod can only use ConfigMaps and Secrets from its own namespace"
+   }
   ],
   "verify": [
    {
@@ -1477,9 +1834,18 @@
    }
   ],
   "traps": [
-   "Only adding the toleration — pod may land on another node",
-   "Putting tolerations under the container",
-   "Typo in effect (NoSchedule is case-sensitive)"
+   {
+    "dont": "Adding only `tolerations:` to pod x",
+    "do": "Also add `nodeSelector: env: prod`, because a toleration only allows node01; it does not force the pod there"
+   },
+   {
+    "dont": "Putting `tolerations:` under the container",
+    "do": "Put `tolerations:` in the pod spec, next to `containers:`, because it is a pod setting"
+   },
+   {
+    "dont": "`effect: noschedule`",
+    "do": "`effect: NoSchedule`, because the value is case-sensitive"
+   }
   ],
   "verify": [
    {
@@ -1519,9 +1885,18 @@
    }
   ],
   "traps": [
-   "Wrong container name in set image — check with -o wide first",
-   "Writing nginx:1.28 to the file (that's before rollback)",
-   "Forgetting -n shop"
+   {
+    "dont": "`k set image deploy/web web=nginx:1.28 -n shop`",
+    "do": "`k set image deploy/web nginx=nginx:1.28 -n shop`, because left of `=` is the container name; check it with `-o wide`"
+   },
+   {
+    "dont": "`echo nginx:1.28 > /root/image.txt`",
+    "do": "Read the image with `k get deploy web -n shop -o jsonpath=...` after `k rollout undo`, because rollback restored the old image"
+   },
+   {
+    "dont": "`k rollout undo deploy/web` without `-n shop`",
+    "do": "Add `-n shop` to every command, because deployment web lives in namespace shop"
+   }
   ],
   "verify": [
    {
@@ -1561,9 +1936,18 @@
    }
   ],
   "traps": [
-   "Putting namespace on the PV (PVs are cluster-scoped)",
-   "PVC storageClassName missing → default class makes a NEW disk (not pv-data); pv-data stays Available",
-   "Continuing before PVC shows Bound"
+   {
+    "dont": "`namespace: storage` in pv.yaml",
+    "do": "Leave namespace out of the PV, because PersistentVolumes are cluster-wide; only the PVC and pod get `namespace: storage`"
+   },
+   {
+    "dont": "Leaving out `storageClassName: manual` in pvc.yaml",
+    "do": "Add `storageClassName: manual` to the PVC, because otherwise the default class makes a new disk and pv-data stays Available"
+   },
+   {
+    "dont": "Creating the pod before the PVC is Bound",
+    "do": "Wait until `k get pvc -n storage` shows Bound, because an unbound claim keeps the pod Pending"
+   }
   ],
   "verify": [
    {
@@ -1603,9 +1987,18 @@
    }
   ],
   "traps": [
-   "Forgetting to un-default the old class → two (default)",
-   "Deleting the old StorageClass (forbidden)",
-   "Annotation value unquoted (true) → rejected: annotation values must be strings, write \"true\""
+   {
+    "dont": "Leaving the old class marked `(default)`",
+    "do": "`k patch sc <old> -p '{\"metadata\":{\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"false\"}}}'`, because only one class may be default"
+   },
+   {
+    "dont": "`k delete sc <old>`",
+    "do": "Patch the old class's annotation to \"false\" instead, because the task forbids deleting anything"
+   },
+   {
+    "dont": "`storageclass.kubernetes.io/is-default-class: true`",
+    "do": "`storageclass.kubernetes.io/is-default-class: \"true\"`, because annotation values must be strings, so the quotes are required"
+   }
   ],
   "verify": [
    {
@@ -1645,9 +2038,18 @@
    }
   ],
   "traps": [
-   "storageClassName mismatch → PVC Pending",
-   "PV Released with an old claimRef → k patch pv <name> -p '{\"spec\":{\"claimRef\":null}}' → Available",
-   "Forgetting namespace: mariadb in the PVC"
+   {
+    "dont": "A PVC `storageClassName` that differs from the PV's",
+    "do": "Copy the class from `k get pv` (`storageClassName: \"\"` if empty), because a mismatch leaves the PVC Pending"
+   },
+   {
+    "dont": "Ignoring a PV with STATUS Released",
+    "do": "`k patch pv <name> -p '{\"spec\":{\"claimRef\":null}}'`, because the old claimRef blocks binding; this makes the PV Available"
+   },
+   {
+    "dont": "Leaving out `namespace: mariadb` in pvc.yaml",
+    "do": "Add `namespace: mariadb` to the PVC, because the deployment can only use a claim in its own namespace"
+   }
   ],
   "verify": [
    {
@@ -1687,10 +2089,22 @@
    }
   ],
   "traps": [
-   "systemctl start only — not enabled after reboot",
-   "Skipping ssh cka01001 → you work on the wrong cluster",
-   "No sudo -i on node01 in the exam → systemctl says Access denied",
-   "Forgetting to exit (root, then node01) before kubectl"
+   {
+    "dont": "`systemctl start kubelet` only",
+    "do": "Run `systemctl enable --now kubelet`. A plain start is lost after reboot. Check with `systemctl is-enabled kubelet`."
+   },
+   {
+    "dont": "Starting the task without `ssh cka01001`",
+    "do": "`ssh cka01001` first, because each exam task runs on its own cluster"
+   },
+   {
+    "dont": "`systemctl enable --now kubelet` on node01 without `sudo -i`",
+    "do": "Run `sudo -i` right after `ssh node01`. The exam user is not root. Without root, systemctl says Access denied."
+   },
+   {
+    "dont": "Running `k get nodes` while still on node01",
+    "do": "Run `exit; exit` to leave root, then node01. Then run `k get nodes`. kubectl works only on the cka01001 host."
+   }
   ],
   "verify": [
    {
@@ -1730,9 +2144,18 @@
    }
   ],
   "traps": [
-   "Relabelling pods/deployment (forbidden)",
-   "If the selector KEY itself is wrong, a merge patch ADDS a second key (selector = AND, still no match); then k edit svc and fix the key instead",
-   "Forgetting -n shop"
+   {
+    "dont": "`k -n shop label pods ...` or editing deployment cart",
+    "do": "Fix the Service selector with `k -n shop patch svc cart ...`. The task forbids changing the Deployment."
+   },
+   {
+    "dont": "`k -n shop patch svc cart ...` when the selector key is wrong",
+    "do": "Run `k -n shop edit svc cart` and fix the key. A merge patch adds a second key. That second key must also match."
+   },
+   {
+    "dont": "`k get svc cart` without `-n shop`",
+    "do": "Add `-n shop` to every command, because the Service and pods live in namespace shop"
+   }
   ],
   "verify": [
    {
@@ -1772,9 +2195,18 @@
    }
   ],
   "traps": [
-   "Scaling replicas down instead of fixing requests",
-   "Setting --limits instead of --requests",
-   "If a memory limit exists, it must be ≥ 128Mi or the spec is invalid"
+   {
+    "dont": "`k -n batch scale deploy reporter --replicas=1`",
+    "do": "`k -n batch set resources deploy reporter --requests=memory=128Mi`, because the task says keep replicas unchanged"
+   },
+   {
+    "dont": "`k -n batch set resources deploy reporter --limits=memory=128Mi`",
+    "do": "Use `--requests=memory=128Mi`, because the scheduler uses requests to find room for the pods"
+   },
+   {
+    "dont": "Leaving an existing memory limit below 128Mi",
+    "do": "If a limit exists, raise it to at least 128Mi too. A limit below the request is invalid."
+   }
   ],
   "verify": [
    {
@@ -1814,9 +2246,18 @@
    }
   ],
   "traps": [
-   "Changing containerPort instead of the probe port",
-   "Removing the probe entirely (changes behaviour, may fail the check)",
-   "Editing the pod instead of the deployment"
+   {
+    "dont": "Changing `containerPort` to 8080",
+    "do": "Change `livenessProbe: httpGet: port: 8080` to `80`. nginx listens on 80. The probe checks the wrong port."
+   },
+   {
+    "dont": "Deleting the `livenessProbe:` block",
+    "do": "Keep the probe and fix only its port. Removing it changes the behaviour the checker may test."
+   },
+   {
+    "dont": "`k -n web edit pod <pod>`",
+    "do": "`k -n web edit deploy api`, because the deployment recreates pods from its own template"
+   }
   ],
   "verify": [
    {
@@ -1847,13 +2288,22 @@
    },
    {
     "q": "into the file /opt/course/5/errors.txt on the controlplane node",
-    "means": "The host you ssh'd into IS this task's controlplane: redirect > there; mkdir -p the folder first (exam: sudo if Permission denied)"
+    "means": "The host you ssh'd into IS this task's controlplane. Redirect > there. Run mkdir -p for the folder first. In the exam, use sudo if Permission denied."
    }
   ],
   "traps": [
-   "Writing the file on the wrong host",
-   "Using grep -i (would also catch 'error' lowercase)",
-   "Folder missing → 'No such file or directory'"
+   {
+    "dont": "Write the file on your base machine before `ssh cka01005`",
+    "do": "Run `ssh cka01005` first, because the file must exist on that exam host"
+   },
+   {
+    "dont": "`k -n ops logs legacy-app | grep -i ERROR`",
+    "do": "Run `k -n ops logs legacy-app | grep ERROR > /opt/course/5/errors.txt`. Do not add -i: it also matches lowercase 'error'."
+   },
+   {
+    "dont": "Redirect into /opt/course/5/errors.txt before the folder exists",
+    "do": "`mkdir -p /opt/course/5` first, because `>` cannot create a missing folder"
+   }
   ],
   "verify": [
    {
@@ -1892,9 +2342,18 @@
    }
   ],
   "traps": [
-   "Installing without --set crds.install=false → CRD ownership conflict",
-   "Forgetting --version 7.7.3 on install",
-   "Missing namespace argocd (use --create-namespace if it doesn't exist)"
+   {
+    "dont": "`helm install argocd argocd/argo-cd --version 7.7.3 -n argocd`",
+    "do": "Add `--set crds.install=false`. The CRDs already exist. Helm would clash trying to own them."
+   },
+   {
+    "dont": "`helm install argocd argocd/argo-cd` without `--version`",
+    "do": "Add `--version 7.7.3` to the install too, otherwise Helm takes the newest chart"
+   },
+   {
+    "dont": "Install into namespace argocd without checking it exists",
+    "do": "Check `k get ns argocd`; if missing, add `--create-namespace`, so Helm creates it"
+   }
   ],
   "verify": [
    {
@@ -1939,10 +2398,22 @@
    }
   ],
   "traps": [
-   "sysctl -w (not persistent)",
-   "modprobe br_netfilter only → gone after reboot; also write br_netfilter (and nf_conntrack) to /etc/modules-load.d/k8s.conf",
-   "Wrong file name — the question names /etc/sysctl.d/k8s.conf",
-   "On Killercoda (no Docker) cri-docker fails to START — enable still worked; check is-enabled"
+   {
+    "dont": "`sysctl -w net.ipv4.ip_forward=1` only",
+    "do": "Write the 4 lines to /etc/sysctl.d/k8s.conf. Then run `sysctl --system`. `sysctl -w` is lost on reboot."
+   },
+   {
+    "dont": "`modprobe br_netfilter` only",
+    "do": "Also write br_netfilter and nf_conntrack into /etc/modules-load.d/k8s.conf, so they load again after reboot"
+   },
+   {
+    "dont": "Save the settings in /etc/sysctl.conf or another file",
+    "do": "Use exactly /etc/sysctl.d/k8s.conf, because the grader checks the file the question names"
+   },
+   {
+    "dont": "Panic when cri-docker fails to start on Killercoda",
+    "do": "Check `systemctl is-enabled cri-docker`, because without Docker it cannot start there, but enabling still worked"
+   }
   ],
   "verify": [
    {
@@ -1988,9 +2459,18 @@
    }
   ],
   "traps": [
-   "Adding -o yaml because of the .yaml file name",
-   "Explaining certificate.subject (missing spec)",
-   "Listing certificates instead of CRDs"
+   {
+    "dont": "`k get crd -o yaml > /root/resources.yaml`",
+    "do": "Run `k get crd -l app.kubernetes.io/name=cert-manager > /root/resources.yaml`. The task asks for the default output. The .yaml ending is just the file name."
+   },
+   {
+    "dont": "`k explain certificate.subject`",
+    "do": "`k explain certificate.spec.subject > /root/subject.yaml`, because subject sits under spec"
+   },
+   {
+    "dont": "`k get certificates > /root/resources.yaml`",
+    "do": "List with `k get crd`. The task wants the type definitions (CRDs), not Certificate objects."
+   }
   ],
   "verify": [
    {
@@ -2028,10 +2508,22 @@
    }
   ],
   "traps": [
-   "--serviceaccount=reporter without finance: → kubectl error (must be <namespace>:<name>)",
-   "Forgetting -n finance on the rolebinding → it lands in default",
-   "Creating a ClusterRole instead of a Role",
-   "Spaces in the --verb list"
+   {
+    "dont": "`--serviceaccount=reporter`",
+    "do": "`--serviceaccount=finance:reporter`, because kubectl needs the form namespace:name"
+   },
+   {
+    "dont": "`k create rolebinding reporter-binding ...` without `-n finance`",
+    "do": "`k -n finance create rolebinding reporter-binding ...`, otherwise it lands in namespace default"
+   },
+   {
+    "dont": "`k create clusterrole pod-reader ...`",
+    "do": "Run `k -n finance create role pod-reader --verb=get,list,watch --resource=pods`. The task asks for a namespaced Role."
+   },
+   {
+    "dont": "`--verb=get, list, watch`",
+    "do": "`--verb=get,list,watch` with no spaces, because a space splits it into separate arguments"
+   }
   ],
   "verify": [
    {
@@ -2076,9 +2568,18 @@
    }
   ],
   "traps": [
-   "Service selector not matching pod labels → no endpoints",
-   "Leaving out nodePort: 30080 → a random port is chosen",
-   "Forgetting name: http on the containerPort, so targetPort: http fails"
+   {
+    "dont": "A Service selector that does not match the Pod labels",
+    "do": "Check `k -n front get pods --show-labels`. Use `app: front-end`. Otherwise the Service has no endpoints."
+   },
+   {
+    "dont": "Leave `nodePort: 30080` out of the Service",
+    "do": "Write `nodePort: 30080` under ports, otherwise Kubernetes picks a random port"
+   },
+   {
+    "dont": "Add `containerPort: 80` without `name: http`",
+    "do": "Add `name: http` next to `containerPort: 80`. `targetPort: http` finds the port by that name."
+   }
   ],
   "verify": [
    {
@@ -2121,9 +2622,18 @@
    }
   ],
   "traps": [
-   "HTTPS listener without a tls block → apply fails with a validation error",
-   "parentRefs name typo (must be web-gateway; no namespace needed, same namespace)",
-   "Forgetting namespace web-app in metadata"
+   {
+    "dont": "HTTPS listener on 443 without a `tls:` block",
+    "do": "Add `tls: mode: Terminate` with `certificateRefs: - name: web-tls`. An HTTPS listener needs a certificate."
+   },
+   {
+    "dont": "`parentRefs: - name: web-gw`",
+    "do": "Use `parentRefs: - name: web-gateway`, the exact Gateway name. No namespace is needed, since both are in web-app."
+   },
+   {
+    "dont": "Leave `namespace: web-app` out of the metadata",
+    "do": "Put `namespace: web-app` in both Gateway and HTTPRoute metadata, otherwise they land in default"
+   }
   ],
   "verify": [
    {
@@ -2168,9 +2678,18 @@
    }
   ],
   "traps": [
-   "Choosing a policy with namespaceSelector: {} (all namespaces) or no ports",
-   "namespaceSelector and podSelector as SEPARATE '- from' items = OR (too open); in ONE item = AND",
-   "Applying more than one file"
+   {
+    "dont": "Apply a file with `namespaceSelector: {}` or no `ports:`",
+    "do": "Choose the file naming the frontend namespace, frontend Pods and port 80. `{}` means every namespace."
+   },
+   {
+    "dont": "`- namespaceSelector` and `- podSelector` as two separate items",
+    "do": "Put both selectors in ONE `- from` item. Two items mean OR (too open). One item means AND."
+   },
+   {
+    "dont": "`k apply -f /root/netpol/`",
+    "do": "`k apply -f /root/netpol/policy-2.yaml` only, because the task says apply exactly ONE file"
+   }
   ],
   "verify": [
    {
@@ -2209,9 +2728,18 @@
    }
   ],
   "traps": [
-   "Taking a system-* value",
-   "Putting priorityClassName at deployment spec level instead of template.spec",
-   "Not checking rollout (new pods may be Pending)"
+   {
+    "dont": "Use a system-* value as the highest",
+    "do": "Read `k get pc`, ignore system-* rows, then `k create pc urgent --value=<highest-1>`"
+   },
+   {
+    "dont": "Put `priorityClassName` directly under the Deployment `spec`",
+    "do": "Patch `spec.template.spec.priorityClassName: urgent`, because that is the Pod spec inside the Deployment"
+   },
+   {
+    "dont": "Stop right after the patch",
+    "do": "`k -n priority rollout status deploy busybox-logger`, because new Pods may stay Pending"
+   }
   ],
   "verify": [
    {
@@ -2251,9 +2779,18 @@
    }
   ],
   "traps": [
-   "behavior under metrics instead of directly under spec",
-   "scaleUp instead of scaleDown",
-   "Forgetting -n autoscale"
+   {
+    "dont": "Put `behavior:` inside `metrics:`",
+    "do": "Put `behavior:` directly under `spec:`, because it sits beside metrics, not inside it"
+   },
+   {
+    "dont": "`scaleUp: stabilizationWindowSeconds: 30`",
+    "do": "`behavior: scaleDown: stabilizationWindowSeconds: 30`, because the task asks for the scale-down window"
+   },
+   {
+    "dont": "`k apply -f hpa.yaml` with no namespace set",
+    "do": "Set `namespace: autoscale` in metadata, or use `k -n autoscale apply -f hpa.yaml`. Otherwise it lands in default."
+   }
   ],
   "verify": [
    {
@@ -2292,9 +2829,18 @@
    }
   ],
   "traps": [
-   "Leaving the old default → two (default)",
-   "Deleting/recreating the old SC",
-   "Unquoted \"true\" in the annotation"
+   {
+    "dont": "Make local-fast default and leave local-path default too",
+    "do": "Patch every old default to `is-default-class: \"false\"`, so `k get sc` shows only local-fast (default)"
+   },
+   {
+    "dont": "`k delete sc local-path` and recreate it",
+    "do": "Only patch its annotation, because deleting is not needed and could disturb existing PVCs"
+   },
+   {
+    "dont": "`storageclass.kubernetes.io/is-default-class: true`",
+    "do": "`storageclass.kubernetes.io/is-default-class: \"true\"`, because annotation values must be strings; bare true is a boolean"
+   }
   ],
   "verify": [
    {
@@ -2334,9 +2880,18 @@
    }
   ],
   "traps": [
-   "Omitting storageClassName → default SC is used and PVC won't bind to mariadb-pv",
-   "PV stuck Released with an old claimRef → k patch pv mariadb-pv -p '{\"spec\":{\"claimRef\":null}}'",
-   "Forgetting to change claimName in the deploy file"
+   {
+    "dont": "PVC mariadb without `storageClassName`",
+    "do": "Set `storageClassName: \"\"` and `volumeName: mariadb-pv`, otherwise the default StorageClass makes a new volume"
+   },
+   {
+    "dont": "Create the PVC while mariadb-pv is still Released",
+    "do": "`k patch pv mariadb-pv -p '{\"spec\":{\"claimRef\":null}}'` first, because the old claimRef blocks new claims"
+   },
+   {
+    "dont": "Apply /root/mariadb-deploy.yaml with `claimName: \"\"` unchanged",
+    "do": "Set `claimName: mariadb` in the file first, so the Pod mounts your new PVC"
+   }
   ],
   "verify": [
    {
@@ -2376,10 +2931,22 @@
    }
   ],
   "traps": [
-   "Forgetting systemctl daemon-reload after editing the drop-in",
-   "Editing kubelet.service instead of the 10-kubeadm.conf drop-in that holds ExecStart",
-   "No sudo -i on node01 in the exam → Permission denied",
-   "Reinstalling kubelet (forbidden)"
+   {
+    "dont": "Edit the drop-in, then only `systemctl restart kubelet`",
+    "do": "`systemctl daemon-reload; systemctl restart kubelet`, because systemd rereads unit files only after daemon-reload"
+   },
+   {
+    "dont": "`vim /lib/systemd/system/kubelet.service`",
+    "do": "Edit the 10-kubeadm.conf drop-in. Find its path with `systemctl cat kubelet`. Its ExecStart is the one used."
+   },
+   {
+    "dont": "Edit files on node01 without `sudo -i`",
+    "do": "`ssh node01; sudo -i` first, because system files need root, else Permission denied"
+   },
+   {
+    "dont": "`apt install --reinstall kubelet`",
+    "do": "Fix the path /usr/local/bin/kubelet to /usr/bin/kubelet in the drop-in, because reinstalling is forbidden"
+   }
   ],
   "verify": [
    {
@@ -2416,10 +2983,22 @@
    }
   ],
   "traps": [
-   "crictl logs is EMPTY when the binary never started — read describe pod (Message) or journalctl -u kubelet",
-   "Recreating the pod — it's the scheduler that's broken",
-   "Editing the mirror pod with kubectl edit instead of the manifest file",
-   "Not waiting ~30 s for kubelet to recreate the static pod"
+   {
+    "dont": "Trust empty `crictl logs` output",
+    "do": "Run `k -n kube-system describe pod -l component=kube-scheduler`. A binary that never started writes no logs."
+   },
+   {
+    "dont": "`k delete pod stuck` and recreate it",
+    "do": "Fix the scheduler instead. The Pod is fine. Nothing is assigning it to a node."
+   },
+   {
+    "dont": "`k -n kube-system edit pod kube-scheduler-controlplane`",
+    "do": "`vim /etc/kubernetes/manifests/kube-scheduler.yaml` (fix kube-schedulerr), because the mirror pod is rebuilt from this file"
+   },
+   {
+    "dont": "Check the Pod immediately after saving the manifest",
+    "do": "Wait about 30 s, then run `k get pod stuck -o wide`. kubelet needs time to recreate the static pod."
+   }
   ],
   "verify": [
    {
@@ -2459,11 +3038,26 @@
    }
   ],
   "traps": [
-   "Saving the failed lookup before fixing DNS",
-   "Using a new temp pod instead of dns-test",
-   "Restarting pods when replicas are 0",
-   "Panicking at NXDOMAIN lines — success = Name/Address for kubernetes.default.svc.cluster.local",
-   "If replicas are fine, check k -n kube-system get cm coredns (Corefile) and the kube-dns Service endpoints"
+   {
+    "dont": "Save the nslookup to /root/dns.txt before fixing DNS",
+    "do": "Fix CoreDNS first. Then run `k -n lookup exec dns-test -- nslookup kubernetes.default > /root/dns.txt`. Now the file shows success."
+   },
+   {
+    "dont": "`k run tmp --image=busybox -- nslookup kubernetes.default`",
+    "do": "`k -n lookup exec dns-test -- nslookup kubernetes.default`, because the task names Pod dns-test"
+   },
+   {
+    "dont": "`k -n kube-system rollout restart deploy coredns` at 0/0",
+    "do": "`k -n kube-system scale deploy coredns --replicas=2`, because restarting zero replicas still gives zero Pods"
+   },
+   {
+    "dont": "Treat NXDOMAIN lines in the output as failure",
+    "do": "Look for Name/Address of kubernetes.default.svc.cluster.local, because NXDOMAIN lines are just search-domain tries"
+   },
+   {
+    "dont": "Stop looking when CoreDNS replicas look fine",
+    "do": "Check `k -n kube-system get cm coredns`. Check the kube-dns Service endpoints too. The Corefile or Service may be broken."
+   }
   ],
   "verify": [
    {
@@ -2503,9 +3097,18 @@
    }
   ],
   "traps": [
-   "Editing nodeSelector in the deployment (forbidden)",
-   "Typo in label key/value — copy it from the jsonpath output",
-   "Labelling the control plane instead of node01"
+   {
+    "dont": "`k -n data edit deploy analytics` to change nodeSelector",
+    "do": "`k label node node01 disktype=ssd --overwrite`, because changing the Deployment is forbidden"
+   },
+   {
+    "dont": "Type the label by hand, e.g. `disk-type=SSD`",
+    "do": "Copy key and value from `k -n data get deploy analytics -o jsonpath='{.spec.template.spec.nodeSelector}'`. Then they match exactly."
+   },
+   {
+    "dont": "`k label node controlplane disktype=ssd`",
+    "do": "`k label node node01 disktype=ssd --overwrite`, because the Pods must run on node01"
+   }
   ],
   "verify": [
    {
@@ -2545,9 +3148,18 @@
    }
   ],
   "traps": [
-   "Removing the init container (forbidden)",
-   "Wrong key/value case (ready=yes)",
-   "Creating the ConfigMap in the default namespace"
+   {
+    "dont": "Remove the init container from the Deployment",
+    "do": "Create the ConfigMap the init container waits for, because modifying the Deployment is forbidden"
+   },
+   {
+    "dont": "`--from-literal=Ready=Yes`",
+    "do": "`--from-literal=ready=yes`, because keys and values are case-sensitive"
+   },
+   {
+    "dont": "`k create cm inventory-config --from-literal=ready=yes`",
+    "do": "Run `k -n stock create cm inventory-config --from-literal=ready=yes`. Pods only read ConfigMaps in their own namespace."
+   }
   ],
   "verify": [
    {
@@ -2587,9 +3199,18 @@
    }
   ],
   "traps": [
-   "k apply on tigera-operator.yaml → annotations Too long; use k create",
-   "Not CHECKING the cidr in custom-resources.yaml against podSubnet",
-   "Applying custom-resources before the operator CRDs exist → k wait --for=condition=Established crd/installations.operator.tigera.io"
+   {
+    "dont": "`k apply -f .../tigera-operator.yaml`",
+    "do": "`k create -f .../tigera-operator.yaml`, because apply stores a huge annotation and fails with 'Too long'"
+   },
+   {
+    "dont": "Create custom-resources.yaml without checking its `cidr:`",
+    "do": "Compare `cidr:` with podSubnet from `k -n kube-system get cm kubeadm-config -o yaml`. Fix it with sed if different."
+   },
+   {
+    "dont": "Create custom-resources.yaml right after the operator",
+    "do": "`k wait --for=condition=Established crd/installations.operator.tigera.io --timeout=60s` first, because the Installation type must exist"
+   }
   ],
   "verify": [
    {
@@ -2630,11 +3251,26 @@
    }
   ],
   "traps": [
-   "Mixing up --cert and --cacert",
-   "Old etcdctl without ETCDCTL_API=3 → v2 API, snapshot save fails",
-   "No sudo -i in the exam → cannot read /etc/kubernetes/pki",
-   "Folder /opt/backup missing → mkdir -p first",
-   "Using peer.crt instead of server.crt"
+   {
+    "dont": "`--cert=/etc/kubernetes/pki/etcd/ca.crt`",
+    "do": "`--cacert=.../ca.crt --cert=.../server.crt --key=.../server.key`, because cacert is the CA, cert is etcd's own certificate"
+   },
+   {
+    "dont": "Run `etcdctl snapshot save` with an old etcdctl, no API set",
+    "do": "`export ETCDCTL_API=3` first, because old etcdctl defaults to v2, which has no snapshot save"
+   },
+   {
+    "dont": "Run etcdctl as the normal user",
+    "do": "`sudo -i` first, because only root can read /etc/kubernetes/pki"
+   },
+   {
+    "dont": "Save to /opt/backup/etcd-snap.db when /opt/backup is missing",
+    "do": "`mkdir -p /opt/backup` first, because etcdctl will not create the folder"
+   },
+   {
+    "dont": "`--cert=/etc/kubernetes/pki/etcd/peer.crt`",
+    "do": "`--cert=/etc/kubernetes/pki/etcd/server.crt`, because the task names server.crt; peer.crt is for etcd-to-etcd traffic"
+   }
   ],
   "verify": [
    {
@@ -2677,9 +3313,18 @@
    }
   ],
   "traps": [
-   "Using name prod-shop in replicas (use the base name shop)",
-   "k apply -f instead of -k",
-   "Namespace shop-prod doesn't exist → apply fails"
+   {
+    "dont": "`replicas: - name: prod-shop`",
+    "do": "`replicas: - name: shop`, because Kustomize matches the base name before adding the prefix"
+   },
+   {
+    "dont": "`k apply -f /root/shop-kustomize/overlays/prod`",
+    "do": "`k apply -k /root/shop-kustomize/overlays/prod`, because -k builds the kustomization; -f reads plain YAML only"
+   },
+   {
+    "dont": "Apply the overlay before namespace shop-prod exists",
+    "do": "`k create ns shop-prod` first, because `namespace:` in kustomization.yaml does not create it"
+   }
   ],
   "verify": [
    {
@@ -2723,9 +3368,18 @@
    }
   ],
   "traps": [
-   "Upgrading without --reuse-values → replicaCount resets to 1",
-   "Forgetting --version on upgrade → newest chart (the question says \"keeping the same chart version\")",
-   "Writing more than the number into the file"
+   {
+    "dont": "`helm upgrade web podinfo/podinfo --set ui.message=\"hello cka\"`",
+    "do": "Add `--reuse-values`, because otherwise replicaCount=2 is dropped and resets to 1"
+   },
+   {
+    "dont": "`helm upgrade` without `--version`",
+    "do": "Run `helm upgrade web podinfo/podinfo --version 6.7.1 ...`. Without --version, Helm moves to the newest chart."
+   },
+   {
+    "dont": "`helm -n helm-web history web > /root/helm-rev.txt`",
+    "do": "Run `echo 2 > /root/helm-rev.txt`. Use the last REVISION from `helm -n helm-web history web`. Only the number is wanted."
+   }
   ],
   "verify": [
    {
@@ -2765,9 +3419,18 @@
    }
   ],
   "traps": [
-   "Forgetting the * → pathType Exact",
-   "Port 80 instead of 8080",
-   "Missing -n echo-sound"
+   {
+    "dont": "`--rule=\"example.org/echo=echo:8080\"`",
+    "do": "`--rule=\"example.org/echo*=echo:8080\"`, because the `*` makes pathType Prefix; without it you get Exact"
+   },
+   {
+    "dont": "`--rule=\"example.org/echo*=echo:80\"`",
+    "do": "Use `echo:8080`, the Service port shown by `k -n echo-sound get svc echo`"
+   },
+   {
+    "dont": "`k create ingress echo ...` without a namespace",
+    "do": "`k -n echo-sound create ingress echo --class=nginx ...`, otherwise it lands in default"
+   }
   ],
   "verify": [
    {
@@ -2806,9 +3469,18 @@
    }
   ],
   "traps": [
-   "Setting immutable before editing → you must delete/recreate it",
-   "Forgetting the rollout restart",
-   "Breaking the trailing ; in the nginx line"
+   {
+    "dont": "`k -n nginx-static patch cm nginx-config -p '{\"immutable\":true}'` before editing",
+    "do": "Edit to `ssl_protocols TLSv1.3;` first. Then make it immutable. An immutable ConfigMap cannot be edited."
+   },
+   {
+    "dont": "Edit the ConfigMap and stop there",
+    "do": "Run `k -n nginx-static rollout restart deploy nginx-static`. Running Pods keep the old config until restarted."
+   },
+   {
+    "dont": "`ssl_protocols TLSv1.3` (no semicolon)",
+    "do": "`ssl_protocols TLSv1.3;`, because nginx needs the trailing `;` or it fails to start"
+   }
   ],
   "verify": [
    {
@@ -2854,9 +3526,18 @@
    }
   ],
   "traps": [
-   "Writing '- podSelector' as a second list item → OR (allows role=api pods in ns db + every pod of ns api)",
-   "podSelector alone → only same namespace db",
-   "Using a namespace label that doesn't exist — kubernetes.io/metadata.name is automatic"
+   {
+    "dont": "`- namespaceSelector: ...` and `- podSelector: ...` as two items",
+    "do": "One `- namespaceSelector:` item with `podSelector:` under it (no dash), because one item means AND"
+   },
+   {
+    "dont": "`from: - podSelector: matchLabels: role: api` alone",
+    "do": "Add `namespaceSelector` for api, because podSelector alone only matches Pods in namespace db"
+   },
+   {
+    "dont": "`namespaceSelector: matchLabels: name: api`",
+    "do": "`matchLabels: kubernetes.io/metadata.name: api`, because Kubernetes puts this label on every namespace automatically"
+   }
   ],
   "verify": [
    {
@@ -2900,9 +3581,18 @@
    }
   ],
   "traps": [
-   "Adding it under containers: (not the native pattern asked)",
-   "Mount missing in the main container",
-   "Wrong command quoting — use [sh, -c, \"tail -n+1 -F /var/log/order.log\"]"
+   {
+    "dont": "Add log-shipper under `containers:`",
+    "do": "Add it under `initContainers:` with `restartPolicy: Always`. That is the native sidecar the task asks for."
+   },
+   {
+    "dont": "Mount the logs volume only in log-shipper",
+    "do": "Add `volumeMounts: - {name: logs, mountPath: /var/log}` to the app container too. Then both share the files."
+   },
+   {
+    "dont": "`command: tail -n+1 -F /var/log/order.log`",
+    "do": "`command: [sh, -c, \"tail -n+1 -F /var/log/order.log\"]`, because command must be a list"
+   }
   ],
   "verify": [
    {
@@ -2946,10 +3636,22 @@
    }
   ],
   "traps": [
-   "Forgetting the init container → its larger request still blocks scheduling (a Pod needs max(init, sum of main containers))",
-   "Using Capacity instead of Allocatable",
-   "Taking the Limits column instead of Requests under \"Allocated resources\"",
-   "Not converting Ki to Mi (÷1024), or mixing Mi and M"
+   {
+    "dont": "Set requests only on the wordpress container",
+    "do": "Also run `k -n wp set resources deploy wordpress -c init --requests=...`. A bigger init request still blocks scheduling."
+   },
+   {
+    "dont": "Use the Capacity numbers from `k describe node node01`",
+    "do": "Use Allocatable, because Capacity includes resources reserved for the system"
+   },
+   {
+    "dont": "Read the Limits column under Allocated resources",
+    "do": "Read the Requests column, because the scheduler only counts requests"
+   },
+   {
+    "dont": "Use Ki values directly, or write M instead of Mi",
+    "do": "Run `echo $(( <memKi> / 1024 ))` to get Mi. Always write `Mi`. M means 1000-based units."
+   }
   ],
   "verify": [
    {
@@ -2990,10 +3692,22 @@
    }
   ],
   "traps": [
-   "Trying k edit pvc storageClassName — forbidden on an existing PVC",
-   "Deleting the pod without saving its YAML first",
-   "Re-creating from saved YAML that still has resourceVersion → \"resourceVersion should not be set on objects to be created\"",
-   "PVC with WaitForFirstConsumer stays Pending until the pod exists — that's normal"
+   {
+    "dont": "`k -n storage-fix edit pvc logs-pvc` to change storageClassName",
+    "do": "Delete and recreate logs-pvc with `storageClassName: local-path`. That field cannot change on an existing PVC."
+   },
+   {
+    "dont": "`k -n storage-fix delete pod log-writer` before saving it",
+    "do": "First run `k -n storage-fix get pod log-writer -o yaml > /root/log-writer.yaml`. Then you can recreate it."
+   },
+   {
+    "dont": "`k apply -f /root/log-writer.yaml` with resourceVersion still inside",
+    "do": "`sed -i '/^  resourceVersion:/d; /^  uid:/d' /root/log-writer.yaml` first, because new objects cannot carry these"
+   },
+   {
+    "dont": "Worry that logs-pvc is Pending before the Pod exists",
+    "do": "Create the Pod, because WaitForFirstConsumer binds the PVC only once a Pod uses it"
+   }
   ],
   "verify": [
    {
@@ -3034,9 +3748,18 @@
    }
   ],
   "traps": [
-   "Namespace on the PV",
-   "PVC without storageClassName won't match a PV with class manual",
-   "Pod command as a string instead of [sleep, \"3600\"]"
+   {
+    "dont": "`namespace: app-store` in the PV metadata",
+    "do": "Leave namespace out of app-pv. PersistentVolumes are cluster-wide. Only the PVC and Pod use app-store."
+   },
+   {
+    "dont": "PVC app-pvc without `storageClassName`",
+    "do": "`storageClassName: manual` on app-pvc, otherwise it uses the default class and never matches app-pv"
+   },
+   {
+    "dont": "`command: sleep 3600`",
+    "do": "`command: [sleep, \"3600\"]`, because command is a list of strings"
+   }
   ],
   "verify": [
    {
@@ -3076,9 +3799,18 @@
    }
   ],
   "traps": [
-   "Restoring etcd (forbidden, and not the cause)",
-   "Using port 2380 (peer) instead of 2379 (client)",
-   "Editing a copy in another folder — kubelet only reads /etc/kubernetes/manifests"
+   {
+    "dont": "`etcdctl snapshot restore ...`",
+    "do": "Fix kube-apiserver.yaml instead, because restoring is forbidden and etcd data is not the problem"
+   },
+   {
+    "dont": "`--etcd-servers=https://127.0.0.1:2380`",
+    "do": "`--etcd-servers=https://127.0.0.1:2379`, because 2379 is the client port; 2380 is for etcd peers only"
+   },
+   {
+    "dont": "Edit a copy like /root/kube-apiserver.yaml",
+    "do": "Edit /etc/kubernetes/manifests/kube-apiserver.yaml, because kubelet only reads static pods from that folder"
+   }
   ],
   "verify": [
    {
@@ -3114,9 +3846,18 @@
    }
   ],
   "traps": [
-   "Blaming the scheduler — Pending pods would exist; here pods aren't even created",
-   "Scaling the deployment again instead of fixing the component",
-   "Fixing the wrong path — compare with ls /etc/kubernetes/*.conf"
+   {
+    "dont": "Fix the kube-scheduler",
+    "do": "Fix kube-controller-manager. No new Pods are created at all. A scheduler problem leaves Pending Pods instead."
+   },
+   {
+    "dont": "`k -n cm-test scale deploy scale-test --replicas=3` again",
+    "do": "Fix the controller-manager manifest, because scaling again changes nothing while the controller is down"
+   },
+   {
+    "dont": "Guess the kubeconfig file name",
+    "do": "Compare `grep kubeconfig` in kube-controller-manager.yaml with `ls /etc/kubernetes/*.conf`, then fix `.cfg` to `.conf`"
+   }
   ],
   "verify": [
    {
@@ -3157,9 +3898,18 @@
    }
   ],
   "traps": [
-   "kubeadm reset/join (forbidden)",
-   "Editing the file on the control plane instead of node01",
-   "Forgetting systemctl restart kubelet"
+   {
+    "dont": "`kubeadm reset` then `kubeadm join`",
+    "do": "Fix clientCAFile in /var/lib/kubelet/config.yaml, because re-joining is forbidden"
+   },
+   {
+    "dont": "Edit /var/lib/kubelet/config.yaml on the controlplane",
+    "do": "`ssh node01; sudo -i` first, because the broken kubelet runs on node01"
+   },
+   {
+    "dont": "Fix the file and walk away",
+    "do": "`systemctl restart kubelet`, because kubelet reads config.yaml only when it starts"
+   }
   ],
   "verify": [
    {
@@ -3203,9 +3953,18 @@
    }
   ],
   "traps": [
-   "Splitting namespaceSelector and podSelector into two items (OR)",
-   "Only UDP 53",
-   "Adding Ingress to policyTypes → blocks incoming traffic for every pod"
+   {
+    "dont": "`- namespaceSelector` and `- podSelector` as two `to` items",
+    "do": "One `- namespaceSelector:` item with `podSelector: k8s-app: kube-dns` under it, because two items mean OR"
+   },
+   {
+    "dont": "`ports: - protocol: UDP, port: 53` only",
+    "do": "List both UDP 53 and TCP 53. DNS falls back to TCP for large answers."
+   },
+   {
+    "dont": "`policyTypes: [Ingress, Egress]`",
+    "do": "`policyTypes: [Egress]` only, because Ingress with no rules blocks all incoming traffic to every Pod"
+   }
   ],
   "verify": [
    {
@@ -3241,9 +4000,18 @@
    }
   ],
   "traps": [
-   "Undoing twice → back to the broken one",
-   "Writing the image before rolling back",
-   "Forgetting -n release"
+   {
+    "dont": "Run `k -n release rollout undo deploy checkout` twice",
+    "do": "Run it once, because a second undo jumps back to the broken revision"
+   },
+   {
+    "dont": "Write the image to the file before rolling back",
+    "do": "Undo, then wait for `rollout status`. Then save the image with jsonpath. The file then shows the working image."
+   },
+   {
+    "dont": "`k rollout undo deploy checkout` with no namespace",
+    "do": "`k -n release rollout undo deploy checkout`, because the Deployment lives in namespace release"
+   }
   ],
   "verify": [
    {
@@ -3283,9 +4051,18 @@
    }
   ],
   "traps": [
-   "Enabling only the service, not the socket",
-   "sysctl --system before modprobe br_netfilter → bridge key missing",
-   "Wrong file names (must be 99-cri.conf and cri.conf)"
+   {
+    "dont": "`systemctl enable --now cri-docker.service` only",
+    "do": "`systemctl enable --now cri-docker.socket cri-docker.service`, because the task asks for both socket and service"
+   },
+   {
+    "dont": "`sysctl --system` before loading br_netfilter",
+    "do": "Run `modprobe br_netfilter` first, then `sysctl --system`. The bridge setting exists only once the module is loaded."
+   },
+   {
+    "dont": "Save to /etc/sysctl.d/k8s.conf or /etc/modules-load.d/k8s.conf",
+    "do": "Use /etc/sysctl.d/99-cri.conf and /etc/modules-load.d/cri.conf, because the grader checks those exact names"
+   }
   ],
   "verify": [
    {
@@ -3325,9 +4102,18 @@
    }
   ],
   "traps": [
-   "Running helm install",
-   "Release name argocd instead of argo (changes resource names)",
-   "Namespace gitops not created → apply fails"
+   {
+    "dont": "`helm install argo argocd/argo-cd ...`",
+    "do": "`helm template ... > /root/argocd-template.yaml`, then `k apply -n gitops -f` it, because helm install is forbidden"
+   },
+   {
+    "dont": "`helm template argocd argocd/argo-cd ...`",
+    "do": "`helm template argo argocd/argo-cd ...`, because the release name prefixes resources, e.g. argo-argocd-server"
+   },
+   {
+    "dont": "`k apply -n gitops -f ...` before the namespace exists",
+    "do": "`k create ns gitops` first, because apply does not create namespaces"
+   }
   ],
   "verify": [
    {
@@ -3373,9 +4159,18 @@
    }
   ],
   "traps": [
-   "grep cert-manager also catches acme.cert-manager.io CRDs — filter by exact group",
-   "Adding a namespace to the ClusterIssuer (cluster-scoped)",
-   "Lowercase selfsigned in the field path"
+   {
+    "dont": "`k get crd | grep cert-manager`",
+    "do": "Keep only CRDs whose `.spec.group` is exactly cert-manager.io (awk), because grep also catches acme.cert-manager.io"
+   },
+   {
+    "dont": "`namespace: default` in the ClusterIssuer metadata",
+    "do": "Give ClusterIssuer selfsigned no namespace, because it is cluster-scoped"
+   },
+   {
+    "dont": "`k explain clusterissuer.spec.selfsigned`",
+    "do": "`k explain clusterissuer.spec.selfSigned > /root/selfsigned.txt`, because field names are case-sensitive (capital S)"
+   }
   ],
   "verify": [
    {
@@ -3418,9 +4213,18 @@
    }
   ],
   "traps": [
-   "kubeadm certs renew all (renews more than asked)",
-   "Not restarting the apiserver — it keeps the old cert in memory",
-   "Saving only the token instead of the full join command"
+   {
+    "dont": "`kubeadm certs renew all`",
+    "do": "`kubeadm certs renew apiserver`, because the task wants ONLY the API server serving certificate"
+   },
+   {
+    "dont": "Renew and assume the apiserver already uses it",
+    "do": "Move kube-apiserver.yaml out of manifests and back. The apiserver then restarts and loads the new cert."
+   },
+   {
+    "dont": "`kubeadm token create > /root/join.sh`",
+    "do": "`kubeadm token create --print-join-command > /root/join.sh`, because the task wants the full join command"
+   }
   ],
   "verify": [
    {
@@ -3466,9 +4270,18 @@
    }
   ],
   "traps": [
-   "Putting both matches in ONE rule (then header requests also get split)",
-   "Forgetting port: 80 in backendRefs",
-   "Weights as percent strings instead of integers"
+   {
+    "dont": "Header match and 80/20 split in ONE rule",
+    "do": "Write two rules. One matches `headers: x-version: v2` and sends to shop-v2. The other uses weights. So header requests skip the split."
+   },
+   {
+    "dont": "`backendRefs: - name: shop-v1` without a port",
+    "do": "`backendRefs: - name: shop-v1, port: 80`, because a Service backend needs its port"
+   },
+   {
+    "dont": "`weight: \"80%\"`",
+    "do": "`weight: 80` and `weight: 20`, because weight is a plain number, not a percent string"
+   }
   ],
   "verify": [
    {
@@ -3508,9 +4321,18 @@
    }
   ],
   "traps": [
-   "Picking the file with '- namespaceSelector' and '- podSelector' as two items (OR)",
-   "Picking one with no ports block",
-   "Editing a file to 'fix' it (forbidden)"
+   {
+    "dont": "Pick a file with `- namespaceSelector` and `- podSelector` as two items",
+    "do": "Pick the file with one item holding both selectors, because two items mean OR"
+   },
+   {
+    "dont": "Pick a file with no `ports:` block",
+    "do": "`k apply -f /root/netpols-ex/b.yaml`, because it also limits traffic to TCP port 80 (least privilege)"
+   },
+   {
+    "dont": "`vim /root/netpols-ex/a.yaml` to fix a candidate",
+    "do": "Only read the files and apply one as-is, because editing them is forbidden"
+   }
   ],
   "verify": [
    {
@@ -3549,9 +4371,18 @@
    }
   ],
   "traps": [
-   "Using -it with redirect → TTY junk in the file; use -i",
-   "Headless with a ClusterIP (must be None)",
-   "Swapping port and target-port"
+   {
+    "dont": "`k -n dns-lab run dnsq --rm -it ... > /root/svc-dns.txt`",
+    "do": "Use `--rm -i`, not `-it`, because a TTY adds junk characters to the redirected file"
+   },
+   {
+    "dont": "`k -n dns-lab expose deploy catalog --name=catalog-headless --port=80`",
+    "do": "Add `--cluster-ip=None`, because headless means the Service has no ClusterIP"
+   },
+   {
+    "dont": "`--port=80 --target-port=8080`",
+    "do": "`--port=8080 --target-port=80`, because port is what the Service offers; targetPort is the container's port"
+   }
   ],
   "verify": [
    {
@@ -3592,9 +4423,18 @@
    }
   ],
   "traps": [
-   "Using type: Percent instead of Pods for the scale-up policy",
-   "Only one metric (k autoscale)",
-   "apiVersion autoscaling/v1 (no memory, no behavior)"
+   {
+    "dont": "`{type: Percent, value: 2, periodSeconds: 60}`",
+    "do": "`{type: Pods, value: 2, periodSeconds: 60}`, because the task says 2 Pods, not 2 percent"
+   },
+   {
+    "dont": "`k autoscale deploy worker ...`",
+    "do": "Write autoscaling/v2 YAML with cpu 60 and memory 70. `k autoscale` cannot set the behavior rules."
+   },
+   {
+    "dont": "`apiVersion: autoscaling/v1`",
+    "do": "`apiVersion: autoscaling/v2`, because v1 has no memory metric and no behavior field"
+   }
   ],
   "verify": [
    {
@@ -3634,10 +4474,22 @@
    }
   ],
   "traps": [
-   "Copying preemptionPolicy: Never from team-b — the task wants PreemptLowerPriority (the default)",
-   "Taking the value from a system-* class (2000000000) instead of the user classes",
-   "Setting globalDefault: true",
-   "Old pods still have the old priority until the rollout finishes"
+   {
+    "dont": "`preemptionPolicy: Never` copied from team-b",
+    "do": "`preemptionPolicy: PreemptLowerPriority`, because the task asks for it (it is also the default)"
+   },
+   {
+    "dont": "`value: 1999999999` from a system-* class",
+    "do": "`k get pc --sort-by=.value`, take the highest non-system value minus 1"
+   },
+   {
+    "dont": "`globalDefault: true`",
+    "do": "`globalDefault: false`, because the task says it must not be the global default"
+   },
+   {
+    "dont": "Check Pod priority right after the patch",
+    "do": "First run `k -n prio rollout status deploy payments-api`. Old Pods keep the old priority until replaced."
+   }
   ],
   "verify": [
    {
@@ -3677,9 +4529,18 @@
    }
   ],
   "traps": [
-   "Putting SC fields under spec: (SC has no spec)",
-   "serviceName not matching the headless Service cache",
-   "volumeMounts name not matching the template name data"
+   {
+    "dont": "`spec: provisioner: rancher.io/local-path` in the StorageClass",
+    "do": "Put provisioner, reclaimPolicy, volumeBindingMode, allowVolumeExpansion at the top level, because StorageClass has no spec"
+   },
+   {
+    "dont": "`serviceName: cache-svc`",
+    "do": "`serviceName: cache`, matching the headless Service cache, so Pods get stable DNS names"
+   },
+   {
+    "dont": "`volumeMounts: - name: cache-data`",
+    "do": "`volumeMounts: - name: data, mountPath: /data`, because it must match the volumeClaimTemplate name data"
+   }
   ],
   "verify": [
    {
@@ -3719,9 +4580,18 @@
    }
   ],
   "traps": [
-   "Deleting/recreating the PV",
-   "Not checking the PV shows Available before creating the PVC — you will not know whether the patch worked",
-   "Wrong namespace postgres"
+   {
+    "dont": "`k delete pv pg-data-pv` and recreate it",
+    "do": "`k patch pv pg-data-pv --type=json -p='[{\"op\":\"remove\",\"path\":\"/spec/claimRef\"}]'`, which frees it and keeps the data"
+   },
+   {
+    "dont": "Create the PVC without checking the patch worked",
+    "do": "`k get pv pg-data-pv` must show Available first, so you know the patch worked"
+   },
+   {
+    "dont": "Create PVC pg-data in namespace default",
+    "do": "Set `namespace: postgres` on PVC pg-data. A Pod can only use claims in its own namespace."
+   }
   ],
   "verify": [
    {
