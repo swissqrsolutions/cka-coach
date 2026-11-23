@@ -186,13 +186,29 @@
     if (!found.length) return '';
     return `<div class="phnote">${found.map(p => { const k = p.slice(1, -1), hit = PH.find(([re]) => re.test(k)); return `<p>Replace <mark class="ph">${esc(p)}</mark> with ${hit ? hit[1] : 'the real value from the output above or from the question.'}</p>`; }).join('')}</div>`;
   };
-  const BASICS = `<details class="step basics"><summary>New here? The basics (1 min)</summary><div class="body plain">
-    <p><b>k</b> = kubectl, the command you type for everything. In the exam it's set up. In Killercoda, if you see "k: command not found", type <code>alias k=kubectl</code> once.</p>
-    <p><b>Pod</b> = your app running. <b>Deployment</b> = the instruction "always run N pods of this image": fix the Deployment, not the pod. <b>Node</b> = a machine (controlplane, node01). <b>Namespace</b> = a folder; every command needs <code>-n &lt;namespace&gt;</code> or it looks in "default". <b>Service</b> = a fixed address in front of pods, finds them by <b>label</b> (a tag like <code>app=web</code>).</p>
-    <p><b>&lt;something&gt;</b> in a command = put the real name there (yellow note under the step tells you where to find it). <b>Tab</b> completes names.</p>
-    <p><b>vim</b> (the editor that <code>k edit</code> and <code>vim file</code> open): <code>i</code> = start typing · <code>Esc</code> = stop typing · <code>:wq</code> Enter = save and quit · <code>:q!</code> = quit without saving · <code>/word</code> = search · <code>dd</code> = delete line · <code>u</code> = undo · before pasting YAML type <code>:set paste</code>.</p>
-    <p><b>Node tasks</b> (systemctl, /etc/kubernetes/…): in the real exam run <code>sudo -i</code> after ssh to become root. In Killercoda you are already root.</p>
-    <p><b>YAML</b>: spaces only, 2 per level, never Tab. Copy from kubernetes.io/docs, change only the marked lines.</p>
+  const BASICS = `<details class="step basics"><summary>New here? The basics</summary><div class="body">
+    <table class="bt"><tr><th colspan="2">Words</th></tr>
+      <tr><td><code>k</code></td><td>kubectl, the command for everything</td></tr>
+      <tr><td>Pod</td><td>your app, running</td></tr>
+      <tr><td>Deployment</td><td>"always run N pods": fix this, not the pod</td></tr>
+      <tr><td>Node</td><td>a machine (controlplane, node01)</td></tr>
+      <tr><td>Namespace</td><td>a folder: always add <code>-n name</code></td></tr>
+      <tr><td>Service</td><td>fixed address in front of pods</td></tr>
+      <tr><td>Label</td><td>a tag like <code>app=web</code></td></tr>
+      <tr><td><mark class="ph">&lt;name&gt;</mark></td><td>put the real name here</td></tr></table>
+    <table class="bt"><tr><th colspan="2">vim keys</th></tr>
+      <tr><td><code>i</code></td><td>start typing</td></tr>
+      <tr><td><code>Esc</code></td><td>stop typing</td></tr>
+      <tr><td><code>:wq</code> Enter</td><td>save and quit</td></tr>
+      <tr><td><code>:q!</code> Enter</td><td>quit, don't save</td></tr>
+      <tr><td><code>dd</code> / <code>u</code></td><td>delete line / undo</td></tr>
+      <tr><td><code>:set paste</code></td><td>before pasting YAML</td></tr></table>
+    <table class="bt"><tr><th colspan="2">If…</th></tr>
+      <tr><td>"k: command not found"</td><td><code>alias k=kubectl</code></td></tr>
+      <tr><td>"No resources found"</td><td>you forgot <code>-n</code></td></tr>
+      <tr><td>node task in the real exam</td><td><code>sudo -i</code> first</td></tr>
+      <tr><td>YAML</td><td>spaces only, 2 per level</td></tr>
+      <tr><td>long name</td><td>type 3 letters + Tab</td></tr></table>
   </div></details>`;
   // the whole answer in baby steps: one command, what you see, why
   function solution(q) {
