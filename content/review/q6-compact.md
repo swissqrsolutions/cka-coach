@@ -53,6 +53,7 @@ k get ep backend-svc -n web
 ```
 You see:
 ```
+Warning: v1 Endpoints is deprecated in v1.33+; ...   <-- normal, ignore
 backend-svc   <none>
 ```
 **Means:** no pods: wrong selector, or pods not Ready.
