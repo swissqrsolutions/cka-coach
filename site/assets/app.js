@@ -266,7 +266,7 @@
 
   const MODES = [['learn', '1 Learn'], ['practise', '2 Practice'], ['exam', '3 Exam']];
   const NEXT = { learn: 'practise', practise: 'exam', exam: 'exam' };
-  const MODEHINT = { learn: 'Round 1, first time: follow every step and read why.', practise: 'Round 2, next day: type it yourself. Open the steps only to check.', exam: 'Round 3: no help. Beat the target time.' };
+  const MODEHINT = { learn: 'Round 1: follow every step.', practise: 'Round 2: type it yourself.', exam: 'Round 3: no help, beat the time.' };
   function compactBody(q, mode = 'learn') {
     const st = q.story || {};
     const all = q.steps.map((s, i) => ({ s, i, v: /^Verify/.test(s.title) }));
@@ -275,8 +275,8 @@
     const verify = all.filter(x => x.v).map(x => stepHtml(x.s, x.i)).join('');
     const thinkCard = q.think ? `<section class="card think"><div class="label">Think (15 seconds)</div>${q.think}${q.budget ? `<p class="budget">⏱ ${esc(q.budget)}</p>` : ''}</section>` : '';
     const build = `<h2>Build it in Killercoda</h2>
-      <div class="card">${q.setup ? `<a class="btn block" href="${KILLERCODA}" target="_blank" rel="noopener">Open Killercoda</a>${codeBlock(q.setup)}<p class="small">In the real exam this is already set up.</p>` : '<p class="small">Cannot be built in a playground. Practise in killer.sh.</p>'}</div>`;
-    const examNote = `<p class="small">Real exam: run the question's <code>ssh</code> line first, <code>exit</code> at the end.</p>`;
+      <div class="card">${q.setup ? `<a class="btn block" href="${KILLERCODA}" target="_blank" rel="noopener">Open Killercoda</a>${codeBlock(q.setup)}<p class="small">Exam: already set up. Run <code>ssh</code> first, <code>exit</code> last.</p>` : '<p class="small">Cannot be built in a playground. Practise in killer.sh.</p>'}</div>`;
+    const examNote = '';
     const help = `<details class="step needhelp"><summary>Need help?</summary><div class="body">
         ${st.broken ? `<p class="story">${esc(st.broken)}</p>` : ''}
         ${q.wrong ? `<h3>If something goes wrong</h3><div class="btable">${q.wrong}</div>` : ''}

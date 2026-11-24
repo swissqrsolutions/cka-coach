@@ -2000,15 +2000,15 @@ The Service's selector does not match the pods' label.
 
 ### Think
 
-- **Broken:** the Service finds no pods.
+- **Broken:** no pods behind the Service.
 - **Look first:** `k get ep backend-svc -n web`
 - **Expect:** `<none>`
-- **Fix:** set the Service selector to the pods' label.
-- **Prove:** `wget` from `client` prints `Welcome to nginx!`
+- **Fix:** selector = the pods' label.
+- **Prove:** `wget` from `client` → `Welcome to nginx!`
 
 ### Time budget
 
-Target 2 minutes. Skip and flag at 5 minutes.
+Target 2 min. Skip at 5.
 
 ---
 
@@ -2039,7 +2039,7 @@ You see:
 ```
 backend-svc   <none>
 ```
-**Means:** it finds no pods. The selector is wrong, or the pods are not Ready.
+**Means:** no pods: wrong selector, or pods not Ready.
 
 ---
 
@@ -2074,7 +2074,7 @@ backend-...   1/1   Running   app=backend,pod-template-hash=...
 
 ### Step 4. Fix the selector
 
-**Why:** fix the Service, not the pods. Other things may rely on pod labels.
+**Why:** fix the Service, not the pods.
 
 ```
 k set selector svc backend-svc app=backend -n web
@@ -2085,7 +2085,7 @@ k set selector svc backend-svc app=backend -n web
 
 ### Verify
 
-**Why:** prove a pod can reach the Service.
+**Why:** prove it works.
 
 ```
 k exec client -n web -- wget -qO- -T 3 backend-svc
