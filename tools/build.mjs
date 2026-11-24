@@ -119,6 +119,8 @@ for (const x of questions) {
   const tt = (r.match(/\*\*Target time:\*\*\s*(\d+)/) || [])[1];
   Object.assign(x, {
     words: html(sec(r, /Three words|words first/i)),
+    think: html(sec(r, /^### Think\b/)),
+    budget: sec(r, /^### Time budget\b/).replace(/\s+/g, ' ').trim(),
     setup: block.replace(/\nclear\s*$/, '').trim(),
     setupNote: html(partA.replace(/```[\s\S]*?```/, '').trim()),
     question: examQ,

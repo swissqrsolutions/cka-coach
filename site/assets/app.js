@@ -267,6 +267,7 @@
       <p class="sub">${q.star ? '<span class="chip star">often in exam</span> ' : ''}${q.target} min ${p.st ? '· ' + ST[p.st] : ''}</p>
       <section class="card exam"><div class="label">Exam question</div><p class="q">${inline(q.question)}</p></section>
       ${q.keys && q.keys.length ? `<div class="writedown"><b>Write down:</b> ${q.keys.map(k => `<span class="chip">${inline(k)}</span>`).join(' ')}</div>` : ''}
+      ${q.think ? `<section class="card think"><div class="label">Think (15 seconds)</div>${q.think}${q.budget ? `<p class="budget">⏱ ${esc(q.budget)}</p>` : ''}</section>` : ''}
       ${solution(q)}
       <h2>How did it go?</h2>
       <div class="row"><button class="btn good" data-r="solo">Alone</button><button class="btn warn" data-r="help">With help</button><button class="btn bad" data-r="fail">Not yet</button></div>

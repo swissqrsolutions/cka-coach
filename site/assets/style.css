@@ -363,3 +363,7 @@ pre.out,.bbody pre.out{font-size:15px}
 .trap .dont{color:var(--bad);margin-bottom:4px}
 .trap .do{color:var(--ink)}
 .trap code{font-size:15px}
+.think{border-left:4px solid var(--accent)}
+.think .label{font-size:12px;font-weight:800;letter-spacing:.06em;color:var(--accent);text-transform:uppercase}
+.think ul{margin:6px 0 0;padding-left:20px}.think li{margin:4px 0}
+.think .budget{margin:10px 0 0;font-weight:700}
