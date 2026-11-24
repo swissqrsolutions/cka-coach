@@ -4279,29 +4279,6 @@ etcd-controlplane   1/1   Running   ...   <-- etcd is back
 
 ## 23. ★ NodePort
 
-### Three words first
-
-- **containerPort** = a line in the pod template. It names the port the container listens on.
-- **NodePort Service** = a Service that also opens a port on every node. Three numbers are involved:
-  - `port` = the Service's own port
-  - `targetPort` = the container's port
-  - `nodePort` = the port on every node (30000 to 32767)
-- **k expose** = creates a Service for a Deployment.
-  It copies the Deployment's labels into the selector. So the selector is always right.
-
----
-
-### PART A. Build the exam (Killercoda only)
-
-```
-k delete ns web --ignore-not-found
-k create ns web
-k create deploy np --image=nginx:1.27 -n web
-clear
-```
-
----
-
 ### PART B. The exam starts here
 
 **The question, as the exam words it:**
@@ -4312,127 +4289,173 @@ clear
 
 **What the question is really saying:**
 
-Two jobs.
-Add two lines to the Deployment.
-Create a Service. Then set its node port to a fixed number.
-(Otherwise Kubernetes picks a random one.)
+Add a port to the Deployment, expose it, then fix the node port to 30080.
 
 **Write down from the question:** namespace = `web` · deployment = `np` · containerPort = `80` · Service = `np-svc` · port = `80` · nodePort = `30080`
 
 ---
 
-### Opening routine (same 2 commands at the start of EVERY question)
+### Think
+
+- **Wanted:** the pod declares port 80; a NodePort Service on 30080.
+- **Look first:** the container section of the Deployment.
+- **Expect:** no `ports:` under the container.
+- **Fix:** add the port, expose as NodePort, set the node port.
+- **Prove:** `80:30080/TCP`, and a node answers on 30080.
+
+### Time budget
+
+Target 4 min. Skip at 7.
+
+---
+
+### PART A. Build the exam (Killercoda only)
 
 ```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
+k delete ns web --ignore-not-found
+k create ns web
+k create deploy np --image=nginx:1.27 -n web
+k rollout status deploy/np -n web --timeout=120s
+clear
+k get deploy,svc -n web
 ```
 
 ---
 
-### Step 1. Add the container port to the Deployment
+### Step 1. Add the container port
+
+**Why:** `containerPort` tells Kubernetes which port the container listens on.
 
 ```
 k edit deploy np -n web
 ```
-Type `/image:` and press Enter. You see:
+Type `/image:` and Enter. Add the three marked lines under `name: nginx`:
 ```
       containers:
       - image: nginx:1.27
         imagePullPolicy: IfNotPresent
         name: nginx
-```
-Put the cursor on the line `name: nginx`.
-Press `o` (opens a new line below) and type these three lines.
-Start `ports:` in the same column as `imagePullPolicy:` (8 spaces).
-NOT at the `-` of `- image:`:
-```
-        ports:
-        - containerPort: 80
-          protocol: TCP
+        ports:                  # <-- CHANGE
+        - containerPort: 80     # <-- CHANGE
+          protocol: TCP         # <-- CHANGE
 ```
 Save with `Esc`, `:wq`.
-You see `deployment.apps/np edited`.
+You see:
+```
+deployment.apps/np edited
+```
+**Don't:** start `ports:` under the `-` of `- image:`. It lines up with `name:`.
 
 ---
 
-### Step 2. Create the Service
+### Step 2. Expose it as NodePort
+
+**Why:** `k expose` copies the Deployment's labels into the selector.
 
 ```
 k expose deploy np --name=np-svc --port=80 --target-port=80 --type=NodePort -n web
 ```
+You see:
+```
+service/np-svc exposed
+```
+**Means:** the Service exists, but with a random node port.
 
 ---
 
 ### Step 3. Set the node port
 
+**Why:** there is no flag for it; patch the Service.
+
 ```
-k edit svc np-svc -n web
+k patch svc np-svc -n web -p '{"spec":{"ports":[{"port":80,"nodePort":30080}]}}'
 ```
-Type `/nodePort` and press Enter. You see a random number:
+You see:
 ```
-  - nodePort: 31544
-    port: 80
+service/np-svc patched
 ```
-Change it to `30080`.
-Save with `Esc`, `:wq`.
+**Means:** the port with `port: 80` now uses node port 30080.
 
 ---
 
-### Closing routine (same at the end of EVERY question: verify, then exit)
+### Step 4. Does the Service find the pod?
+
+**Why:** no endpoints means no traffic, whatever the ports say.
+
+```
+k get endpointslices -n web -l kubernetes.io/service-name=np-svc
+```
+You see:
+```
+np-svc-...   IPv4   80   192.168.x.x   1m   <-- a pod IP
+```
+**Means:** selector and target port are right.
+
+---
+
+### Verify
+
+**Why:** prove the node port answers.
 
 ```
 k get svc np-svc -n web
+curl -s -m 3 node01:30080 | grep title
 ```
-You want TYPE `NodePort` and PORT(S) `80:30080/TCP`.
+You see:
+```
+np-svc   NodePort   10.x.x.x   <none>   80:30080/TCP   2m   <-- port:nodePort
+<title>Welcome to nginx!</title>
+```
 
-```
-k get endpointslices -n web -l kubernetes.io/service-name=np-svc     # ENDPOINTS shows a pod IP
-curl -s -m 3 node01:30080 | head -5          # the nginx page
-```
+---
 
-```
-exit          # exam only
-```
+### Three words first
+
+- **containerPort** = the port the container listens on, written in the pod template.
+- **NodePort Service** = a Service that also opens one port on every node (30000 to 32767).
+- **port / targetPort / nodePort** = the Service's port / the container's port / the port on every node.
 
 ---
 
 ### If something goes wrong
 
-| You see | Cause | Fix |
-|---|---|---|
-| after step 1 vim reopens with an error at the top | wrong indentation, or a Tab character | `ports:` lines up with `imagePullPolicy:` and `name:`. Spaces only. |
-| `k get endpoints` prints `Warning: v1 Endpoints is deprecated` | Endpoints is replaced by EndpointSlice since v1.33 | harmless; or use `k get endpointslices` as above |
-| the Service is called `np` | you forgot `--name=np-svc` | `k delete svc np -n web`, run step 2 again |
-| `provided port is not in the valid range` | nodePort outside 30000 to 32767 | use the number from the question |
-| curl fails but endpoints are fine | you curled the wrong node name | `k get nodes -o wide`, use a node IP |
-
----
-
-### Mug this up: the whole answer in 4 lines
-
-```
-k edit deploy np -n web                      # add ports: / - containerPort: 80 / protocol: TCP
-k expose deploy np --name=np-svc --port=80 --target-port=80 --type=NodePort -n web
-k edit svc np-svc -n web                     # nodePort: 30080
-k get svc np-svc -n web                      # 80:30080/TCP
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 4 minutes.
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |v|i|m| |r|e|o|p|e|n|s| |w|i|t|h| |a|n| |e|r|r|o|r| |a|t| |t|h|e| |t|o|p| ||| |w|r|o|n|g| |i|n|d|e|n|t|a|t|i|o|n|,| |o|r| |a| |T|a|b| ||| |s|p|a|c|e|s| |o|n|l|y|;| |`|p|o|r|t|s|:|`| |l|i|n|e|s| |u|p| |w|i|t|h| |`|n|a|m|e|:|`| |||
+||| |t|h|e| |S|e|r|v|i|c|e| |i|s| |c|a|l|l|e|d| |`|n|p|`| ||| |f|o|r|g|o|t| |`|-|-|n|a|m|e|=|n|p|-|s|v|c|`| ||| |`|k| |d|e|l|e|t|e| |s|v|c| |n|p| |-|n| |w|e|b|`|,| |r|u|n| |s|t|e|p| |2| |a|g|a|i|n| |||
+||| |`|p|r|o|v|i|d|e|d| |p|o|r|t| |i|s| |a|l|r|e|a|d|y| |a|l|l|o|c|a|t|e|d|`| ||| |a|n|o|t|h|e|r| |S|e|r|v|i|c|e| |u|s|e|s| |3|0|0|8|0| ||| |`|k| |g|e|t| |s|v|c| |-|A|`|,| |f|i|n|d| |3|0|0|8|0|;| |a|s|k|,| |n|e|v|e|r| |d|e|l|e|t|e| |i|t| |||
+||| |`|p|r|o|v|i|d|e|d| |p|o|r|t| |i|s| |n|o|t| |i|n| |t|h|e| |v|a|l|i|d| |r|a|n|g|e|`| ||| |n|o|d|e| |p|o|r|t| |o|u|t|s|i|d|e| |3|0|0|0|0| |t|o| |3|2|7|6|7| ||| |u|s|e| |t|h|e| |n|u|m|b|e|r| |f|r|o|m| |t|h|e| |q|u|e|s|t|i|o|n| |||
+||| |c|u|r|l| |f|a|i|l|s|,| |e|n|d|p|o|i|n|t|s| |a|r|e| |f|i|n|e| ||| |`|n|o|d|e|0|1|`| |d|o|e|s| |n|o|t| |r|e|s|o|l|v|e| ||| |`|k| |g|e|t| |n|o|d|e|s| |-|o| |w|i|d|e|`|,| |c|u|r|l| |t|h|e| |I|N|T|E|R|N|A|L|-|I|P| |||
 
 ---
 
 ## 24. Ingress
 
-### Three words first
+### PART B. The exam starts here
 
-- **Ingress** = a rule for incoming web traffic: "host X, path Y → Service Z, port N".
-- **IngressClass** = points to the controller. The controller is the program that carries out Ingress rules.
-  Example: the class `nginx` points to ingress-nginx.
-  An Ingress without a class is ignored. Exception: one IngressClass is marked as the default.
-- **pathType: Prefix** = the rule matches the path and everything below it.
-  `/` with Prefix matches every request.
+**The question, as the exam words it:**
+
+> In namespace `web`, create an Ingress named `web-ing` that uses the existing IngressClass. Requests for host `shop.example.com` with path `/` (type Prefix) must go to service `backend-svc` on port `80`.
+
+**What the question is really saying:**
+
+One Ingress, made with one command. Only the class name must be looked up.
+
+**Write down from the question:** namespace = `web` · Ingress = `web-ing` · host = `shop.example.com` · path = `/` Prefix · Service = `backend-svc` · port = `80` · class = "the existing one" (look it up)
+
+---
+
+### Think
+
+- **Wanted:** host + path `/` → `backend-svc:80`.
+- **Look first:** the IngressClass name, and the Service port.
+- **Expect:** one class, `nginx`.
+- **Fix:** `k create ingress` with `--class` and `--rule`.
+- **Prove:** describe shows the backend with a pod IP.
+
+### Time budget
+
+Target 3 min. Skip at 6.
 
 ---
 
@@ -4451,129 +4474,151 @@ metadata:
 spec:
   controller: k8s.io/ingress-nginx
 EOF
+k rollout status deploy/backend -n web --timeout=120s
 clear
+k get ingressclass,svc,ing -n web
 ```
 
 ---
 
-### PART B. The exam starts here
+### Step 1. Which class exists?
 
-**The question, as the exam words it:**
-
-> In namespace `web`, create an Ingress named `web-ing` that uses the existing IngressClass. Requests for host `shop.example.com` with path `/` (type Prefix) must go to service `backend-svc` on port `80`.
-
-**What the question is really saying:**
-
-One object, and there is a command for it.
-No YAML.
-
-**Write down from the question:** namespace = `web` · Ingress = `web-ing` · host = `shop.example.com` · path = `/` Prefix · Service = `backend-svc` · port = `80` · class = "the existing one" (look it up)
-
----
-
-### Opening routine (same 2 commands at the start of EVERY question)
-
-```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
-```
-
----
-
-### Step 1. Find the class name
+**Why:** an Ingress without the right class is ignored.
 
 ```
 k get ingressclass
 ```
-You see `nginx`.
-Write it down.
+You see:
+```
+nginx   k8s.io/ingress-nginx   <none>   1m   <-- NAME
+```
+**Means:** the class is `nginx`.
 
 ---
 
-### Step 2. Create the Ingress
+### Step 2. Which port does the Service have?
+
+**Why:** the rule needs the Service port, not the pod port.
+
+```
+k get svc backend-svc -n web
+```
+You see:
+```
+backend-svc   ClusterIP   10.x.x.x   <none>   80/TCP   1m   <-- port 80
+```
+**Means:** `backend-svc:80` is a real target.
+
+---
+
+### Step 3. Create the Ingress
+
+**Why:** `k create ingress` writes the whole object; no YAML.
 
 ```
 k create ingress web-ing --class=nginx --rule="shop.example.com/*=backend-svc:80" -n web
 ```
-
-How to read the rule: `"HOST/PATH=SERVICE:PORT"`
-
-| Part | Meaning |
-|---|---|
-| `shop.example.com` | the host |
-| `/*` | path `/`. The `*` makes it `pathType: Prefix`. Without `*` it becomes `Exact`. |
-| `backend-svc:80` | Service name and Service port |
+You see:
+```
+ingress.networking.k8s.io/web-ing created
+```
+**Means:** rule = `HOST/PATH=SERVICE:PORT`. The `*` makes the path type `Prefix`.
+**Don't:** drop the `*`. Without it the path type is `Exact`.
 
 ---
 
-### Closing routine (same at the end of EVERY question: verify, then exit)
+### Step 4. Check the summary line
+
+**Why:** one line shows class and host.
+
+```
+k get ing web-ing -n web
+```
+You see:
+```
+web-ing   nginx   shop.example.com   80   10s   <-- CLASS, HOSTS
+```
+**Means:** ADDRESS stays empty here. The playground has no ingress controller.
+
+---
+
+### Verify
+
+**Why:** prove the backend resolves to a real pod.
 
 ```
 k describe ing web-ing -n web
 ```
-You want:
+You see:
 ```
 Ingress Class:    nginx
-Rules:
-  Host              Path  Backends
-  shop.example.com  /     backend-svc:80 (<pod IP>:80)
+...
+  shop.example.com
+                    /   backend-svc:80 (192.168.x.x:80)   <-- a pod IP
 ```
-Look at the pod IP in brackets (your number differs).
-It proves the Service name and port are right.
 
-```
-exit          # exam only
-```
+---
+
+### Three words first
+
+- **Ingress** = a rule for incoming web traffic: host + path → Service + port.
+- **IngressClass** = names the controller that carries out the rules.
+- **pathType: Prefix** = matches the path and everything below it. `/` matches every request.
 
 ---
 
 ### If something goes wrong
 
-| You see | Cause | Fix |
-|---|---|---|
-| Backends shows `<error: services "..." not found>` | the Service NAME has a typo | `k delete ing web-ing -n web`, create again |
-| Backends shows empty brackets `()` instead of a pod IP | the Service PORT is wrong (the Service has no such port) | `k get svc backend-svc -n web`, check PORT(S), delete and create again |
-| `Ingress Class: <none>` | you forgot `--class` | delete and create again |
-| the question asks for TLS with secret `web-tls` | add it inside the rule | `--rule="shop.example.com/*=backend-svc:80,tls=web-tls"` |
-| the question asks for two paths | repeat the flag | `--rule="host/api*=api-svc:80" --rule="host/*=web-svc:80"` |
-| the question asks for an annotation (for example rewrite-target) | add a flag | `--annotation nginx.ingress.kubernetes.io/rewrite-target=/` |
-
----
-
-### Mug this up: the whole answer in 3 lines
-
-```
-k get ingressclass
-k create ingress web-ing --class=nginx --rule="shop.example.com/*=backend-svc:80" -n web
-k describe ing web-ing -n web
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 3 minutes.
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |`|<|e|r|r|o|r|:| |s|e|r|v|i|c|e|s| |"|.|.|.|"| |n|o|t| |f|o|u|n|d|>|`| ||| |S|e|r|v|i|c|e| |n|a|m|e| |t|y|p|o| ||| |`|k| |d|e|l|e|t|e| |i|n|g| |w|e|b|-|i|n|g| |-|n| |w|e|b|`|,| |c|r|e|a|t|e| |a|g|a|i|n| |||
+||| |e|m|p|t|y| |b|r|a|c|k|e|t|s| |`|(|)|`|,| |n|o| |p|o|d| |I|P| ||| |w|r|o|n|g| |S|e|r|v|i|c|e| |p|o|r|t|,| |o|r| |p|o|d|s| |n|o|t| |R|e|a|d|y| ||| |c|h|e|c|k| |P|O|R|T|(|S|)| |i|n| |s|t|e|p| |2|;| |d|e|l|e|t|e| |a|n|d| |c|r|e|a|t|e| |a|g|a|i|n| |||
+||| |`|I|n|g|r|e|s|s| |C|l|a|s|s|:| |<|n|o|n|e|>|`| ||| |f|o|r|g|o|t| |`|-|-|c|l|a|s|s|`| ||| |d|e|l|e|t|e| |a|n|d| |c|r|e|a|t|e| |a|g|a|i|n| |||
+||| |t|h|e| |q|u|e|s|t|i|o|n| |a|s|k|s| |f|o|r| |T|L|S| |w|i|t|h| |s|e|c|r|e|t| |`|w|e|b|-|t|l|s|`| ||| |a|d|d| |i|t| |t|o| |t|h|e| |r|u|l|e| ||| |`|-|-|r|u|l|e|=|"|s|h|o|p|.|e|x|a|m|p|l|e|.|c|o|m|/|*|=|b|a|c|k|e|n|d|-|s|v|c|:|8|0|,|t|l|s|=|w|e|b|-|t|l|s|"|`| |||
+||| |t|h|e| |q|u|e|s|t|i|o|n| |a|s|k|s| |f|o|r| |a|n| |a|n|n|o|t|a|t|i|o|n| ||| |a|d|d| |a| |f|l|a|g| ||| |`|-|-|a|n|n|o|t|a|t|i|o|n| |n|g|i|n|x|.|i|n|g|r|e|s|s|.|k|u|b|e|r|n|e|t|e|s|.|i|o|/|r|e|w|r|i|t|e|-|t|a|r|g|e|t|=|/|`| |||
 
 ---
 
 ## 25. ★ Gateway API (replace an Ingress)
 
-### Three words first
+### PART B. The exam starts here
 
-- **Gateway** = the entry point: port, protocol, hostname, TLS certificate.
-  It names a **GatewayClass** (the controller). An Ingress names an IngressClass the same way.
-- **HTTPRoute** = the routing rule: which host and path go to which Service and port.
-  It points to its Gateway with `parentRefs`.
-- Together they do what ONE Ingress did.
-- **Migration** = read the values out of the Ingress. Write them into these two objects.
-- **Path types** have new names.
-  Ingress `pathType: Prefix` = HTTPRoute `type: PathPrefix`.
-  Ingress `Exact` = HTTPRoute `Exact`.
+**The question, as the exam words it:**
+
+> In namespace `web`, an Ingress named `web-ing` exposes an application over HTTPS. Migrate it to the Gateway API:
+> 1. Create a Gateway named `web-gw` that uses the existing GatewayClass and keeps the same hostname and TLS configuration as the Ingress.
+> 2. Create an HTTPRoute named `web-route` that keeps the same routing rules as the Ingress.
+> 3. Delete the Ingress.
+
+**What the question is really saying:**
+
+Copy 5 values out of the Ingress into a Gateway and an HTTPRoute, then delete it.
+
+**Write down from the question:** namespace = `web` · Gateway = `web-gw` · HTTPRoute = `web-route` · source = Ingress `web-ing`
+
+---
+
+### Think
+
+- **Wanted:** Gateway (host + TLS) and HTTPRoute (path → Service).
+- **Look first:** the Ingress, and the GatewayClass name.
+- **Expect:** host, TLS secret, path, Service, port.
+- **Fix:** docs examples, with those values filled in.
+- **Prove:** both objects exist, the route is attached, the Ingress is gone.
+
+### Time budget
+
+Target 8 min. Skip at 12.
 
 ---
 
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
+k get crd gateways.gateway.networking.k8s.io >/dev/null 2>&1 || k apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
+k wait --for=condition=Established crd/gateways.gateway.networking.k8s.io crd/httproutes.gateway.networking.k8s.io --timeout=60s
 k delete ns web --ignore-not-found
+rm -f gw.yaml route.yaml
 k create ns web
 k create deploy backend --image=nginx:1.27 -n web
 k expose deploy backend --name=backend-svc --port=80 -n web
@@ -4588,303 +4633,180 @@ spec:
   controllerName: gateway.nginx.org/nginx-gateway-controller
 EOF
 k create ingress web-ing --class=nginx --rule="shop.example.com/*=backend-svc:80,tls=web-tls" -n web
+k rollout status deploy/backend -n web --timeout=120s
 clear
+k get ing,gatewayclass -n web
 ```
-(The playground has no real gateway controller.
-So traffic will not flow.
-The Gateway will never show `Accepted` or `Programmed`.
-In Killercoda, check only that the objects exist with the right values.
-The exam grades that too, plus the status check at the end.)
+(No gateway controller here: no `Accepted`/`Programmed`, no traffic. Check the objects and values only.)
 
 ---
 
-### PART B. The exam starts here
+### Step 1. Read the values from the Ingress
 
-**The question, as the exam words it:**
-
-> In namespace `web`, an Ingress named `web-ing` exposes an application over HTTPS. Migrate it to the Gateway API:
-> 1. Create a Gateway named `web-gw` that uses the existing GatewayClass and keeps the same hostname and TLS configuration as the Ingress.
-> 2. Create an HTTPRoute named `web-route` that keeps the same routing rules as the Ingress.
-> 3. Delete the Ingress.
-
-**What the question is really saying:**
-
-The question does not give you the values.
-They are inside the existing Ingress.
-Read 5 values from it. Put them into two new objects.
-
-**Write down from the question:** namespace = `web` · Gateway = `web-gw` · HTTPRoute = `web-route` · source = Ingress `web-ing`
-
----
-
-### Opening routine (same 2 commands at the start of EVERY question)
+**Why:** the question gives no values. They are in the Ingress.
 
 ```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
-```
-
----
-
-### Step 1. Read the 5 values
-
-```
-k get ing web-ing -n web -o yaml
+k describe ing web-ing -n web
 k get gatewayclass
 ```
-In the Ingress YAML, find and write down:
-
-| # | Value | Where in the Ingress | Here |
-|---|---|---|---|
-| 1 | hostname | `spec.rules[].host` | `shop.example.com` |
-| 2 | TLS secret | `spec.tls[].secretName` | `web-tls` |
-| 3 | path | `spec.rules[].http.paths[].path` | `/` |
-| 4 | Service name | `...backend.service.name` | `backend-svc` |
-| 5 | Service port | `...backend.service.port.number` | `80` |
-
-And from `k get gatewayclass`: the class name → `nginx`.
+You see:
+```
+TLS:
+  web-tls terminates shop.example.com              <-- secret, hostname
+...
+  shop.example.com
+                    /   backend-svc:80 (192.168.x.x:80)   <-- path, Service, port
+nginx   gateway.nginx.org/nginx-gateway-controller   ...   <-- class
+```
+**Means:** host `shop.example.com`, secret `web-tls`, path `/`, `backend-svc:80`, class `nginx`.
 
 ---
 
-### Step 2. Get the text from the docs
+### Step 2. Write the Gateway
 
-1. Open **https://kubernetes.io/docs**
-2. Search: **`gateway api`**
-3. Click: **"Gateway API"**
-   (direct link: https://kubernetes.io/docs/concepts/services-networking/gateway/ )
-4. Copy the example under the heading **"Gateway"**.
-5. Copy the example under the heading **"HTTPRoute"**.
-
-This is what you copied (Gateway):
-```
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  name: example-gateway
-spec:
-  gatewayClassName: example-class
-  listeners:
-  - name: http
-    protocol: HTTP
-    port: 80
-```
-This is what you copied (HTTPRoute):
-```
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: example-httproute
-spec:
-  parentRefs:
-  - name: example-gateway
-  hostnames:
-  - "www.example.com"
-  rules:
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /login
-    backendRefs:
-    - name: example-svc
-      port: 8080
-```
-
----
-
-### Step 3. The Gateway
+**Why:** copy the "Gateway" example from the docs page "Gateway API".
 
 ```
 vim gw.yaml
 ```
-Press `i`, then paste the Gateway example.
-Do the pasted lines drift more and more to the right? Then:
-Press `Esc`. Type `:set paste` and press Enter.
-Type `ggdG` to delete everything.
-Press `i` and paste again.
-
-| # | The docs say | You change it to | Why |
-|---|---|---|---|
-| 1 | `name: example-gateway` | `name: web-gw` | from the question |
-| 2 | (no namespace line) | add `namespace: web` under `name:` | from the question |
-| 3 | `gatewayClassName: example-class` | `gatewayClassName: nginx` | the existing class (step 1) |
-| 4 | `- name: http` | `- name: https` | just a label for the listener |
-| 5 | `protocol: HTTP` | `protocol: HTTPS` | the Ingress used TLS |
-| 6 | `port: 80` | `port: 443` | the HTTPS port |
-| 7 | (not in the example) | add `hostname:` and the `tls:` block, see below | value 1 and value 2 |
-
-The `tls:` block is NOT in the docs example.
-Memorise these 4 lines, or get them with `k explain gateway.spec.listeners.tls`:
-```
-    tls:
-      mode: Terminate
-      certificateRefs:
-      - name: web-tls
-```
-
-The finished file:
+The finished file. Only the `# <-- CHANGE` lines differ from the docs:
 ```
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: web-gw
-  namespace: web
+  name: web-gw                  # <-- CHANGE
+  namespace: web                # <-- CHANGE
 spec:
-  gatewayClassName: nginx
+  gatewayClassName: nginx       # <-- CHANGE
   listeners:
-  - name: https
-    protocol: HTTPS
-    port: 443
-    hostname: shop.example.com
-    tls:
-      mode: Terminate
-      certificateRefs:
-      - name: web-tls
+  - name: https                 # <-- CHANGE
+    protocol: HTTPS             # <-- CHANGE
+    port: 443                   # <-- CHANGE
+    hostname: "shop.example.com"   # <-- CHANGE
+    tls:                        # <-- CHANGE
+      mode: Terminate           # <-- CHANGE
+      certificateRefs:          # <-- CHANGE
+      - name: web-tls           # <-- CHANGE
+    allowedRoutes:
+      namespaces:
+        from: Same
 ```
-Save, then:
 ```
 k apply -f gw.yaml
 ```
+You see:
+```
+gateway.gateway.networking.k8s.io/web-gw created
+```
+**Don't:** forget the `tls:` block. It is not in the docs; `k explain gateway.spec.listeners.tls` shows it.
 
 ---
 
-### Step 4. The HTTPRoute
+### Step 3. Write the HTTPRoute
+
+**Why:** copy the "HTTPRoute" example from the same docs page.
 
 ```
 vim route.yaml
 ```
-Press `i`, then paste the HTTPRoute example.
-Lines drift? Use the `:set paste` tip from step 3.
-
-| # | The docs say | You change it to | Why |
-|---|---|---|---|
-| 1 | `name: example-httproute` | `name: web-route` | from the question |
-| 2 | (no namespace line) | add `namespace: web` under `name:` | from the question |
-| 3 | `- name: example-gateway` | `- name: web-gw` | must be the Gateway's name from step 3. This is the link between the two objects. |
-| 4 | `- "www.example.com"` | `- "shop.example.com"` | value 1 |
-| 5 | `value: /login` | `value: /` | value 3. Keep `type: PathPrefix`. It is the Gateway name for `pathType: Prefix`. |
-| 6 | `- name: example-svc` | `- name: backend-svc` | value 4 |
-| 7 | `port: 8080` | `port: 80` | value 5 |
-
 The finished file:
 ```
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: web-route
-  namespace: web
+  name: web-route               # <-- CHANGE
+  namespace: web                # <-- CHANGE
 spec:
   parentRefs:
-  - name: web-gw
+  - name: web-gw                # <-- CHANGE
   hostnames:
-  - "shop.example.com"
+  - "shop.example.com"          # <-- CHANGE
   rules:
   - matches:
     - path:
         type: PathPrefix
-        value: /
+        value: /                # <-- CHANGE
     backendRefs:
-    - name: backend-svc
-      port: 80
+    - name: backend-svc         # <-- CHANGE
+      port: 80                  # <-- CHANGE
 ```
-Save, then:
 ```
 k apply -f route.yaml
 ```
+You see:
+```
+httproute.gateway.networking.k8s.io/web-route created
+```
+**Means:** `parentRefs` links the route to the Gateway. `PathPrefix` = Ingress `Prefix`.
 
 ---
 
-### Step 5. Delete the Ingress (only after both objects exist)
+### Step 4. Test both objects
+
+**Why:** delete the Ingress only when the new objects are right.
 
 ```
 k get gateway,httproute -n web
+```
+You see:
+```
+gateway.gateway.networking.k8s.io/web-gw   nginx   ...
+httproute.gateway.networking.k8s.io/web-route   ["shop.example.com"]   ...
+```
+**Means:** in the exam, `k describe httproute web-route -n web` must show `Accepted` `True`. PROGRAMMED on the Gateway must be `True`.
+
+---
+
+### Step 5. Delete the Ingress
+
+**Why:** the question says so, as the last job.
+
+```
 k delete ing web-ing -n web
 ```
+You see:
+```
+ingress.networking.k8s.io "web-ing" deleted ...
+```
 
 ---
 
-### Closing routine (same at the end of EVERY question: verify, then exit)
+### Verify
+
+**Why:** prove the Ingress is gone and the route has the values.
 
 ```
-k get gateway,httproute -n web
+k get ing -n web
 k get httproute web-route -n web -o yaml | grep -E "name: web-gw|value: /|backend-svc|port: 80"
-k get ing -n web                             # No resources found
 ```
-In Killercoda, check only this: both objects exist and carry the five values.
-The `parentRefs` line only shows what you typed.
-It does not prove the route is attached.
-Here nothing can be attached: there is no controller.
-In the exam there is a controller.
-There, also run `k describe httproute web-route -n web`.
-Look under **Status → Parents**. You want `Accepted` with Status `True`.
-`k get gateway -n web` should show PROGRAMMED `True`.
-The question gives a `curl` command? Run it.
+You see:
+```
+No resources found in web namespace.
+```
+then the four route lines. If the question gives a `curl`, run it.
 
-```
-exit          # exam only
-```
+---
+
+### Three words first
+
+- **Gateway** = the entry point: port, protocol, hostname, TLS. It names a **GatewayClass** (the controller).
+- **HTTPRoute** = which host and path go to which Service and port.
+- **parentRefs** = the Gateway this route attaches to.
 
 ---
 
 ### If something goes wrong
 
-| You see | Cause | Fix |
-|---|---|---|
-| `no matches for kind "Gateway"` | wrong `apiVersion` | `gateway.networking.k8s.io/v1` |
-| the route is not attached / curl gives 404 | `parentRefs.name` is not the Gateway's name, or the hostnames differ | make them identical |
-| the Ingress had NO tls | plain HTTP | keep `protocol: HTTP`, `port: 80`, and leave the `tls:` block out |
-
----
-
-### Mug this up: the whole answer in 6 lines
-
-```
-k get ing web-ing -n web -o yaml             # host, secret, path, service, port
-k get gatewayclass                           # class name
-vim gw.yaml      ; k apply -f gw.yaml        # docs "Gateway" example + hostname + tls block
-vim route.yaml   ; k apply -f route.yaml     # docs "HTTPRoute" example, parentRefs = gateway name
-k get gateway,httproute -n web
-k delete ing web-ing -n web
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 8 minutes.
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |`|n|o| |m|a|t|c|h|e|s| |f|o|r| |k|i|n|d| |"|G|a|t|e|w|a|y|"|`| ||| |w|r|o|n|g| |`|a|p|i|V|e|r|s|i|o|n|`|,| |o|r| |n|o| |C|R|D|s| ||| |`|g|a|t|e|w|a|y|.|n|e|t|w|o|r|k|i|n|g|.|k|8|s|.|i|o|/|v|1|`|;| |P|a|r|t| |A| |l|i|n|e| |1| |||
+||| |r|o|u|t|e| |n|o|t| |`|A|c|c|e|p|t|e|d|`|,| |c|u|r|l| |4|0|4| ||| |`|p|a|r|e|n|t|R|e|f|s|`| |n|a|m|e| |o|r| |h|o|s|t|n|a|m|e| |d|i|f|f|e|r|s| |f|r|o|m| |t|h|e| |G|a|t|e|w|a|y| ||| |m|a|k|e| |t|h|e|m| |i|d|e|n|t|i|c|a|l| |||
+||| |G|a|t|e|w|a|y| |l|i|s|t|e|n|e|r| |`|R|e|s|o|l|v|e|d|R|e|f|s|`| |`|F|a|l|s|e|`| ||| |w|r|o|n|g| |s|e|c|r|e|t| |n|a|m|e| |i|n| |`|c|e|r|t|i|f|i|c|a|t|e|R|e|f|s|`| ||| |u|s|e| |t|h|e| |s|e|c|r|e|t| |f|r|o|m| |s|t|e|p| |1| |||
+||| |t|h|e| |I|n|g|r|e|s|s| |h|a|d| |n|o| |T|L|S| ||| |p|l|a|i|n| |H|T|T|P| ||| |`|p|r|o|t|o|c|o|l|:| |H|T|T|P|`|,| |`|p|o|r|t|:| |8|0|`|,| |n|o| |`|t|l|s|:|`| |b|l|o|c|k| |||
 
 ---
 
 ## 26. ★ NetworkPolicy: allow one app to reach another
-
-### Three words first
-
-- **podSelector at the top of the policy** = the pods being protected (the destination).
-- **ingress → from** = who may send traffic to them (the source).
-- **OR inside `from`** = each `-` starts a new, separate source.
-- **AND inside `from`** = two selectors under the SAME `-`. Both must be true.
-- **Enforcement** = a NetworkPolicy is only a rule.
-  The network plug-in (CNI) must support policies. Otherwise the rule is silently ignored.
-
-```
-  - from:                                   - from:
-    - namespaceSelector: ...                  - namespaceSelector: ...
-      podSelector: ...                        - podSelector: ...
-  ONE dash = namespace AND pod              TWO dashes = namespace OR pod  (allows much more)
-```
-
----
-
-### PART A. Build the exam (Killercoda only)
-
-```
-k delete ns prod --ignore-not-found
-k create ns prod
-k run db --image=nginx:1.27 -n prod --labels=app=db
-k run api --image=busybox:1.36 -n prod --labels=app=api -- sleep 3600
-k run other --image=busybox:1.36 -n prod --labels=app=other -- sleep 3600
-k expose pod db --name=db-svc --port=80 -n prod
-clear
-```
-(nginx on port 80 plays the role of the database here.)
-
----
 
 ### PART B. The exam starts here
 
@@ -4892,237 +4814,25 @@ clear
 
 > In namespace `prod`, create a NetworkPolicy named `db-policy`. Pods with label `app=db` must accept incoming traffic ONLY from pods with label `app=api` in the same namespace, and only on TCP port `80`.
 
-**Variant the exam also uses:**
-
-> "Several NetworkPolicy files exist in `/root/netpol/`. Apply the one that allows `api` to reach `db` and is the LEAST permissive. Do not modify the files."
-
 **What the question is really saying:**
 
-Fill in three blanks:
-
-| Blank | Value |
-|---|---|
-| WHO is protected | `app=db` |
-| WHO may come in | `app=api` |
-| WHICH port | TCP `80` |
+Protect `app=db`; let only `app=api` in, on TCP 80.
 
 **Write down from the question:** namespace = `prod` · policy = `db-policy` · protected = `app=db` · allowed source = `app=api` · port = TCP `80`
 
 ---
 
-### Opening routine (same 2 commands at the start of EVERY question)
+### Think
 
-```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
-```
+- **Wanted:** only `api` reaches `db` on port 80.
+- **Look first:** the real pod labels.
+- **Expect:** `app=db`, `app=api`, `app=other`.
+- **Fix:** one policy: protect db, allow api, port 80.
+- **Prove:** `api` gets the page, `other` times out.
 
----
+### Time budget
 
-### Step 1. Check that the labels are real
-
-```
-k get pods -n prod --show-labels
-```
-You see `app=db`, `app=api`, `app=other`.
-They match the question.
-
----
-
-### Step 2. Get the policy text from the docs
-
-1. Open **https://kubernetes.io/docs** → search **`network policies`** → click **"Network Policies"**
-   (direct link: https://kubernetes.io/docs/concepts/services-networking/network-policies/ )
-2. Under **"The NetworkPolicy resource"**, copy the example box.
-
-This is what you copied:
-```
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: test-network-policy
-  namespace: default
-spec:
-  podSelector:
-    matchLabels:
-      role: db
-  policyTypes:
-  - Ingress
-  - Egress
-  ingress:
-  - from:
-    - ipBlock:
-        cidr: 172.17.0.0/16
-        except:
-        - 172.17.1.0/24
-    - namespaceSelector:
-        matchLabels:
-          project: myproject
-    - podSelector:
-        matchLabels:
-          role: frontend
-    ports:
-    - protocol: TCP
-      port: 6379
-  egress:
-  - to:
-    - ipBlock:
-        cidr: 10.0.0.0/24
-    ports:
-    - protocol: TCP
-      port: 5978
-```
-
----
-
-### Step 3. Paste, delete 3 blocks, change 5 lines
-
-```
-vim np.yaml
-```
-Press `i`, paste.
-Lines drift to the right? Type `Esc`, `:set paste`, Enter, `ggdG`, `i`, paste again.
-Press `Esc`.
-
-**Delete 3 blocks.**
-In vim, put the cursor on the first line of the block.
-Type the number of lines, then `dd`.
-Example: `7dd` deletes 7 lines.
-
-| # | First line | Last line | Lines | vim |
-|---|---|---|---|---|
-| 1 | `- Egress` | (same line) | 1 | `dd` |
-| 2 | `- ipBlock:` | `project: myproject` | 7 | `7dd` |
-| 3 | `egress:` | `port: 5978` (end of file) | 7 | `7dd` |
-
-After block 2, one item is left under `from:`.
-It is `- podSelector:` with `role: frontend`.
-
-**Change:**
-
-| # | The docs say | You change it to |
-|---|---|---|
-| 1 | `name: test-network-policy` | `name: db-policy` |
-| 2 | `namespace: default` | `namespace: prod` |
-| 3 | `role: db` | `app: db` |
-| 4 | `role: frontend` | `app: api` |
-| 5 | `port: 6379` | `port: 80` |
-
-The finished file:
-```
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: db-policy
-  namespace: prod
-spec:
-  podSelector:
-    matchLabels:
-      app: db
-  policyTypes:
-  - Ingress
-  ingress:
-  - from:
-    - podSelector:
-        matchLabels:
-          app: api
-    ports:
-    - protocol: TCP
-      port: 80
-```
-Save, then:
-```
-k apply -f np.yaml
-```
-
----
-
-### Closing routine (same at the end of EVERY question: verify, then exit)
-
-```
-k exec api -n prod -- wget -qO- -T 3 db-svc | head -3        # works
-k exec other -n prod -- wget -qO- -T 3 db-svc                # download timed out
-k describe netpol db-policy -n prod
-```
-
-```
-exit          # exam only
-```
-
----
-
-### If something goes wrong
-
-| You see | Cause | Fix |
-|---|---|---|
-| `other` still gets the nginx page | the network plug-in does not enforce NetworkPolicy (some playgrounds) | check the policy with `k describe netpol`; if it is right, the exam cluster will enforce it |
-| `api` also times out | wrong label in `from`, or the `ports:` block is under the wrong item | compare with the finished file; `k get pods -n prod --show-labels` |
-| `error validating` / `did not find expected key` | indentation after deleting the blocks | `- podSelector:` must start 4 spaces in, under `- from:` |
-| `k describe netpol` shows `NamespaceSelector: project=myproject` | block 2 was not fully deleted | delete those lines, apply again |
-
----
-
-### The two variants
-
-**"api" is in ANOTHER namespace (for example `frontend`).** The `from` part becomes:
-```
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          kubernetes.io/metadata.name: frontend
-      podSelector:
-        matchLabels:
-          app: api
-```
-ONE dash.
-Every namespace has the label `kubernetes.io/metadata.name=<its name>`.
-Kubernetes adds it. You never label it yourself.
-
-**"Choose the least permissive file".** Do this:
-```
-ls /root/netpol/
-cat /root/netpol/*.yaml
-```
-Throw out every file that allows MORE than asked:
-
-| In the file you see | Verdict |
-|---|---|
-| `from:` missing, or `- {}` , or `podSelector: {}` under `from` | allows everyone → too permissive |
-| only a `namespaceSelector` (no podSelector) | allows every pod of that namespace → too permissive |
-| no `ports:` section | allows every port → too permissive |
-| two dashes where the question means AND | too permissive |
-| exactly the asked source labels + the asked port | **this one** |
-
-Then `k apply -f /root/netpol/<that-file>.yaml`.
-Apply only that one. Do not edit it.
-
----
-
-### Mug this up: the whole answer in 4 lines
-
-```
-k get pods -n prod --show-labels
-vim np.yaml                                  # docs copy: delete 3 blocks, change 5 lines
-k apply -f np.yaml
-k exec api -n prod -- wget -qO- -T 3 db-svc  # works;  from "other": times out
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 6 minutes.
-
----
-
-## 27. Default deny, but keep DNS
-
-### Three words first
-
-- **Ingress** (in a NetworkPolicy) = traffic coming INTO the selected pods.
-- **Egress** = traffic going OUT of them.
-- **Default deny** = selects all pods (`podSelector: {}`). Allows nothing.
-  After it, only traffic allowed by other policies passes.
-- **Port 53** = the DNS port (UDP and TCP).
-  Block egress without port 53? Then pods cannot look up any Service name.
-- **Egress rule without `to:`** = the listed ports are allowed to ANY destination.
+Target 6 min. Skip at 10.
 
 ---
 
@@ -5130,13 +4840,143 @@ k exec api -n prod -- wget -qO- -T 3 db-svc  # works;  from "other": times out
 
 ```
 k delete ns prod --ignore-not-found
+rm -f np.yaml
 k create ns prod
-k run app --image=busybox:1.36 -n prod -- sleep 3600
-k run web --image=nginx:1.27 -n prod --port=80 --expose
+k run db --image=nginx:1.27 -n prod --labels=app=db
+k run api --image=busybox:1.36 -n prod --labels=app=api -- sleep 3600
+k run other --image=busybox:1.36 -n prod --labels=app=other -- sleep 3600
+k expose pod db --name=db-svc --port=80 -n prod
+k wait --for=condition=Ready pod/db pod/api pod/other -n prod --timeout=120s
 clear
+k get po,netpol -n prod
+```
+(nginx on port 80 plays the database.)
+
+---
+
+### Step 1. Check the labels
+
+**Why:** the policy matches labels, so they must be exact.
+
+```
+k get po -n prod --show-labels
+```
+You see:
+```
+api     1/1   Running   0   1m   app=api     <-- may come in
+db      1/1   Running   0   1m   app=db      <-- protected
+other   1/1   Running   0   1m   app=other   <-- must be blocked
+```
+**Means:** the labels match the question.
+
+---
+
+### Step 2. Write the policy
+
+**Why:** there is no `k create netpol`. Copy the example from the docs page "Network Policies", section "The NetworkPolicy resource".
+
+```
+vim np.yaml
+```
+The finished file. Only the `# <-- CHANGE` lines differ from the docs:
+```
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: db-policy           # <-- CHANGE
+  namespace: prod           # <-- CHANGE
+spec:
+  podSelector:
+    matchLabels:
+      app: db               # <-- CHANGE
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: api          # <-- CHANGE
+    ports:
+    - protocol: TCP
+      port: 80              # <-- CHANGE
+```
+**Means:** from the docs copy, delete `- Egress`, the `ipBlock` and `namespaceSelector` items, and the whole `egress:` part.
+**Don't:** keep `- Egress`. With no egress rules, db can send nothing out.
+
+Vim tip: type `:set paste` before you press `i` and paste. Save with `:wq`.
+
+---
+
+### Step 3. Apply it
+
+**Why:** the file does nothing until the cluster has it.
+
+```
+k apply -f np.yaml
+```
+You see:
+```
+networkpolicy.networking.k8s.io/db-policy created
 ```
 
 ---
+
+### Step 4. Read it back
+
+**Why:** describe shows what the cluster understood.
+
+```
+k describe netpol db-policy -n prod
+```
+You see:
+```
+  PodSelector:     app=db
+  Allowing ingress traffic:
+    To Port: 80/TCP
+    From:
+      PodSelector: app=api
+```
+**Means:** one source, one port. A `NamespaceSelector` line means a docs item was left in.
+
+---
+
+### Verify
+
+**Why:** prove `api` gets in and `other` does not.
+
+```
+k exec api -n prod -- wget -qO- -T 3 db-svc | grep title
+k exec other -n prod -- wget -qO- -T 3 db-svc
+```
+You see:
+```
+<title>Welcome to nginx!</title>
+wget: download timed out   <-- other is blocked
+```
+
+---
+
+### Three words first
+
+- **podSelector (top)** = the pods this policy protects. Under `from:`: the pods allowed in.
+- **AND / OR in `from`** = two selectors under ONE `-` must both match. Each new `-` is another allowed source.
+- **CNI enforcement** = the network plugin applies policies. Without support, they are silently ignored.
+
+---
+
+### If something goes wrong
+
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |`|o|t|h|e|r|`| |s|t|i|l|l| |g|e|t|s| |t|h|e| |p|a|g|e| ||| |t|h|e| |n|e|t|w|o|r|k| |p|l|u|g|i|n| |d|o|e|s| |n|o|t| |e|n|f|o|r|c|e| |p|o|l|i|c|i|e|s| ||| |c|h|e|c|k| |w|i|t|h| |`|k| |d|e|s|c|r|i|b|e| |n|e|t|p|o|l|`|;| |t|h|e| |e|x|a|m| |c|l|u|s|t|e|r| |e|n|f|o|r|c|e|s| |t|h|e|m| |||
+||| |`|a|p|i|`| |a|l|s|o| |t|i|m|e|s| |o|u|t| ||| |w|r|o|n|g| |l|a|b|e|l| |i|n| |`|f|r|o|m|`|,| |o|r| |`|p|o|r|t|s|:|`| |u|n|d|e|r| |t|h|e| |w|r|o|n|g| |i|t|e|m| ||| |c|o|m|p|a|r|e| |w|i|t|h| |t|h|e| |f|i|n|i|s|h|e|d| |f|i|l|e| |a|n|d| |`|-|-|s|h|o|w|-|l|a|b|e|l|s|`| |||
+||| |`|d|i|d| |n|o|t| |f|i|n|d| |e|x|p|e|c|t|e|d| |k|e|y|`| ||| |i|n|d|e|n|t|a|t|i|o|n| |b|r|o|k|e| |w|h|i|l|e| |d|e|l|e|t|i|n|g| |l|i|n|e|s| ||| |`|-| |p|o|d|S|e|l|e|c|t|o|r|:|`| |s|t|a|r|t|s| |4| |s|p|a|c|e|s| |i|n|,| |u|n|d|e|r| |`|-| |f|r|o|m|:|`| |||
+||| |`|a|p|i|`| |l|i|v|e|s| |i|n| |a|n|o|t|h|e|r| |n|a|m|e|s|p|a|c|e| ||| |`|f|r|o|m|`| |n|e|e|d|s| |a| |n|a|m|e|s|p|a|c|e| |t|o|o| ||| |a|d|d| |`|n|a|m|e|s|p|a|c|e|S|e|l|e|c|t|o|r|`| |w|i|t|h| |`|k|u|b|e|r|n|e|t|e|s|.|i|o|/|m|e|t|a|d|a|t|a|.|n|a|m|e|:| |<|n|s|>|`| |u|n|d|e|r| |t|h|e| |S|A|M|E| |`|-|`| |||
+||| |a|s|k|e|d| |t|o| |p|i|c|k| |t|h|e| |l|e|a|s|t| |p|e|r|m|i|s|s|i|v|e| |f|i|l|e| ||| |d|o| |n|o|t| |e|d|i|t| |f|i|l|e|s| ||| |a|p|p|l|y| |t|h|e| |o|n|e| |w|i|t|h| |e|x|a|c|t|l|y| |t|h|e|s|e| |l|a|b|e|l|s| |a|n|d| |t|h|e| |p|o|r|t| |||
+
+---
+
+## 27. Default deny, but keep DNS
 
 ### PART B. The exam starts here
 
@@ -5146,191 +4986,198 @@ clear
 
 **What the question is really saying:**
 
-One policy.
-Select every pod. List both directions.
-Allow nothing in. Allow only port 53 out.
+One policy for all pods: nothing in, only port 53 out.
 
 **Write down from the question:** namespace = `prod` · policy = `default-deny` · both directions · exception = port 53 UDP + TCP
 
 ---
 
-### Opening routine (same 2 commands at the start of EVERY question)
+### Think
 
-```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
-```
+- **Wanted:** every pod in `prod` cut off, except DNS going out.
+- **Look first:** traffic flows now, and no policy exists yet.
+- **Expect:** `No resources found`, and `wget` gets the nginx page.
+- **Fix:** the docs "default deny all" policy plus an egress rule for port 53.
+- **Prove:** a name lookup works, a download times out.
 
----
+### Time budget
 
-### Step 0. Test once BEFORE the policy
-
-Run this line now, before you create any policy.
-It prints the nginx welcome page. Nothing blocks traffic yet.
-Remember it: after the policy, the same line must time out.
-```
-k exec app -n prod -- wget -qO- -T 3 web
-```
-
----
-
-### Step 1. Get the policy text from the docs
-
-1. Open **https://kubernetes.io/docs** → search **`network policies`** → click **"Network Policies"**
-   (direct link: https://kubernetes.io/docs/concepts/services-networking/network-policies/ )
-2. Scroll to the heading **"Default policies"**.
-3. Find **"Default deny all ingress and all egress traffic"**. Copy that small box.
-
-This is what you copied:
-```
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: default-deny-all
-spec:
-  podSelector: {}
-  policyTypes:
-  - Ingress
-  - Egress
-```
-
----
-
-### Step 2. Paste, change 1 line, add 7 lines
-
-```
-vim deny.yaml
-```
-Press `i`, paste.
-Change the name.
-Add `namespace: prod`: cursor on `name:`, press `o`, type it.
-Put the cursor on `- Egress`. Press `o`.
-Type the 6-line `egress:` block.
-1 + 6 = 7 added lines.
-
-| # | The docs say | You change it to | Why |
-|---|---|---|---|
-| 1 | `name: default-deny-all` | `name: default-deny` | from the question |
-| 2 | (no namespace line) | add `namespace: prod` under `name:` | from the question |
-| 3 | (file ends after `- Egress`) | add the `egress:` block below | the DNS exception |
-
-The finished file:
-```
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: default-deny
-  namespace: prod
-spec:
-  podSelector: {}
-  policyTypes:
-  - Ingress
-  - Egress
-  egress:
-  - ports:
-    - protocol: UDP
-      port: 53
-    - protocol: TCP
-      port: 53
-```
-How it reads:
-"All pods. Both directions are restricted.
-Nothing may come in (no `ingress:` section).
-Going out, only port 53 is allowed."
-
-`egress:` starts in the same column as `policyTypes:`.
-
-Save, then:
-```
-k apply -f deny.yaml
-```
-
----
-
-### Closing routine (same at the end of EVERY question: verify, then exit)
-
-```
-k describe netpol default-deny -n prod
-```
-You want (the lower part):
-```
-Spec:
-  PodSelector:     <none> (Allowing the specific traffic to all pods in this namespace)
-  Allowing ingress traffic:
-    <none> (Selected pods are isolated for ingress connectivity)
-  Allowing egress traffic:
-    To Port: 53/UDP
-    To Port: 53/TCP
-    To: <any> (traffic not restricted by destination)
-  Policy Types: Ingress, Egress
-```
-Test: a name lookup works, a connection does not.
-(In Step 0 the `wget` line printed the nginx page.
-Now it must time out.)
-```
-k exec app -n prod -- nslookup web.prod.svc.cluster.local     # Name + Address: DNS still works
-k exec app -n prod -- wget -qO- -T 3 web                      # download timed out: traffic blocked
-```
-`wget` still prints the page after the policy?
-Then the playground's network plug-in does not enforce NetworkPolicy.
-Use the describe output as your check.
-
-```
-exit          # exam only
-```
-
----
-
-### The shorter versions of this question
-
-| The question says | The `spec:` is |
-|---|---|
-| "deny all ingress" | `podSelector: {}` + `policyTypes: [Ingress]` |
-| "deny all egress" | `podSelector: {}` + `policyTypes: [Egress]` |
-| "deny all ingress and egress" | `podSelector: {}` + `policyTypes: [Ingress, Egress]` |
-| "... but allow DNS" | add the `egress:` → `ports: 53` block |
-
-All four are on the same docs page under "Default policies".
-
----
-
-### Mug this up: the whole answer in 3 lines
-
-```
-vim deny.yaml                                # docs "Default deny all ingress and all egress" + namespace + egress port 53
-k apply -f deny.yaml
-k describe netpol default-deny -n prod
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 4 minutes.
-
----
-
-## 28. ★ TLS settings in a ConfigMap
-
-### Three words first
-
-- **ConfigMap** = an object that holds configuration text.
-  A pod can mount it as a file. Here it holds the nginx config file.
-- **ssl_protocols** = the nginx setting that lists which TLS versions the server accepts.
-- **nginx reads its config file only when it starts.**
-- **Mounted as a folder** = the file updates by itself within a minute. nginx does not reload it.
-- **Mounted with `subPath`** (this setup) = the file never updates.
-- Either way: restart the pods with `k rollout restart`.
-- **TLS versions** = TLSv1.2 and TLSv1.3 are versions of the HTTPS encryption.
-- **`curl --tls-max 1.2`** = forces the older one. It must fail once only 1.3 is allowed.
+Target 4 min. Skip at 8.
 
 ---
 
 ### PART A. Build the exam (Killercoda only)
 
-This builds a real HTTPS nginx:
-- a self-signed certificate (Secret `nginx-tls`)
-- the config in ConfigMap `nginx-config`, mounted as `/etc/nginx/nginx.conf`
-- a Service.
+```
+k delete ns prod --ignore-not-found
+rm -f deny.yaml
+k create ns prod
+k run app --image=busybox:1.36 -n prod -- sleep 3600
+k run web --image=nginx:1.27 -n prod --port=80 --expose
+k wait --for=condition=Ready pod/app pod/web -n prod --timeout=120s
+clear
+k get netpol -n prod
+```
+
+---
+
+### Step 1. Does traffic flow now?
+
+**Why:** test once before the policy. After it, the same line must fail.
+
+```
+k exec app -n prod -- wget -qO- -T 3 web
+```
+You see:
+```
+<title>Welcome to nginx!</title>   <-- open today
+```
+**Means:** nothing blocks traffic yet. Remember this line for the end.
+
+---
+
+### Step 2. Write the policy
+
+**Why:** there is no `k create netpol`. Copy from the docs page "Network Policies", section "Default policies", box "Default deny all ingress and all egress traffic".
+
+```
+vim deny.yaml
+```
+The finished file. Only the `# <-- CHANGE` lines differ from the docs:
+```
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny          # <-- CHANGE
+  namespace: prod             # <-- CHANGE
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  egress:                     # <-- CHANGE
+  - ports:                    # <-- CHANGE
+    - protocol: UDP           # <-- CHANGE
+      port: 53                # <-- CHANGE
+    - protocol: TCP           # <-- CHANGE
+      port: 53                # <-- CHANGE
+```
+**Means:** no `ingress:` part, so nothing comes in. Out, only port 53.
+**Don't:** add `to:` under `egress`. Without `to:`, port 53 is open to any DNS server.
+
+Vim tip: type `:set paste` before you press `i` and paste. Save with `:wq`.
+
+---
+
+### Step 3. Apply it
+
+**Why:** the file does nothing until the cluster has it.
+
+```
+k apply -f deny.yaml
+```
+You see:
+```
+networkpolicy.networking.k8s.io/default-deny created
+```
+**Means:** the policy is in namespace `prod`.
+
+---
+
+### Step 4. Read it back
+
+**Why:** describe shows what the policy really allows.
+
+```
+k describe netpol default-deny -n prod
+```
+You see:
+```
+  PodSelector:     <none> (Allowing the specific traffic to all pods in this namespace)   <-- all pods
+  Allowing ingress traffic:
+    <none> (Selected pods are isolated for ingress connectivity)   <-- nothing in
+  Allowing egress traffic:
+    To Port: 53/UDP
+    To Port: 53/TCP
+    To: <any> (traffic not restricted by destination)
+  Policy Types: Ingress, Egress   <-- both directions
+```
+**Means:** exactly what the question asks.
+
+---
+
+### Verify
+
+**Why:** prove DNS works and everything else is blocked.
+
+```
+k exec app -n prod -- nslookup web.prod.svc.cluster.local
+k exec app -n prod -- wget -qO- -T 3 web
+```
+You see:
+```
+Name:	web.prod.svc.cluster.local   <-- DNS still works
+...
+wget: download timed out   <-- traffic blocked
+command terminated with exit code 1
+```
+
+---
+
+### Three words first
+
+- **Egress** = traffic going OUT of the selected pods.
+- **Default deny** = a policy with `podSelector: {}`. It selects all pods and allows nothing.
+- **Port 53** = the DNS port, on UDP and TCP.
+
+---
+
+### If something goes wrong
+
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |t|h|e| |V|e|r|i|f|y| |`|w|g|e|t|`| |s|t|i|l|l| |p|r|i|n|t|s| |t|h|e| |n|g|i|n|x| |p|a|g|e| ||| |t|h|e| |n|e|t|w|o|r|k| |p|l|u|g|i|n| |d|o|e|s| |n|o|t| |e|n|f|o|r|c|e| |p|o|l|i|c|i|e|s| ||| |t|r|u|s|t| |t|h|e| |d|e|s|c|r|i|b|e| |o|u|t|p|u|t|;| |t|h|e| |e|x|a|m| |c|l|u|s|t|e|r| |e|n|f|o|r|c|e|s| |t|h|e|m| |||
+||| |`|n|s|l|o|o|k|u|p|`| |t|i|m|e|s| |o|u|t| |t|o|o| ||| |t|h|e| |e|g|r|e|s|s| |b|l|o|c|k| |i|s| |m|i|s|s|i|n|g| |o|r| |m|i|s|-|i|n|d|e|n|t|e|d| ||| |`|e|g|r|e|s|s|:|`| |s|t|a|r|t|s| |i|n| |t|h|e| |s|a|m|e| |c|o|l|u|m|n| |a|s| |`|p|o|l|i|c|y|T|y|p|e|s|:|`|;| |a|p|p|l|y| |a|g|a|i|n| |||
+||| |`|k| |g|e|t| |n|e|t|p|o|l| |-|n| |p|r|o|d|`| |s|h|o|w|s| |n|o|t|h|i|n|g| ||| |t|h|e| |p|o|l|i|c|y| |l|a|n|d|e|d| |i|n| |`|d|e|f|a|u|l|t|`| ||| |a|d|d| |`|n|a|m|e|s|p|a|c|e|:| |p|r|o|d|`|,| |a|p|p|l|y|;| |`|k| |d|e|l|e|t|e| |n|e|t|p|o|l| |d|e|f|a|u|l|t|-|d|e|n|y| |-|n| |d|e|f|a|u|l|t|`| |||
+||| |`|e|r|r|o|r| |p|a|r|s|i|n|g| |d|e|n|y|.|y|a|m|l|`| ||| |t|a|b|s| |o|r| |b|r|o|k|e|n| |s|p|a|c|e|s| |f|r|o|m| |t|h|e| |p|a|s|t|e| ||| |u|s|e| |`|:|s|e|t| |p|a|s|t|e|`|,| |r|e|t|y|p|e| |t|h|e| |s|p|a|c|e|s| |||
+
+---
+
+## 28. ★ TLS settings in a ConfigMap
+
+### PART B. The exam starts here
+
+**The question, as the exam words it:**
+
+> In namespace `nginx-static`, deployment `nginx-static` gets its configuration from ConfigMap `nginx-config`. The server currently accepts TLSv1.2 and TLSv1.3. Change the configuration so that ONLY TLSv1.3 is accepted, and make sure the running pods use the new configuration.
+
+**What the question is really saying:**
+
+Delete `TLSv1.2` from one line of the ConfigMap, then restart the pods.
+
+**Write down from the question:** namespace = `nginx-static` · ConfigMap = `nginx-config` · deployment = `nginx-static` · keep only `TLSv1.3`
+
+---
+
+### Think
+
+- **Wanted:** nginx accepts only TLSv1.3.
+- **Look first:** the `ssl_protocols` line in the ConfigMap.
+- **Expect:** `ssl_protocols TLSv1.2 TLSv1.3;`
+- **Fix:** remove `TLSv1.2`, then restart the Deployment.
+- **Prove:** a TLSv1.2 handshake fails, a TLSv1.3 handshake works.
+
+### Time budget
+
+Target 4 min. Skip at 8.
+
+---
+
+### PART A. Build the exam (Killercoda only)
+
 ```
 k delete ns nginx-static --ignore-not-found
+rm -f /root/cm-backup.yaml
 k create ns nginx-static
 openssl req -x509 -nodes -newkey rsa:2048 -days 30 -subj "/CN=nginx-static" -keyout /tmp/tls.key -out /tmp/tls.crt 2>/dev/null
 k create secret tls nginx-tls --cert=/tmp/tls.crt --key=/tmp/tls.key -n nginx-static
@@ -5383,148 +5230,116 @@ spec:
           secretName: nginx-tls
 EOF
 k expose deploy nginx-static --port=443 -n nginx-static
+k rollout status deploy/nginx-static -n nginx-static --timeout=120s
 clear
-```
-Wait until `k get pods -n nginx-static` shows `1/1 Running`.
-Now the closing-routine `curl` with `--tls-max 1.2` still WORKS.
-That is the problem you fix.
-
----
-
-### PART B. The exam starts here
-
-**The question, as the exam words it:**
-
-> In namespace `nginx-static`, deployment `nginx-static` gets its configuration from ConfigMap `nginx-config`. The server currently accepts TLSv1.2 and TLSv1.3. Change the configuration so that ONLY TLSv1.3 is accepted, and make sure the running pods use the new configuration.
-
-**What the question is really saying:**
-
-Remove one word from one line in a ConfigMap.
-Then restart the Deployment so the pods pick it up.
-
-**Write down from the question:** namespace = `nginx-static` · ConfigMap = `nginx-config` · deployment = `nginx-static` · keep only `TLSv1.3`
-
----
-
-### Opening routine (same 2 commands at the start of EVERY question)
-
-```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
+k get cm nginx-config -n nginx-static -o yaml | grep ssl_protocols
 ```
 
 ---
 
-### Step 1. Backup first
+### Step 1. Back up the ConfigMap
+
+**Why:** one wrong character breaks nginx. A backup lets you start over.
 
 ```
 k get cm nginx-config -n nginx-static -o yaml > /root/cm-backup.yaml
+grep ssl_protocols /root/cm-backup.yaml
 ```
+You see:
+```
+    ssl_protocols TLSv1.2 TLSv1.3;   <-- TLSv1.2 must go
+```
+**Means:** the backup holds the old line. Now change the real one.
 
 ---
 
-### Step 2. Change the line
+### Step 2. How do the pods get the file?
+
+**Why:** the mount decides whether the pods ever see a change.
+
+```
+k get deploy nginx-static -n nginx-static -o yaml | grep subPath
+```
+You see:
+```
+          subPath: nginx.conf   <-- copied once, at pod start
+```
+**Means:** a `subPath` file never updates. The pods need a restart.
+
+---
+
+### Step 3. Remove TLSv1.2
+
+**Why:** the setting lives inside the ConfigMap's `nginx.conf` text.
 
 ```
 k edit cm nginx-config -n nginx-static
 ```
-Type `/ssl_protocols` and press Enter.
-The cursor is on the line inside `nginx.conf: |`.
+In vim: type `/ssl_protocols`, Enter. Then type `:s/TLSv1.2 //`, Enter. Save with `:wq`.
 
-| Before | After |
-|---|---|
-| `ssl_protocols TLSv1.2 TLSv1.3;` | `ssl_protocols TLSv1.3;` |
-
-Easiest way: type `:s/TLSv1.2 //` and press Enter.
-It removes `TLSv1.2` and its space, on this line only.
-Keep the `;` at the end.
-Save with `Esc`, `:wq`.
-You see `configmap/nginx-config edited`.
+You see:
+```
+configmap/nginx-config edited
+```
+**Means:** the line is now `ssl_protocols TLSv1.3;`.
+**Don't:** delete the `;` at the end. nginx then fails to start.
 
 ---
 
-### Step 3. Restart the pods
+### Step 4. Restart the pods
+
+**Why:** nginx reads its config only when it starts.
 
 ```
 k rollout restart deploy nginx-static -n nginx-static
 k rollout status deploy nginx-static -n nginx-static
 ```
-You want `successfully rolled out`.
+You see:
+```
+deployment.apps/nginx-static restarted
+deployment "nginx-static" successfully rolled out   <-- new pod, new config
+```
 
 ---
 
-### Closing routine (same at the end of EVERY question: verify, then exit)
+### Verify
 
-```
-k get cm nginx-config -n nginx-static -o yaml | grep ssl_protocols
-k get pods -n nginx-static                   # new pod, 1/1 Running
-```
-Test the server.
-In Killercoda, use the Service IP.
-In the exam, the question gives the address, often with this exact test.
+**Why:** prove the server refuses TLSv1.2 and accepts TLSv1.3.
+
 ```
 IP=$(k get svc nginx-static -n nginx-static -o jsonpath='{.spec.clusterIP}')
-curl -sSk --tls-max 1.2 https://$IP          # must now FAIL (error ... protocol version)
-curl -sSk --tlsv1.3 https://$IP              # hello
+openssl s_client -connect $IP:443 -tls1_2 </dev/null 2>&1 | grep -E 'alert|New,'
+openssl s_client -connect $IP:443 -tls1_3 </dev/null 2>&1 | grep -E 'alert|New,'
 ```
+You see:
+```
+...:tlsv1 alert protocol version:...   <-- TLSv1.2 refused
+New, (NONE), Cipher is (NONE)
+New, TLSv1.3, Cipher is ...            <-- TLSv1.3 works
+```
+**Don't:** test before Step 4. The old pod still accepts TLSv1.2.
 
-```
-exit          # exam only
-```
+---
+
+### Three words first
+
+- **ssl_protocols** = the nginx line that lists the TLS versions it accepts.
+- **subPath** = mounts one file from a ConfigMap. It never updates by itself.
+- **openssl s_client** = opens a TLS connection. `-tls1_2` forces version 1.2.
 
 ---
 
 ### If something goes wrong
 
-| You see | Cause | Fix |
-|---|---|---|
-| the edit is refused: `field is immutable` | the ConfigMap has `immutable: true` | Change the line in `vim /root/cm-backup.yaml`. Then `k replace --force -f /root/cm-backup.yaml` (deletes and re-creates it). Then step 3. Not `k apply`: the backup still holds `resourceVersion`. |
-| new pod goes `CrashLoopBackOff` | you broke the nginx syntax (missing `;`) | `k logs <pod> -n nginx-static` names the line. Fix the ConfigMap, restart again. |
-| the old TLS version still works | you skipped step 3 | restart |
-
----
-
-### Mug this up: the whole answer in 3 lines
-
-```
-k get cm nginx-config -n nginx-static -o yaml > /root/cm-backup.yaml
-k edit cm nginx-config -n nginx-static                           # ssl_protocols TLSv1.3;
-k rollout restart deploy nginx-static -n nginx-static
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 4 minutes.
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |t|h|e| |e|d|i|t| |i|s| |r|e|f|u|s|e|d|:| |`|f|i|e|l|d| |i|s| |i|m|m|u|t|a|b|l|e|`| ||| |t|h|e| |C|o|n|f|i|g|M|a|p| |h|a|s| |`|i|m|m|u|t|a|b|l|e|:| |t|r|u|e|`| ||| |f|i|x| |t|h|e| |l|i|n|e| |i|n| |`|v|i|m| |/|r|o|o|t|/|c|m|-|b|a|c|k|u|p|.|y|a|m|l|`|;| |`|k| |r|e|p|l|a|c|e| |-|-|f|o|r|c|e| |-|f| |/|r|o|o|t|/|c|m|-|b|a|c|k|u|p|.|y|a|m|l|`|;| |t|h|e|n| |S|t|e|p| |4| |||
+||| |n|e|w| |p|o|d| |i|n| |`|C|r|a|s|h|L|o|o|p|B|a|c|k|O|f|f|`| ||| |n|g|i|n|x| |s|y|n|t|a|x| |b|r|o|k|e|n|,| |o|f|t|e|n| |a| |m|i|s|s|i|n|g| |`|;|`| ||| |`|k| |l|o|g|s| |-|n| |n|g|i|n|x|-|s|t|a|t|i|c| |-|l| |a|p|p|=|n|g|i|n|x|-|s|t|a|t|i|c|`| |n|a|m|e|s| |t|h|e| |l|i|n|e|;| |f|i|x| |t|h|e| |C|o|n|f|i|g|M|a|p|,| |r|e|s|t|a|r|t| |a|g|a|i|n| |||
+||| |`|r|o|l|l|o|u|t| |s|t|a|t|u|s|`| |w|a|i|t|s| |f|o|r|e|v|e|r| ||| |t|h|e| |n|e|w| |p|o|d| |c|a|n|n|o|t| |s|t|a|r|t| ||| |`|k| |g|e|t| |p|o| |-|n| |n|g|i|n|x|-|s|t|a|t|i|c|`|,| |t|h|e|n| |`|k| |d|e|s|c|r|i|b|e|`| |t|h|e| |n|e|w| |p|o|d| |||
 
 ---
 
 ## 29. CoreDNS config
-
-### Three words first
-
-- **Corefile** = the configuration text of CoreDNS.
-  It is stored in ConfigMap `coredns`, namespace `kube-system`.
-- **`.:53 { ... }`** = the main block of the Corefile. Each line inside is a plug-in.
-  The line `kubernetes cluster.local ...` answers for Service names.
-- **rewrite name A B** = a plug-in line.
-  Someone asks for name A? CoreDNS answers as if they asked for name B.
-- **reload** = a plug-in line already in the Corefile.
-  CoreDNS notices a changed ConfigMap by itself, within a minute or two.
-  So the lookup may work even before your restart.
-  Restart anyway. It is immediate, and the question asks for it.
-
----
-
-### PART A. Build the exam (Killercoda only)
-
-```
-k delete ns web --ignore-not-found
-k create ns web
-k create deploy backend --image=nginx:1.27 -n web
-k expose deploy backend --name=backend-svc --port=80 -n web
-clear
-```
-
----
 
 ### PART B. The exam starts here
 
@@ -5534,38 +5349,86 @@ clear
 
 **What the question is really saying:**
 
-Add one line to the Corefile, then restart CoreDNS.
-Three motions: backup, edit, restart.
-A mistake here breaks DNS for the whole cluster.
-So the backup is not optional.
+Add one `rewrite` line to the Corefile, then restart CoreDNS.
 
 **Write down from the question:** name = `api.example.com` · target = `backend-svc.web.svc.cluster.local`
 
 ---
 
-### Opening routine (same 2 commands at the start of EVERY question)
+### Think
+
+- **Wanted:** `api.example.com` answers with the IP of `backend-svc`.
+- **Look first:** the Service's CLUSTER-IP, then the Corefile.
+- **Expect:** no `rewrite` line in the Corefile yet.
+- **Fix:** backup, add `rewrite name A B`, restart CoreDNS.
+- **Prove:** a test pod resolves `api.example.com` to the CLUSTER-IP.
+
+### Time budget
+
+Target 5 min. Skip at 10.
+
+---
+
+### PART A. Build the exam (Killercoda only)
 
 ```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
+k delete ns web --ignore-not-found
+k delete pod t --ignore-not-found
+[ -f /root/coredns-backup.yaml ] && k replace --force -f /root/coredns-backup.yaml
+k get cm coredns -n kube-system -o yaml | sed '/rewrite name api.example.com/d' | k replace -f -
+rm -f /root/coredns-backup.yaml
+k scale deploy coredns -n kube-system --replicas=2
+k rollout restart deploy coredns -n kube-system
+k rollout status deploy coredns -n kube-system --timeout=120s
+k create ns web
+k create deploy backend --image=nginx:1.27 -n web
+k expose deploy backend --name=backend-svc --port=80 -n web
+k rollout status deploy/backend -n web --timeout=120s
+clear
+k get cm coredns -n kube-system -o jsonpath='{.data.Corefile}'
 ```
 
 ---
 
-### Step 1. Backup first
+### Step 1. Back up the Corefile
+
+**Why:** one typo breaks DNS for the whole cluster. The backup is your way back.
 
 ```
 k get cm coredns -n kube-system -o yaml > /root/coredns-backup.yaml
+ls /root/coredns-backup.yaml
 ```
+You see:
+```
+/root/coredns-backup.yaml
+```
+**Means:** you can always restore the original.
 
 ---
 
-### Step 2. Add the line
+### Step 2. Which IP should the name give?
+
+**Why:** you need it to judge the test at the end.
+
+```
+k get svc backend-svc -n web
+```
+You see:
+```
+backend-svc   ClusterIP   10.x.x.x   <none>   80/TCP   1m   <-- note this CLUSTER-IP
+```
+**Means:** the full target name is `backend-svc.web.svc.cluster.local`.
+
+---
+
+### Step 3. Add the rewrite line
+
+**Why:** the Corefile lives in ConfigMap `coredns`. The docs page "Customizing DNS Service" shows it.
 
 ```
 k edit cm coredns -n kube-system
 ```
-You see:
+Put the cursor on `ready`. Press `o`. Type the marked line, same indent as `ready`:
 ```
   Corefile: |
     .:53 {
@@ -5574,89 +5437,72 @@ You see:
            lameduck 5s
         }
         ready
+        rewrite name api.example.com backend-svc.web.svc.cluster.local   # <-- CHANGE
         kubernetes cluster.local in-addr.arpa ip6.arpa {
-```
-Put the cursor on the line `ready`.
-Press `o` (new line below).
-Type this, with the same indentation as `ready`:
-```
-        rewrite name api.example.com backend-svc.web.svc.cluster.local
 ```
 Save with `Esc`, `:wq`.
 
+You see:
+```
+configmap/coredns edited
+```
+**Don't:** type the `# <-- CHANGE` part. It is only a marker here.
+
 ---
 
-### Step 3. Restart CoreDNS
+### Step 4. Restart CoreDNS
+
+**Why:** new pods load the new Corefile at once.
 
 ```
 k rollout restart deploy coredns -n kube-system
 k rollout status deploy coredns -n kube-system
 ```
+You see:
+```
+deployment.apps/coredns restarted
+deployment "coredns" successfully rolled out   <-- DNS is back up
+```
+**Means:** CoreDNS runs with your line.
 
 ---
 
-### Closing routine (same at the end of EVERY question: verify, then exit)
+### Verify
+
+**Why:** prove a normal pod gets the Service IP for the new name.
 
 ```
-k get pods -n kube-system -l k8s-app=kube-dns                # all 1/1 Running
-k get svc backend-svc -n web                                 # note the CLUSTER-IP
 k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup api.example.com
 ```
-You want an `Address:` line that shows the CLUSTER-IP of `backend-svc`.
+You see:
+```
+...
+Address: 10.x.x.x   <-- same as the CLUSTER-IP from Step 2
+```
+**Don't:** read the first `Address` line. That one is the DNS server itself.
 
-```
-exit          # exam only
-```
+---
+
+### Three words first
+
+- **Corefile** = the CoreDNS config text, in ConfigMap `coredns`, namespace `kube-system`.
+- **`.:53 { }`** = the main block of the Corefile. Each line inside is a plugin.
+- **rewrite name A B** = a question for name A is answered as if it asked for B.
 
 ---
 
 ### If something goes wrong
 
-| You see | Cause | Fix |
-|---|---|---|
-| coredns pods `CrashLoopBackOff` after the restart | a typo in the Corefile | `k logs -n kube-system -l k8s-app=kube-dns` names the line. Or put the backup back: `k replace --force -f /root/coredns-backup.yaml`, then restart again. (Not `k apply`: the backup holds an old `resourceVersion`.) |
-| nslookup says `NXDOMAIN` | the line is outside the `.:53 { }` block, or you did not restart | check the position, restart |
-| the question asks to forward a whole domain to another DNS server | different line | add a new block at the end of the Corefile: `example.org:53 { forward . 10.0.0.53 }` (3 lines). Docs search: `customizing dns service` |
-
----
-
-### Mug this up: the whole answer in 4 lines
-
-```
-k get cm coredns -n kube-system -o yaml > /root/coredns-backup.yaml
-k edit cm coredns -n kube-system             # inside .:53 { } add: rewrite name A B
-k rollout restart deploy coredns -n kube-system
-k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup api.example.com
-```
-
-**To put the playground back afterwards:** `k replace --force -f /root/coredns-backup.yaml ; k rollout restart deploy coredns -n kube-system`
-**Target time:** 5 minutes.
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |C|o|r|e|D|N|S| |p|o|d|s| |i|n| |`|C|r|a|s|h|L|o|o|p|B|a|c|k|O|f|f|`| ||| |a| |t|y|p|o| |i|n| |t|h|e| |C|o|r|e|f|i|l|e| ||| |`|k| |r|e|p|l|a|c|e| |-|-|f|o|r|c|e| |-|f| |/|r|o|o|t|/|c|o|r|e|d|n|s|-|b|a|c|k|u|p|.|y|a|m|l|`|;| |r|e|s|t|a|r|t| |C|o|r|e|D|N|S|;| |d|o| |S|t|e|p| |3| |a|g|a|i|n| |||
+||| |`|N|X|D|O|M|A|I|N|`| |f|o|r| |`|a|p|i|.|e|x|a|m|p|l|e|.|c|o|m|`| ||| |t|h|e| |l|i|n|e| |i|s| |o|u|t|s|i|d|e| |`|.|:|5|3| |{| |}|`|,| |o|r| |a| |t|y|p|o| |i|n| |t|h|e| |t|a|r|g|e|t| ||| |`|k| |e|d|i|t| |c|m| |c|o|r|e|d|n|s| |-|n| |k|u|b|e|-|s|y|s|t|e|m|`|,| |c|h|e|c|k| |t|h|e| |l|i|n|e|,| |r|e|s|t|a|r|t| |||
+||| |t|h|e| |q|u|e|s|t|i|o|n| |w|a|n|t|s| |a| |w|h|o|l|e| |d|o|m|a|i|n| |s|e|n|t| |t|o| |a|n|o|t|h|e|r| |D|N|S| |s|e|r|v|e|r| ||| |t|h|a|t| |n|e|e|d|s| |a| |n|e|w| |b|l|o|c|k|,| |n|o|t| |`|r|e|w|r|i|t|e|`| ||| |d|o|c|s| |"|C|u|s|t|o|m|i|z|i|n|g| |D|N|S| |S|e|r|v|i|c|e|"|:| |`|e|x|a|m|p|l|e|.|o|r|g|:|5|3| |{| |f|o|r|w|a|r|d| |.| |1|0|.|0|.|0|.|5|3| |}|`| |||
+||| |`|p|o|d|s| |"|t|"| |a|l|r|e|a|d|y| |e|x|i|s|t|s|`| ||| |a|n| |o|l|d| |t|e|s|t| |p|o|d| |w|a|s| |l|e|f|t| |b|e|h|i|n|d| ||| |`|k| |d|e|l|e|t|e| |p|o|d| |t|`|,| |t|e|s|t| |a|g|a|i|n| |||
 
 ---
 
 ## 30. DNS names across namespaces
-
-### Three words first
-
-- **Short name** = just the Service name, e.g. `backend-svc`.
-  It only works from a pod in the SAME namespace.
-- **Full name (FQDN)** = `SERVICE.NAMESPACE.svc.cluster.local`. It works from every namespace.
-- **nslookup** = asks DNS for the IP behind a name.
-
----
-
-### PART A. Build the exam (Killercoda only)
-
-```
-k delete ns web --ignore-not-found
-k create ns web
-k create deploy backend --image=nginx:1.27 -n web
-k expose deploy backend --name=backend-svc --port=80 -n web
-rm -f /root/dns.txt
-clear
-```
-
----
 
 ### PART B. The exam starts here
 
@@ -5666,99 +5512,125 @@ clear
 
 **What the question is really saying:**
 
-The test pod and the Service are in different namespaces.
-So use the full name.
-Send the output into a file.
+Look up the Service's full name from `default`, and save the output to a file.
 
 **Write down from the question:** Service = `backend-svc` · its namespace = `web` · image = `busybox:1.36` · file = `/root/dns.txt`
 
 ---
 
-### Opening routine (same 2 commands at the start of EVERY question)
+### Think
+
+- **Wanted:** the lookup output for `backend-svc`, saved in a file.
+- **Look first:** which namespace the Service is in, and its IP.
+- **Expect:** `web`, different from the test pod's `default`.
+- **Fix:** use the full name `backend-svc.web.svc.cluster.local`.
+- **Prove:** the IP in the file is the Service's CLUSTER-IP.
+
+### Time budget
+
+Target 2 min. Skip at 5.
+
+---
+
+### PART A. Build the exam (Killercoda only)
 
 ```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
+k delete ns web --ignore-not-found
+k delete pod t --ignore-not-found
+rm -f /root/dns.txt
+k create ns web
+k create deploy backend --image=nginx:1.27 -n web
+k expose deploy backend --name=backend-svc --port=80 -n web
+k rollout status deploy/backend -n web --timeout=120s
+clear
+k get svc -n web
 ```
 
 ---
 
-### Step 1. Build the full name
+### Step 1. Where does the Service live?
 
-Nothing to type here. Read it like this:
+**Why:** a short name only works from the same namespace.
+
 ```
-SERVICE   . NAMESPACE . svc.cluster.local
-backend-svc . web     . svc.cluster.local     →   backend-svc.web.svc.cluster.local
+k get svc -A | grep backend-svc
 ```
+You see:
+```
+web   backend-svc   ClusterIP   10.x.x.x   <none>   80/TCP   1m   <-- namespace web, note the IP
+```
+**Means:** from `default`, use `SERVICE.NAMESPACE.svc.cluster.local`: `backend-svc.web.svc.cluster.local`.
 
 ---
 
-### Step 2. Look it up and write the file
+### Step 2. Test the name on screen
+
+**Why:** see a good answer before you write the file.
+
+```
+k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup backend-svc.web.svc.cluster.local
+```
+You see:
+```
+Name:	backend-svc.web.svc.cluster.local
+Address: 10.x.x.x   <-- same IP as Step 1
+```
+**Means:** the name is right. Now save it.
+**Don't:** use only `backend-svc`. From `default` that name is not found.
+
+---
+
+### Step 3. Save the lookup to the file
+
+**Why:** `>` sends the output into the file instead of the screen.
 
 ```
 k run t --image=busybox:1.36 --rm -i --restart=Never -- nslookup backend-svc.web.svc.cluster.local > /root/dns.txt
+cat /root/dns.txt
 ```
+You see:
+```
+Server:		10.96.0.10
+Address:	10.96.0.10:53   <-- the DNS server, not the answer
 
-| Part | Meaning |
-|---|---|
-| `k run t --image=busybox:1.36` | a temporary pod named `t` (in `default`, because there is no `-n`) |
-| `--rm -i --restart=Never` | run once, pass the output back to you, delete the pod afterwards. (`-i` without `-t`: no terminal is needed when the output goes into a file.) |
-| `-- nslookup <name>` | the command the pod runs |
-| `> /root/dns.txt` | write the output into the file |
+Name:	backend-svc.web.svc.cluster.local
+Address: 10.x.x.x   <-- the answer
+```
+**Don't:** use `-it` here. A terminal is not needed when the output goes into a file.
 
 ---
 
-### Closing routine (same at the end of EVERY question: verify, then exit)
+### Verify
+
+**Why:** prove the file's IP is the Service's IP.
 
 ```
-cat /root/dns.txt
+k get svc backend-svc -n web -o jsonpath='{.spec.clusterIP}{"\n"}'
 ```
-You want something like this (your IPs differ):
+You see:
 ```
-Server:		10.96.0.10
-Address:	10.96.0.10:53
+10.x.x.x   <-- same as the Address under Name: in the file
+```
 
-Name:	backend-svc.web.svc.cluster.local
-Address: 10.103.45.12
-```
-The first `Address` (with `:53`) is the DNS server.
-The one that counts is the `Address` under `Name:`.
-Compare it with CLUSTER-IP in `k get svc backend-svc -n web`.
-It is the same IP.
-You may see `*** Can't find backend-svc.web.svc.cluster.local: No answer`.
-That is normal.
-busybox also asks for an IPv6 address, and there is none.
+---
 
-```
-exit          # exam only
-```
+### Three words first
+
+- **FQDN** = the full name, `SERVICE.NAMESPACE.svc.cluster.local`. It works from every namespace.
+- **`--rm -i`** = run once, pass the output back, then delete the pod.
+- **`>`** = shell: write the output into a file.
 
 ---
 
 ### If something goes wrong
 
-| You see | Cause | Fix |
-|---|---|---|
-| `NXDOMAIN` / `can't resolve` | a typo in the name, or the wrong namespace in the name | build the name again from step 1 |
-| `pods "t" already exists` | an older test pod is still there | `k delete pod t`, run it again |
-| the file also contains `pod "t" deleted` | that line comes from kubectl | usually accepted. To avoid it: run the pod without `--rm`. Then `k logs t > /root/dns.txt`. Then `k delete pod t`. |
-| every name fails | DNS itself is broken | `k get pods -n kube-system -l k8s-app=kube-dns` must show Running; if not, `k logs` them and check the `coredns` ConfigMap |
-
-**Good to know:** `backend-svc.web` (without the rest) also works.
-A pod's DNS settings are in `/etc/resolv.conf`.
-Read them: `k exec <pod> -- cat /etc/resolv.conf`.
-
----
-
-### Mug this up: the whole answer in 2 lines
-
-```
-k run t --image=busybox:1.36 --rm -i --restart=Never -- nslookup backend-svc.web.svc.cluster.local > /root/dns.txt
-cat /root/dns.txt
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 2 minutes.
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |`|N|X|D|O|M|A|I|N|`| |/| |`|c|a|n|'|t| |f|i|n|d|`| ||| |a| |t|y|p|o|,| |o|r| |t|h|e| |w|r|o|n|g| |n|a|m|e|s|p|a|c|e| |i|n| |t|h|e| |n|a|m|e| ||| |r|e|b|u|i|l|d| |t|h|e| |n|a|m|e| |f|r|o|m| |S|t|e|p| |1| |||
+||| |`|p|o|d|s| |"|t|"| |a|l|r|e|a|d|y| |e|x|i|s|t|s|`| ||| |a|n| |o|l|d|e|r| |t|e|s|t| |p|o|d| |i|s| |s|t|i|l|l| |t|h|e|r|e| ||| |`|k| |d|e|l|e|t|e| |p|o|d| |t|`|,| |r|u|n| |i|t| |a|g|a|i|n| |||
+||| |t|h|e| |f|i|l|e| |a|l|s|o| |h|o|l|d|s| |`|p|o|d| |"|t|"| |d|e|l|e|t|e|d|`| ||| |t|h|a|t| |l|i|n|e| |c|o|m|e|s| |f|r|o|m| |k|u|b|e|c|t|l| ||| |u|s|u|a|l|l|y| |a|c|c|e|p|t|e|d|;| |o|r| |r|u|n| |w|i|t|h|o|u|t| |`|-|-|r|m|`|,| |t|h|e|n| |`|k| |l|o|g|s| |t| |>| |/|r|o|o|t|/|d|n|s|.|t|x|t|`|,| |`|k| |d|e|l|e|t|e| |p|o|d| |t|`| |||
+||| |`|*|*|*| |C|a|n|'|t| |f|i|n|d| |.|.|.|:| |N|o| |a|n|s|w|e|r|`| ||| |b|u|s|y|b|o|x| |a|l|s|o| |a|s|k|s| |f|o|r| |I|P|v|6|;| |t|h|e|r|e| |i|s| |n|o|n|e| ||| |n|o|r|m|a|l|,| |i|g|n|o|r|e| |i|t| |||
+||| |e|v|e|r|y| |n|a|m|e| |f|a|i|l|s| ||| |D|N|S| |i|t|s|e|l|f| |i|s| |b|r|o|k|e|n| ||| |q|u|e|s|t|i|o|n| |1|1| |||
 
 ---
 
