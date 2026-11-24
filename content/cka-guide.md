@@ -775,24 +775,35 @@ get  ->  describe (read Events at the bottom)  ->  logs  ->  fix the OWNER  ->  
 
 ## 1. ImagePullBackOff
 
-### Three words first
+### PART B. The exam starts here
 
-- **Image** = your app, packed and stored online. Written `name:tag`, for example `nginx:1.27`.
-- **Tag** = the version part after the colon.
-- **Deployment** = the owner. It creates the pod. It re-creates it when it dies.
-- **Pod** = your app, running. It holds one or more containers.
-- **Container name** = the name of one container inside the pod. It is NOT the deployment name.
-- **ImagePullBackOff** = the image could not be downloaded. Kubernetes keeps retrying, slower each time.
-- **ErrImagePull** = the same problem, on the first try.
-- **Namespace** = a folder for objects. Add `-n <namespace>` to every command.
-- **k** = short for `kubectl`.
+**The question, as the exam words it:**
+
+> In namespace `app`, the pod of deployment `api` is not Running. Find the cause and fix it so the pod reaches Running. Do not delete the deployment.
+
+**What the question is really saying:**
+
+The image cannot be downloaded. Fix the image in the deployment.
+
+**Write down from the question:** namespace = `app` · deployment = `api` · do NOT delete the deployment
+
+---
+
+### Think
+
+- **Broken:** the image name or tag does not exist.
+- **Look first:** the pod's status, then its Events.
+- **Expect:** `ImagePullBackOff`
+- **Fix:** a real image in the deployment.
+- **Prove:** the rollout finishes.
+
+### Time budget
+
+Target 2 min. Skip at 5.
 
 ---
 
 ### PART A. Build the exam (Killercoda only)
-
-Paste this once. It is safe to paste again: it deletes the old attempt first.
-In the real exam this is already done.
 
 ```
 k delete ns app --ignore-not-found
@@ -802,98 +813,42 @@ sleep 20
 clear
 k get pods -n app
 ```
-The last line shows the broken state: `ErrImagePull` or `ImagePullBackOff`.
-
-Why it is broken: the tag `doesnotexist` does not exist for `nginx`.
-`sleep 20` gives the first pull time to fail.
 
 ---
 
-### PART B. The exam starts here
+### Step 1. What state is the pod in?
 
-**The question, as the exam words it:**
-
-> In namespace `app`, the pod of deployment `api` is not Running. Find the cause and fix it so the pod reaches Running. Do not delete the deployment.
-
-**What the question is really saying:**
-
-The pod cannot start.
-Kubernetes wrote the reason into the pod's Events.
-Read the reason. Then fix the deployment, not the pod.
-
-**Write down from the question:** namespace = `app` · deployment = `api` · do NOT delete the deployment
-
----
-
-### Think
-
-- **What is broken:** the image name or tag cannot be downloaded.
-- **Where to look first:** `k get pods -n app`
-- **What I expect to see:** STATUS `ImagePullBackOff` (or `ErrImagePull`), READY `0/1`.
-- **Fix path:** `k describe pod` gives the container name and the bad image. Then `k set image` on the deployment.
-- **How I prove it:** `k rollout status deploy/api -n app` prints `successfully rolled out`.
-
-### Time budget
-
-Target 2 minutes. Skip and flag at 5 minutes.
-
----
-
-### Opening routine (same 2 commands at the start of EVERY question)
-
-```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
-```
-
----
-
-### Step 1. See the status
+**Why:** the STATUS column names the problem.
 
 ```
 k get pods -n app
 ```
 You see:
 ```
-NAME                   READY   STATUS             RESTARTS   AGE
-api-697db8cc78-hgvdr   0/1     ImagePullBackOff   0          60s      <-- ImagePullBackOff
+api-697db8cc78-hgvdr   0/1   ImagePullBackOff   0   60s   <-- STATUS
 ```
-
-||| |C|o|l|u|m|n| ||| |V|a|l|u|e| ||| |M|e|a|n|i|n|g| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |R|E|A|D|Y| ||| |`|0|/|1|`| ||| |0| |o|f| |1| |c|o|n|t|a|i|n|e|r|s| |a|r|e| |r|e|a|d|y| |||
-||| |S|T|A|T|U|S| ||| |`|I|m|a|g|e|P|u|l|l|B|a|c|k|O|f|f|`| ||| |t|h|e| |i|m|a|g|e| |c|a|n|n|o|t| |b|e| |d|o|w|n|l|o|a|d|e|d| |||
-||| |R|E|S|T|A|R|T|S| ||| |`|0|`| ||| |i|t| |n|e|v|e|r| |s|t|a|r|t|e|d| |||
-
-`ErrImagePull` instead? Same problem. Carry on.
-
-Copy the pod name (first column). Yours is different.
+**Means:** the image cannot be downloaded. `ErrImagePull` means the same.
 
 ---
 
-### Step 2. Ask Kubernetes why
+### Step 2. Why can't it download?
 
-Use the pod name from step 1.
+**Why:** Kubernetes writes the reason into the pod's Events.
 
 ```
 k describe pod <pod-name> -n app
 ```
-You see (shortened):
+You see:
 ```
-Containers:
-  nginx:                                  <-- container name: nginx
-    Image:          nginx:doesnotexist    <-- the bad image
-...
-Events:
-  Warning  Failed  ...  Failed to pull image "nginx:doesnotexist": ... not found      <-- the cause
+Warning  Failed  ...  Failed to pull image "nginx:doesnotexist": ... not found   <-- the cause
 ```
-Look in two places.
-1. Top, under **Containers:**. The first word is the container name. Here: `nginx`. Write it down.
-2. Bottom, under **Events:**. It says `not found`.
+**Means:** the tag `doesnotexist` does not exist.
 
-The cause: the tag `doesnotexist` does not exist.
+---
 
-Faster way to see container name and image together:
+### Step 3. What is the container called?
+
+**Why:** `k set image` needs the container name, not the deployment name.
 
 ```
 k get deploy api -n app -o wide
@@ -901,56 +856,47 @@ k get deploy api -n app -o wide
 You see:
 ```
 NAME   READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES               SELECTOR
-api    0/1     1            0           1m    nginx        nginx:doesnotexist   app=api      <-- CONTAINERS + IMAGES
+api    0/1     1            0           1m    nginx        nginx:doesnotexist   app=api   <-- CONTAINERS
 ```
+**Means:** the container is `nginx`. The deployment is `api`.
 
 ---
 
-### Step 3. Fix the image in the deployment
+### Step 4. Fix the image
+
+**Why:** fix the deployment. It makes a new pod.
 
 ```
 k set image deploy/api nginx=nginx:1.27 -n app
 ```
 You see:
 ```
-deployment.apps/api image updated      <-- the deployment changed
+deployment.apps/api image updated
 ```
-Pattern: `k set image deploy/<deployment> <container>=<new-image>`.
-
-Left of `=`: the container name from step 2 (`nginx`).
-Not the deployment name (`api`).
-
-No tag given in the question? Use `nginx=nginx`.
-That pulls the `latest` tag.
+**Don't:** write `api=...`. Left of `=` is the container name.
 
 ---
 
-### Closing routine (same at the end of EVERY question: verify, then exit)
+### Verify
+
+**Why:** prove the new pod is up.
 
 ```
 k rollout status deploy/api -n app
 ```
 You see:
 ```
-Waiting for deployment "api" rollout to finish: 0 of 1 updated replicas are available...
-deployment "api" successfully rolled out      <-- this line proves it works
+deployment "api" successfully rolled out
 ```
-`rollout status` waits until the new pod is ready.
+**Means:** the new pod is Running. Its name is new. That is correct.
 
-```
-k get pods -n app
-```
-You see:
-```
-NAME                   READY   STATUS    RESTARTS   AGE
-api-5c8d7b9f6d-q7w2m   1/1     Running   0          15s      <-- 1/1 Running
-```
-The pod has a NEW name. That is correct.
-The deployment made a fresh pod with the fixed image.
+---
 
-```
-exit          # exam only: leave the machine before the next question
-```
+### Three words first
+
+- **Tag** = the version after the colon: `nginx:1.27`.
+- **ImagePullBackOff** = the download failed. Kubernetes retries, slower each time.
+- **Container name** = the name inside the pod. Not the deployment name.
 
 ---
 
@@ -958,59 +904,15 @@ exit          # exam only: leave the machine before the next question
 
 ||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
 |||-|-|-|||-|-|-|||-|-|-|||
-||| |`|u|n|a|b|l|e| |t|o| |f|i|n|d| |c|o|n|t|a|i|n|e|r| |n|a|m|e|d| |"|a|p|i|"|`| ||| |y|o|u| |w|r|o|t|e| |t|h|e| |d|e|p|l|o|y|m|e|n|t| |n|a|m|e| |l|e|f|t| |o|f| |`|=|`| ||| |u|s|e| |t|h|e| |c|o|n|t|a|i|n|e|r| |n|a|m|e| |(|`|n|g|i|n|x|`|)| |||
-||| |s|t|i|l|l| |`|I|m|a|g|e|P|u|l|l|B|a|c|k|O|f|f|`| ||| |t|h|e| |n|e|w| |n|a|m|e| |o|r| |t|a|g| |h|a|s| |a| |t|y|p|o| ||| |r|u|n| |`|d|e|s|c|r|i|b|e|`| |a|g|a|i|n|,| |f|i|x| |t|h|e| |t|y|p|o| |||
-||| |`|N|o| |r|e|s|o|u|r|c|e|s| |f|o|u|n|d|`| |/| |`|N|o|t|F|o|u|n|d|`| ||| |y|o|u| |f|o|r|g|o|t| |`|-|n| |a|p|p|`| ||| |a|d|d| |`|-|n| |a|p|p|`| |||
+||| |`|u|n|a|b|l|e| |t|o| |f|i|n|d| |c|o|n|t|a|i|n|e|r| |n|a|m|e|d| |"|a|p|i|"|`| ||| |d|e|p|l|o|y|m|e|n|t| |n|a|m|e| |l|e|f|t| |o|f| |`|=|`| ||| |u|s|e| |t|h|e| |c|o|n|t|a|i|n|e|r| |n|a|m|e| |(|`|n|g|i|n|x|`|)| |||
+||| |s|t|i|l|l| |`|I|m|a|g|e|P|u|l|l|B|a|c|k|O|f|f|`| ||| |t|y|p|o| |i|n| |t|h|e| |n|e|w| |i|m|a|g|e| ||| |r|u|n| |`|d|e|s|c|r|i|b|e|`| |a|g|a|i|n|,| |f|i|x| |t|h|e| |t|y|p|o| |||
 ||| |E|v|e|n|t|s| |s|a|y| |`|p|u|l|l| |a|c|c|e|s|s| |d|e|n|i|e|d|`| |o|r| |`|r|e|p|o|s|i|t|o|r|y| |d|o|e|s| |n|o|t| |e|x|i|s|t|`| ||| |t|h|e| |i|m|a|g|e| |N|A|M|E| |i|s| |w|r|o|n|g|,| |n|o|t| |t|h|e| |t|a|g| ||| |f|i|x| |t|h|e| |n|a|m|e|,| |e|.|g|.| |`|n|g|n|i|x|`| |t|o| |`|n|g|i|n|x|`| |||
-||| |t|h|e| |p|o|d| |i|s| |f|i|x|e|d|,| |b|u|t| |a| |n|e|w| |p|o|d| |b|r|e|a|k|s| |a|g|a|i|n| ||| |y|o|u| |r|a|n| |`|k| |e|d|i|t| |p|o|d|`|,| |n|o|t| |t|h|e| |d|e|p|l|o|y|m|e|n|t| ||| |f|i|x| |t|h|e| |d|e|p|l|o|y|m|e|n|t| |w|i|t|h| |`|k| |s|e|t| |i|m|a|g|e| |d|e|p|l|o|y|/|a|p|i| |.|.|.|`| |||
-||| |a|n| |o|l|d| |p|o|d| |s|t|i|l|l| |s|h|o|w|s| |`|I|m|a|g|e|P|u|l|l|B|a|c|k|O|f|f|`| |f|o|r| |a| |f|e|w| |s|e|c|o|n|d|s| ||| |i|t| |i|s| |b|e|i|n|g| |r|e|p|l|a|c|e|d| ||| |w|a|i|t|,| |r|u|n| |`|k| |g|e|t| |p|o|d|s| |-|n| |a|p|p|`| |a|g|a|i|n| |||
-
----
-
-### Mug this up: the whole answer in 4 lines
-
-```
-k get pods -n app                            # ImagePullBackOff
-k describe pod <pod> -n app                  # container name + Events: not found
-k set image deploy/api nginx=nginx:1.27 -n app
-k rollout status deploy/api -n app           # successfully rolled out
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 2 minutes.
+||| |f|i|x|e|d| |p|o|d|,| |n|e|w| |p|o|d| |b|r|e|a|k|s| |a|g|a|i|n| ||| |y|o|u| |r|a|n| |`|k| |e|d|i|t| |p|o|d|`| ||| |f|i|x| |t|h|e| |d|e|p|l|o|y|m|e|n|t| |w|i|t|h| |`|k| |s|e|t| |i|m|a|g|e|`| |||
+||| |o|l|d| |p|o|d| |s|h|o|w|s| |t|h|e| |e|r|r|o|r| |a| |f|e|w| |s|e|c|o|n|d|s| ||| |i|t| |i|s| |b|e|i|n|g| |r|e|p|l|a|c|e|d| ||| |w|a|i|t|,| |r|u|n| |`|k| |g|e|t| |p|o|d|s| |-|n| |a|p|p|`| |a|g|a|i|n| |||
 
 ---
 
 ## 2. CrashLoopBackOff
-
-### Three words first
-
-- **Command** = what the container runs when it starts. The container lives only while its command runs.
-- **Exit code** = the number a command returns when it stops. `0` = finished OK. Anything else = error.
-- **CrashLoopBackOff** = the image downloaded fine. The container started, then stopped. Kubernetes restarts it. It stops again. Kubernetes waits longer before each retry.
-- **Logs** = what the container printed on the screen.
-
----
-
-### PART A. Build the exam (Killercoda only)
-
-Paste this once. It is safe to paste again: it deletes the old attempt first.
-In the real exam this is already done.
-
-```
-k delete ns app --ignore-not-found
-k create ns app
-k create deploy api --image=busybox:1.36 -n app -- sh -c "exit 1"
-sleep 30
-clear
-k get pods -n app
-```
-The last line shows the broken state: `Error` or `CrashLoopBackOff`, RESTARTS above 0.
-
-Why it is broken: the command `exit 1` means "stop immediately with an error".
-`sleep 30` gives the container time to crash a few times.
-
----
 
 ### PART B. The exam starts here
 
@@ -1020,11 +922,7 @@ Why it is broken: the command `exit 1` means "stop immediately with an error".
 
 **What the question is really saying:**
 
-The container starts and stops in a loop.
-Find out WHY it stops.
-The reason is in one of two places.
-Place 1: what the container printed before it stopped (logs).
-Place 2: the command it was told to run (describe).
+The container's command stops at once. Change it to `sleep 3600`.
 
 **Write down from the question:** namespace = `app` · deployment = `api` · correct command = `sleep 3600` · do NOT delete the deployment
 
@@ -1032,155 +930,128 @@ Place 2: the command it was told to run (describe).
 
 ### Think
 
-- **What is broken:** the container's command stops at once.
-- **Where to look first:** `k get pods -n app`
-- **What I expect to see:** STATUS `CrashLoopBackOff`, RESTARTS going up.
-- **Fix path:** `k logs --previous`, then `k describe pod` for Command and Exit Code. Then change the command in the deployment.
-- **How I prove it:** `k get pods -n app` twice, 20 seconds apart. `1/1 Running`, RESTARTS stays `0`.
+- **Broken:** the container starts, then stops.
+- **Look first:** the logs, then the command and exit code.
+- **Expect:** `CrashLoopBackOff`, RESTARTS going up.
+- **Fix:** the command in the deployment.
+- **Prove:** `1/1 Running`, RESTARTS stays `0`.
 
 ### Time budget
 
-Target 3 minutes. Skip and flag at 6 minutes.
+Target 3 min. Skip at 6.
 
 ---
 
-### Opening routine (same 2 commands at the start of EVERY question)
+### PART A. Build the exam (Killercoda only)
 
 ```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
+k delete ns app --ignore-not-found
+k create ns app
+k create deploy api --image=busybox:1.36 -n app -- sh -c "exit 1"
+sleep 30
+clear
+k get pods -n app
 ```
 
 ---
 
-### Step 1. See the status
+### Step 1. Is it restarting?
+
+**Why:** a rising RESTARTS count means the container starts, then dies.
 
 ```
 k get pods -n app
 ```
 You see:
 ```
-NAME                  READY   STATUS             RESTARTS      AGE
-api-5d9c7b6f4-x2x9k   0/1     CrashLoopBackOff   3 (20s ago)   70s      <-- RESTARTS going up
+api-5d9c7b6f4-x2x9k   0/1   CrashLoopBackOff   3 (20s ago)   70s   <-- RESTARTS
 ```
-In the first seconds STATUS may say `Error` with RESTARTS `1`.
-Wait 30 seconds. Run it again.
-
-RESTARTS is going UP.
-That is the difference from question 1.
-Here the container does start. Then it stops.
-
-Copy the pod name (first column). Yours is different.
+**Means:** the image is fine. The container keeps stopping.
 
 ---
 
-### Step 2. Read what the stopped container printed
+### Step 2. What did it print before it stopped?
 
-Use the pod name from step 1.
+**Why:** an app often prints its error just before it dies.
 
 ```
 k logs <pod-name> -n app --previous
 ```
 You see:
 ```
-(nothing: exit 1 prints nothing)      <-- empty is normal here
+(no output)      <-- exit 1 prints nothing
 ```
-`--previous` = show the output of the container that just stopped.
-Without it you see the new container, which may not have printed yet.
-
-Here it prints nothing, because `exit 1` prints nothing.
-In the exam you often see a real message here.
-For example: `file not found` or `missing variable`.
-That message is the cause.
+**Means:** no message here. In the exam, a message here is the cause.
 
 ---
 
-### Step 3. Read the command and the exit code
+### Step 3. What command does it run?
+
+**Why:** describe shows the command and how it ended.
 
 ```
 k describe pod <pod-name> -n app
 ```
-You see (shortened):
+You see:
 ```
     Command:
       sh
       -c
-      exit 1                  <-- the command: stop with an error
-    State:          Waiting
-      Reason:       CrashLoopBackOff
+      exit 1             <-- the command
+    ...
     Last State:     Terminated
       Reason:       Error
-      Exit Code:    1         <-- non-zero = it failed
+      Exit Code:    1    <-- non-zero = failed
 ```
-Cause found: the command is `exit 1`. It stops at once with an error.
+**Means:** the command stops at once with an error.
 
 ---
 
-### Step 4. Fix the command in the deployment
+### Step 4. Fix the command
+
+**Why:** fix the deployment. It makes a new pod.
 
 ```
 k edit deploy api -n app
 ```
-This opens the deployment in vim.
-Type `/exit 1` and press Enter.
-The cursor jumps onto the word `exit` in the line `- exit 1`:
-```
+In vim, type `/exit 1`, Enter. Press `C`, type `sleep 3600`, `Esc`, `:wq`.
+
+```yaml
       - command:
         - sh
         - -c
-        - exit 1        <- cursor is on the "e" of exit
-```
-Vim keys, exactly:
-1. Press `C` (capital C). It deletes to the end of the line and starts typing.
-2. Type `sleep 3600`.
-3. Press `Esc`.
-4. Type `:wq` and press Enter.
-
-The line must now read `- sleep 3600`.
-
-You see:
-```
-deployment.apps/api edited      <-- the deployment changed
-```
-
-No-vim alternative: one command with the same result.
-Type it instead of the vim steps above.
-
-```
-k patch deploy api -n app --type=json -p='[{"op":"replace","path":"/spec/template/spec/containers/0/command","value":["sh","-c","sleep 3600"]}]'
+        - sleep 3600      # <-- CHANGE
 ```
 You see:
 ```
-deployment.apps/api patched      <-- the deployment changed
+deployment.apps/api edited
 ```
+**Don't:** use a command that ends, like `echo hi`. It must keep running.
 
 ---
 
-### Closing routine (same at the end of EVERY question: verify, then exit)
+### Verify
+
+**Why:** prove the new pod stays up.
 
 ```
 k rollout status deploy/api -n app
-```
-You see:
-```
-deployment "api" successfully rolled out      <-- the new pod is up
-```
-
-```
 k get pods -n app
 ```
 You see:
 ```
-NAME                  READY   STATUS    RESTARTS   AGE
-api-7f9b8c6d5-k4m2p   1/1     Running   0          25s      <-- 1/1 Running, RESTARTS 0
+deployment "api" successfully rolled out
+api-7f9b8c6d5-k4m2p   1/1   Running   0   25s   <-- RESTARTS 0
 ```
-Wait 20 seconds. Run `k get pods -n app` again.
-RESTARTS must stay `0`.
-The pod has a NEW name. That is correct.
+**Don't:** stop here. Wait 20 s, run `k get pods` again. RESTARTS must stay `0`.
 
-```
-exit          # exam only
-```
+---
+
+### Three words first
+
+- **Exit code** = the number a command returns. `0` = OK. Anything else = error.
+- **CrashLoopBackOff** = it starts, stops, restarts. Kubernetes waits longer each time.
+- **`--previous`** = logs of the container that just stopped.
 
 ---
 
@@ -1188,56 +1059,45 @@ exit          # exam only
 
 ||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
 |||-|-|-|||-|-|-|||-|-|-|||
-||| |`|p|r|e|v|i|o|u|s| |t|e|r|m|i|n|a|t|e|d| |c|o|n|t|a|i|n|e|r| |.|.|.| |n|o|t| |f|o|u|n|d|`| ||| |t|h|e| |c|o|n|t|a|i|n|e|r| |h|a|s| |n|o|t| |r|e|s|t|a|r|t|e|d| |y|e|t| ||| |w|a|i|t| |2|0| |s|,| |r|u|n| |`|k| |l|o|g|s| |.|.|.| |-|-|p|r|e|v|i|o|u|s|`| |a|g|a|i|n| |||
-||| |v|i|m| |r|e|o|p|e|n|s| |w|i|t|h| |`|#| |E|r|r|o|r|:|`| |l|i|n|e|s| |a|t| |t|h|e| |t|o|p| ||| |y|o|u|r| |e|d|i|t| |b|r|o|k|e| |t|h|e| |Y|A|M|L| |(|i|n|d|e|n|t|a|t|i|o|n|)| ||| |f|i|x| |i|t|,| |o|r| |`|:|q|!|`| |a|n|d| |u|s|e| |t|h|e| |`|k| |p|a|t|c|h|`| |c|o|m|m|a|n|d| |||
-||| |`|F|o|r|b|i|d|d|e|n|:| |p|o|d| |u|p|d|a|t|e|s| |m|a|y| |n|o|t| |c|h|a|n|g|e| |f|i|e|l|d|s|.|.|.|`| ||| |y|o|u| |r|a|n| |`|k| |e|d|i|t| |p|o|d|`|,| |n|o|t| |t|h|e| |d|e|p|l|o|y|m|e|n|t| ||| |`|k| |e|d|i|t| |d|e|p|l|o|y| |a|p|i| |-|n| |a|p|p|`| |||
-||| |S|T|A|T|U|S| |`|C|o|m|p|l|e|t|e|d|`|,| |t|h|e|n| |C|r|a|s|h|L|o|o|p|B|a|c|k|O|f|f| |a|g|a|i|n| ||| |t|h|e| |n|e|w| |c|o|m|m|a|n|d| |f|i|n|i|s|h|e|s| |t|o|o| |(|e|.|g|.| |`|e|c|h|o| |h|i|`|)| ||| |t|h|e| |c|o|m|m|a|n|d| |m|u|s|t| |k|e|e|p| |r|u|n|n|i|n|g|:| |`|s|l|e|e|p| |3|6|0|0|`| |||
-||| |`|N|o| |r|e|s|o|u|r|c|e|s| |f|o|u|n|d|`| |/| |`|N|o|t|F|o|u|n|d|`| ||| |y|o|u| |f|o|r|g|o|t| |`|-|n| |a|p|p|`| ||| |a|d|d| |`|-|n| |a|p|p|`| |||
-||| |a|n| |o|l|d| |p|o|d| |s|t|i|l|l| |c|r|a|s|h|e|s| |f|o|r| |a| |f|e|w| |s|e|c|o|n|d|s| ||| |i|t| |i|s| |b|e|i|n|g| |r|e|p|l|a|c|e|d| ||| |w|a|i|t|,| |r|u|n| |`|k| |g|e|t| |p|o|d|s| |-|n| |a|p|p|`| |a|g|a|i|n| |||
-
-**The same question with other causes.**
-The steps are identical. Only the message and the fix change.
-
-||| |W|h|a|t| |y|o|u| |r|e|a|d| |i|n| |s|t|e|p|s| |2| |a|n|d| |3| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |`|R|e|a|s|o|n|:| |O|O|M|K|i|l|l|e|d|`| ||| |t|h|e| |m|e|m|o|r|y| |l|i|m|i|t| |i|s| |t|o|o| |s|m|a|l|l| ||| |`|k| |s|e|t| |r|e|s|o|u|r|c|e|s| |d|e|p|l|o|y| |a|p|i| |-|n| |a|p|p| |-|-|l|i|m|i|t|s|=|m|e|m|o|r|y|=|<|v|a|l|u|e| |t|h|e| |q|u|e|s|t|i|o|n| |g|i|v|e|s|>|`| |(|e|.|g|.| |`|2|5|6|M|i|`|)| |||
-||| |S|T|A|T|U|S| |`|C|r|e|a|t|e|C|o|n|t|a|i|n|e|r|C|o|n|f|i|g|E|r|r|o|r|`| |(|n|o|t| |a| |r|e|s|t|a|r|t| |l|o|o|p|:| |t|h|e| |c|o|n|t|a|i|n|e|r| |n|e|v|e|r| |s|t|a|r|t|s|)|,| |E|v|e|n|t|s|:| |`|c|o|n|f|i|g|m|a|p| |"|x|"| |n|o|t| |f|o|u|n|d|`| ||| |t|h|e| |C|o|n|f|i|g|M|a|p| |o|r| |S|e|c|r|e|t| |d|o|e|s| |n|o|t| |e|x|i|s|t| ||| |c|r|e|a|t|e| |i|t| |(|`|k| |c|r|e|a|t|e| |c|m| |x| |-|-|f|r|o|m|-|l|i|t|e|r|a|l|=|K|E|Y|=|V|A|L|U|E| |-|n| |a|p|p|`|)| |o|r| |f|i|x| |i|t|s| |n|a|m|e| |w|i|t|h| |`|k| |e|d|i|t| |d|e|p|l|o|y|`| |||
-||| |E|v|e|n|t|s|:| |`|L|i|v|e|n|e|s|s| |p|r|o|b|e| |f|a|i|l|e|d|`| ||| |t|h|e| |p|r|o|b|e| |c|h|e|c|k|s| |t|h|e| |w|r|o|n|g| |p|o|r|t| |o|r| |p|a|t|h| ||| |`|k| |e|d|i|t| |d|e|p|l|o|y| |a|p|i| |-|n| |a|p|p|`|,| |f|i|x| |t|h|e| |p|o|r|t| |u|n|d|e|r| |`|l|i|v|e|n|e|s|s|P|r|o|b|e|:|`| |||
-||| |l|o|g|s| |s|h|o|w| |a|n| |e|r|r|o|r| |a|b|o|u|t| |a| |w|r|o|n|g| |a|r|g|u|m|e|n|t| ||| |b|a|d| |`|a|r|g|s|:|`| ||| |`|k| |e|d|i|t| |d|e|p|l|o|y| |a|p|i| |-|n| |a|p|p|`|,| |f|i|x| |`|a|r|g|s|:|`| |||
-
----
-
-### Mug this up: the whole answer in 5 lines
-
-```
-k get pods -n app                            # RESTARTS going up
-k logs <pod> -n app --previous               # what it printed before stopping
-k describe pod <pod> -n app                  # Command + Exit Code + Events
-k edit deploy api -n app                     # fix the cause: - sleep 3600
-k get pods -n app                            # 1/1 Running, RESTARTS stays 0
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 3 minutes.
+||| |`|p|r|e|v|i|o|u|s| |t|e|r|m|i|n|a|t|e|d| |c|o|n|t|a|i|n|e|r| |.|.|.| |n|o|t| |f|o|u|n|d|`| ||| |n|o| |r|e|s|t|a|r|t| |y|e|t| ||| |w|a|i|t| |2|0| |s|,| |t|r|y| |a|g|a|i|n| |||
+||| |v|i|m| |r|e|o|p|e|n|s| |w|i|t|h| |`|#| |E|r|r|o|r|:|`| |l|i|n|e|s| ||| |t|h|e| |e|d|i|t| |b|r|o|k|e| |t|h|e| |Y|A|M|L| |i|n|d|e|n|t|a|t|i|o|n| ||| |f|i|x| |i|t|,| |o|r| |`|:|q|!|`| |a|n|d| |r|u|n| |`|k| |p|a|t|c|h| |d|e|p|l|o|y| |a|p|i| |-|n| |a|p|p| |-|-|t|y|p|e|=|j|s|o|n| |-|p|=|'|[|{|"|o|p|"|:|"|r|e|p|l|a|c|e|"|,|"|p|a|t|h|"|:|"|/|s|p|e|c|/|t|e|m|p|l|a|t|e|/|s|p|e|c|/|c|o|n|t|a|i|n|e|r|s|/|0|/|c|o|m|m|a|n|d|"|,|"|v|a|l|u|e|"|:|[|"|s|h|"|,|"|-|c|"|,|"|s|l|e|e|p| |3|6|0|0|"|]|}|]|'|`| |||
+||| |`|F|o|r|b|i|d|d|e|n|:| |p|o|d| |u|p|d|a|t|e|s| |m|a|y| |n|o|t| |c|h|a|n|g|e| |f|i|e|l|d|s|.|.|.|`| ||| |y|o|u| |r|a|n| |`|k| |e|d|i|t| |p|o|d|`| ||| |`|k| |e|d|i|t| |d|e|p|l|o|y| |a|p|i| |-|n| |a|p|p|`| |||
+||| |d|e|s|c|r|i|b|e| |s|a|y|s| |`|R|e|a|s|o|n|:| |O|O|M|K|i|l|l|e|d|`| ||| |m|e|m|o|r|y| |l|i|m|i|t| |t|o|o| |s|m|a|l|l| ||| |`|k| |s|e|t| |r|e|s|o|u|r|c|e|s| |d|e|p|l|o|y| |a|p|i| |-|n| |a|p|p| |-|-|l|i|m|i|t|s|=|m|e|m|o|r|y|=|<|v|a|l|u|e|>|`| |||
+||| |`|N|o| |r|e|s|o|u|r|c|e|s| |f|o|u|n|d|`| ||| |f|o|r|g|o|t| |`|-|n| |a|p|p|`| ||| |a|d|d| |`|-|n| |a|p|p|`| |||
 
 ---
 
 ## 3. Pending pod
 
-### Three words first
+### PART B. The exam starts here
 
-- **Scheduler** = the part of Kubernetes that picks a node for each new pod.
-- **Pending** = the pod exists, but no node has accepted it yet.
-- **Request** = how much CPU and memory a pod reserves on a node.
-- **Millicores** = how CPU is written. `1000m` = 1 CPU. `100m` = one tenth of a CPU. A plain `100` means 100 whole CPUs.
-- **Taint** = a "keep out" mark on a node. Only pods with a matching toleration may run there. The controlplane usually has one, so normal pods go to node01.
+**The question, as the exam words it:**
+
+> In namespace `app`, a pod of deployment `api` is stuck in Pending. Find the cause and fix it. The container needs `100m` CPU.
+
+**What the question is really saying:**
+
+No node can take the pod. The CPU request is too big.
+
+**Write down from the question:** namespace = `app` · deployment = `api` · correct CPU request = `100m`
+
+---
+
+### Think
+
+- **Broken:** the scheduler finds no node for the new pod.
+- **Look first:** the Pending pod's Events.
+- **Expect:** `Insufficient cpu`
+- **Fix:** CPU request = `100m` in the deployment.
+- **Prove:** the rollout finishes.
+
+### Time budget
+
+Target 3 min. Skip at 6.
 
 ---
 
 ### PART A. Build the exam (Killercoda only)
-
-Paste this once. It is safe to paste again: it deletes the old attempt first.
-In the real exam this is already done.
 
 ```
 k delete ns app --ignore-not-found
@@ -1249,147 +1109,91 @@ sleep 5
 clear
 k get pods -n app
 ```
-The last line shows the broken state: one pod `Pending`.
-
-Why it is broken: the request is `cpu=100`. That is 100 whole CPUs. No node has that.
-The old pod keeps `Running`. The deployment keeps it until the new pod works.
 
 ---
 
-### PART B. The exam starts here
+### Step 1. Which pod is Pending?
 
-**The question, as the exam words it:**
-
-> In namespace `app`, a pod of deployment `api` is stuck in Pending. Find the cause and fix it. The container needs `100m` CPU.
-
-**What the question is really saying:**
-
-The scheduler looked at every node and said no to all of them.
-It wrote its reason into the pod's Events.
-Read the reason. Remove the obstacle.
-
-**Write down from the question:** namespace = `app` · deployment = `api` · correct CPU request = `100m`
-
----
-
-### Think
-
-- **What is broken:** no node can take the new pod.
-- **Where to look first:** `k get pods -n app`
-- **What I expect to see:** one pod with STATUS `Pending`, READY `0/1`.
-- **Fix path:** `k describe pod` on the Pending pod. Read `FailedScheduling`. Then `k set resources` with `100m`.
-- **How I prove it:** `k rollout status deploy/api -n app` prints `successfully rolled out`.
-
-### Time budget
-
-Target 3 minutes. Skip and flag at 6 minutes.
-
----
-
-### Opening routine (same 2 commands at the start of EVERY question)
-
-```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
-```
-
----
-
-### Step 1. See the status
+**Why:** you need the Pending pod's name, not the Running one.
 
 ```
 k get pods -n app
 ```
 You see:
 ```
-NAME                   READY   STATUS    RESTARTS   AGE
-api-6d4cf56db6-7xk2p   1/1     Running   0          60s
-api-7b9c8d5f4-zq8mn    0/1     Pending   0          20s      <-- the Pending pod
+api-6d4cf56db6-7xk2p   1/1   Running   0   60s
+api-7b9c8d5f4-zq8mn    0/1   Pending   0   20s   <-- copy this name
 ```
-You may see an older pod still `Running`.
-The deployment keeps the old pod until the new one works.
-Copy the name of the PENDING pod. Yours is different.
-
-Only want the Pending pods? This filter shows just them:
-
-```
-k get pods -n app --field-selector=status.phase=Pending
-```
-You see:
-```
-NAME                  READY   STATUS    RESTARTS   AGE
-api-7b9c8d5f4-zq8mn   0/1     Pending   0          20s      <-- copy this name
-```
+**Means:** the old pod stays until the new one works.
 
 ---
 
-### Step 2. Read the scheduler's reason
+### Step 2. Why does no node take it?
 
-Use the Pending pod's name from step 1.
+**Why:** the scheduler writes its reason into the pod's Events.
 
 ```
 k describe pod <pending-pod-name> -n app
 ```
-You see (shortened):
+You see:
 ```
-    Requests:
-      cpu:        100           <-- 100 whole CPUs
-...
-Events:
-  Warning  FailedScheduling  ...  0/2 nodes are available: 1 Insufficient cpu, 1 node(s) had untolerated taint {node-role.kubernetes.io/control-plane: }. preemption: ...      <-- Insufficient cpu
+Warning  FailedScheduling  ...  0/2 nodes are available: ... Insufficient cpu ...   <-- the cause
 ```
-How to read the Events line:
-"0 of 2 nodes can take this pod."
-"One (node01) does not have enough CPU."
-"The other (controlplane) has a taint. It is reserved for control-plane pods."
-
-The counts vary.
-No taint on your controlplane? Then you see `0/2 nodes are available: 2 Insufficient cpu.`
-The word that matters is `Insufficient cpu`.
-Ignore the `preemption:` part.
-
-Now look higher up, under **Requests:**. It says `cpu: 100`.
-That is 100 whole CPUs. No node has that.
+**Means:** no node has enough free CPU. Ignore the taint and `preemption:` parts.
 
 ---
 
-### Step 3. Fix the request in the deployment
+### Step 3. How much CPU does it ask for?
+
+**Why:** the deployment holds the request. That is what you fix.
+
+```
+k get deploy api -n app -o yaml | grep -A 1 requests
+```
+You see:
+```
+          requests:
+            cpu: "100"   <-- 100 whole CPUs
+```
+**Means:** `100` is 100 CPUs. The question wants `100m`.
+
+---
+
+### Step 4. Fix the request
+
+**Why:** fix the deployment. It makes a new pod.
 
 ```
 k set resources deploy api -n app --requests=cpu=100m
 ```
 You see:
 ```
-deployment.apps/api resource requirements updated      <-- the deployment changed
+deployment.apps/api resource requirements updated
 ```
-Do not forget the `m`. `100m` is a tenth of a CPU.
+**Don't:** forget the `m`. `100m` is a tenth of a CPU.
 
 ---
 
-### Closing routine (same at the end of EVERY question: verify, then exit)
+### Verify
+
+**Why:** prove the new pod is up.
 
 ```
 k rollout status deploy/api -n app
 ```
 You see:
 ```
-deployment "api" successfully rolled out      <-- this line proves it works
+deployment "api" successfully rolled out
 ```
+**Means:** the Pending pod is gone. The deployment replaced it.
 
-```
-k get pods -n app
-```
-You see:
-```
-NAME                   READY   STATUS    RESTARTS   AGE
-api-5f6c7d8e9-p2r4t    1/1     Running   0          15s      <-- 1/1 Running, no Pending pod
-```
-The Pending pod disappears on its own. The deployment replaces it.
-Still see it? Wait 10 seconds and run the command again.
+---
 
-```
-exit          # exam only
-```
+### Three words first
+
+- **Request** = the CPU and memory a pod reserves on a node.
+- **Millicores** = CPU in thousandths. `1000m` = 1 CPU. Plain `100` = 100 CPUs.
+- **Scheduler** = picks a node for each new pod. Pending = no node picked yet.
 
 ---
 
@@ -1397,76 +1201,15 @@ exit          # exam only
 
 ||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
 |||-|-|-|||-|-|-|||-|-|-|||
-||| |s|t|i|l|l| |`|P|e|n|d|i|n|g|`|,| |E|v|e|n|t|s| |s|t|i|l|l| |`|I|n|s|u|f|f|i|c|i|e|n|t| |c|p|u|`| ||| |y|o|u| |t|y|p|e|d| |`|c|p|u|=|1|0|0|`| |a|g|a|i|n|,| |w|i|t|h|o|u|t| |t|h|e| |`|m|`| ||| |`|-|-|r|e|q|u|e|s|t|s|=|c|p|u|=|1|0|0|m|`| |||
-||| |`|d|e|s|c|r|i|b|e|`| |s|h|o|w|s| |n|o| |`|F|a|i|l|e|d|S|c|h|e|d|u|l|i|n|g|`| |e|v|e|n|t| ||| |y|o|u| |d|e|s|c|r|i|b|e|d| |t|h|e| |R|u|n|n|i|n|g| |p|o|d|,| |n|o|t| |t|h|e| |P|e|n|d|i|n|g| |o|n|e| ||| |c|o|p|y| |t|h|e| |n|a|m|e| |o|f| |t|h|e| |`|P|e|n|d|i|n|g|`| |p|o|d| |||
-||| |y|o|u| |d|e|l|e|t|e|d| |t|h|e| |P|e|n|d|i|n|g| |p|o|d|,| |a| |n|e|w| |o|n|e| |i|s| |P|e|n|d|i|n|g| |a|g|a|i|n| ||| |t|h|e| |d|e|p|l|o|y|m|e|n|t| |r|e|-|c|r|e|a|t|e|s| |i|t| |w|i|t|h| |t|h|e| |s|a|m|e| |r|e|q|u|e|s|t| ||| |f|i|x| |t|h|e| |d|e|p|l|o|y|m|e|n|t|,| |n|o|t| |t|h|e| |p|o|d| |||
-||| |`|I|n|v|a|l|i|d| |v|a|l|u|e|:| |"|1|0|0|"|:| |m|u|s|t| |b|e| |l|e|s|s| |t|h|a|n| |o|r| |e|q|u|a|l| |t|o| |c|p|u| |l|i|m|i|t|`| ||| |y|o|u| |s|e|t| |`|-|-|l|i|m|i|t|s|`| |i|n|s|t|e|a|d| |o|f| |`|-|-|r|e|q|u|e|s|t|s|`| ||| |u|s|e| |`|-|-|r|e|q|u|e|s|t|s|=|c|p|u|=|1|0|0|m|`| |||
-||| |`|N|o| |r|e|s|o|u|r|c|e|s| |f|o|u|n|d|`| |/| |`|N|o|t|F|o|u|n|d|`| ||| |y|o|u| |f|o|r|g|o|t| |`|-|n| |a|p|p|`| ||| |a|d|d| |`|-|n| |a|p|p|`| |||
-
-> Check: the exact text of the `--limits` error may differ slightly. The meaning is the same: request is bigger than limit.
-
-**The same question with other causes.**
-The Events line always names the cause. Match it:
-
-||| |E|v|e|n|t|s| |s|a|y|s| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |`|I|n|s|u|f|f|i|c|i|e|n|t| |c|p|u|`| |o|r| |`|I|n|s|u|f|f|i|c|i|e|n|t| |m|e|m|o|r|y|`| ||| |t|h|e| |r|e|q|u|e|s|t| |i|s| |t|o|o| |b|i|g| ||| |`|k| |s|e|t| |r|e|s|o|u|r|c|e|s| |d|e|p|l|o|y| |a|p|i| |-|n| |a|p|p| |-|-|r|e|q|u|e|s|t|s|=|c|p|u|=|1|0|0|m|,|m|e|m|o|r|y|=|1|2|8|M|i|`| |||
-||| |`|h|a|d| |u|n|t|o|l|e|r|a|t|e|d| |t|a|i|n|t| |{|k|e|y|:| |v|a|l|u|e|}|`| ||| |t|h|e| |n|o|d|e| |h|a|s| |a| |t|a|i|n|t| |t|h|e| |p|o|d| |d|o|e|s| |n|o|t| |t|o|l|e|r|a|t|e| ||| |r|e|m|o|v|e| |t|h|e| |t|a|i|n|t|:| |`|k| |t|a|i|n|t| |n|o|d|e| |n|o|d|e|0|1| |k|e|y|=|v|a|l|u|e|:|N|o|S|c|h|e|d|u|l|e|-|`| |(|o|r| |a|d|d| |a| |t|o|l|e|r|a|t|i|o|n|,| |q|u|e|s|t|i|o|n| |3|6| |"|T|a|i|n|t|,| |t|o|l|e|r|a|t|i|o|n|,| |n|o|d|e|S|e|l|e|c|t|o|r|"|)| |||
-||| |`|d|i|d|n|'|t| |m|a|t|c|h| |P|o|d|'|s| |n|o|d|e| |a|f|f|i|n|i|t|y|/|s|e|l|e|c|t|o|r|`| ||| |t|h|e| |p|o|d| |a|s|k|s| |f|o|r| |a| |n|o|d|e| |l|a|b|e|l| |t|h|a|t| |n|o| |n|o|d|e| |h|a|s| ||| |`|k| |e|d|i|t| |d|e|p|l|o|y| |a|p|i| |-|n| |a|p|p|`| |a|n|d| |f|i|x| |`|n|o|d|e|S|e|l|e|c|t|o|r|:|`|,| |o|r| |`|k| |l|a|b|e|l| |n|o|d|e| |n|o|d|e|0|1| |k|e|y|=|v|a|l|u|e|`| |||
-||| |`|u|n|b|o|u|n|d| |i|m|m|e|d|i|a|t|e| |P|e|r|s|i|s|t|e|n|t|V|o|l|u|m|e|C|l|a|i|m|s|`| ||| |i|t|s| |P|V|C| |i|s| |n|o|t| |B|o|u|n|d| ||| |f|i|x| |t|h|e| |P|V|C| |(|q|u|e|s|t|i|o|n|s| |3|8| |"|P|V| |+| |P|V|C| |+| |P|o|d|"| |a|n|d| |4|0| |"|R|e|u|s|e| |a|n| |e|x|i|s|t|i|n|g| |P|V|"|)| |||
-||| |E|v|e|n|t|s| |i|s| |e|m|p|t|y| |(|`|<|n|o|n|e|>|`|)| |a|n|d| |`|N|o|d|e|:| |<|n|o|n|e|>|`| ||| |t|h|e| |s|c|h|e|d|u|l|e|r| |i|t|s|e|l|f| |i|s| |n|o|t| |r|u|n|n|i|n|g| ||| |q|u|e|s|t|i|o|n| |9| |"|S|c|h|e|d|u|l|e|r| |i|s| |n|o|t| |r|u|n|n|i|n|g|"| |||
-
----
-
-### Mug this up: the whole answer in 4 lines
-
-```
-k get pods -n app                            # one pod Pending
-k describe pod <pending-pod> -n app          # Events: FailedScheduling ... Insufficient cpu
-k set resources deploy api -n app --requests=cpu=100m
-k rollout status deploy/api -n app           # successfully rolled out
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 3 minutes.
+||| |n|o| |`|F|a|i|l|e|d|S|c|h|e|d|u|l|i|n|g|`| |i|n| |d|e|s|c|r|i|b|e| ||| |y|o|u| |d|e|s|c|r|i|b|e|d| |t|h|e| |R|u|n|n|i|n|g| |p|o|d| ||| |d|e|s|c|r|i|b|e| |t|h|e| |`|P|e|n|d|i|n|g|`| |o|n|e| |||
+||| |a| |n|e|w| |p|o|d| |i|s| |P|e|n|d|i|n|g| |a|f|t|e|r| |y|o|u| |d|e|l|e|t|e|d| |o|n|e| ||| |t|h|e| |d|e|p|l|o|y|m|e|n|t| |r|e|-|c|r|e|a|t|e|s| |i|t| ||| |f|i|x| |t|h|e| |d|e|p|l|o|y|m|e|n|t|,| |n|o|t| |t|h|e| |p|o|d| |||
+||| |`|m|u|s|t| |b|e| |l|e|s|s| |t|h|a|n| |o|r| |e|q|u|a|l| |t|o| |c|p|u| |l|i|m|i|t|`| ||| |y|o|u| |s|e|t| |`|-|-|l|i|m|i|t|s|`|,| |n|o|t| |`|-|-|r|e|q|u|e|s|t|s|`| ||| |u|s|e| |`|-|-|r|e|q|u|e|s|t|s|=|c|p|u|=|1|0|0|m|`| |||
+||| |E|v|e|n|t|s|:| |`|h|a|d| |u|n|t|o|l|e|r|a|t|e|d| |t|a|i|n|t|`| |o|n| |e|v|e|r|y| |n|o|d|e| ||| |a| |t|a|i|n|t| |b|l|o|c|k|s| |t|h|e| |p|o|d| ||| |q|u|e|s|t|i|o|n| |3|6| |||
+||| |E|v|e|n|t|s|:| |`|d|i|d|n|'|t| |m|a|t|c|h| |P|o|d|'|s| |n|o|d|e| |a|f|f|i|n|i|t|y|/|s|e|l|e|c|t|o|r|`| ||| |t|h|e| |p|o|d| |w|a|n|t|s| |a| |n|o|d|e| |l|a|b|e|l| |n|o|n|e| |h|a|s| ||| |f|i|x| |`|n|o|d|e|S|e|l|e|c|t|o|r|:|`| |i|n| |`|k| |e|d|i|t| |d|e|p|l|o|y| |a|p|i| |-|n| |a|p|p|`| |||
 
 ---
 
 ## 4. Node NotReady: kubelet stopped
-
-### Three words first
-
-- **kubelet** = a program that runs on every node. It starts the containers. Every few seconds it tells the control plane "this node is alive".
-- **NotReady** = the control plane has not heard from the node's kubelet for about 40 to 50 seconds.
-- **systemctl** = the Linux command that starts, stops and checks services.
-- **Service (Linux)** = a program Linux runs in the background. kubelet is one. It is not a pod.
-- **ssh** = log in to another machine. kubectl cannot start the kubelet, so you must log in to the node.
-
----
-
-### PART A. Build the exam (Killercoda only)
-
-Paste this once. It is safe to paste again.
-In the real exam this is already done.
-
-```
-ssh node01 'systemctl disable --now kubelet'
-for i in $(seq 1 24); do k get node node01 | grep -q NotReady && break; sleep 5; done
-clear
-k get nodes
-```
-The last line shows the broken state: `node01   NotReady`.
-
-Why it is broken: the kubelet on node01 is stopped.
-`disable --now` = stop it AND switch off start-at-boot.
-So the "survive a reboot" part is real.
-
-The `for` line waits up to 2 minutes, until node01 shows `NotReady`.
-Still `Ready`? Wait 20 seconds and run `k get nodes` again.
-
-> Check: the wait before NotReady is the controller-manager's `--node-monitor-grace-period`. It was 40s for years; newer releases use 50s.
-
----
 
 ### PART B. The exam starts here
 
@@ -1476,9 +1219,7 @@ Still `Ready`? Wait 20 seconds and run `k get nodes` again.
 
 **What the question is really saying:**
 
-The kubelet on node01 is not reporting.
-Log in to node01. Check the kubelet service. Start it.
-Also switch it on for every reboot.
+The kubelet on node01 is stopped. Start it and enable it.
 
 **Write down from the question:** node = `node01` · must survive reboot (so: `enable`) · no reboot
 
@@ -1486,160 +1227,130 @@ Also switch it on for every reboot.
 
 ### Think
 
-- **What is broken:** the kubelet on node01 is stopped and disabled.
-- **Where to look first:** `k describe node node01`
-- **What I expect to see:** Conditions `Unknown`, message `Kubelet stopped posting node status.`
-- **Fix path:** `ssh node01`, `systemctl status kubelet`, `systemctl enable --now kubelet`, `exit`.
-- **How I prove it:** `k wait --for=condition=Ready node/node01 --timeout=60s` prints `condition met`.
+- **Broken:** the kubelet on node01 is stopped and disabled.
+- **Look first:** the node's Conditions.
+- **Expect:** `Kubelet stopped posting node status.`
+- **Fix:** on node01, enable and start the kubelet.
+- **Prove:** node01 is Ready.
 
 ### Time budget
 
-Target 2 minutes. Skip and flag at 5 minutes.
+Target 2 min. Skip at 5.
 
 ---
 
-### Opening routine (same 2 commands at the start of EVERY question)
+### PART A. Build the exam (Killercoda only)
 
 ```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
-```
-Here `k get nodes` already shows the problem.
-
-You see:
-```
-NAME           STATUS     ROLES           AGE   VERSION
-controlplane   Ready      control-plane   10d   v1.35.0
-node01         NotReady   <none>          10d   v1.35.0      <-- NotReady
+ssh node01 'systemctl disable --now kubelet'
+for i in $(seq 1 24); do k get node node01 | grep -q NotReady && break; sleep 5; done
+clear
+k get nodes
 ```
 
 ---
 
-### Step 1. Get the hint from the control plane
+### Step 1. Which node is down?
 
-```
-k describe node node01
-```
-You see (shortened):
-```
-Conditions:
-  Type             Status    ...   Reason              Message
-  ----             ------    ...   ------              -------
-  MemoryPressure   Unknown   ...   NodeStatusUnknown   Kubelet stopped posting node status.
-  DiskPressure     Unknown   ...   NodeStatusUnknown   Kubelet stopped posting node status.
-  PIDPressure      Unknown   ...   NodeStatusUnknown   Kubelet stopped posting node status.
-  Ready            Unknown   ...   NodeStatusUnknown   Kubelet stopped posting node status.      <-- the hint
-```
-Find the **Conditions:** table.
-Status is `Unknown`, not `False`.
-`Unknown` = nobody reported anything.
-
-That sentence tells you: the problem is the kubelet, on that node.
-
----
-
-### Step 2. Log in to the node
-
-```
-ssh node01
-```
-You see:
-```
-root@node01:~#      <-- the prompt says node01
-```
-Always look at the prompt before you type.
-
----
-
-### Step 3. Check the kubelet service
-
-```
-systemctl status kubelet --no-pager
-```
-You see (shortened):
-```
-     Loaded: loaded (/usr/lib/systemd/system/kubelet.service; disabled; ...)      <-- disabled
-     Active: inactive (dead) since ...                                            <-- stopped
-```
-`inactive (dead)` = the service is stopped.
-`disabled` = it will not start after a reboot either.
-`--no-pager` = print and return to the prompt.
-Forgot `--no-pager` and the screen hangs? Press `q`.
-
-The path may be `/lib/systemd/system/...` on your machine. That does not matter.
-
----
-
-### Step 4. Start it, and keep it on after reboots
-
-```
-systemctl enable --now kubelet
-```
-You see:
-```
-Created symlink /etc/systemd/system/multi-user.target.wants/kubelet.service → /usr/lib/systemd/system/kubelet.service.      <-- enabled
-```
-- `enable` = start it after every reboot (the question asked for this).
-- `--now` = also start it immediately.
-
-> Check: the symlink line may show slightly different paths. No output at all is also fine if it was already enabled.
-
-Check both parts:
-
-```
-systemctl is-active kubelet
-```
-You see:
-```
-active      <-- running now
-```
-
-```
-systemctl is-enabled kubelet
-```
-You see:
-```
-enabled      <-- survives a reboot
-```
-
----
-
-### Step 5. Leave the node
-
-```
-exit
-```
-You see:
-```
-root@controlplane:~#      <-- back on the control plane
-```
-
----
-
-### Closing routine (same at the end of EVERY question: verify, then exit)
-
-```
-k wait --for=condition=Ready node/node01 --timeout=60s
-```
-You see:
-```
-node/node01 condition met      <-- this line proves it works
-```
+**Why:** confirm the node before you log in.
 
 ```
 k get nodes
 ```
 You see:
 ```
-NAME           STATUS   ROLES           AGE   VERSION
-controlplane   Ready    control-plane   10d   v1.35.0
-node01         Ready    <none>          10d   v1.35.0      <-- Ready
+node01   NotReady   <none>   ...   <-- NotReady
 ```
-It can take 30 seconds. Run it again if needed.
+**Means:** the control plane gets no news from node01.
+
+---
+
+### Step 2. What does the control plane know?
+
+**Why:** the node's Conditions point to the kubelet.
 
 ```
-exit          # exam only
+k describe node node01
 ```
+You see:
+```
+  Ready   Unknown   ...   NodeStatusUnknown   Kubelet stopped posting node status.   <-- the hint
+```
+**Means:** `Unknown`, not `False`. The kubelet stopped reporting.
+
+---
+
+### Step 3. Is the kubelet running?
+
+**Why:** the kubelet is a Linux service. kubectl cannot start it.
+
+```
+ssh node01
+systemctl status kubelet --no-pager
+```
+You see:
+```
+     Loaded: loaded (/usr/lib/systemd/system/kubelet.service; disabled; ...)   <-- disabled
+     Active: inactive (dead) since ...                                         <-- stopped
+```
+**Means:** stopped now, and off after a reboot.
+**Don't:** type before you check the prompt says `node01`.
+
+---
+
+### Step 4. Start it and keep it on
+
+**Why:** `enable` = after every reboot. `--now` = also right now.
+
+```
+systemctl enable --now kubelet
+systemctl is-active kubelet
+systemctl is-enabled kubelet
+```
+You see:
+```
+Created symlink ... → .../kubelet.service.
+active      <-- running now
+enabled     <-- survives a reboot
+```
+**Don't:** use `systemctl start` alone. It does not survive a reboot.
+
+---
+
+### Step 5. Leave the node
+
+**Why:** kubectl works on the control plane, not on node01.
+
+```
+exit
+```
+You see:
+```
+root@controlplane:~#   <-- back
+```
+**Means:** you are back where kubectl works.
+
+---
+
+### Verify
+
+**Why:** prove the node is Ready.
+
+```
+k wait --for=condition=Ready node/node01 --timeout=60s
+```
+You see:
+```
+node/node01 condition met
+```
+
+---
+
+### Three words first
+
+- **kubelet** = the service on every node. It starts containers and reports "alive".
+- **NotReady** = no report from the kubelet for about 40 to 50 seconds.
+- **systemctl** = the Linux command that starts, stops and checks services.
 
 ---
 
@@ -1647,67 +1358,15 @@ exit          # exam only
 
 ||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
 |||-|-|-|||-|-|-|||-|-|-|||
-||| |`|T|h|e| |c|o|n|n|e|c|t|i|o|n| |t|o| |t|h|e| |s|e|r|v|e|r| |l|o|c|a|l|h|o|s|t|:|8|0|8|0| |w|a|s| |r|e|f|u|s|e|d|`| ||| |y|o|u| |r|a|n| |k|u|b|e|c|t|l| |O|N| |n|o|d|e|0|1|.| |k|u|b|e|c|t|l| |i|s| |o|n|l|y| |s|e|t| |u|p| |o|n| |t|h|e| |c|o|n|t|r|o|l| |p|l|a|n|e|.| ||| |t|y|p|e| |`|e|x|i|t|`|,| |r|u|n| |i|t| |a|g|a|i|n| |||
-||| |k|u|b|e|l|e|t| |i|s| |a|l|r|e|a|d|y| |`|a|c|t|i|v|e| |(|r|u|n|n|i|n|g|)|`| |b|e|f|o|r|e| |y|o|u| |f|i|x|e|d| |a|n|y|t|h|i|n|g| ||| |y|o|u| |r|a|n| |s|y|s|t|e|m|c|t|l| |o|n| |t|h|e| |c|o|n|t|r|o|l| |p|l|a|n|e|,| |n|o|t| |n|o|d|e|0|1| ||| |l|o|o|k| |a|t| |t|h|e| |p|r|o|m|p|t|:| |i|t| |m|u|s|t| |s|a|y| |`|n|o|d|e|0|1|`|.| |`|e|x|i|t|`|,| |t|h|e|n| |`|s|s|h| |n|o|d|e|0|1|`| |||
-||| |a|f|t|e|r| |s|t|a|r|t|i|n|g|:| |`|A|c|t|i|v|e|:| |a|c|t|i|v|a|t|i|n|g| |(|a|u|t|o|-|r|e|s|t|a|r|t|)|`| ||| |t|h|e| |k|u|b|e|l|e|t| |i|s| |m|i|s|c|o|n|f|i|g|u|r|e|d|,| |n|o|t| |j|u|s|t| |s|t|o|p|p|e|d| ||| |q|u|e|s|t|i|o|n| |5| |||
-||| |k|u|b|e|l|e|t| |i|s| |`|a|c|t|i|v|e| |(|r|u|n|n|i|n|g|)|`| |b|u|t| |t|h|e| |n|o|d|e| |s|t|a|y|s| |N|o|t|R|e|a|d|y| ||| |t|h|e| |c|o|n|t|a|i|n|e|r| |r|u|n|t|i|m|e| |i|s| |s|t|o|p|p|e|d| ||| |o|n| |t|h|e| |n|o|d|e|:| |`|s|y|s|t|e|m|c|t|l| |e|n|a|b|l|e| |-|-|n|o|w| |c|o|n|t|a|i|n|e|r|d|`| |||
-||| |`|i|s|-|e|n|a|b|l|e|d|`| |p|r|i|n|t|s| |`|d|i|s|a|b|l|e|d|`| ||| |y|o|u| |u|s|e|d| |`|s|y|s|t|e|m|c|t|l| |s|t|a|r|t|`|,| |n|o|t| |`|e|n|a|b|l|e| |-|-|n|o|w|`| ||| |`|s|y|s|t|e|m|c|t|l| |e|n|a|b|l|e| |-|-|n|o|w| |k|u|b|e|l|e|t|`| |||
-||| |`|i|s|-|a|c|t|i|v|e|`| |p|r|i|n|t|s| |`|i|n|a|c|t|i|v|e|`| ||| |y|o|u| |u|s|e|d| |`|s|y|s|t|e|m|c|t|l| |e|n|a|b|l|e|`| |w|i|t|h|o|u|t| |`|-|-|n|o|w|`| ||| |`|s|y|s|t|e|m|c|t|l| |e|n|a|b|l|e| |-|-|n|o|w| |k|u|b|e|l|e|t|`| |||
-||| |`|k| |w|a|i|t|`| |s|a|y|s| |`|t|i|m|e|d| |o|u|t| |w|a|i|t|i|n|g| |f|o|r| |t|h|e| |c|o|n|d|i|t|i|o|n|`| ||| |t|h|e| |k|u|b|e|l|e|t| |n|e|e|d|s| |m|o|r|e| |t|i|m|e|,| |o|r| |i|t| |f|a|i|l|e|d| |a|g|a|i|n| ||| |r|u|n| |`|k| |g|e|t| |n|o|d|e|s|`| |a|g|a|i|n|;| |o|n| |n|o|d|e|0|1|:| |`|s|y|s|t|e|m|c|t|l| |s|t|a|t|u|s| |k|u|b|e|l|e|t| |-|-|n|o|-|p|a|g|e|r|`| |||
-
----
-
-### Mug this up: the whole answer in 6 lines
-
-```
-k get nodes                       # node01 NotReady
-k describe node node01            # "Kubelet stopped posting node status"
-ssh node01
-systemctl status kubelet          # inactive (dead), disabled
-systemctl enable --now kubelet
-exit   ;   k get nodes            # Ready
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 2 minutes.
+||| |`|T|h|e| |c|o|n|n|e|c|t|i|o|n| |t|o| |t|h|e| |s|e|r|v|e|r| |l|o|c|a|l|h|o|s|t|:|8|0|8|0| |w|a|s| |r|e|f|u|s|e|d|`| ||| |y|o|u| |r|a|n| |k|u|b|e|c|t|l| |o|n| |n|o|d|e|0|1| ||| |`|e|x|i|t|`|,| |r|u|n| |i|t| |a|g|a|i|n| |||
+||| |k|u|b|e|l|e|t| |a|l|r|e|a|d|y| |`|a|c|t|i|v|e| |(|r|u|n|n|i|n|g|)|`| |b|e|f|o|r|e| |t|h|e| |f|i|x| ||| |y|o|u| |a|r|e| |o|n| |t|h|e| |c|o|n|t|r|o|l| |p|l|a|n|e| ||| |`|e|x|i|t|`|,| |t|h|e|n| |`|s|s|h| |n|o|d|e|0|1|`| |||
+||| |`|A|c|t|i|v|e|:| |a|c|t|i|v|a|t|i|n|g| |(|a|u|t|o|-|r|e|s|t|a|r|t|)|`| |a|f|t|e|r| |s|t|a|r|t|i|n|g| ||| |t|h|e| |k|u|b|e|l|e|t| |i|s| |m|i|s|c|o|n|f|i|g|u|r|e|d| ||| |q|u|e|s|t|i|o|n| |5| |||
+||| |k|u|b|e|l|e|t| |`|a|c|t|i|v|e| |(|r|u|n|n|i|n|g|)|`|,| |n|o|d|e| |s|t|a|y|s| |N|o|t|R|e|a|d|y| ||| |t|h|e| |c|o|n|t|a|i|n|e|r| |r|u|n|t|i|m|e| |i|s| |s|t|o|p|p|e|d| ||| |o|n| |n|o|d|e|0|1|:| |`|s|y|s|t|e|m|c|t|l| |e|n|a|b|l|e| |-|-|n|o|w| |c|o|n|t|a|i|n|e|r|d|`| |||
+||| |`|t|i|m|e|d| |o|u|t| |w|a|i|t|i|n|g| |f|o|r| |t|h|e| |c|o|n|d|i|t|i|o|n|`| ||| |t|h|e| |k|u|b|e|l|e|t| |n|e|e|d|s| |m|o|r|e| |t|i|m|e|,| |o|r| |f|a|i|l|e|d| ||| |`|k| |g|e|t| |n|o|d|e|s|`| |a|g|a|i|n|;| |o|n| |n|o|d|e|0|1| |c|h|e|c|k| |`|s|y|s|t|e|m|c|t|l| |s|t|a|t|u|s| |k|u|b|e|l|e|t| |-|-|n|o|-|p|a|g|e|r|`| |||
 
 ---
 
 ## 5. Node NotReady: kubelet misconfigured
-
-### Three words first
-
-- **Service file** = a text file that tells Linux how to start a service.
-- **ExecStart=** = the line in a service file that holds the path of the program to run.
-- **Drop-in** = an extra file that changes a service file. It overrides the base file.
-- **journalctl** = the command that shows a service's log. It tells you WHY a service fails.
-- **daemon-reload** = tells Linux "I changed a service file, read it again". Without it, Linux keeps the old version.
-
----
-
-### PART A. Build the exam (Killercoda only)
-
-Paste this once on the control plane.
-It is safe to paste again: it first undoes the old break, then breaks again.
-In the real exam this is already done.
-
-```
-ssh node01 'f=$(ls /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf /etc/systemd/system/kubelet.service.d/10-kubeadm.conf 2>/dev/null | head -1); sed -i "s#/usr/local/bin/kubelet#/usr/bin/kubelet#" "$f"; sed -i "s#/usr/bin/kubelet#/usr/local/bin/kubelet#" "$f"; systemctl daemon-reload; systemctl restart kubelet'
-for i in $(seq 1 24); do k get node node01 | grep -q NotReady && break; sleep 5; done
-clear
-k get nodes
-```
-The screen is quiet for up to 2 minutes. This is normal.
-The last line shows the broken state: `node01   NotReady`.
-
-Why it is broken: the drop-in now starts `/usr/local/bin/kubelet`.
-That file does not exist. The real program is `/usr/bin/kubelet`.
-
-Still `Ready` after 2 minutes? Your playground keeps the drop-in somewhere else.
-Run `ssh node01 systemctl cat kubelet`. It prints the real path in a `#` line.
-Put that path in place of the two paths in the first line.
-
----
 
 ### PART B. The exam starts here
 
@@ -1717,11 +1376,7 @@ Put that path in place of the two paths in the first line.
 
 **What the question is really saying:**
 
-The wording is the same as question 4.
-On the node you find out this one is harder.
-The kubelet is not just stopped. It cannot start.
-Something in its configuration is wrong.
-`journalctl` tells you what.
+The kubelet on node01 cannot start, because its service file points to a wrong path.
 
 **Write down from the question:** node = `node01` · no reboot
 
@@ -1729,227 +1384,154 @@ Something in its configuration is wrong.
 
 ### Think
 
-- **What is broken:** the kubelet on node01 cannot start.
-- **Where to look first:** `systemctl status kubelet` (on node01)
-- **What I expect to see:** `activating (auto-restart)` and `status=203/EXEC`.
-- **Fix path:** `journalctl` gives the reason. `systemctl cat` gives the file. Fix it, reload, restart.
-- **How I prove it:** `k get nodes` shows `node01   Ready`.
+- **Broken:** the kubelet on node01 cannot start.
+- **Look first:** the kubelet service status on node01.
+- **Expect:** `activating (auto-restart)` and `status=203/EXEC`
+- **Fix:** the log names the bad path; correct it in the service file.
+- **Prove:** node01 is `Ready` again.
 
 ### Time budget
 
-Target 6 minutes. Skip and flag at 10 minutes.
+Target 6 min. Skip at 10.
 
 ---
 
-### Opening routine (same 2 commands at the start of EVERY question)
+### PART A. Build the exam (Killercoda only)
 
 ```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
+ssh node01 'f=$(ls /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf /etc/systemd/system/kubelet.service.d/10-kubeadm.conf 2>/dev/null | head -1); sed -i "s#/usr/local/bin/kubelet#/usr/bin/kubelet#" "$f"; sed -i "s#/usr/bin/kubelet#/usr/local/bin/kubelet#" "$f"; systemctl daemon-reload; systemctl restart kubelet'
+for i in $(seq 1 24); do k get node node01 | grep -q NotReady && break; sleep 5; done
+clear
+k get nodes
 ```
 
 ---
 
-### Step 1. Log in to the node and check the service
+### Step 1. Is the kubelet running?
+
+**Why:** a node is NotReady when its kubelet does not run.
 
 ```
 ssh node01
-```
-You see:
-```
-root@node01:~#      <-- the prompt now says node01
-```
-
-```
 systemctl status kubelet
 ```
 You see:
 ```
-     Active: activating (auto-restart) (Result: exit-code) since ...      <-- tries, fails, tries again
-    Process: 4321 ExecStart=/usr/local/bin/kubelet ... (code=exited, status=203/EXEC)
+     Active: activating (auto-restart) (Result: exit-code) since ...   <-- starts, fails, again
+    Process: ... ExecStart=/usr/local/bin/kubelet ... (code=exited, status=203/EXEC)
 ```
-If the screen waits, press `q`.
-
-||| |Y|o|u| |s|e|e| ||| |M|e|a|n|i|n|g| |||
-|||-|-|-|||-|-|-|||
-||| |`|i|n|a|c|t|i|v|e| |(|d|e|a|d|)|`| ||| |j|u|s|t| |s|t|o|p|p|e|d| |→| |q|u|e|s|t|i|o|n| |4| |||
-||| |`|a|c|t|i|v|a|t|i|n|g| |(|a|u|t|o|-|r|e|s|t|a|r|t|)|`| ||| |t|r|i|e|s| |t|o| |s|t|a|r|t|,| |f|a|i|l|s|,| |t|r|i|e|s| |a|g|a|i|n| |→| |i|t| |i|s| |m|i|s|c|o|n|f|i|g|u|r|e|d| |→| |t|h|i|s| |q|u|e|s|t|i|o|n| |||
-
-`203/EXEC` = Linux could not start the program file at all.
+**Means:** it cannot start. `203/EXEC` = the program file could not run.
+**Don't:** wait at the screen. Press `q` if it does not return.
 
 ---
 
-### Step 2. Read WHY it fails
+### Step 2. Why does it fail?
+
+**Why:** the service log names the reason.
 
 ```
 journalctl -u kubelet -n 30 --no-pager
 ```
-- `-u kubelet` = only this service.
-- `-n 30` = the last 30 lines.
-- `--no-pager` = print it, do not open a viewer.
-
 You see:
 ```
-kubelet.service: Failed to locate executable /usr/local/bin/kubelet: No such file or directory      <-- the cause
-kubelet.service: Failed at step EXEC spawning /usr/local/bin/kubelet: No such file or directory
-kubelet.service: Main process exited, code=exited, status=203/EXEC
+kubelet.service: Failed at step EXEC spawning /usr/local/bin/kubelet: No such file or directory   <-- the cause
 ```
-Cause found: the service points to a program path that does not exist.
-
-> Check: the exact wording depends on the systemd version. Older systemd prints only the `Failed at step EXEC` line. Both name the missing path.
+**Means:** the service starts a path that does not exist.
 
 ---
 
-### Step 3. Find the correct path
+### Step 3. Which file holds the wrong path?
+
+**Why:** compare the real program with the path in the service files.
 
 ```
 which kubelet
-```
-You see:
-```
-/usr/bin/kubelet      <-- the real program
-```
-
----
-
-### Step 4. Find which file holds the wrong path
-
-```
 systemctl cat kubelet
 ```
-It prints every file of the service.
-Each file starts with its path in a `#` line.
-
 You see:
 ```
-# /usr/lib/systemd/system/kubelet.service
-[Service]
-ExecStart=/usr/bin/kubelet
+/usr/bin/kubelet                                                    <-- the real program
 ...
-# /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf      <-- the file to fix
-...
+# /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf         <-- the file to fix
 ExecStart=
-ExecStart=/usr/local/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS
+ExecStart=/usr/local/bin/kubelet $KUBELET_KUBECONFIG_ARGS ...       <-- wrong path
 ```
-If the screen waits, press `q`.
-
-You see TWO blocks with `ExecStart=`:
-- **Base file** = `kubelet.service` with `ExecStart=/usr/bin/kubelet`. Leave it alone. The drop-in overrides it.
-- **Drop-in** = `10-kubeadm.conf`. It has an empty `ExecStart=`, then the real one.
-- The empty `ExecStart=` only clears the old value. That is normal.
-
-Edit the block whose `ExecStart=` contains `local`.
-The `#` line above it names the file.
-Some installs keep it in `/etc/systemd/system/kubelet.service.d/10-kubeadm.conf`.
-Use whatever path YOUR output shows.
+**Means:** the drop-in overrides the base file. Fix the drop-in.
+**Don't:** touch the empty `ExecStart=`. It only clears the old value.
 
 ---
 
-### Step 5. Fix the file
+### Step 4. Fix the path
+
+**Why:** `/usr/local/bin/kubelet` must become `/usr/bin/kubelet`.
 
 ```
 vim /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf
-```
-Vim keys, exactly:
-1. Type `/local` and press Enter. The cursor lands on the `l` of `local`.
-2. Type `6x`. It deletes 6 characters: `local/`.
-3. The line now reads `ExecStart=/usr/bin/kubelet ...`.
-4. Type `:wq` and press Enter.
-
-You never entered insert mode, so no Esc is needed.
-Pressing Esc anyway does no harm.
-
-No-vim alternative:
-```
-sed -i 's#/usr/local/bin/kubelet#/usr/bin/kubelet#' /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf
-```
-
-Check the line:
-```
 grep ExecStart= /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf
 ```
+In vim: type `/local`, Enter, `6x`, then `:wq`, Enter.
+
 You see:
 ```
 ExecStart=
-ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS      <-- no "local" any more
+ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS ...   <-- no "local"
 ```
+**Means:** the file is right. Use the path YOUR `systemctl cat` showed.
 
 ---
 
-### Step 6. Reload, restart, check
+### Step 5. Reload and restart
+
+**Why:** systemd must re-read the changed file.
 
 ```
 systemctl daemon-reload
-```
-You see:
-```
-(no output)      <-- silence means success
-```
-
-```
 systemctl restart kubelet
-```
-You see:
-```
-(no output)      <-- silence means success
-```
-
-```
 systemctl status kubelet
 ```
 You see:
 ```
-     Active: active (running) since ...      <-- this is what you want
+     Active: active (running) since ...   <-- fixed
 ```
-If the screen waits, press `q`.
+**Don't:** skip `daemon-reload`. systemd keeps the old path.
 
 ---
 
-### Step 7. Leave the node
+### Step 6. Leave the node
+
+**Why:** kubectl works on the control plane, not on node01.
 
 ```
 exit
 ```
 You see:
 ```
-root@controlplane:~#      <-- back on the control plane
+logout
+Connection to node01 closed.
 ```
 
 ---
 
-### Closing routine (same at the end of EVERY question: verify, then exit)
+### Verify
+
+**Why:** prove the node is back.
 
 ```
 k get nodes
 ```
 You see:
 ```
-NAME           STATUS   ROLES           AGE   VERSION
-controlplane   Ready    control-plane   10d   v1.35.0
-node01         Ready    <none>          10d   v1.35.0      <-- Ready again
+node01         Ready    <none>          ...   v1.35.0   <-- Ready
 ```
-It can take up to 30 seconds. Run it again until you see `Ready`.
-
-```
-exit          # exam only
-```
+**Don't:** give up at once. It can take 30 seconds.
 
 ---
 
-### The same question with other causes
+### Three words first
 
-`journalctl` always names the problem. These are the files where the fix goes:
-
-||| |j|o|u|r|n|a|l|c|t|l| |s|a|y|s| ||| |F|i|l|e| |t|o| |f|i|x| ||| |T|h|e|n| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |`|F|a|i|l|e|d| |t|o| |l|o|c|a|t|e| |e|x|e|c|u|t|a|b|l|e| |.|.|.|`| ||| |`|/|u|s|r|/|l|i|b|/|s|y|s|t|e|m|d|/|s|y|s|t|e|m|/|k|u|b|e|l|e|t|.|s|e|r|v|i|c|e|.|d|/|1|0|-|k|u|b|e|a|d|m|.|c|o|n|f|`| |(|t|h|e| |`|E|x|e|c|S|t|a|r|t|=|`| |l|i|n|e|)| ||| |`|d|a|e|m|o|n|-|r|e|l|o|a|d|`| |+| |`|r|e|s|t|a|r|t|`| |||
-||| |`|u|n|k|n|o|w|n| |f|l|a|g|:| |-|-|x|y|z|`| ||| |`|/|v|a|r|/|l|i|b|/|k|u|b|e|l|e|t|/|k|u|b|e|a|d|m|-|f|l|a|g|s|.|e|n|v|`| ||| |`|r|e|s|t|a|r|t|`| |||
-||| |`|f|a|i|l|e|d| |t|o| |l|o|a|d| |k|u|b|e|l|e|t| |c|o|n|f|i|g| |f|i|l|e|`| |o|r| |`|u|n|a|b|l|e| |t|o| |l|o|a|d| |c|l|i|e|n|t| |C|A| |f|i|l|e| |.|.|.|`| ||| |`|/|v|a|r|/|l|i|b|/|k|u|b|e|l|e|t|/|c|o|n|f|i|g|.|y|a|m|l|`| |(|c|o|r|r|e|c|t| |C|A| |p|a|t|h|:| |`|/|e|t|c|/|k|u|b|e|r|n|e|t|e|s|/|p|k|i|/|c|a|.|c|r|t|`|)| ||| |`|r|e|s|t|a|r|t|`| |||
-||| |`|d|i|a|l| |t|c|p| |.|.|.|:|6|5|5|3|:| |c|o|n|n|e|c|t|i|o|n| |r|e|f|u|s|e|d|`| |(|w|r|o|n|g| |A|P|I| |s|e|r|v|e|r| |p|o|r|t|)| ||| |`|/|e|t|c|/|k|u|b|e|r|n|e|t|e|s|/|k|u|b|e|l|e|t|.|c|o|n|f|`| |(|c|o|r|r|e|c|t| |p|o|r|t|:| |`|6|4|4|3|`|)| ||| |`|r|e|s|t|a|r|t|`| |||
-
-`daemon-reload` is only needed after changing a service file.
-Service files live under `/usr/lib/systemd/` or `/etc/systemd/`.
-Running it when not needed does no harm.
+- **Drop-in** = an extra file that overrides parts of a service file.
+- **journalctl** = shows a service's log: WHY it fails.
+- **daemon-reload** = tells systemd to read changed service files again.
 
 ---
 
@@ -1957,28 +1539,11 @@ Running it when not needed does no harm.
 
 ||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
 |||-|-|-|||-|-|-|||-|-|-|||
-||| |`|W|a|r|n|i|n|g|:| |T|h|e| |u|n|i|t| |f|i|l|e| |.|.|.| |c|h|a|n|g|e|d| |o|n| |d|i|s|k|.| |R|u|n| |'|s|y|s|t|e|m|c|t|l| |d|a|e|m|o|n|-|r|e|l|o|a|d|'|`| ||| |y|o|u| |s|k|i|p|p|e|d| |`|d|a|e|m|o|n|-|r|e|l|o|a|d|`| ||| |r|u|n| |`|s|y|s|t|e|m|c|t|l| |d|a|e|m|o|n|-|r|e|l|o|a|d|`|,| |t|h|e|n| |`|s|y|s|t|e|m|c|t|l| |r|e|s|t|a|r|t| |k|u|b|e|l|e|t|`| |||
-||| |s|t|i|l|l| |`|a|c|t|i|v|a|t|i|n|g| |(|a|u|t|o|-|r|e|s|t|a|r|t|)|`| |a|f|t|e|r| |t|h|e| |f|i|x| ||| |t|h|e| |o|l|d| |p|a|t|h| |i|s| |s|t|i|l|l| |i|n| |t|h|e| |f|i|l|e|,| |o|r| |n|o| |r|e|l|o|a|d| ||| |`|s|y|s|t|e|m|c|t|l| |c|a|t| |k|u|b|e|l|e|t|`| |a|g|a|i|n|,| |l|o|o|k| |f|o|r| |`|l|o|c|a|l|`| |||
-||| |`|T|h|e| |c|o|n|n|e|c|t|i|o|n| |t|o| |t|h|e| |s|e|r|v|e|r| |l|o|c|a|l|h|o|s|t|:|8|0|8|0| |w|a|s| |r|e|f|u|s|e|d|`| ||| |y|o|u| |r|a|n| |`|k|`| |o|n| |n|o|d|e|0|1| ||| |t|y|p|e| |`|e|x|i|t|`|,| |t|h|e|n| |r|u|n| |`|k|`| |o|n| |t|h|e| |c|o|n|t|r|o|l| |p|l|a|n|e| |||
-||| |t|h|e| |l|i|n|e| |l|o|o|k|s| |w|r|o|n|g| |a|f|t|e|r| |`|6|x|`| ||| |t|h|e| |c|u|r|s|o|r| |w|a|s| |i|n| |t|h|e| |w|r|o|n|g| |p|l|a|c|e| ||| |p|r|e|s|s| |`|u|`| |t|o| |u|n|d|o|,| |o|r| |`|:|q|!|`| |a|n|d| |s|t|a|r|t| |a|g|a|i|n| |||
-||| |n|o|d|e| |s|t|i|l|l| |`|N|o|t|R|e|a|d|y|`| |r|i|g|h|t| |a|f|t|e|r| |t|h|e| |f|i|x| ||| |t|h|e| |n|o|d|e| |n|e|e|d|s| |a| |m|o|m|e|n|t| |t|o| |r|e|p|o|r|t| ||| |w|a|i|t| |3|0| |s|e|c|o|n|d|s|,| |r|u|n| |`|k| |g|e|t| |n|o|d|e|s|`| |a|g|a|i|n| |||
-||| |`|i|n|a|c|t|i|v|e| |(|d|e|a|d|)|`| |i|n| |S|t|e|p| |1| ||| |t|h|e| |k|u|b|e|l|e|t| |i|s| |j|u|s|t| |s|t|o|p|p|e|d| ||| |q|u|e|s|t|i|o|n| |4|:| |`|s|y|s|t|e|m|c|t|l| |s|t|a|r|t| |k|u|b|e|l|e|t|`| |||
-
----
-
-### Mug this up: the whole answer in 6 lines
-
-```
-ssh node01
-systemctl status kubelet ; journalctl -u kubelet -n 30 --no-pager   # the reason
-systemctl cat kubelet                                 # which file has the bad path
-vim <that file>                                       # /usr/local/bin -> /usr/bin
-systemctl daemon-reload ; systemctl restart kubelet
-exit ; k get nodes                                    # node01 Ready
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 6 minutes.
+||| |`|W|a|r|n|i|n|g|:| |T|h|e| |u|n|i|t| |f|i|l|e| |.|.|.| |c|h|a|n|g|e|d| |o|n| |d|i|s|k|`| ||| |n|o| |`|d|a|e|m|o|n|-|r|e|l|o|a|d|`| ||| |`|s|y|s|t|e|m|c|t|l| |d|a|e|m|o|n|-|r|e|l|o|a|d|`|,| |t|h|e|n| |r|e|s|t|a|r|t| |||
+||| |`|i|n|a|c|t|i|v|e| |(|d|e|a|d|)|`| |i|n| |S|t|e|p| |1| ||| |k|u|b|e|l|e|t| |o|n|l|y| |s|t|o|p|p|e|d| ||| |q|u|e|s|t|i|o|n| |4|:| |`|s|y|s|t|e|m|c|t|l| |s|t|a|r|t| |k|u|b|e|l|e|t|`| |||
+||| |l|o|g| |s|a|y|s| |`|f|a|i|l|e|d| |t|o| |l|o|a|d| |k|u|b|e|l|e|t| |c|o|n|f|i|g| |f|i|l|e|`| ||| |b|a|d| |`|/|v|a|r|/|l|i|b|/|k|u|b|e|l|e|t|/|c|o|n|f|i|g|.|y|a|m|l|`| ||| |f|i|x| |t|h|a|t| |f|i|l|e|,| |r|e|s|t|a|r|t| |k|u|b|e|l|e|t| |||
+||| |`|l|o|c|a|l|h|o|s|t|:|8|0|8|0| |w|a|s| |r|e|f|u|s|e|d|`| ||| |y|o|u| |r|a|n| |`|k|`| |o|n| |n|o|d|e|0|1| ||| |`|e|x|i|t|`| |f|i|r|s|t| |||
+||| |l|i|n|e| |l|o|o|k|s| |w|r|o|n|g| |a|f|t|e|r| |`|6|x|`| ||| |c|u|r|s|o|r| |w|a|s| |e|l|s|e|w|h|e|r|e| ||| |p|r|e|s|s| |`|u|`| |t|o| |u|n|d|o| |||
 
 ---
 
@@ -2124,19 +1689,35 @@ You see:
 
 ## 7. Service with the wrong targetPort
 
-### Three words first
+### PART B. The exam starts here
 
-- **port** = the port of the Service. Clients call this one.
-- **targetPort** = the port of the container. The Service forwards traffic there.
-- **targetPort rule** = it must be the port the app really listens on. nginx listens on 80.
-- **nodePort** = only for NodePort Services: a port (30000 to 32767) opened on every node.
+**The question, as the exam words it:**
+
+> In namespace `web`, pod `client` cannot reach service `backend-svc` on port 80. The backend pods are Running and run nginx, which listens on port 80. Fix the issue without recreating the service.
+
+**What the question is really saying:**
+
+The Service finds the pods, but forwards to a port where nothing listens.
+
+**Write down from the question:** namespace = `web` · service = `backend-svc` · app listens on `80` · test pod = `client` · do NOT recreate the service
+
+---
+
+### Think
+
+- **Broken:** the Service forwards to the wrong container port.
+- **Look first:** the Service's endpoints.
+- **Expect:** a pod IP ending in `:8080`, not `:80`.
+- **Fix:** targetPort = the port nginx listens on.
+- **Prove:** the client pod gets the nginx page.
+
+### Time budget
+
+Target 2 min. Skip at 5.
 
 ---
 
 ### PART A. Build the exam (Killercoda only)
-
-Paste this once. It is safe to paste again: it deletes the old attempt first.
-In the real exam this is already done.
 
 ```
 k delete ns web --ignore-not-found
@@ -2149,174 +1730,94 @@ k wait --for=condition=Ready pod/client -n web --timeout=120s
 clear
 k get endpoints backend-svc -n web
 ```
-The last line shows the broken state: an IP that ends in `:8080`.
-
-Why it is broken: the Service forwards to port 8080.
-nginx listens on port 80. Nothing answers on 8080.
 
 ---
 
-### PART B. The exam starts here
+### Step 1. Does the Service find pods?
 
-**The question, as the exam words it:**
-
-> In namespace `web`, pod `client` cannot reach service `backend-svc` on port 80. The backend pods are Running and run nginx, which listens on port 80. Fix the issue without recreating the service.
-
-**What the question is really saying:**
-
-Same symptom as question 6, different cause.
-The Service finds the pods.
-But it forwards to a port where nothing listens.
-
-**Write down from the question:** namespace = `web` · service = `backend-svc` · app listens on `80` · test pod = `client` · do NOT recreate the service
-
----
-
-### Think
-
-- **What is broken:** the Service forwards to the wrong container port.
-- **Where to look first:** `k get ep backend-svc -n web`
-- **What I expect to see:** a pod IP that ends in `:8080`, not `:80`.
-- **Fix path:** change `targetPort` from 8080 to 80 with `k edit svc`.
-- **How I prove it:** `k exec client -n web -- wget -qO- -T 3 backend-svc` prints `Welcome to nginx!`.
-
-### Time budget
-
-Target 2 minutes. Skip and flag at 5 minutes.
-
----
-
-### Opening routine (same 2 commands at the start of EVERY question)
+**Why:** endpoints show the pods AND the port the Service sends to.
 
 ```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
-```
-
----
-
-### Step 1. Does the Service have pods behind it?
-
-```
-k get endpoints backend-svc -n web
+k get ep backend-svc -n web
 ```
 You see:
 ```
-Warning: v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice
-NAME          ENDPOINTS          AGE
-backend-svc   192.168.1.5:8080   1m      <-- an IP is there, but the port is 8080
+Warning: v1 Endpoints is deprecated in v1.33+; ...   <-- normal, ignore
+backend-svc   192.168.1.5:8080   1m                   <-- IP is there, port 8080
 ```
-The warning is harmless. Ignore it.
-There IS an IP, so the selector is fine.
-Now look at the number after the colon: `8080`.
-The question said nginx listens on `80`.
-
-**The rule:**
-- ENDPOINTS `<none>` → selector problem (question 6).
-- ENDPOINTS has an IP, but no answer → port problem (this question).
-
-> Check: the newer command is `k get endpointslices -n web -l kubernetes.io/service-name=backend-svc`. It shows the port in its own PORTS column. `k get endpoints` is shorter.
+**Means:** the selector works. The port is wrong.
 
 ---
 
-### Step 2. Confirm the symptom
+### Step 2. Does the client get an answer?
+
+**Why:** confirm the symptom before you change anything.
 
 ```
 k exec client -n web -- wget -qO- -T 3 backend-svc
 ```
 You see:
 ```
-wget: can't connect to remote host (10.96.120.15): Connection refused      <-- nothing listens on 8080
+wget: can't connect to remote host (10.96.x.x): Connection refused   <-- nobody on 8080
 command terminated with exit code 1
 ```
-- `--` = everything after it runs INSIDE the pod.
-- `-qO-` = quiet, print the page to the screen. It is a capital O, not a zero.
-- `-T 3` = give up after 3 seconds.
-
-> Check: some network plug-ins drop the packet instead. Then you see `wget: download timed out`. Both mean the same here.
+**Means:** traffic reaches the pod, but no program answers there.
 
 ---
 
-### Step 3. Read the Service's ports
+### Step 3. Which port is wrong?
+
+**Why:** a Service has two ports. Find the wrong one.
 
 ```
 k describe svc backend-svc -n web
 ```
 You see:
 ```
-Selector:          app=backend
-Port:              <unset>  80/TCP
-TargetPort:        8080/TCP      <-- wrong: nginx listens on 80
+Port:              <unset>  80/TCP     <-- correct, clients call 80
+TargetPort:        8080/TCP            <-- wrong, nginx listens on 80
 Endpoints:         192.168.1.5:8080
 ```
-`Port` is 80. That is correct. Clients call 80.
-`TargetPort` is 8080. That is the bug.
+**Means:** only `targetPort` must change.
 
 ---
 
-### Step 4. Fix the port on the Service
+### Step 4. Fix the targetPort
+
+**Why:** edit the Service in place. Do not recreate it.
 
 ```
 k edit svc backend-svc -n web
 ```
-Type `/targetPort` and press Enter. You see:
-```
-  ports:
-  - port: 80
-    protocol: TCP
-    targetPort: 8080      <-- change this to 80
-```
-Change `8080` to `80`.
-Vim keys, exactly:
-1. Type `/8080` and press Enter. The cursor is on the first `8`.
-2. Type `cw`. It deletes the word and starts typing.
-3. Type `80`, then press `Esc`.
-4. Type `:wq` and press Enter.
+In vim: type `/8080`, Enter, `cw`, type `80`, Esc, `:wq`, Enter.
 
-After `:wq`, kubectl saves the change.
 You see:
 ```
-service/backend-svc edited      <-- saved
+service/backend-svc edited
 ```
-This changes the existing Service. It is not recreated.
-
-No-vim alternative:
-```
-k patch svc backend-svc -n web -p '{"spec":{"ports":[{"port":80,"targetPort":80}]}}'
-```
-You see:
-```
-service/backend-svc patched      <-- saved
-```
-The patch finds the entry by `port: 80`. It only changes its `targetPort`.
+**Don't:** change `port:`. Clients still call 80.
 
 ---
 
-### Closing routine (same at the end of EVERY question: verify, then exit)
+### Verify
 
-```
-k get endpoints backend-svc -n web
-```
-You see:
-```
-NAME          ENDPOINTS        AGE
-backend-svc   192.168.1.5:80   3m      <-- now :80
-```
+**Why:** prove traffic now reaches nginx.
 
 ```
 k exec client -n web -- wget -qO- -T 3 backend-svc
 ```
 You see:
 ```
-<!DOCTYPE html>
-<html>
-<head>
-<title>Welcome to nginx!</title>      <-- this line proves it works
+<title>Welcome to nginx!</title>
 ```
 
-```
-exit          # exam only
-```
+---
+
+### Three words first
+
+- **port** = the Service's port. Clients call this one.
+- **targetPort** = the container's port. The Service forwards there.
+- **`-T 3`** = wget: give up after 3 seconds.
 
 ---
 
@@ -2324,71 +1825,15 @@ exit          # exam only
 
 ||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
 |||-|-|-|||-|-|-|||-|-|-|||
-||| |y|o|u| |d|o| |n|o|t| |k|n|o|w| |t|h|e| |a|p|p|'|s| |p|o|r|t| ||| |t|h|e| |q|u|e|s|t|i|o|n| |d|i|d| |n|o|t| |s|a|y| ||| |`|k| |d|e|s|c|r|i|b|e| |p|o|d| |<|b|a|c|k|e|n|d|-|p|o|d|>| |-|n| |w|e|b|`|,| |r|e|a|d| |`|P|o|r|t|:|`| |u|n|d|e|r| |C|o|n|t|a|i|n|e|r|s| |(|g|e|t| |t|h|e| |n|a|m|e| |w|i|t|h| |`|k| |g|e|t| |p|o|d|s| |-|n| |w|e|b|`|)| |||
-||| |w|g|e|t| |w|o|r|k|s| |w|i|t|h| |t|h|e| |p|o|d| |I|P| |b|u|t| |n|o|t| |w|i|t|h| |t|h|e| |S|e|r|v|i|c|e| |n|a|m|e| ||| |D|N|S| |p|r|o|b|l|e|m| ||| |q|u|e|s|t|i|o|n| |1|1| |||
-||| |t|h|e| |q|u|e|s|t|i|o|n| |s|a|y|s| |c|l|i|e|n|t|s| |u|s|e| |a|n|o|t|h|e|r| |p|o|r|t|,| |e|.|g|.| |8|0|8|0| ||| |t|h|e|n| |`|p|o|r|t|:|`| |i|s| |w|r|o|n|g|,| |n|o|t| |`|t|a|r|g|e|t|P|o|r|t|:|`| ||| |f|i|x| |`|p|o|r|t|:|`| |i|n|s|t|e|a|d| |||
-||| |`|E|d|i|t| |c|a|n|c|e|l|l|e|d|,| |n|o| |c|h|a|n|g|e|s| |m|a|d|e|.|`| ||| |y|o|u| |s|a|v|e|d| |w|i|t|h|o|u|t| |a| |c|h|a|n|g|e|,| |o|r| |q|u|i|t| |w|i|t|h| |`|:|q|!|`| ||| |r|u|n| |`|k| |e|d|i|t|`| |a|g|a|i|n| |||
-||| |y|o|u| |c|h|a|n|g|e|d| |`|p|o|r|t|:|`| |t|o| |8|0|8|0| ||| |w|r|o|n|g| |l|i|n|e| ||| |s|e|t| |`|p|o|r|t|:| |8|0|`| |a|n|d| |`|t|a|r|g|e|t|P|o|r|t|:| |8|0|`| |||
-||| |y|o|u| |c|h|a|n|g|e|d| |`|c|o|n|t|a|i|n|e|r|P|o|r|t|`| |i|n| |t|h|e| |D|e|p|l|o|y|m|e|n|t| ||| |w|r|o|n|g| |o|b|j|e|c|t|;| |n|g|i|n|x| |s|t|i|l|l| |l|i|s|t|e|n|s| |o|n| |8|0| ||| |c|h|a|n|g|e| |i|t| |b|a|c|k|;| |f|i|x| |t|h|e| |S|e|r|v|i|c|e| |||
-||| |y|o|u| |d|e|l|e|t|e|d| |a|n|d| |r|e|-|e|x|p|o|s|e|d| |t|h|e| |S|e|r|v|i|c|e| ||| |t|h|e| |q|u|e|s|t|i|o|n| |s|a|i|d| |d|o| |n|o|t| |r|e|c|r|e|a|t|e| |i|t| ||| |t|h|i|s| |c|a|n| |c|o|s|t| |t|h|e| |p|o|i|n|t|s|;| |n|e|x|t| |t|i|m|e| |u|s|e| |`|k| |e|d|i|t|`| |||
-||| |`|w|g|e|t|:| |i|n|v|a|l|i|d| |o|p|t|i|o|n| |-|-| |'|0|'|`| ||| |y|o|u| |t|y|p|e|d| |a| |z|e|r|o|,| |n|o|t| |a| |c|a|p|i|t|a|l| |O| ||| |`|-|q|O|-|`| |||
-||| |`|N|o| |r|e|s|o|u|r|c|e|s| |f|o|u|n|d|`| |/| |`|N|o|t|F|o|u|n|d|`| ||| |y|o|u| |f|o|r|g|o|t| |`|-|n| |w|e|b|`| ||| |a|d|d| |`|-|n| |w|e|b|`| |||
-
----
-
-### Mug this up: the whole answer in 4 lines
-
-```
-k get ep backend-svc -n web                  # IP is there, port is 8080
-k describe svc backend-svc -n web            # TargetPort: 8080/TCP
-k edit svc backend-svc -n web                # targetPort: 80
-k exec client -n web -- wget -qO- -T 3 backend-svc
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 2 minutes.
+||| |`|w|g|e|t|:| |d|o|w|n|l|o|a|d| |t|i|m|e|d| |o|u|t|`| |i|n| |S|t|e|p| |2| ||| |y|o|u|r| |n|e|t|w|o|r|k| |p|l|u|g|-|i|n| |d|r|o|p|s| |i|n|s|t|e|a|d| |o|f| |r|e|f|u|s|e|s| ||| |s|a|m|e| |m|e|a|n|i|n|g|,| |g|o| |o|n| |||
+||| |t|h|e| |q|u|e|s|t|i|o|n| |d|o|e|s| |n|o|t| |n|a|m|e| |t|h|e| |a|p|p|'|s| |p|o|r|t| ||| |y|o|u| |m|u|s|t| |f|i|n|d| |i|t| ||| |`|k| |d|e|s|c|r|i|b|e| |p|o|d| |<|p|o|d|>| |-|n| |w|e|b|`|,| |r|e|a|d| |`|P|o|r|t|:|`| |||
+||| |`|E|d|i|t| |c|a|n|c|e|l|l|e|d|,| |n|o| |c|h|a|n|g|e|s| |m|a|d|e|.|`| ||| |s|a|v|e|d| |n|o|t|h|i|n|g|,| |o|r| |q|u|i|t| |w|i|t|h| |`|:|q|!|`| ||| |r|u|n| |`|k| |e|d|i|t|`| |a|g|a|i|n| |||
+||| |s|t|i|l|l| |r|e|f|u|s|e|d| |a|f|t|e|r| |t|h|e| |f|i|x| ||| |y|o|u| |c|h|a|n|g|e|d| |`|c|o|n|t|a|i|n|e|r|P|o|r|t|`| |i|n| |t|h|e| |D|e|p|l|o|y|m|e|n|t| ||| |u|n|d|o| |i|t|;| |f|i|x| |t|h|e| |S|e|r|v|i|c|e| |||
+||| |v|i|m| |g|e|t|s| |i|n| |t|h|e| |w|a|y| ||| |y|o|u| |w|a|n|t| |o|n|e| |c|o|m|m|a|n|d| ||| |`|k| |p|a|t|c|h| |s|v|c| |b|a|c|k|e|n|d|-|s|v|c| |-|n| |w|e|b| |-|p| |'|{|"|s|p|e|c|"|:|{|"|p|o|r|t|s|"|:|[|{|"|p|o|r|t|"|:|8|0|,|"|t|a|r|g|e|t|P|o|r|t|"|:|8|0|}|]|}|}|'|`| |||
 
 ---
 
 ## 8. ★ kube-apiserver is down
-
-### Three words first
-
-- **API server** = the program every `kubectl` command talks to. If it is down, kubectl cannot do anything.
-- **Static pod** = a pod that the kubelet starts from a file in `/etc/kubernetes/manifests/`.
-- **Static pod rule** = the API server, scheduler, controller-manager and etcd are all static pods. Change the file, and the kubelet restarts the pod by itself.
-- **crictl** = a command that lists containers and shows their logs directly on the node. It works when kubectl does not.
-- **etcd** = the database of the cluster. The API server reaches it on port **2379**.
-
----
-
-### PART A. Build the exam (Killercoda only)
-
-Paste this once on the control plane.
-It is safe to paste again: it first restores the good file from the backup.
-The backup `/root/apiserver.bak` lives outside the manifests folder.
-In the real exam this is already done.
-
-```
-if [ -f /root/apiserver.bak ]; then cp /root/apiserver.bak /etc/kubernetes/manifests/kube-apiserver.yaml; else cp /etc/kubernetes/manifests/kube-apiserver.yaml /root/apiserver.bak; fi
-sed -i 's/127.0.0.1:2379/127.0.0.1:2380/' /etc/kubernetes/manifests/kube-apiserver.yaml
-for i in $(seq 1 24); do k get nodes >/dev/null 2>&1 || break; sleep 5; done
-sleep 30
-clear
-k get nodes
-```
-The screen is quiet for up to 2 minutes. This is normal.
-The last line shows the broken state: `... 6443 was refused ...`.
-
-Why it is broken: the API server now looks for etcd on port 2380.
-etcd answers on 2379.
-
-If you get lost, this puts everything back:
-```
-cp /root/apiserver.bak /etc/kubernetes/manifests/kube-apiserver.yaml
-```
-
----
 
 ### PART B. The exam starts here
 
@@ -2398,10 +1843,7 @@ cp /root/apiserver.bak /etc/kubernetes/manifests/kube-apiserver.yaml
 
 **What the question is really saying:**
 
-The API server container is not running.
-It is started from a file. Something in that file is wrong.
-Read the container's log to find out what.
-Then fix the file.
+The API server keeps crashing because its static pod file has a wrong value.
 
 **Write down from the question:** control plane node · kubectl fails
 
@@ -2409,182 +1851,131 @@ Then fix the file.
 
 ### Think
 
-- **What is broken:** the kube-apiserver container keeps crashing.
-- **Where to look first:** `crictl ps -a | grep kube-apiserver`
-- **What I expect to see:** `Exited`, with a growing ATTEMPT number.
-- **Fix path:** `crictl logs` names the bad value. Fix it in `/etc/kubernetes/manifests/kube-apiserver.yaml`. Wait.
-- **How I prove it:** `k get nodes` lists the nodes again.
+- **Broken:** the kube-apiserver container keeps crashing.
+- **Look first:** the containers on the node, not kubectl.
+- **Expect:** kube-apiserver `Exited`, with a growing attempt number.
+- **Fix:** its log names the bad value; fix it in the manifest file.
+- **Prove:** kubectl lists the nodes again.
 
 ### Time budget
 
-Target 7 minutes. Skip and flag at 12 minutes.
+Target 7 min. Skip at 12.
 
 ---
 
-### Opening routine (same 2 commands at the start of EVERY question)
+### PART A. Build the exam (Killercoda only)
 
 ```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
+if [ -f /root/apiserver.bak ]; then cp /root/apiserver.bak /etc/kubernetes/manifests/kube-apiserver.yaml; else cp /etc/kubernetes/manifests/kube-apiserver.yaml /root/apiserver.bak; fi
+sed -i 's/127.0.0.1:2379/127.0.0.1:2380/' /etc/kubernetes/manifests/kube-apiserver.yaml
+for i in $(seq 1 24); do k get nodes >/dev/null 2>&1 || break; sleep 5; done
+sleep 30
+clear
+k get nodes
 ```
-Here `k get nodes` does NOT answer.
-You see:
-```
-E1124 10:00:00.000000   12345 ...] "Unhandled Error" err="couldn't get current server API group list: ..."
-The connection to the server 172.30.1.2:6443 was refused - did you specify the right host or port?      <-- port 6443
-```
-Port `6443` = the API server. So the API server is down.
-If it said `localhost:8080`, you would simply be on the wrong machine.
-
-> Check: the `E1124 ...` lines differ by kubectl version. They can repeat several times. The last line is the one that matters.
 
 ---
 
-### Step 1. Find the API server container
+### Step 1. Is the API server down?
 
-```
-crictl ps -a | grep kube-apiserver
-```
-`-a` = also show stopped containers.
-
-You see:
-```
-3f2a1b9c8d7e6   a1b2c3d4e5f6   25 seconds ago   Exited   kube-apiserver   5   9e8d7c6b5a4f3   kube-apiserver-controlplane   kube-system      <-- newest line
-6c5b4a3d2e1f0   a1b2c3d4e5f6   5 hours ago      Exited   kube-apiserver   0   1a2b3c4d5e6f7   kube-apiserver-controlplane   kube-system
-```
-Copy the first column (the container ID) of the most recent line.
-On that line, CREATED says seconds or minutes ago. ATTEMPT is the highest.
-An old line from before the break (CREATED hours ago) shows nothing useful.
-
-Does `crictl ps -a | grep kube-apiserver` print nothing?
-Then go straight to the row "NO apiserver container" in the table below.
-
-> Check: the exact columns depend on the crictl version. Newer versions add a NAMESPACE column. CONTAINER is always first.
-
----
-
-### Step 2. Read its log
-
-```
-crictl logs <container-id> 2>&1 | tail -20
-```
-Put YOUR container ID from Step 1 in place of `<container-id>`.
-Example: `crictl logs 3f2a1b9c8d7e6 2>&1 | tail -20`.
-`2>&1` = send the error output to the screen too.
-`crictl logs` writes the container's errors to stderr.
-Without `2>&1`, the `| tail` would not catch them.
-
-You see:
-```
-W1124 10:00:05.123456       1 ...] [core] ... grpc: addrConn.createTransport failed to connect to {Addr: "127.0.0.1:2380", ...}. Err: connection error: desc = "transport: Error while dialing: dial tcp 127.0.0.1:2380: connect: connection refused"      <-- 2380
-F1124 10:00:20.654321       1 ...] Error creating leases: error creating storage factory: context deadline exceeded
-```
-The API server stores everything in etcd.
-etcd answers on port **2379**.
-The API server is trying 2380. That is the cause.
-
-> Check: the exact log lines change between versions. Look for `127.0.0.1:2380` and `connection refused`.
-
----
-
-### Step 3. Back up, then fix the file
-
-First make a backup, OUTSIDE the manifests folder.
-The kubelet runs every file inside `/etc/kubernetes/manifests/`.
-So a copy left there becomes a second API server.
-
-```
-cp /etc/kubernetes/manifests/kube-apiserver.yaml /root/kube-apiserver.yaml.orig
-```
-You see:
-```
-(no output)      <-- silence means success
-```
-
-Then open the original in vim:
-```
-vim /etc/kubernetes/manifests/kube-apiserver.yaml
-```
-Type `/etcd-servers` and press Enter. You see:
-```
-    - --etcd-servers=https://127.0.0.1:2380      <-- change 2380 to 2379
-```
-Vim keys, exactly:
-1. Type `/2380` and press Enter. The cursor is on the `2`.
-2. Type `cw`, then type `2379`.
-3. Press `Esc`.
-4. Type `:wq` and press Enter.
-
-No-vim alternative:
-```
-sed -i 's/127.0.0.1:2380/127.0.0.1:2379/' /etc/kubernetes/manifests/kube-apiserver.yaml
-```
-
-Check the line:
-```
-grep etcd-servers /etc/kubernetes/manifests/kube-apiserver.yaml
-```
-You see:
-```
-    - --etcd-servers=https://127.0.0.1:2379      <-- 2379 now
-```
-
-You do NOT restart anything.
-The kubelet sees the changed file and restarts the pod.
-It takes up to 60 seconds.
-
----
-
-### Closing routine (same at the end of EVERY question: verify, then exit)
+**Why:** every kubectl command talks to the API server on port 6443.
 
 ```
 k get nodes
 ```
-Repeat every 15 seconds until the node list appears.
 You see:
 ```
-NAME           STATUS   ROLES           AGE   VERSION
-controlplane   Ready    control-plane   10d   v1.35.0      <-- kubectl answers again
-node01         Ready    <none>          10d   v1.35.0
+The connection to the server 172.30.1.2:6443 was refused - did you specify the right host or port?   <-- 6443
 ```
+**Means:** the API server is down. kubectl cannot help now.
+
+---
+
+### Step 2. Find the API server container
+
+**Why:** crictl talks to the container runtime directly, without the API server.
 
 ```
-k get pods -n kube-system | grep apiserver
+crictl ps -a | grep kube-apiserver
 ```
 You see:
 ```
-kube-apiserver-controlplane   1/1   Running   0   40s      <-- 1/1 Running
+3f2a1b9c8d7e6   ...   25 seconds ago   Exited   kube-apiserver   5   ...   <-- newest, copy the ID
 ```
+**Means:** it starts and dies again and again.
+**Don't:** copy an old line (CREATED hours ago). It has no useful log.
+
+---
+
+### Step 3. Why does it die?
+
+**Why:** the container log names the bad value. Use YOUR ID.
 
 ```
-exit          # exam only
+crictl logs 3f2a1b9c8d7e6 2>&1 | tail -20
+```
+You see:
+```
+... dial tcp 127.0.0.1:2380: connect: connection refused   <-- 2380
+```
+**Means:** it looks for etcd on 2380. etcd answers on 2379.
+**Don't:** drop `2>&1`. The errors go to stderr.
+
+---
+
+### Step 4. Back up, then fix the file
+
+**Why:** the kubelet runs the API server from this file.
+
+```
+cp /etc/kubernetes/manifests/kube-apiserver.yaml /root/kube-apiserver.yaml.orig
+vim /etc/kubernetes/manifests/kube-apiserver.yaml
+grep etcd-servers /etc/kubernetes/manifests/kube-apiserver.yaml
+```
+In vim: type `/2380`, Enter, `cw`, type `2379`, Esc, `:wq`, Enter.
+
+You see:
+```
+    - --etcd-servers=https://127.0.0.1:2379   <-- 2379 now
+```
+**Don't:** keep the backup in `manifests/`. It would run as a second API server.
+
+---
+
+### Step 5. Wait for the kubelet
+
+**Why:** the kubelet sees the changed file and restarts the pod itself.
+
+```
+crictl ps | grep kube-apiserver
+```
+You see:
+```
+...   Running   kube-apiserver   ...   <-- up again
+```
+**Means:** no restart needed. It takes up to 60 seconds.
+
+---
+
+### Verify
+
+**Why:** prove kubectl works again.
+
+```
+k get nodes
+```
+You see:
+```
+controlplane   Ready    control-plane   ...   v1.35.0   <-- kubectl answers
 ```
 
 ---
 
-### The same question with other causes
+### Three words first
 
-||| |c|r|i|c|t|l| |l|o|g|s| |s|a|y|s| ||| |C|a|u|s|e| ||| |F|i|x| |i|n| |t|h|e| |s|a|m|e| |f|i|l|e| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |`|o|p|e|n| |/|e|t|c|/|k|u|b|e|r|n|e|t|e|s|/|p|k|i|/|x|y|z|.|c|r|t|:| |n|o| |s|u|c|h| |f|i|l|e| |o|r| |d|i|r|e|c|t|o|r|y|`| ||| |a| |c|e|r|t|i|f|i|c|a|t|e| |p|a|t|h| |i|s| |w|r|o|n|g| ||| |`|l|s| |/|e|t|c|/|k|u|b|e|r|n|e|t|e|s|/|p|k|i|/|`| |a|n|d| |c|o|r|r|e|c|t| |t|h|e| |p|a|t|h| |||
-||| |`|u|n|k|n|o|w|n| |f|l|a|g|:| |-|-|x|y|z|`| ||| |a| |f|l|a|g| |i|s| |m|i|s|s|p|e|l|l|e|d| ||| |c|o|r|r|e|c|t| |t|h|e| |f|l|a|g| |||
-||| |`|c|r|i|c|t|l| |p|s| |-|a|`| |s|h|o|w|s| |N|O| |a|p|i|s|e|r|v|e|r| |c|o|n|t|a|i|n|e|r| |a|t| |a|l|l| ||| |t|h|e| |f|i|l|e| |h|a|s| |a| |Y|A|M|L| |m|i|s|t|a|k|e|,| |s|o| |t|h|e| |k|u|b|e|l|e|t| |c|a|n|n|o|t| |r|e|a|d| |i|t| ||| |`|j|o|u|r|n|a|l|c|t|l| |-|u| |k|u|b|e|l|e|t| |-|n| |3|0| |-|-|n|o|-|p|a|g|e|r| |||| |g|r|e|p| |-|i| |a|p|i|s|e|r|v|e|r|`| |n|a|m|e|s| |t|h|e| |l|i|n|e| |||
-||| |i|m|a|g|e| |p|u|l|l| |e|r|r|o|r| ||| |t|h|e| |i|m|a|g|e| |n|a|m|e| |i|s| |w|r|o|n|g| ||| |c|o|m|p|a|r|e| |t|h|e| |`|i|m|a|g|e|:|`| |l|i|n|e| |w|i|t|h| |`|k|u|b|e|-|s|c|h|e|d|u|l|e|r|.|y|a|m|l|`| |(|s|a|m|e| |v|e|r|s|i|o|n| |n|u|m|b|e|r|)| |||
-
-`crictl` shows nothing useful? The same logs are also in files on the node:
-```
-ls /var/log/pods/ | grep apiserver
-```
-You see:
-```
-kube-system_kube-apiserver-controlplane_0a1b2c3d4e5f...      <-- the folder with the logs
-```
-Inside it, `kube-apiserver/` holds one `.log` file per attempt.
-`tail` the newest one.
-
-**Two rules for this folder:**
-- The backup goes OUTSIDE the folder (Step 3). The kubelet runs every file inside `/etc/kubernetes/manifests/`.
-- Spaces only, never Tab.
+- **Static pod** = a pod the kubelet starts from a file in `/etc/kubernetes/manifests/`.
+- **crictl** = lists containers and logs on the node. Works without the API server.
+- **etcd** = the cluster database. The API server reaches it on port 2379.
 
 ---
 
@@ -2592,51 +1983,45 @@ Inside it, `kube-apiserver/` holds one `.log` file per attempt.
 
 ||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
 |||-|-|-|||-|-|-|||-|-|-|||
-||| |s|t|i|l|l| |`|6|4|4|3| |w|a|s| |r|e|f|u|s|e|d|`| |2|0| |s|e|c|o|n|d|s| |a|f|t|e|r| |t|h|e| |f|i|x| ||| |t|h|e| |k|u|b|e|l|e|t| |n|e|e|d|s| |t|i|m|e| ||| |w|a|i|t| |u|p| |t|o| |6|0| |s|e|c|o|n|d|s|,| |t|h|e|n| |t|r|y| |a|g|a|i|n| |||
-||| |t|w|o| |A|P|I| |s|e|r|v|e|r| |c|o|n|t|a|i|n|e|r|s|,| |o|r| |s|t|r|a|n|g|e| |e|r|r|o|r|s| ||| |y|o|u| |l|e|f|t| |a| |b|a|c|k|u|p| |i|n|s|i|d|e| |`|/|e|t|c|/|k|u|b|e|r|n|e|t|e|s|/|m|a|n|i|f|e|s|t|s|/|`| ||| |m|o|v|e| |i|t| |t|o| |`|/|r|o|o|t|/|`| |||
-||| |`|c|r|i|c|t|l| |l|o|g|s|`| |p|r|i|n|t|s| |n|o|t|h|i|n|g| ||| |y|o|u| |u|s|e|d| |a|n| |o|l|d| |c|o|n|t|a|i|n|e|r| |I|D|,| |o|r| |f|o|r|g|o|t| |`|2|>|&|1|`| ||| |t|a|k|e| |t|h|e| |n|e|w|e|s|t| |l|i|n|e| |f|r|o|m| |S|t|e|p| |1|;| |a|d|d| |`|2|>|&|1|`| |||
-||| |n|o| |a|p|i|s|e|r|v|e|r| |c|o|n|t|a|i|n|e|r| |a|f|t|e|r| |y|o|u|r| |e|d|i|t| ||| |y|o|u| |b|r|o|k|e| |t|h|e| |Y|A|M|L| |(|a| |T|a|b|,| |o|r| |a| |w|r|o|n|g| |i|n|d|e|n|t|)| ||| |c|o|m|p|a|r|e| |w|i|t|h| |`|/|r|o|o|t|/|k|u|b|e|-|a|p|i|s|e|r|v|e|r|.|y|a|m|l|.|o|r|i|g|`|;| |u|s|e| |s|p|a|c|e|s| |||
-||| |`|l|o|c|a|l|h|o|s|t|:|8|0|8|0| |w|a|s| |r|e|f|u|s|e|d|`| ||| |y|o|u| |a|r|e| |o|n| |t|h|e| |w|r|o|n|g| |m|a|c|h|i|n|e| ||| |`|e|x|i|t|`|,| |t|h|e|n| |`|s|s|h|`| |t|o| |t|h|e| |h|o|s|t| |t|h|e| |q|u|e|s|t|i|o|n| |n|a|m|e|s| |||
-||| |`|c|r|i|c|t|l|`| |s|a|y|s| |`|p|e|r|m|i|s|s|i|o|n| |d|e|n|i|e|d|`| ||| |y|o|u| |a|r|e| |n|o|t| |r|o|o|t| ||| |r|u|n| |`|s|u|d|o| |-|i|`| |f|i|r|s|t| |||
-||| |`|c|r|i|c|t|l|:| |c|o|m|m|a|n|d| |n|o|t| |f|o|u|n|d|`| ||| |y|o|u| |a|r|e| |n|o|t| |o|n| |t|h|e| |c|o|n|t|r|o|l| |p|l|a|n|e| ||| |`|s|s|h|`| |t|o| |t|h|e| |c|o|n|t|r|o|l| |p|l|a|n|e| |f|i|r|s|t| |||
-
-Restarting the kubelet is not needed.
-`systemctl restart kubelet` does no harm, but it does not fix a bad file.
-
----
-
-### Mug this up: the whole answer in 5 lines
-
-```
-k get nodes                                  # ...:6443 was refused
-crictl ps -a | grep kube-apiserver           # Exited, newest ID
-crictl logs <id> 2>&1 | tail -20             # the reason: 127.0.0.1:2380
-vim /etc/kubernetes/manifests/kube-apiserver.yaml   # 2380 -> 2379
-k get nodes                                  # wait up to 60 s
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 7 minutes.
+||| |s|t|i|l|l| |`|6|4|4|3| |w|a|s| |r|e|f|u|s|e|d|`| |a|f|t|e|r| |2|0| |s| ||| |t|h|e| |k|u|b|e|l|e|t| |n|e|e|d|s| |t|i|m|e| ||| |w|a|i|t| |u|p| |t|o| |6|0| |s| |||
+||| |`|c|r|i|c|t|l| |p|s| |-|a|`| |s|h|o|w|s| |n|o| |a|p|i|s|e|r|v|e|r| |a|t| |a|l|l| ||| |Y|A|M|L| |m|i|s|t|a|k|e|,| |t|h|e| |k|u|b|e|l|e|t| |c|a|n|n|o|t| |r|e|a|d| |t|h|e| |f|i|l|e| ||| |`|j|o|u|r|n|a|l|c|t|l| |-|u| |k|u|b|e|l|e|t| |-|n| |3|0| |-|-|n|o|-|p|a|g|e|r| |||| |g|r|e|p| |a|p|i|s|e|r|v|e|r|`|;| |c|o|m|p|a|r|e| |w|i|t|h| |`|/|r|o|o|t|/|k|u|b|e|-|a|p|i|s|e|r|v|e|r|.|y|a|m|l|.|o|r|i|g|`| |||
+||| |l|o|g| |s|a|y|s| |`|o|p|e|n| |/|e|t|c|/|k|u|b|e|r|n|e|t|e|s|/|p|k|i|/|.|.|.|:| |n|o| |s|u|c|h| |f|i|l|e| |o|r| |d|i|r|e|c|t|o|r|y|`| ||| |w|r|o|n|g| |c|e|r|t|i|f|i|c|a|t|e| |p|a|t|h| ||| |`|l|s| |/|e|t|c|/|k|u|b|e|r|n|e|t|e|s|/|p|k|i|/|`|,| |f|i|x| |t|h|e| |p|a|t|h| |||
+||| |`|l|o|c|a|l|h|o|s|t|:|8|0|8|0| |w|a|s| |r|e|f|u|s|e|d|`| ||| |w|r|o|n|g| |m|a|c|h|i|n|e| ||| |`|s|s|h|`| |t|o| |t|h|e| |h|o|s|t| |t|h|e| |q|u|e|s|t|i|o|n| |n|a|m|e|s| |||
+||| |c|r|i|c|t|l| |s|a|y|s| |`|p|e|r|m|i|s|s|i|o|n| |d|e|n|i|e|d|`| ||| |y|o|u| |a|r|e| |n|o|t| |r|o|o|t| ||| |`|s|u|d|o| |-|i|`| |f|i|r|s|t| |||
 
 ---
 
 ## 9. Scheduler is not running
 
-### Three words first
+### PART B. The exam starts here
 
-- **kube-scheduler** = the control plane program that puts every new pod on a node.
-- **Its file** = it is a static pod. Its file is `/etc/kubernetes/manifests/kube-scheduler.yaml`.
-- **Pending with no Events** = nobody even tried to place the pod. So the scheduler is not working.
-- **kube-controller-manager** = the control plane program that creates pods for Deployments. Broken? Then scaling a Deployment creates no pods at all.
+**The question, as the exam words it:**
+
+> A pod named `test` in namespace `default` stays in Pending. Other pods that were already running are fine. Find the cause and fix it so that `test` is Running.
+
+**What the question is really saying:**
+
+Nobody places new pods: the kube-scheduler is broken.
+
+**Write down from the question:** pod = `test` · namespace = `default`
+
+---
+
+### Think
+
+- **Broken:** the kube-scheduler does not run.
+- **Look first:** the Events of the Pending pod.
+- **Expect:** `Events: <none>`
+- **Fix:** read why the scheduler fails; fix its manifest file.
+- **Prove:** `test` is `Running`.
+
+### Time budget
+
+Target 5 min. Skip at 9.
 
 ---
 
 ### PART A. Build the exam (Killercoda only)
-
-Paste this once on the control plane.
-It is safe to paste again: it first restores the good file from the backup.
-The backup `/root/scheduler.bak` lives outside the manifests folder.
-In the real exam this is already done.
 
 ```
 if [ -f /root/scheduler.bak ]; then cp /root/scheduler.bak /etc/kubernetes/manifests/kube-scheduler.yaml; else cp /etc/kubernetes/manifests/kube-scheduler.yaml /root/scheduler.bak; fi
@@ -2648,231 +2033,112 @@ k run test --image=nginx:1.27
 clear
 k get pod test
 ```
-The screen is quiet for up to 2 minutes. This is normal.
-It waits until the old scheduler has stopped.
-The last line shows the broken state: `test   0/1   Pending`.
-
-Why it is broken: the scheduler's command is now `kube-schedulerx`.
-No program has that name. So the scheduler never starts.
-
-Does `test` still get scheduled? Then the old scheduler had not stopped yet.
-Paste Part A again.
-
-If you get lost, this puts everything back:
-```
-cp /root/scheduler.bak /etc/kubernetes/manifests/kube-scheduler.yaml
-```
 
 ---
 
-### PART B. The exam starts here
+### Step 1. Why is the pod Pending?
 
-**The question, as the exam words it:**
-
-> A pod named `test` in namespace `default` stays in Pending. Other pods that were already running are fine. Find the cause and fix it so that `test` is Running.
-
-**What the question is really saying:**
-
-It looks like question 3, but the pod's Events are empty.
-In question 3 the scheduler said "no" and gave a reason.
-Here nobody answered at all.
-So the scheduler is the thing that is broken.
-
-**Write down from the question:** pod = `test` · namespace = `default`
-
----
-
-### Think
-
-- **What is broken:** the kube-scheduler is not running. Nobody places new pods.
-- **Where to look first:** `k describe pod test`
-- **What I expect to see:** `Node: <none>` and `Events: <none>`.
-- **Fix path:** find the failing scheduler pod, read why, fix `/etc/kubernetes/manifests/kube-scheduler.yaml`. Wait.
-- **How I prove it:** `k get pod test` shows `Running`.
-
-### Time budget
-
-Target 5 minutes. Skip and flag at 9 minutes.
-
----
-
-### Opening routine (same 2 commands at the start of EVERY question)
-
-```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
-```
-
----
-
-### Step 1. Read the pod's Events
+**Why:** the Events show what the scheduler said about the pod.
 
 ```
 k describe pod test
 ```
 You see:
 ```
-Name:             test
-Namespace:        default
 Node:             <none>
 Status:           Pending
 ...
-Events:           <none>      <-- nobody even tried to place it
+Events:           <none>   <-- nobody tried to place it
 ```
-`Node: <none>` = the pod has no node yet.
-`Events: <none>` = the scheduler never looked at it.
-
-||| |W|h|a|t| |y|o|u| |s|e|e| ||| |M|e|a|n|i|n|g| |||
-|||-|-|-|||-|-|-|||
-||| |P|e|n|d|i|n|g|,| |a|n|d| |E|v|e|n|t|s| |g|i|v|e| |a| |r|e|a|s|o|n| ||| |t|h|e| |s|c|h|e|d|u|l|e|r| |w|o|r|k|s|,| |t|h|e| |p|o|d| |d|o|e|s| |n|o|t| |f|i|t| |→| |q|u|e|s|t|i|o|n| |3| |||
-||| |*|*|P|e|n|d|i|n|g|,| |a|n|d| |E|v|e|n|t|s| |a|r|e| |`|<|n|o|n|e|>|`|*|*| ||| |*|*|t|h|e| |s|c|h|e|d|u|l|e|r| |i|s| |n|o|t| |r|u|n|n|i|n|g| |→| |t|h|i|s| |q|u|e|s|t|i|o|n|*|*| |||
+**Means:** the scheduler never looked. With a reason in Events, it is question 3.
 
 ---
 
-### Step 2. Look at the control plane pods
+### Step 2. Is the scheduler running?
+
+**Why:** the scheduler is a pod in `kube-system`.
 
 ```
 k get pods -n kube-system
 ```
 You see:
 ```
-NAME                                   READY   STATUS             RESTARTS      AGE
-etcd-controlplane                      1/1     Running            0             10d
-kube-apiserver-controlplane            1/1     Running            0             10d
-kube-scheduler-controlplane            0/1     CrashLoopBackOff   4 (30s ago)   2m      <-- the broken one
+kube-scheduler-controlplane   0/1   CrashLoopBackOff   4 (30s ago)   2m   <-- broken
 ```
-It can also show `RunContainerError`.
-Both mean: the container cannot start.
+**Means:** its container cannot start. `RunContainerError` means the same.
 
 ---
 
-### Step 3. Ask why
+### Step 3. Why does it fail?
+
+**Why:** the Events name the start error.
 
 ```
 k describe pod kube-scheduler-controlplane -n kube-system
 ```
-Look at Events at the bottom.
 You see:
 ```
-  Warning  Failed   ...  kubelet  Error: failed to create containerd task: ... exec: "kube-schedulerx": executable file not found in $PATH: unknown      <-- the cause
-  Warning  BackOff  ...  kubelet  Back-off restarting failed container kube-scheduler in pod kube-scheduler-controlplane_kube-system(...)
+Warning  Failed  ...  exec: "kube-schedulerx": executable file not found in $PATH: unknown   <-- the cause
 ```
-Cause found: the program name in the command is misspelled.
-
-`k logs` shows nothing here.
-The program never started, so it printed nothing.
-
-> Check: the text before `exec:` depends on the containerd and runc versions. Look for `executable file not found`.
-
-Does describe show no Events either? Then use crictl on the control plane:
-```
-crictl ps -a | grep scheduler
-```
-You see:
-```
-7d6c5b4a3f2e1   b2c3d4e5f6a7   20 seconds ago   Exited   kube-scheduler   4   8f7e6d5c4b3a2   kube-scheduler-controlplane   kube-system      <-- copy the first column
-```
-Then read that container's error:
-```
-crictl inspect <container-id> | grep -i -m3 message
-```
-Put YOUR container ID in place of `<container-id>`.
-You see:
-```
-    "message": "failed to create containerd task: ... exec: \"kube-schedulerx\": executable file not found in $PATH: unknown",      <-- same cause
-```
-
-> Check: `crictl` columns and the `message` text can differ by version. Look for `kube-schedulerx`.
+**Means:** the program name in `command:` is misspelled.
+**Don't:** expect `k logs` to help. The program never started.
 
 ---
 
-### Step 4. Fix the file
+### Step 4. Back up, then fix the file
 
-First make a backup, OUTSIDE the manifests folder.
-A copy left inside it becomes a second scheduler.
+**Why:** the kubelet runs the scheduler from this file.
+
 ```
 cp /etc/kubernetes/manifests/kube-scheduler.yaml /root/kube-scheduler.yaml.orig
-```
-You see:
-```
-(no output)      <-- silence means success
-```
-
-Then open the file:
-```
 vim /etc/kubernetes/manifests/kube-scheduler.yaml
-```
-Type `/schedulerx` and press Enter. You see:
-```
-  - command:
-    - kube-schedulerx      <-- remove the x
-```
-Vim keys, exactly:
-1. The cursor is on the `s` of `schedulerx`.
-2. Press `9l`. It moves 9 characters right, onto the `x`.
-3. Press `x`. It deletes the `x`.
-4. Type `:wq` and press Enter.
-
-No-vim alternative:
-```
-sed -i 's/kube-schedulerx/kube-scheduler/' /etc/kubernetes/manifests/kube-scheduler.yaml
-```
-
-Check the line:
-```
 grep -A1 command: /etc/kubernetes/manifests/kube-scheduler.yaml
 ```
+In vim: type `/schedulerx`, Enter, `$`, `x`, `:wq`, Enter.
+
 You see:
 ```
   - command:
-    - kube-scheduler      <-- no x any more
+    - kube-scheduler   <-- no x
 ```
-
-Do not restart anything.
-The kubelet sees the changed file and restarts the pod.
-Wait 30 seconds.
+**Don't:** keep the backup in `manifests/`. It would run as a second scheduler.
 
 ---
 
-### Closing routine (same at the end of EVERY question: verify, then exit)
+### Step 5. Wait for the scheduler
+
+**Why:** the kubelet sees the changed file and restarts the pod itself.
 
 ```
 k get pods -n kube-system | grep scheduler
 ```
 You see:
 ```
-kube-scheduler-controlplane   1/1   Running   0   30s      <-- 1/1 Running
+kube-scheduler-controlplane   1/1   Running   0   30s   <-- running
 ```
+**Means:** no restart needed. It takes about 30 seconds.
+
+---
+
+### Verify
+
+**Why:** prove the waiting pod got a node.
 
 ```
 k get pod test
 ```
 You see:
 ```
-NAME   READY   STATUS    RESTARTS   AGE
-test   1/1     Running   0          5m      <-- Running
-```
-Still `Pending`? Wait 15 seconds and run it again.
-
-```
-exit          # exam only
+test   1/1     Running   0          5m
 ```
 
 ---
 
-### The same question with other causes
+### Three words first
 
-||| |S|y|m|p|t|o|m| ||| |B|r|o|k|e|n| |p|a|r|t| ||| |F|i|l|e| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |n|e|w| |p|o|d|s| |P|e|n|d|i|n|g|,| |E|v|e|n|t|s| |`|<|n|o|n|e|>|`| ||| |s|c|h|e|d|u|l|e|r| ||| |`|/|e|t|c|/|k|u|b|e|r|n|e|t|e|s|/|m|a|n|i|f|e|s|t|s|/|k|u|b|e|-|s|c|h|e|d|u|l|e|r|.|y|a|m|l|`| |||
-||| |y|o|u| |s|c|a|l|e| |a| |D|e|p|l|o|y|m|e|n|t| |a|n|d| |N|O| |n|e|w| |p|o|d|s| |a|p|p|e|a|r|,| |n|o|t| |e|v|e|n| |P|e|n|d|i|n|g| |(|t|e|s|t|:| |`|k| |g|e|t| |r|s|`|:| |i|t|s| |D|E|S|I|R|E|D| |n|u|m|b|e|r| |d|o|e|s| |n|o|t| |c|h|a|n|g|e| |a|f|t|e|r| |y|o|u| |s|c|a|l|e|)| ||| |c|o|n|t|r|o|l|l|e|r|-|m|a|n|a|g|e|r| ||| |`|/|e|t|c|/|k|u|b|e|r|n|e|t|e|s|/|m|a|n|i|f|e|s|t|s|/|k|u|b|e|-|c|o|n|t|r|o|l|l|e|r|-|m|a|n|a|g|e|r|.|y|a|m|l|`| |||
-
-In both cases, first check: did the program start at all?
-Started, then failed (wrong flag, wrong path)? `k logs <that-pod> -n kube-system` names the line.
-Never started (wrong command, wrong image)? Then the logs are empty.
-Read the Events of `k describe pod <that-pod> -n kube-system`.
-Or run `crictl ps -a` on the control plane.
-Fix the file. Wait.
+- **kube-scheduler** = picks a node for every new pod.
+- **Static pod** = a pod the kubelet starts from a file in `/etc/kubernetes/manifests/`.
+- **Mirror pod** = the read-only copy of a static pod that kubectl shows.
 
 ---
 
@@ -2880,52 +2146,45 @@ Fix the file. Wait.
 
 ||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
 |||-|-|-|||-|-|-|||-|-|-|||
-||| |`|k| |l|o|g|s|`| |p|r|i|n|t|s| |n|o|t|h|i|n|g| ||| |t|h|e| |p|r|o|g|r|a|m| |n|e|v|e|r| |s|t|a|r|t|e|d| ||| |r|e|a|d| |E|v|e|n|t|s| |w|i|t|h| |`|k| |d|e|s|c|r|i|b|e|`|,| |o|r| |u|s|e| |`|c|r|i|c|t|l|`| |||
-||| |y|o|u| |r|a|n| |`|k| |e|d|i|t| |p|o|d| |k|u|b|e|-|s|c|h|e|d|u|l|e|r|-|c|o|n|t|r|o|l|p|l|a|n|e|`| ||| |t|h|a|t| |i|s| |o|n|l|y| |a| |m|i|r|r|o|r| |c|o|p|y|;| |y|o|u|r| |c|h|a|n|g|e| |n|e|v|e|r| |r|e|a|c|h|e|s| |t|h|e| |r|e|a|l| |p|o|d| ||| |e|d|i|t| |t|h|e| |f|i|l|e| |i|n| |`|/|e|t|c|/|k|u|b|e|r|n|e|t|e|s|/|m|a|n|i|f|e|s|t|s|/|`| |||
-||| |y|o|u| |d|e|l|e|t|e|d| |t|h|e| |s|c|h|e|d|u|l|e|r| |p|o|d|,| |i|t| |c|o|m|e|s| |b|a|c|k| |b|r|o|k|e|n| ||| |t|h|e| |k|u|b|e|l|e|t| |r|e|b|u|i|l|d|s| |i|t| |f|r|o|m| |t|h|e| |s|a|m|e| |f|i|l|e| ||| |f|i|x| |t|h|e| |f|i|l|e| |||
-||| |t|w|o| |s|c|h|e|d|u|l|e|r| |p|o|d|s|,| |o|r| |s|t|r|a|n|g|e| |e|r|r|o|r|s| ||| |y|o|u| |l|e|f|t| |a| |b|a|c|k|u|p| |i|n|s|i|d|e| |`|/|e|t|c|/|k|u|b|e|r|n|e|t|e|s|/|m|a|n|i|f|e|s|t|s|/|`| ||| |m|o|v|e| |i|t| |t|o| |`|/|r|o|o|t|/|`| |||
-||| |s|c|h|e|d|u|l|e|r| |d|i|s|a|p|p|e|a|r|s| |a|f|t|e|r| |y|o|u|r| |e|d|i|t| ||| |y|o|u| |b|r|o|k|e| |t|h|e| |Y|A|M|L| |(|a| |T|a|b|,| |o|r| |a| |w|r|o|n|g| |i|n|d|e|n|t|)| ||| |c|o|m|p|a|r|e| |w|i|t|h| |`|/|r|o|o|t|/|k|u|b|e|-|s|c|h|e|d|u|l|e|r|.|y|a|m|l|.|o|r|i|g|`|;| |u|s|e| |s|p|a|c|e|s| |||
-||| |s|c|h|e|d|u|l|e|r| |`|1|/|1| |R|u|n|n|i|n|g|`|,| |`|t|e|s|t|`| |s|t|i|l|l| |P|e|n|d|i|n|g| ||| |t|h|e| |s|c|h|e|d|u|l|e|r| |n|e|e|d|s| |a| |m|o|m|e|n|t| ||| |w|a|i|t| |3|0| |s|e|c|o|n|d|s|;| |t|h|e|n| |`|k| |d|e|s|c|r|i|b|e| |p|o|d| |t|e|s|t|`| |||
-||| |`|v|i|m|`| |s|a|y|s| |`|E|4|5|:| |'|r|e|a|d|o|n|l|y|'| |o|p|t|i|o|n| |i|s| |s|e|t|`| ||| |y|o|u| |a|r|e| |n|o|t| |r|o|o|t| ||| |`|:|q|!|`|,| |r|u|n| |`|s|u|d|o| |-|i|`|,| |o|p|e|n| |t|h|e| |f|i|l|e| |a|g|a|i|n| |||
-
----
-
-### Mug this up: the whole answer in 5 lines
-
-```
-k describe pod test                                        # Events: <none>
-k get pods -n kube-system                                  # scheduler is failing
-k describe pod kube-scheduler-controlplane -n kube-system  # the reason
-vim /etc/kubernetes/manifests/kube-scheduler.yaml          # fix it, wait 30 s
-k get pod test                                             # Running
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 5 minutes.
+||| |d|e|s|c|r|i|b|e| |s|h|o|w|s| |n|o| |E|v|e|n|t|s| |f|o|r| |t|h|e| |s|c|h|e|d|u|l|e|r| ||| |e|v|e|n|t|s| |e|x|p|i|r|e|d| ||| |`|c|r|i|c|t|l| |p|s| |-|a| |||| |g|r|e|p| |s|c|h|e|d|u|l|e|r|`|,| |t|h|e|n| |`|c|r|i|c|t|l| |i|n|s|p|e|c|t| |<|i|d|>| |||| |g|r|e|p| |-|i| |-|m|3| |m|e|s|s|a|g|e|`| |||
+||| |y|o|u|r| |`|k| |e|d|i|t| |p|o|d| |k|u|b|e|-|s|c|h|e|d|u|l|e|r|-|.|.|.|`| |d|i|d| |n|o|t|h|i|n|g| ||| |t|h|a|t| |i|s| |t|h|e| |m|i|r|r|o|r| |p|o|d| ||| |e|d|i|t| |t|h|e| |f|i|l|e| |i|n| |`|m|a|n|i|f|e|s|t|s|/|`| |||
+||| |d|e|l|e|t|e|d| |s|c|h|e|d|u|l|e|r| |p|o|d| |c|o|m|e|s| |b|a|c|k| |b|r|o|k|e|n| ||| |t|h|e| |k|u|b|e|l|e|t| |r|e|b|u|i|l|d|s| |i|t| |f|r|o|m| |t|h|e| |f|i|l|e| ||| |f|i|x| |t|h|e| |f|i|l|e| |||
+||| |s|c|h|e|d|u|l|e|r| |d|i|s|a|p|p|e|a|r|s| |a|f|t|e|r| |y|o|u|r| |e|d|i|t| ||| |Y|A|M|L| |b|r|o|k|e|n| |(|T|a|b| |o|r| |i|n|d|e|n|t|)| ||| |c|o|m|p|a|r|e| |w|i|t|h| |`|/|r|o|o|t|/|k|u|b|e|-|s|c|h|e|d|u|l|e|r|.|y|a|m|l|.|o|r|i|g|`|;| |s|p|a|c|e|s| |o|n|l|y| |||
+||| |s|c|a|l|e|d| |D|e|p|l|o|y|m|e|n|t| |m|a|k|e|s| |N|O| |n|e|w| |p|o|d|s| ||| |c|o|n|t|r|o|l|l|e|r|-|m|a|n|a|g|e|r| |i|s| |b|r|o|k|e|n|,| |n|o|t| |t|h|e| |s|c|h|e|d|u|l|e|r| ||| |s|a|m|e| |m|e|t|h|o|d|,| |`|k|u|b|e|-|c|o|n|t|r|o|l|l|e|r|-|m|a|n|a|g|e|r|.|y|a|m|l|`| |||
 
 ---
 
 ## 10. NetworkPolicy is blocking traffic
 
-### Three words first
+### PART B. The exam starts here
 
-- **NetworkPolicy** = a rule that says which traffic may reach a pod.
-- **No policy** = a pod accepts traffic from everyone.
-- **Once a policy selects a pod**, the pod accepts ONLY what its policies allow.
-- **podSelector** (top of the policy) = which pods this policy protects.
-- **`podSelector: {}`** = every pod in the namespace.
-- **ingress** = traffic coming IN to the protected pods.
-- **Policies only add up.** There is no "deny" field.
-- A policy that selects pods and allows nothing blocks them. `deny-all` below is such a policy.
-- To let traffic through, add one more policy that allows it.
-- Do not edit or delete the existing one.
+**The question, as the exam words it:**
+
+> In namespace `web`, pod `client` cannot reach service `backend-svc` on port 80. The service and its pods are healthy. Do not delete or change any existing NetworkPolicy. Create a NetworkPolicy named `allow-client` so that ONLY pod `client` can reach the backend pods on TCP port 80.
+
+**What the question is really saying:**
+
+A policy blocks everything; add one policy that lets only `client` in on port 80.
+
+**Write down from the question:** namespace = `web` · policy name = `allow-client` · port = TCP `80` · do NOT touch existing policies
+
+---
+
+### Think
+
+- **Broken:** a policy drops all traffic into the backend pods.
+- **Look first:** the policies in `web`.
+- **Expect:** `deny-all` with POD-SELECTOR `<none>` (= all pods).
+- **Fix:** a second policy: protect backend, allow client, port 80.
+- **Prove:** the client pod gets the nginx page.
+
+### Time budget
+
+Target 6 min. Skip at 10.
 
 ---
 
 ### PART A. Build the exam (Killercoda only)
-
-Paste this once. It is safe to paste again: it deletes the old attempt first.
-In the real exam this is already done.
 
 ```
 k delete ns web --ignore-not-found
@@ -2950,295 +2209,114 @@ k wait --for=condition=Ready pod/client -n web --timeout=120s
 clear
 k exec client -n web -- wget -qO- -T 3 backend-svc
 ```
-The last line shows the broken state: `wget: download timed out`.
-
-Why it is broken: `deny-all` selects every pod in `web`.
-It allows no incoming traffic at all.
-
-> Check: this needs a network plugin that enforces policies (Calico, Canal, Cilium). If the last line prints the nginx page instead, see "If something goes wrong".
 
 ---
 
-### PART B. The exam starts here
+### Step 1. Which policy blocks the traffic?
 
-**The question, as the exam words it:**
-
-> In namespace `web`, pod `client` cannot reach service `backend-svc` on port 80. The service and its pods are healthy. Do not delete or change any existing NetworkPolicy. Create a NetworkPolicy named `allow-client` so that ONLY pod `client` can reach the backend pods on TCP port 80.
-
-**What the question is really saying:**
-
-An existing policy blocks everything.
-Add one new policy. It protects the backend pods.
-It lets in exactly one source: the `client` pod, on port 80.
-
-You need three facts for the new policy:
-
-||| |B|l|a|n|k| ||| |M|e|a|n|i|n|g| ||| |Y|o|u| |f|i|n|d| |i|t| |w|i|t|h| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |W|H|O| |i|s| |p|r|o|t|e|c|t|e|d| ||| |t|h|e| |l|a|b|e|l| |o|f| |t|h|e| |b|a|c|k|e|n|d| |p|o|d|s| ||| |`|-|-|s|h|o|w|-|l|a|b|e|l|s|`| |||
-||| |W|H|O| |m|a|y| |c|o|m|e| |i|n| ||| |t|h|e| |l|a|b|e|l| |o|f| |t|h|e| |c|l|i|e|n|t| |p|o|d| ||| |`|-|-|s|h|o|w|-|l|a|b|e|l|s|`| |||
-||| |W|H|I|C|H| |p|o|r|t| ||| |f|r|o|m| |t|h|e| |q|u|e|s|t|i|o|n| ||| |`|8|0|`| |||
-
-**Write down from the question:** namespace = `web` · policy name = `allow-client` · port = TCP `80` · do NOT touch existing policies
-
----
-
-### Think
-
-- **What is broken:** a policy drops all traffic into the backend pods.
-- **Where to look first:** `k get netpol -n web`
-- **What I expect to see:** `deny-all` with POD-SELECTOR `<none>` (= all pods).
-- **Fix path:** kubernetes.io docs page "Network Policies", section "The NetworkPolicy resource". Copy the example. Keep `podSelector`, `ingress`, `ports`. Change 5 lines. Delete the rest.
-- **How I prove it:** `k exec client -n web -- wget -qO- -T 3 backend-svc` prints `Welcome to nginx!`.
-
-### Time budget
-
-Target 6 minutes. Skip and flag at 10 minutes.
-
----
-
-### Opening routine (same 2 commands at the start of EVERY question)
-
-```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
-```
-
----
-
-### Step 1. Rule out questions 6 and 7
-
-```
-k get endpoints backend-svc -n web
-```
-You see:
-```
-Warning: v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice
-NAME          ENDPOINTS          AGE
-backend-svc   192.168.1.5:80     1m      <-- an IP with :80
-```
-An IP with `:80` = selector and port are fine.
-So it is not question 6 or 7.
-The warning is harmless. Ignore it.
-
-```
-k exec client -n web -- wget -qO- -T 3 backend-svc
-```
-You see:
-```
-wget: download timed out      <-- a TIMEOUT, not "refused"
-command terminated with exit code 1
-```
-A timeout usually means something drops the traffic silently.
-That something is often a NetworkPolicy.
-
----
-
-### Step 2. Look for policies
+**Why:** a timeout, not "refused", usually means a policy drops the traffic.
 
 ```
 k get netpol -n web
-```
-You see:
-```
-NAME       POD-SELECTOR   AGE
-deny-all   <none>         2m      <-- <none> here means ALL pods
-```
-
-```
 k describe netpol deny-all -n web
 ```
 You see:
 ```
-Spec:
-  PodSelector:     <none> (Allowing the specific traffic to all pods in this namespace)
-  Allowing ingress traffic:
-    <none> (Selected pods are isolated for ingress connectivity)      <-- nothing allowed in
-  Not affecting egress traffic
-  Policy Types: Ingress
+deny-all   <none>   2m   <-- <none> = ALL pods
+...
+    <none> (Selected pods are isolated for ingress connectivity)   <-- nothing allowed in
 ```
-Meaning: it selects all pods and allows nothing in.
-Leave it alone. The question forbids changing it.
+**Means:** `deny-all` selects every pod and lets nothing in.
+**Don't:** edit or delete `deny-all`. The question forbids it. Policies only add up.
 
 ---
 
-### Step 3. Collect the two labels
+### Step 2. Collect the two labels
+
+**Why:** the new policy needs the backend label and the client label.
 
 ```
-k get pods -n web --show-labels
+k get po -n web --show-labels
 ```
 You see:
 ```
-NAME                       READY   STATUS    RESTARTS   AGE   LABELS
-backend-6b7c9d7f8d-x2k4p   1/1     Running   0          2m    app=backend,pod-template-hash=6b7c9d7f8d   <-- app=backend
-client                     1/1     Running   0          2m    run=client
+backend-...   1/1   Running   0   2m   app=backend,pod-template-hash=...   <-- protected
+client        1/1   Running   0   2m   run=client                          <-- may come in
 ```
-- backend pod: `app=backend`. This is WHO is protected.
-- client pod: `run=client`. This is WHO may come in.
-- Pods made with `k run` get the label `run=<name>`.
-- Ignore `pod-template-hash`. It changes with every rollout.
+**Means:** protect `app=backend`. Let in `run=client`. Pods made with `k run` get `run=<name>`.
 
 ---
 
-### Step 4. Get the policy text from the docs
+### Step 3. Write the policy
 
-YAML cannot be avoided here. There is no `k create netpol` command.
-
-1. Open **https://kubernetes.io/docs**
-2. Search: **`network policies`**
-3. Click: **"Network Policies"**
-   (direct link: https://kubernetes.io/docs/concepts/services-networking/network-policies/ )
-4. Under the heading **"The NetworkPolicy resource"**, copy the example box.
-
-This is what you copied:
-```
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: test-network-policy
-  namespace: default
-spec:
-  podSelector:
-    matchLabels:
-      role: db
-  policyTypes:
-  - Ingress
-  - Egress
-  ingress:
-  - from:
-    - ipBlock:
-        cidr: 172.17.0.0/16
-        except:
-        - 172.17.1.0/24
-    - namespaceSelector:
-        matchLabels:
-          project: myproject
-    - podSelector:
-        matchLabels:
-          role: frontend
-    ports:
-    - protocol: TCP
-      port: 6379
-  egress:
-  - to:
-    - ipBlock:
-        cidr: 10.0.0.0/24
-    ports:
-    - protocol: TCP
-      port: 5978
-```
-
----
-
-### Step 5. Paste, delete 3 blocks, change 5 lines
+**Why:** there is no `k create netpol`. Copy the example from the docs page "Network Policies", section "The NetworkPolicy resource".
 
 ```
 vim np.yaml
 ```
-Vim keys, exactly:
-1. Type `:set paste` and press Enter. It stops vim from shifting pasted lines right.
-2. Press `i`. Paste with Ctrl+Shift+V (exam terminal).
-3. Press `Esc`. You are back in normal mode. `dd` only works there.
-4. To delete: move with the arrow keys onto the first line of a block.
-5. Type `dd` (one line) or `7dd` (7 lines).
-6. To change a line: put the cursor on the first character to replace.
-7. Press `C`. It deletes to the end of the line and starts typing.
-8. Type the new text. Press `Esc`.
-9. When done: type `:wq`, press Enter.
-
-**Delete these 3 blocks:**
-
-||| |D|e|l|e|t|e| ||| |L|i|n|e|s| |||
-|||-|-|-|||-|-|-|||
-||| |t|h|e| |l|i|n|e| |`|-| |E|g|r|e|s|s|`| ||| |1| |l|i|n|e| |||
-||| |t|h|e| |`|-| |i|p|B|l|o|c|k|:|`| |b|l|o|c|k| |a|n|d| |t|h|e| |`|-| |n|a|m|e|s|p|a|c|e|S|e|l|e|c|t|o|r|:|`| |b|l|o|c|k| ||| |7| |l|i|n|e|s|,| |f|r|o|m| |`|-| |i|p|B|l|o|c|k|:|`| |t|o| |`|p|r|o|j|e|c|t|:| |m|y|p|r|o|j|e|c|t|`| |||
-||| |e|v|e|r|y|t|h|i|n|g| |f|r|o|m| |`|e|g|r|e|s|s|:|`| |t|o| |t|h|e| |e|n|d| ||| |7| |l|i|n|e|s| |||
-
-Why delete them:
-- `- Egress` with no egress rules would block all OUTGOING traffic too.
-- `ipBlock` and `namespaceSelector` would let in extra sources. The question says ONLY `client`.
-
-**Change these 5 lines:**
-
-||| |#| ||| |T|h|e| |d|o|c|s| |s|a|y| ||| |Y|o|u| |c|h|a|n|g|e| |i|t| |t|o| ||| |W|h|y| |||
-|||-|-|-|||-|-|-|||-|-|-|||-|-|-|||
-||| |1| ||| |`|n|a|m|e|:| |t|e|s|t|-|n|e|t|w|o|r|k|-|p|o|l|i|c|y|`| ||| |`|n|a|m|e|:| |a|l|l|o|w|-|c|l|i|e|n|t|`| ||| |n|a|m|e| |f|r|o|m| |t|h|e| |q|u|e|s|t|i|o|n| |||
-||| |2| ||| |`|n|a|m|e|s|p|a|c|e|:| |d|e|f|a|u|l|t|`| ||| |`|n|a|m|e|s|p|a|c|e|:| |w|e|b|`| ||| |n|a|m|e|s|p|a|c|e| |f|r|o|m| |t|h|e| |q|u|e|s|t|i|o|n| |||
-||| |3| ||| |`|r|o|l|e|:| |d|b|`| ||| |`|a|p|p|:| |b|a|c|k|e|n|d|`| ||| |W|H|O| |i|s| |p|r|o|t|e|c|t|e|d| |(|s|t|e|p| |3|)| |||
-||| |4| ||| |`|r|o|l|e|:| |f|r|o|n|t|e|n|d|`| ||| |`|r|u|n|:| |c|l|i|e|n|t|`| ||| |W|H|O| |m|a|y| |c|o|m|e| |i|n| |(|s|t|e|p| |3|)| |||
-||| |5| ||| |`|p|o|r|t|:| |6|3|7|9|`| ||| |`|p|o|r|t|:| |8|0|`| ||| |p|o|r|t| |f|r|o|m| |t|h|e| |q|u|e|s|t|i|o|n| |||
-
-The finished file. Only the `# CHANGE` lines differ from the docs:
+The finished file. Only the `# <-- CHANGE` lines differ from the docs:
 ```
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-client            # CHANGE
-  namespace: web                # CHANGE
+  name: allow-client          # <-- CHANGE
+  namespace: web              # <-- CHANGE
 spec:
   podSelector:
     matchLabels:
-      app: backend              # CHANGE
+      app: backend            # <-- CHANGE
   policyTypes:
   - Ingress
   ingress:
   - from:
     - podSelector:
         matchLabels:
-          run: client           # CHANGE
+          run: client         # <-- CHANGE
     ports:
     - protocol: TCP
-      port: 80                  # CHANGE
+      port: 80                # <-- CHANGE
 ```
-How it reads: "Protect the pods `app=backend`. Let in the pods `run=client`. Only on TCP 80."
-You do not have to type the `# CHANGE` comments. YAML ignores them.
+**Means:** from the docs copy, delete `- Egress`, the `ipBlock` and `namespaceSelector` blocks, and the whole `egress:` part.
+**Don't:** keep `- Egress`. With no egress rules it blocks all outgoing traffic.
 
-If vim fights you, do this instead:
-1. Type `cat > np.yaml <<'EOF'` and press Enter.
-2. Paste the finished file above.
-3. Type a line with only `EOF` and press Enter. Same result.
+Vim tip: type `:set paste` before you press `i` and paste. Save with `:wq`.
 
-Now apply it:
+---
+
+### Step 4. Apply it
+
+**Why:** the file does nothing until the cluster has it.
+
 ```
 k apply -f np.yaml
 ```
 You see:
 ```
-networkpolicy.networking.k8s.io/allow-client created      <-- created, no error
+networkpolicy.networking.k8s.io/allow-client created
 ```
+**Means:** the policy is in. `deny-all` is still there, untouched.
 
 ---
 
-### Closing routine (same at the end of EVERY question: verify, then exit)
+### Verify
+
+**Why:** prove the client now gets through.
 
 ```
 k exec client -n web -- wget -qO- -T 3 backend-svc
 ```
 You see:
 ```
-<!DOCTYPE html>
-<html>
-<head>
-<title>Welcome to nginx!</title>      <-- this line proves it works
+<title>Welcome to nginx!</title>
 ```
-- `--` = everything after it runs INSIDE the pod.
-- `-qO-` = quiet, print the page to the screen. It is a capital O, not a zero.
-- `-T 3` = give up after 3 seconds.
 
-```
-k get netpol -n web
-```
-You see:
-```
-NAME           POD-SELECTOR   AGE
-allow-client   app=backend    30s      <-- your new policy
-deny-all       <none>         5m
-```
-Both are there. `deny-all` is untouched.
+---
 
-```
-exit          # exam only
-```
+### Three words first
+
+- **NetworkPolicy** = a rule that says which traffic may reach a pod. Once a policy selects a pod, only allowed traffic gets in.
+- **podSelector** = at the top: the pods this policy protects. Under `from:`: the pods allowed in. `{}` = all pods.
+- **ingress** = traffic coming IN to the protected pods.
 
 ---
 
@@ -3246,53 +2324,45 @@ exit          # exam only
 
 ||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
 |||-|-|-|||-|-|-|||-|-|-|||
-||| |s|t|i|l|l| |a| |t|i|m|e|o|u|t| ||| |a| |l|a|b|e|l| |i|n| |t|h|e| |f|i|l|e| |d|o|e|s| |n|o|t| |m|a|t|c|h| |t|h|e| |r|e|a|l| |l|a|b|e|l| ||| |c|o|m|p|a|r|e| |w|i|t|h| |`|-|-|s|h|o|w|-|l|a|b|e|l|s|`|,| |f|i|x| |`|n|p|.|y|a|m|l|`|,| |`|k| |a|p|p|l|y| |-|f| |n|p|.|y|a|m|l|`| |a|g|a|i|n| |||
-||| |s|t|i|l|l| |a| |t|i|m|e|o|u|t|,| |l|a|b|e|l|s| |m|a|t|c|h| ||| |t|h|e| |p|o|l|i|c|y| |l|a|n|d|e|d| |i|n| |`|d|e|f|a|u|l|t|`| ||| |`|k| |g|e|t| |n|e|t|p|o|l| |-|A|`|.| |S|e|t| |`|n|a|m|e|s|p|a|c|e|:| |w|e|b|`| |i|n| |t|h|e| |f|i|l|e|.| |A|p|p|l|y| |a|g|a|i|n|.| |D|e|l|e|t|e| |t|h|e| |s|t|r|a|y| |o|n|e|:| |`|k| |d|e|l|e|t|e| |n|e|t|p|o|l| |a|l|l|o|w|-|c|l|i|e|n|t| |-|n| |d|e|f|a|u|l|t|`| |||
-||| |s|t|i|l|l| |a| |t|i|m|e|o|u|t|,| |y|o|u| |w|r|o|t|e| |`|a|p|p|:| |c|l|i|e|n|t|`| ||| |y|o|u| |g|u|e|s|s|e|d| |t|h|e| |c|l|i|e|n|t| |l|a|b|e|l| ||| |p|o|d|s| |m|a|d|e| |w|i|t|h| |`|k| |r|u|n|`| |h|a|v|e| |`|r|u|n|=|c|l|i|e|n|t|`| |||
-||| |`|e|r|r|o|r| |p|a|r|s|i|n|g| |.|.|.| |y|a|m|l|`| ||| |i|n|d|e|n|t|a|t|i|o|n| |b|r|o|k|e| |w|h|i|l|e| |d|e|l|e|t|i|n|g| |l|i|n|e|s| ||| |c|o|m|p|a|r|e| |w|i|t|h| |t|h|e| |f|i|n|i|s|h|e|d| |f|i|l|e| |a|b|o|v|e|,| |l|i|n|e| |b|y| |l|i|n|e| |||
-||| |`|u|n|k|n|o|w|n| |f|i|e|l|d| |"|p|o|d|S|e|l|e|c|t|o|r|"|`| |o|r| |s|i|m|i|l|a|r| ||| |a| |b|l|o|c|k| |m|o|v|e|d| |o|n|e| |l|e|v|e|l| |l|e|f|t| |o|r| |r|i|g|h|t| ||| |c|o|m|p|a|r|e| |t|h|e| |s|p|a|c|e|s| |w|i|t|h| |t|h|e| |f|i|n|i|s|h|e|d| |f|i|l|e| |||
-||| |p|o|l|i|c|y| |w|o|r|k|s|,| |b|u|t| |t|h|e| |q|u|e|s|t|i|o|n| |u|s|e|d| |a| |S|e|r|v|i|c|e| |p|o|r|t| |d|i|f|f|e|r|e|n|t| |f|r|o|m| |t|h|e| |p|o|d| |p|o|r|t| ||| |t|h|e| |p|o|l|i|c|y| |n|e|e|d|s| |t|h|e| |P|O|D|'|s| |p|o|r|t| |(|t|a|r|g|e|t|P|o|r|t|)| ||| |`|k| |g|e|t| |e|p| |b|a|c|k|e|n|d|-|s|v|c| |-|n| |w|e|b|`| |s|h|o|w|s| |t|h|e| |p|o|d| |p|o|r|t|.| |U|s|e| |t|h|a|t| |n|u|m|b|e|r|.| |||
-||| |s|t|e|p| |1| |w|g|e|t| |a|l|r|e|a|d|y| |W|O|R|K|S|,| |e|v|e|n| |w|i|t|h| |`|d|e|n|y|-|a|l|l|`| ||| |y|o|u|r| |n|e|t|w|o|r|k| |p|l|u|g|i|n| |d|o|e|s| |n|o|t| |e|n|f|o|r|c|e| |p|o|l|i|c|i|e|s|.| |F|l|a|n|n|e|l| |a|l|o|n|e| |d|o|e|s| |n|o|t|.| |C|a|l|i|c|o|,| |C|a|n|a|l| |a|n|d| |C|i|l|i|u|m| |d|o|.| ||| |r|u|n| |`|k| |g|e|t| |p|o|d|s| |-|A|`|.| |L|o|o|k| |f|o|r| |c|a|l|i|c|o|,| |c|a|n|a|l| |o|r| |c|i|l|i|u|m| |i|n| |t|h|e| |N|A|M|E| |c|o|l|u|m|n|.| |N|o|n|e| |l|i|s|t|e|d|?| |Y|o|u| |c|a|n| |s|t|i|l|l| |w|r|i|t|e| |a|n|d| |a|p|p|l|y| |t|h|e| |p|o|l|i|c|y|.| |Y|o|u| |j|u|s|t| |c|a|n|n|o|t| |s|e|e| |i|t| |b|l|o|c|k| |o|r| |a|l|l|o|w|.| |T|h|e| |e|x|a|m| |c|l|u|s|t|e|r| |e|n|f|o|r|c|e|s| |t|h|e|m|.| |||
-||| |`|e|r|r|o|r|:| |u|n|a|b|l|e| |t|o| |u|p|g|r|a|d|e| |c|o|n|n|e|c|t|i|o|n|`| |/| |`|c|o|n|t|a|i|n|e|r| |n|o|t| |f|o|u|n|d|`| ||| |t|h|e| |c|l|i|e|n|t| |p|o|d| |i|s| |n|o|t| |R|u|n|n|i|n|g| |y|e|t| ||| |`|k| |g|e|t| |p|o|d| |c|l|i|e|n|t| |-|n| |w|e|b|`|,| |w|a|i|t| |||
-||| |v|i|m| |o|p|e|n|s| |a|n| |o|l|d| |f|i|l|e| |w|i|t|h| |t|e|x|t| |i|n| |i|t| ||| |`|n|p|.|y|a|m|l|`| |e|x|i|s|t|s| |f|r|o|m| |a|n| |e|a|r|l|i|e|r| |t|r|y| ||| |`|:|q|!|`|,| |t|h|e|n| |`|r|m| |n|p|.|y|a|m|l|`|,| |t|h|e|n| |s|t|a|r|t| |a|g|a|i|n| |||
-
----
-
-### Mug this up: the whole answer in 6 lines
-
-```
-k get endpoints backend-svc -n web           # fine -> not question 6 or 7
-k get netpol -n web                          # there is a policy
-k get pods -n web --show-labels              # app=backend, run=client
-vim np.yaml                                  # docs "Network Policies": delete 3 blocks, change 5 lines
-k apply -f np.yaml
-k exec client -n web -- wget -qO- -T 3 backend-svc
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 6 minutes.
+||| |s|t|i|l|l| |a| |t|i|m|e|o|u|t| ||| |a| |l|a|b|e|l| |i|n| |t|h|e| |f|i|l|e| |d|o|e|s| |n|o|t| |m|a|t|c|h| |t|h|e| |r|e|a|l| |l|a|b|e|l| ||| |c|o|m|p|a|r|e| |w|i|t|h| |`|-|-|s|h|o|w|-|l|a|b|e|l|s|`|,| |f|i|x| |`|n|p|.|y|a|m|l|`|,| |a|p|p|l|y| |a|g|a|i|n| |||
+||| |s|t|i|l|l| |a| |t|i|m|e|o|u|t|,| |l|a|b|e|l|s| |m|a|t|c|h| ||| |t|h|e| |p|o|l|i|c|y| |l|a|n|d|e|d| |i|n| |`|d|e|f|a|u|l|t|`| ||| |`|k| |g|e|t| |n|e|t|p|o|l| |-|A|`|;| |s|e|t| |`|n|a|m|e|s|p|a|c|e|:| |w|e|b|`|,| |a|p|p|l|y|;| |`|k| |d|e|l|e|t|e| |n|e|t|p|o|l| |a|l|l|o|w|-|c|l|i|e|n|t| |-|n| |d|e|f|a|u|l|t|`| |||
+||| |`|e|r|r|o|r| |p|a|r|s|i|n|g| |n|p|.|y|a|m|l|`| |o|r| |`|u|n|k|n|o|w|n| |f|i|e|l|d|`| ||| |i|n|d|e|n|t|a|t|i|o|n| |b|r|o|k|e| |w|h|i|l|e| |d|e|l|e|t|i|n|g| |l|i|n|e|s| ||| |c|o|m|p|a|r|e| |t|h|e| |s|p|a|c|e|s| |w|i|t|h| |t|h|e| |f|i|n|i|s|h|e|d| |f|i|l|e|,| |l|i|n|e| |b|y| |l|i|n|e| |||
+||| |P|a|r|t| |A|'|s| |w|g|e|t| |a|l|r|e|a|d|y| |p|r|i|n|t|s| |t|h|e| |n|g|i|n|x| |p|a|g|e| ||| |t|h|e| |n|e|t|w|o|r|k| |p|l|u|g|i|n| |d|o|e|s| |n|o|t| |e|n|f|o|r|c|e| |p|o|l|i|c|i|e|s| ||| |w|r|i|t|e| |a|n|d| |a|p|p|l|y| |a|n|y|w|a|y|;| |t|h|e| |e|x|a|m| |c|l|u|s|t|e|r| |e|n|f|o|r|c|e|s| |t|h|e|m| |||
+||| |s|t|i|l|l| |a| |t|i|m|e|o|u|t|,| |t|h|e| |S|e|r|v|i|c|e| |m|a|p|s| |8|0| |t|o| |a|n|o|t|h|e|r| |p|o|d| |p|o|r|t| ||| |a| |p|o|l|i|c|y| |m|a|t|c|h|e|s| |t|h|e| |p|o|d|'|s| |p|o|r|t|,| |n|o|t| |t|h|e| |S|e|r|v|i|c|e| |p|o|r|t| ||| |t|h|e| |p|o|l|i|c|y| |n|e|e|d|s| |t|h|e| |p|o|d|'|s| |p|o|r|t|:| |`|k| |g|e|t| |e|p| |b|a|c|k|e|n|d|-|s|v|c| |-|n| |w|e|b|`| |||
 
 ---
 
 ## 11. DNS is not working
 
-### Three words first
+### PART B. The exam starts here
 
-- **DNS** = turns a name into an IP address.
-- **CoreDNS** = the DNS program inside the cluster. It turns a Service name (like `backend-svc`) into an IP.
-- CoreDNS runs as Deployment `coredns` in namespace `kube-system`.
-- **kube-dns** = the old name. The CoreDNS pods still have the label `k8s-app=kube-dns`.
-- Their Service is still called `kube-dns`.
-- Below, `coredns` = the Deployment. `kube-dns` = the label and the Service.
-- **nslookup** = a command that asks DNS for the IP of a name. It is the test for this question.
+**The question, as the exam words it:**
+
+> Pods in the cluster cannot resolve service names. Connections by IP address still work. Find the cause and fix it. Two CoreDNS replicas must be running.
+
+**What the question is really saying:**
+
+The network is fine; only CoreDNS, the name lookup, is broken.
+
+**Write down from the question:** namespace = `kube-system` · deployment = `coredns` · replicas = `2`
+
+---
+
+### Think
+
+- **Broken:** no CoreDNS pod answers name lookups.
+- **Look first:** the CoreDNS pods, then their Deployment.
+- **Expect:** `No resources found`, and the Deployment at `0/0`.
+- **Fix:** scale the Deployment back to 2.
+- **Prove:** a test pod resolves a Service name.
+
+### Time budget
+
+Target 4 min. Skip at 8.
 
 ---
 
 ### PART A. Build the exam (Killercoda only)
-
-Paste this once. It is safe to paste again.
-It first repairs DNS from any earlier try. Then it breaks it again.
-In the real exam this is already done.
 
 ```
 k set selector svc kube-dns k8s-app=kube-dns -n kube-system
@@ -3304,169 +2374,93 @@ k wait --for=delete pod -l k8s-app=kube-dns -n kube-system --timeout=120s || tru
 clear
 k get deploy coredns -n kube-system
 ```
-The last line shows the broken state: `READY 0/0`.
-
-What the lines do:
-- Line 1 puts back the normal Service selector, in case you changed it while practicing.
-- Lines 2-3 bring CoreDNS back to 2 healthy pods.
-- Line 4 removes a leftover test pod `t`.
-- Lines 5-6 break it: zero DNS pods.
-- `|| true` = do not stop if there were no pods left to wait for.
-
-Your fix in Step 4 repairs DNS for the rest of the playground.
 
 ---
 
-### PART B. The exam starts here
+### Step 1. Does a name lookup fail?
 
-**The question, as the exam words it:**
-
-> Pods in the cluster cannot resolve service names. Connections by IP address still work. Find the cause and fix it. Two CoreDNS replicas must be running.
-
-**What the question is really saying:**
-
-Names fail, IPs work.
-So the network is fine. Only name lookup is broken.
-Check the three parts of CoreDNS in this order:
-1. The pods.
-2. The Deployment that owns them.
-3. The Service in front of them.
-
-**Write down from the question:** namespace = `kube-system` · deployment = `coredns` · replicas = `2`
-
----
-
-### Think
-
-- **What is broken:** no CoreDNS pod answers name lookups.
-- **Where to look first:** `k get pods -n kube-system -l k8s-app=kube-dns`
-- **What I expect to see:** `No resources found in kube-system namespace.`
-- **Fix path:** `k scale deploy coredns -n kube-system --replicas=2`
-- **How I prove it:** `k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup kubernetes.default.svc.cluster.local` shows `Name:` and an `Address`.
-
-### Time budget
-
-Target 4 minutes. Skip and flag at 8 minutes.
-
----
-
-### Opening routine (same 2 commands at the start of EVERY question)
-
-```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
-```
-
----
-
-### Step 1. Confirm the symptom
+**Why:** see the symptom yourself before you fix anything.
 
 ```
 k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup kubernetes.default.svc.cluster.local
 ```
 You see:
 ```
-;; connection timed out; no servers could be reached      <-- DNS does not answer
+;; connection timed out; no servers could be reached   <-- DNS does not answer
 ```
-- `kubernetes.default.svc.cluster.local` = the full name of Service `kubernetes` in namespace `default`.
-- It exists in every cluster. So it is a safe test name.
-- Always use the full name. busybox's nslookup handles short names badly.
-- With a short name it can print `NXDOMAIN` even when DNS works.
-- `--rm -it --restart=Never` = run once, show the output, delete the test pod.
-- Extra lines like `pod "t" deleted` or `If you don't see a command prompt` are normal.
+**Means:** nobody answers on the DNS address.
+**Don't:** test a short name like `kubernetes`. busybox can print `NXDOMAIN` even when DNS works.
 
 ---
 
 ### Step 2. Are the CoreDNS pods there?
 
+**Why:** DNS answers come from the CoreDNS pods.
+
 ```
-k get pods -n kube-system -l k8s-app=kube-dns
+k get po -n kube-system -l k8s-app=kube-dns
 ```
 You see:
 ```
-No resources found in kube-system namespace.      <-- no DNS pods at all
+No resources found in kube-system namespace.   <-- no DNS pods at all
 ```
-- `-l k8s-app=kube-dns` = only pods with this label.
+**Means:** no pod, no answer. Now ask why there are none.
 
 ---
 
-### Step 3. Look at their owner
+### Step 3. What does their Deployment want?
+
+**Why:** the Deployment decides how many pods run.
 
 ```
 k get deploy coredns -n kube-system
 ```
 You see:
 ```
-NAME      READY   UP-TO-DATE   AVAILABLE   AGE
-coredns   0/0     0            0           30m      <-- 0/0: scaled to zero
+coredns   0/0   0   0   30m   <-- 0/0: scaled to zero
 ```
-`0/0` = nobody asked for any pods.
-Nothing crashed. Someone scaled it down.
+**Means:** nothing crashed. Someone asked for zero pods.
 
 ---
 
-### Step 4. Fix: scale back to 2
+### Step 4. Scale back to 2
+
+**Why:** the question wants two replicas.
 
 ```
 k scale deploy coredns -n kube-system --replicas=2
-```
-You see:
-```
-deployment.apps/coredns scaled
-```
-
-Wait until both pods are up:
-```
 k rollout status deploy/coredns -n kube-system --timeout=120s
 ```
 You see:
 ```
-deployment "coredns" successfully rolled out      <-- both pods ready
+deployment.apps/coredns scaled
+deployment "coredns" successfully rolled out   <-- both pods ready
 ```
+**Don't:** scale `kube-dns`. That is the Service and the label. The Deployment is `coredns`.
 
 ---
 
-### Closing routine (same at the end of EVERY question: verify, then exit)
+### Verify
 
-```
-k get pods -n kube-system -l k8s-app=kube-dns
-```
-You see:
-```
-NAME                       READY   STATUS    RESTARTS   AGE
-coredns-7c65d6cfc9-4kx2p   1/1     Running   0          40s      <-- 2 pods, 1/1 Running
-coredns-7c65d6cfc9-9tqzn   1/1     Running   0          40s
-```
+**Why:** prove a pod can resolve a name again.
 
 ```
 k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup kubernetes.default.svc.cluster.local
 ```
 You see:
 ```
-Server:    10.96.0.10
-Address:   10.96.0.10:53
-
 Name:      kubernetes.default.svc.cluster.local
-Address:   10.96.0.1      <-- the answer you want
+Address:   10.96.0.1   <-- the answer
 ```
-- The FIRST `Address` is the DNS server itself. It is not the answer.
-- The SECOND `Address` (under `Name:`) is the proof.
-- Numbers may differ in your cluster.
-- An extra line like `*** Can't find ...: No answer` is harmless. It is only the IPv6 lookup.
-
-```
-exit          # exam only
-```
+**Don't:** read the first `Address` line. That one is the DNS server itself.
 
 ---
 
-### The same question with other causes
+### Three words first
 
-||| |W|h|a|t| |y|o|u| |f|i|n|d| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |s|t|e|p| |2|:| |p|o|d|s| |e|x|i|s|t| |b|u|t| |`|C|r|a|s|h|L|o|o|p|B|a|c|k|O|f|f|`| ||| |a| |t|y|p|o| |i|n| |t|h|e| |C|o|r|e|D|N|S| |c|o|n|f|i|g| ||| |`|k| |l|o|g|s| |-|n| |k|u|b|e|-|s|y|s|t|e|m| |-|l| |k|8|s|-|a|p|p|=|k|u|b|e|-|d|n|s|`| |n|a|m|e|s| |t|h|e| |l|i|n|e|.| |`|k| |e|d|i|t| |c|m| |c|o|r|e|d|n|s| |-|n| |k|u|b|e|-|s|y|s|t|e|m|`|,| |f|i|x| |i|t|,| |t|h|e|n| |`|k| |r|o|l|l|o|u|t| |r|e|s|t|a|r|t| |d|e|p|l|o|y| |c|o|r|e|d|n|s| |-|n| |k|u|b|e|-|s|y|s|t|e|m|`| |||
-||| |s|t|e|p| |2|:| |p|o|d|s| |a|r|e| |`|1|/|1| |R|u|n|n|i|n|g|`|,| |D|N|S| |s|t|i|l|l| |f|a|i|l|s| ||| |t|h|e| |S|e|r|v|i|c|e| |i|n| |f|r|o|n|t| |o|f| |t|h|e|m| |l|o|s|t| |i|t|s| |p|o|d|s| ||| |`|k| |g|e|t| |e|n|d|p|o|i|n|t|s| |k|u|b|e|-|d|n|s| |-|n| |k|u|b|e|-|s|y|s|t|e|m|`| |(|a| |d|e|p|r|e|c|a|t|i|o|n| |w|a|r|n|i|n|g| |h|e|r|e| |i|s| |h|a|r|m|l|e|s|s|)|.| |I|f| |`|<|n|o|n|e|>|`|:| |`|k| |s|e|t| |s|e|l|e|c|t|o|r| |s|v|c| |k|u|b|e|-|d|n|s| |k|8|s|-|a|p|p|=|k|u|b|e|-|d|n|s| |-|n| |k|u|b|e|-|s|y|s|t|e|m|`| |||
-||| |s|t|e|p| |2|:| |p|o|d|s| |`|P|e|n|d|i|n|g|`| ||| |s|c|h|e|d|u|l|i|n|g| |p|r|o|b|l|e|m| ||| |q|u|e|s|t|i|o|n| |3| |||
+- **CoreDNS** = the cluster's DNS program. Deployment `coredns` in `kube-system`.
+- **kube-dns** = the old name. Still the pod label `k8s-app=kube-dns` and the Service name.
+- **nslookup** = asks DNS for the IP of a name.
 
 ---
 
@@ -3474,49 +2468,46 @@ exit          # exam only
 
 ||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
 |||-|-|-|||-|-|-|||-|-|-|||
-||| |`|E|r|r|o|r| |f|r|o|m| |s|e|r|v|e|r| |(|N|o|t|F|o|u|n|d|)|:| |d|e|p|l|o|y|m|e|n|t|s|.|a|p|p|s| |"|k|u|b|e|-|d|n|s|"| |n|o|t| |f|o|u|n|d|`| ||| |t|h|e| |D|e|p|l|o|y|m|e|n|t| |i|s| |`|c|o|r|e|d|n|s|`|,| |n|o|t| |`|k|u|b|e|-|d|n|s|`| ||| |`|k| |s|c|a|l|e| |d|e|p|l|o|y| |c|o|r|e|d|n|s| |-|n| |k|u|b|e|-|s|y|s|t|e|m| |-|-|r|e|p|l|i|c|a|s|=|2|`| |||
-||| |`|N|o| |r|e|s|o|u|r|c|e|s| |f|o|u|n|d| |i|n| |d|e|f|a|u|l|t| |n|a|m|e|s|p|a|c|e|.|`| ||| |y|o|u| |f|o|r|g|o|t| |`|-|n| |k|u|b|e|-|s|y|s|t|e|m|`| ||| |a|d|d| |`|-|n| |k|u|b|e|-|s|y|s|t|e|m|`| |||
-||| |`|p|o|d|s| |"|t|"| |a|l|r|e|a|d|y| |e|x|i|s|t|s|`| ||| |a|n| |o|l|d| |t|e|s|t| |p|o|d| |w|a|s| |l|e|f|t| |b|e|h|i|n|d| ||| |`|k| |d|e|l|e|t|e| |p|o|d| |t|`|,| |t|h|e|n| |r|u|n| |t|h|e| |t|e|s|t| |a|g|a|i|n| |||
-||| |n|s|l|o|o|k|u|p| |s|t|i|l|l| |t|i|m|e|s| |o|u|t| |r|i|g|h|t| |a|f|t|e|r| |s|c|a|l|i|n|g| ||| |t|h|e| |n|e|w| |p|o|d|s| |a|r|e| |n|o|t| |R|e|a|d|y| |y|e|t| ||| |`|k| |r|o|l|l|o|u|t| |s|t|a|t|u|s| |d|e|p|l|o|y|/|c|o|r|e|d|n|s| |-|n| |k|u|b|e|-|s|y|s|t|e|m|`|,| |t|h|e|n| |t|e|s|t| |a|g|a|i|n| |||
-||| |`|N|X|D|O|M|A|I|N|`| |f|o|r| |a| |s|h|o|r|t| |n|a|m|e| |l|i|k|e| |`|k|u|b|e|r|n|e|t|e|s|`| ||| |b|u|s|y|b|o|x| |n|s|l|o|o|k|u|p| |a|n|d| |s|h|o|r|t| |n|a|m|e|s| ||| |u|s|e| |t|h|e| |f|u|l|l| |n|a|m|e| |`|k|u|b|e|r|n|e|t|e|s|.|d|e|f|a|u|l|t|.|s|v|c|.|c|l|u|s|t|e|r|.|l|o|c|a|l|`| |||
-||| |`|E|r|r|I|m|a|g|e|P|u|l|l|`| |o|n| |p|o|d| |`|t|`| ||| |t|h|e| |t|e|s|t| |i|m|a|g|e| |c|o|u|l|d| |n|o|t| |b|e| |p|u|l|l|e|d| ||| |w|a|i|t| |a|n|d| |r|e|t|r|y|;| |c|h|e|c|k| |t|h|e| |t|a|g| |i|s| |`|b|u|s|y|b|o|x|:|1|.|3|6|`| |||
-
----
-
-### Mug this up: the whole answer in 5 lines
-
-```
-k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup kubernetes.default.svc.cluster.local
-k get pods -n kube-system -l k8s-app=kube-dns      # No resources found
-k get deploy coredns -n kube-system                # 0/0
-k scale deploy coredns -n kube-system --replicas=2
-k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup kubernetes.default.svc.cluster.local
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 4 minutes.
+||| |`|p|o|d|s| |"|t|"| |a|l|r|e|a|d|y| |e|x|i|s|t|s|`| ||| |a|n| |o|l|d| |t|e|s|t| |p|o|d| |w|a|s| |l|e|f|t| |b|e|h|i|n|d| ||| |`|k| |d|e|l|e|t|e| |p|o|d| |t|`|,| |t|e|s|t| |a|g|a|i|n| |||
+||| |C|o|r|e|D|N|S| |p|o|d|s| |i|n| |`|C|r|a|s|h|L|o|o|p|B|a|c|k|O|f|f|`| ||| |a| |t|y|p|o| |i|n| |t|h|e| |C|o|r|e|D|N|S| |c|o|n|f|i|g| ||| |`|k| |l|o|g|s| |-|n| |k|u|b|e|-|s|y|s|t|e|m| |-|l| |k|8|s|-|a|p|p|=|k|u|b|e|-|d|n|s|`|;| |f|i|x| |w|i|t|h| |`|k| |e|d|i|t| |c|m| |c|o|r|e|d|n|s| |-|n| |k|u|b|e|-|s|y|s|t|e|m|`|;| |`|k| |r|o|l|l|o|u|t| |r|e|s|t|a|r|t| |d|e|p|l|o|y| |c|o|r|e|d|n|s| |-|n| |k|u|b|e|-|s|y|s|t|e|m|`| |||
+||| |p|o|d|s| |`|1|/|1| |R|u|n|n|i|n|g|`|,| |D|N|S| |s|t|i|l|l| |f|a|i|l|s| ||| |t|h|e| |`|k|u|b|e|-|d|n|s|`| |S|e|r|v|i|c|e| |l|o|s|t| |i|t|s| |p|o|d|s| ||| |`|k| |g|e|t| |e|p| |k|u|b|e|-|d|n|s| |-|n| |k|u|b|e|-|s|y|s|t|e|m|`|;| |i|f| |`|<|n|o|n|e|>|`|:| |`|k| |s|e|t| |s|e|l|e|c|t|o|r| |s|v|c| |k|u|b|e|-|d|n|s| |k|8|s|-|a|p|p|=|k|u|b|e|-|d|n|s| |-|n| |k|u|b|e|-|s|y|s|t|e|m|`| |||
+||| |C|o|r|e|D|N|S| |p|o|d|s| |`|P|e|n|d|i|n|g|`| ||| |a| |s|c|h|e|d|u|l|i|n|g| |p|r|o|b|l|e|m| ||| |q|u|e|s|t|i|o|n| |3| |||
+||| |`|E|r|r|I|m|a|g|e|P|u|l|l|`| |o|n| |p|o|d| |`|t|`| ||| |t|h|e| |t|e|s|t| |i|m|a|g|e| |c|o|u|l|d| |n|o|t| |b|e| |p|u|l|l|e|d| ||| |c|h|e|c|k| |t|h|e| |t|a|g| |`|b|u|s|y|b|o|x|:|1|.|3|6|`|,| |r|e|t|r|y| |||
 
 ---
 
 ## 12. Logs and usage into a file
 
-### Three words first
+### PART B. The exam starts here
 
-- **`>`** = write the output of a command into a file. It replaces what was in the file.
-- **`>>`** = add to the end of the file instead. Not used here.
-- **k logs** = what a container printed.
-- **k top** = how much CPU and memory pods or nodes use right now.
-- `k top` needs the add-on `metrics-server`. The exam cluster has it.
-- **echo** = print this text. `echo abc > file` puts `abc` into the file.
-- **cat** = show what is inside a file.
+**The question, as the exam words it:**
+
+> 1. Write the logs of pod `api` in namespace `app` to the file `/opt/api.log`.
+> 2. Find the pod that uses the most CPU across all namespaces and write its name to `/opt/top.txt`.
+
+**What the question is really saying:**
+
+Two files: the `api` logs, and only the name of the top CPU pod.
+
+**Write down from the question:** pod = `api` · namespace = `app` · files = `/opt/api.log`, `/opt/top.txt`
+
+---
+
+### Think
+
+- **Wanted:** two files the grader opens and compares.
+- **Look first:** all pods, sorted by CPU.
+- **Expect:** the highest CPU pod in the first row.
+- **Fix:** logs into file 1; the name only into file 2.
+- **Prove:** file 2 holds exactly one pod name.
+
+### Time budget
+
+Target 2 min. Skip at 5.
 
 ---
 
 ### PART A. Build the exam (Killercoda only)
-
-Paste this once. It is safe to paste again: it deletes the old attempt first.
-In the real exam this is already done.
-The playground has no metrics-server, so this installs a pinned version.
 
 ```
 k delete ns app --ignore-not-found
@@ -3532,164 +2523,81 @@ for i in $(seq 1 24); do k top nodes >/dev/null 2>&1 && break; sleep 5; done
 clear
 k top nodes
 ```
-The last line should list each node with CPU and memory numbers.
-There is nothing broken here. The two files simply do not exist yet.
-
-What the lines do:
-- Line 2 removes the answer files from an earlier try.
-- `k apply ... v0.8.0` installs metrics-server. A second paste just updates it.
-- The long `grep -q ... || k patch` line adds `--kubelet-insecure-tls` only if it is missing.
-- `--kubelet-insecure-tls` lets metrics-server trust the playground's self-signed kubelet certificates.
-- The `for` line waits up to 2 minutes until `k top` gets its first numbers.
-
-Still `error: Metrics API not available`? Wait 30 seconds. Run `k top nodes` again.
-Did the playground already have metrics-server? The lines above simply update it. That is fine.
 
 ---
 
-### PART B. The exam starts here
+### Step 1. Write the logs into the file
 
-**The question, as the exam words it:**
-
-> 1. Write the logs of pod `api` in namespace `app` to the file `/opt/api.log`.
-> 2. Find the pod that uses the most CPU across all namespaces and write its name to `/opt/top.txt`.
-
-**What the question is really saying:**
-
-Two outputs, two files.
-The grader opens the files and compares the content.
-Write exactly what is asked, nothing more.
-File 2 gets only the pod name. No namespace, no numbers.
-
-**Write down from the question:** pod = `api` · namespace = `app` · files = `/opt/api.log`, `/opt/top.txt`
-
----
-
-### Think
-
-- **What is wanted:** two files: the `api` logs, and one pod name.
-- **Where to look first:** `k top pods -A --sort-by=cpu`
-- **What I expect to see:** a list of pods, highest CPU in the first row.
-- **Fix path:** `k logs api -n app > /opt/api.log`, then `echo <first-row-name> > /opt/top.txt`.
-- **How I prove it:** `cat /opt/top.txt` prints exactly one pod name.
-
-### Time budget
-
-Target 2 minutes. Skip and flag at 5 minutes.
-
----
-
-### Opening routine (same 2 commands at the start of EVERY question)
-
-```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
-```
-
----
-
-### Step 1. Logs into the file
+**Why:** `>` sends the output into the file, not to the screen.
 
 ```
 k logs api -n app > /opt/api.log
-```
-You see:
-```
-(nothing)      <-- normal: the output went into the file, not the screen
-```
-
-Peek at the first lines to be sure:
-```
 head -3 /opt/api.log
 ```
 You see:
 ```
-/docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration      <-- log lines: it worked
-/docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
-/docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+/docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration   <-- log lines
+...
 ```
+**Means:** file 1 is done. The first command prints nothing; that is normal.
 
 ---
 
-### Step 2. Sort all pods by CPU
+### Step 2. Which pod uses the most CPU?
+
+**Why:** `k top` shows live usage. Sorting puts the top pod first.
 
 ```
 k top pods -A --sort-by=cpu
 ```
-- `-A` = all namespaces.
-- `--sort-by=cpu` = highest first.
-
 You see:
 ```
-NAMESPACE     NAME                           CPU(cores)   MEMORY(bytes)
-kube-system   kube-apiserver-controlplane    45m          310Mi      <-- first row = the answer
-kube-system   etcd-controlplane              21m          60Mi
+NAMESPACE     NAME                          CPU(cores)   MEMORY(bytes)
+kube-system   kube-apiserver-controlplane   45m          310Mi   <-- first row = the answer
 ...
 ```
-`45m` = 45 millicores = 0.045 of one CPU.
-Your names and numbers may differ.
+**Means:** the answer is the NAME in the first row. Yours may differ.
+**Don't:** forget `-A`. Without it you only see one namespace.
 
 ---
 
 ### Step 3. Write only the name
 
+**Why:** the grader compares the file with one pod name.
+
 ```
 echo kube-apiserver-controlplane > /opt/top.txt
-```
-You see:
-```
-(nothing)      <-- normal
-```
-Use the name YOU see in the first row.
-Copy it with the mouse. Do not retype it.
-
-Faster, with no typing of the name:
-```
-k top pods -A --sort-by=cpu --no-headers | head -1 | awk '{print $2}' > /opt/top.txt
-```
-You see:
-```
-(nothing)      <-- normal
-```
-- `--no-headers` = drop the title row.
-- `head -1` = keep only the first row.
-- `awk '{print $2}'` = keep only column 2, the pod NAME.
-
----
-
-### Closing routine (same at the end of EVERY question: verify, then exit)
-
-```
-cat /opt/api.log
-```
-You see:
-```
-/docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration      <-- log lines, not empty
-...
-```
-
-```
 cat /opt/top.txt
 ```
 You see:
 ```
-kube-apiserver-controlplane      <-- exactly one pod name, nothing else
+kube-apiserver-controlplane   <-- one name, nothing else
 ```
+**Don't:** retype the name. Copy it with the mouse from step 2.
+
+---
+
+### Verify
+
+**Why:** the grader reads the files, so read them too.
 
 ```
-exit          # exam only
+cat /opt/api.log /opt/top.txt
+```
+You see:
+```
+/docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+...
+kube-apiserver-controlplane
 ```
 
 ---
 
-### Related commands the exam uses in the same style
+### Three words first
 
-```
-k top nodes
-k top pods -n app --sort-by=memory
-k get events -n app --sort-by=.lastTimestamp > /opt/events.txt
-k get pods -A -o wide > /opt/pods.txt
-```
+- **`>`** = write a command's output into a file. Replaces the old content. `>>` adds instead.
+- **k top** = live CPU and memory of pods or nodes. Needs metrics-server.
+- **`45m`** = 45 millicores = 0.045 of one CPU.
 
 ---
 
@@ -3697,29 +2605,11 @@ k get pods -A -o wide > /opt/pods.txt
 
 ||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
 |||-|-|-|||-|-|-|||-|-|-|||
-||| |`|e|r|r|o|r|:| |M|e|t|r|i|c|s| |A|P|I| |n|o|t| |a|v|a|i|l|a|b|l|e|`| ||| |n|o| |m|e|t|r|i|c|s|-|s|e|r|v|e|r| |i|n| |t|h|i|s| |p|l|a|y|g|r|o|u|n|d|,| |o|r| |i|t| |i|s| |s|t|i|l|l| |s|t|a|r|t|i|n|g| ||| |r|u|n| |P|a|r|t| |A| |a|g|a|i|n|,| |w|a|i|t| |6|0| |s|;| |t|h|e| |e|x|a|m| |h|a|s| |i|t| |||
+||| |`|e|r|r|o|r|:| |M|e|t|r|i|c|s| |A|P|I| |n|o|t| |a|v|a|i|l|a|b|l|e|`| ||| |m|e|t|r|i|c|s|-|s|e|r|v|e|r| |m|i|s|s|i|n|g| |o|r| |s|t|i|l|l| |s|t|a|r|t|i|n|g| ||| |r|u|n| |P|a|r|t| |A| |a|g|a|i|n|,| |w|a|i|t| |6|0| |s|;| |t|h|e| |e|x|a|m| |h|a|s| |i|t| |||
 ||| |`|N|o| |s|u|c|h| |f|i|l|e| |o|r| |d|i|r|e|c|t|o|r|y|`| |o|n| |`|>|`| ||| |t|h|e| |f|o|l|d|e|r| |d|o|e|s| |n|o|t| |e|x|i|s|t| ||| |`|m|k|d|i|r| |-|p| |/|o|p|t|`| |||
-||| |`|P|e|r|m|i|s|s|i|o|n| |d|e|n|i|e|d|`| |o|n| |`|>|`| ||| |y|o|u| |a|r|e| |n|o|t| |r|o|o|t|,| |`|/|o|p|t|`| |b|e|l|o|n|g|s| |t|o| |r|o|o|t| ||| |`|k| |l|o|g|s| |a|p|i| |-|n| |a|p|p| |||| |s|u|d|o| |t|e|e| |/|o|p|t|/|a|p|i|.|l|o|g| |>| |/|d|e|v|/|n|u|l|l|`| |||
-||| |`|D|e|f|a|u|l|t|e|d| |c|o|n|t|a|i|n|e|r| |"|x|"| |o|u|t| |o|f|:| |x|,| |y|`| ||| |t|h|e| |p|o|d| |h|a|s| |2| |c|o|n|t|a|i|n|e|r|s|.| |k|u|b|e|c|t|l| |s|i|l|e|n|t|l|y| |t|o|o|k| |t|h|e| |f|i|r|s|t| |o|n|e|.| ||| |t|h|e| |q|u|e|s|t|i|o|n| |n|a|m|e|s| |a| |c|o|n|t|a|i|n|e|r|?| |A|d|d| |`|-|c|`|:| |`|k| |l|o|g|s| |a|p|i| |-|c| |<|c|o|n|t|a|i|n|e|r|>| |-|n| |a|p|p| |>| |/|o|p|t|/|a|p|i|.|l|o|g|`| |(|g|e|t| |n|a|m|e|s| |w|i|t|h| |`|k| |g|e|t| |p|o|d| |a|p|i| |-|n| |a|p|p| |-|o| |j|s|o|n|p|a|t|h|=|'|{|.|s|p|e|c|.|c|o|n|t|a|i|n|e|r|s|[|*|]|.|n|a|m|e|}|'|`|)| |||
-||| |t|h|e| |q|u|e|s|t|i|o|n| |a|s|k|s| |f|o|r| |t|h|e| |l|o|g|s| |o|f| |a| |c|r|a|s|h|e|d| |c|o|n|t|a|i|n|e|r| ||| |c|u|r|r|e|n|t| |l|o|g|s| |a|r|e| |e|m|p|t|y| ||| |a|d|d| |`|-|-|p|r|e|v|i|o|u|s|`| |||
-||| |`|/|o|p|t|/|t|o|p|.|t|x|t|`| |h|o|l|d|s| |a| |w|h|o|l|e| |r|o|w| ||| |y|o|u| |e|c|h|o|e|d| |t|h|e| |l|i|n|e|,| |n|o|t| |t|h|e| |n|a|m|e| ||| |`|e|c|h|o| |<|n|a|m|e|-|o|n|l|y|>| |>| |/|o|p|t|/|t|o|p|.|t|x|t|`| |a|g|a|i|n|.| |`|>|`| |r|e|p|l|a|c|e|s| |t|h|e| |o|l|d| |c|o|n|t|e|n|t|.| |||
-||| |`|/|o|p|t|/|t|o|p|.|t|x|t|`| |h|o|l|d|s| |t|h|e| |a|n|s|w|e|r| |t|w|i|c|e| ||| |y|o|u| |u|s|e|d| |`|>|>|`| ||| |w|r|i|t|e| |i|t| |a|g|a|i|n| |w|i|t|h| |o|n|e| |`|>|`| |||
-||| |t|h|e| |t|o|p| |p|o|d| |i|s| |f|r|o|m| |o|n|e| |n|a|m|e|s|p|a|c|e| |o|n|l|y| ||| |y|o|u| |f|o|r|g|o|t| |`|-|A|`| ||| |`|k| |t|o|p| |p|o|d|s| |-|A| |-|-|s|o|r|t|-|b|y|=|c|p|u|`| |||
-||| |`|E|r|r|o|r| |f|r|o|m| |s|e|r|v|e|r| |(|N|o|t|F|o|u|n|d|)|:| |p|o|d|s| |"|a|p|i|"| |n|o|t| |f|o|u|n|d|`| ||| |y|o|u| |f|o|r|g|o|t| |`|-|n| |a|p|p|`| ||| |a|d|d| |`|-|n| |a|p|p|`| |||
-
----
-
-### Mug this up: the whole answer in 4 lines
-
-```
-k logs api -n app > /opt/api.log
-k top pods -A --sort-by=cpu                  # first row
-echo <that-name> > /opt/top.txt
-cat /opt/api.log ; cat /opt/top.txt
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 2 minutes.
+||| |`|P|e|r|m|i|s|s|i|o|n| |d|e|n|i|e|d|`| |o|n| |`|>|`| ||| |y|o|u| |a|r|e| |n|o|t| |r|o|o|t|;| |`|/|o|p|t|`| |b|e|l|o|n|g|s| |t|o| |r|o|o|t| ||| |`|k| |l|o|g|s| |a|p|i| |-|n| |a|p|p| |||| |s|u|d|o| |t|e|e| |/|o|p|t|/|a|p|i|.|l|o|g| |>| |/|d|e|v|/|n|u|l|l|`| |||
+||| |`|D|e|f|a|u|l|t|e|d| |c|o|n|t|a|i|n|e|r| |"|x|"| |o|u|t| |o|f|:| |x|,| |y|`| ||| |t|h|e| |p|o|d| |h|a|s| |2| |c|o|n|t|a|i|n|e|r|s| ||| |i|f| |t|h|e| |q|u|e|s|t|i|o|n| |n|a|m|e|s| |o|n|e|:| |`|k| |l|o|g|s| |a|p|i| |-|c| |<|c|o|n|t|a|i|n|e|r|>| |-|n| |a|p|p| |>| |/|o|p|t|/|a|p|i|.|l|o|g|`| |||
+||| |t|h|e| |q|u|e|s|t|i|o|n| |w|a|n|t|s| |a| |c|r|a|s|h|e|d| |c|o|n|t|a|i|n|e|r|'|s| |l|o|g|s| ||| |c|u|r|r|e|n|t| |l|o|g|s| |a|r|e| |e|m|p|t|y| ||| |a|d|d| |`|-|-|p|r|e|v|i|o|u|s|`| |||
 
 ---
 

@@ -79,6 +79,7 @@ function flowOf(body) {
     const saysOutput = /(you see|you get|you want|shows?|prints?|output|answers?|returns?|looks like|for example|says|result|reads?)[^.]*:\s*$/i.test(lastLine);
     const cmdStart = /^\s*(k|kubectl|helm|ssh|systemctl|journalctl|crictl|etcdctl|etcdutl|vim|cat|cp|echo|curl|apt|apt-get|apt-cache|apt-mark|kubeadm|sed|grep|export|exit|cd|ls|dpkg|sysctl|mkdir|wget|nslookup|which|watch|ETCDCTL_API=3)\b/.test(block[0] || '') && !/^\s*\S+\s+\d+\/\d+\s/.test(block[0] || '');
     flushText();
+    if (/^you see:\s*$/i.test(lastLine.trim())) { items.push({ k: 'out', t: block.join('\n') }); continue; }
     if (looksYaml) { items.push({ k: 'yaml', t: block.join('\n') }); continue; }
     if (endsColon && saysOutput && !(cmdStart && !/you (see|get|want)/i.test(lastLine))) { items.push({ k: 'out', t: block.join('\n') }); continue; }
     if (endsColon && /(change|to|add|edit|line|file|becomes)\b[^.]*:\s*$/i.test(lastLine)) { items.push({ k: 'yaml', t: block.join('\n') }); continue; }
