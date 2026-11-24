@@ -46,73 +46,78 @@ k get endpoints backend-svc -n web
 
 ### Step 1. Does the Service find pods?
 
+**Why:** a Service sends traffic to its endpoints, the pods it found.
+
 ```
 k get ep backend-svc -n web
 ```
 You see:
 ```
-backend-svc   <none>      <-- no pods
+backend-svc   <none>
 ```
+**Means:** it finds no pods. The selector is wrong, or the pods are not Ready.
 
 ---
 
 ### Step 2. What label does the Service want?
+
+**Why:** the selector is the label the Service looks for.
 
 ```
 k get svc backend-svc -n web -o wide
 ```
 You see:
 ```
-... SELECTOR
-... app=backend-svc      <-- wanted
+SELECTOR  app=backend-svc
 ```
 
 ---
 
 ### Step 3. What label do the pods have?
 
+**Why:** compare the real label with the selector.
+
 ```
 k get po -n web --show-labels
 ```
 You see:
 ```
-backend-6b7c...   app=backend,pod-template-hash=...   <-- real label
+backend-...   1/1   Running   app=backend,pod-template-hash=...
 ```
+**Means:** labels differ, pods are fine. The Service is wrong.
 
 ---
 
 ### Step 4. Fix the selector
 
+**Why:** fix the Service, not the pods. Other things may rely on pod labels.
+
 ```
 k set selector svc backend-svc app=backend -n web
 ```
-You see:
-```
-service/backend-svc selector updated
-```
+**Don't:** add `pod-template-hash`. It changes on every rollout.
 
 ---
 
 ### Verify
 
+**Why:** prove a pod can reach the Service.
+
 ```
-k get ep backend-svc -n web
 k exec client -n web -- wget -qO- -T 3 backend-svc
 ```
 You see:
 ```
-backend-svc   192.168.1.5:80      <-- an IP now
 <title>Welcome to nginx!</title>
 ```
+**Don't:** use `curl`. The busybox client only has `wget`.
 
 ---
 
 ### Three words first
 
-- **Label** = a `key=value` tag on an object, for example `app=backend`.
-- **Selector** = the label a Service looks for. It sends traffic to every pod that has it.
-- **Endpoints** = the pod IPs the Service found. `<none>` means traffic goes nowhere.
 - **`-qO-`** = wget: quiet, print to the screen. Capital O, not zero.
+- **`-o wide`** = extra columns, here SELECTOR.
 
 ---
 
@@ -120,14 +125,8 @@ backend-svc   192.168.1.5:80      <-- an IP now
 
 | You see | Cause | Fix |
 |---|---|---|
-| `Warning: v1 Endpoints is deprecated` | normal since v1.33 | ignore it; or `k get endpointslices -n web -l kubernetes.io/service-name=backend-svc` |
-| still `<none>` | typo in the label | compare again with `--show-labels` |
-| still `<none>`, labels match | pods not Ready (`0/1`) | fix the pods first |
+| `Warning: v1 Endpoints is deprecated` | normal since v1.33 | ignore it |
+| still `<none>` after the fix | typo, or pods not Ready (`0/1`) | compare with `--show-labels`; fix the pods |
 | still `<none>` after `k edit svc` | you changed `metadata.labels`, not `spec.selector` | use `k set selector` |
-| breaks again after a rollout | you copied `pod-template-hash` | use only `app=backend` |
+| endpoints show an IP, wget fails | wrong port | question 7 |
 | `No resources found` | forgot `-n web` | add `-n web` |
-| IP shown, wget still fails | wrong port | question 7 |
-| `wget: invalid option -- '0'` | zero instead of capital O | `-qO-` |
-| `pod ... is not running` | client still starting | wait, then retry |
-
-In the exam: run the question's `ssh` line first, and `exit` at the end.

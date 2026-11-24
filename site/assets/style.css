@@ -383,3 +383,9 @@ details.reveal{margin-top:8px}details.reveal summary{cursor:pointer;font-weight:
 #qt{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums}#qt.over{color:#d62828}
 .qtimer p{flex-basis:100%;margin:0}
 .chip.bad{background:#d62828;color:#fff}
+.ln{margin:8px 0;font-size:16px;line-height:1.5}.ln p{margin:0}
+.ln.why{color:var(--muted,#555)}.ln.why strong{color:var(--accent)}
+.ln.means{padding:6px 10px;border-left:4px solid var(--accent);background:rgba(0,100,255,.06)}
+.ln.dont{padding:6px 10px;border-left:4px solid #d62828;background:rgba(214,40,40,.07)}
+.needhelp .story{font-style:italic}
+.modehint{margin:-4px 0 12px}
