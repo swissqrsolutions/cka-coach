@@ -1984,18 +1984,35 @@ exit ; k get nodes                                    # node01 Ready
 
 ## 6. Service has no endpoints
 
-### Three words first
+### PART B. The exam starts here
 
-- **Label** = a `key=value` tag on an object, for example `app=backend`.
-- **Selector** = the label a Service looks for. The Service sends traffic to every pod that has it.
-- **Endpoints** = the list of pod IPs the Service found. An empty list means no pods were found. Traffic goes nowhere.
+**The question, as the exam words it:**
+
+> In namespace `web`, pod `client` cannot reach service `backend-svc` on port 80. The deployment `backend` is Running. Find and fix the issue. Do not delete or recreate the service.
+
+**What the question is really saying:**
+
+The Service's selector does not match the pods' label.
+
+**Write down from the question:** namespace = `web` · service = `backend-svc` · deployment = `backend` · test pod = `client` · do NOT recreate the service
+
+---
+
+### Think
+
+- **Broken:** the Service finds no pods.
+- **Look first:** `k get ep backend-svc -n web`
+- **Expect:** `<none>`
+- **Fix:** set the Service selector to the pods' label.
+- **Prove:** `wget` from `client` prints `Welcome to nginx!`
+
+### Time budget
+
+Target 2 minutes. Skip and flag at 5 minutes.
 
 ---
 
 ### PART A. Build the exam (Killercoda only)
-
-Paste this once. It is safe to paste again: it deletes the old attempt first.
-In the real exam this is already done.
 
 ```
 k delete ns web --ignore-not-found
@@ -2008,104 +2025,47 @@ k wait --for=condition=Ready pod/client -n web --timeout=120s
 clear
 k get endpoints backend-svc -n web
 ```
-The last line shows the broken state: `<none>`.
-
-Why it is broken: `k create svc` sets the selector to the Service's own name, `app=backend-svc`.
-The pods have the label `app=backend`.
 
 ---
 
-### PART B. The exam starts here
-
-**The question, as the exam words it:**
-
-> In namespace `web`, pod `client` cannot reach service `backend-svc` on port 80. The deployment `backend` is Running. Find and fix the issue. Do not delete or recreate the service.
-
-**What the question is really saying:**
-
-The pods are healthy. The Service exists.
-But the Service is not connected to the pods.
-Compare the Service's selector with the pods' labels.
-
-**Write down from the question:** namespace = `web` · service = `backend-svc` · deployment = `backend` · test pod = `client` · do NOT recreate the service
-
----
-
-### Think
-
-- **What is broken:** the Service finds no pods.
-- **Where to look first:** `k get ep backend-svc -n web`
-- **What I expect to see:** `<none>` in the ENDPOINTS column.
-- **Fix path:** read the Service's selector, then the pods' labels. Then `k set selector`.
-- **How I prove it:** `k exec client -n web -- wget -qO- -T 3 backend-svc` prints `Welcome to nginx!`.
-
-### Time budget
-
-Target 2 minutes. Skip and flag at 5 minutes.
-
----
-
-### Opening routine (same 2 commands at the start of EVERY question)
+### Step 1. Does the Service find pods?
 
 ```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
-```
-
----
-
-### Step 1. Does the Service have pods behind it?
-
-```
-k get endpoints backend-svc -n web
+k get ep backend-svc -n web
 ```
 You see:
 ```
-Warning: v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice
-NAME          ENDPOINTS   AGE
-backend-svc   <none>      1m      <-- this line matters: <none>
+backend-svc   <none>      <-- no pods
 ```
-`<none>` = the Service found no pods.
-The warning is harmless. Ignore it.
-
-> Check: the newer command is `k get endpointslices -n web -l kubernetes.io/service-name=backend-svc`. When it finds no pods, its ENDPOINTS column should say `<unset>`. Use whichever you remember. `k get endpoints` is shorter.
 
 ---
 
-### Step 2. What label is the Service looking for?
+### Step 2. What label does the Service want?
 
 ```
 k get svc backend-svc -n web -o wide
 ```
 You see:
 ```
-NAME          TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)   AGE   SELECTOR
-backend-svc   ClusterIP   10.96.120.15   <none>        80/TCP    1m    app=backend-svc      <-- SELECTOR
+... SELECTOR
+... app=backend-svc      <-- wanted
 ```
-`-o wide` adds the SELECTOR column. Here it is `app=backend-svc`.
-`k describe svc backend-svc -n web` shows the same in the line `Selector:`.
 
 ---
 
-### Step 3. What labels do the pods really have?
+### Step 3. What label do the pods have?
 
 ```
-k get pods -n web --show-labels
+k get po -n web --show-labels
 ```
 You see:
 ```
-NAME                       READY   STATUS    RESTARTS   AGE   LABELS
-backend-6b7c9d7f8d-x2k4p   1/1     Running   0          1m    app=backend,pod-template-hash=6b7c9d7f8d   <-- app=backend
-client                     1/1     Running   0          1m    run=client
+backend-6b7c...   app=backend,pod-template-hash=...   <-- real label
 ```
-The backend pod has `app=backend`.
-The Service looks for `app=backend-svc`. They do not match. That is the cause.
-
-Ignore `pod-template-hash`. It changes with every rollout. Never put it in a selector.
 
 ---
 
-### Step 4. Fix the selector on the Service
+### Step 4. Fix the selector
 
 ```
 k set selector svc backend-svc app=backend -n web
@@ -2114,39 +2074,29 @@ You see:
 ```
 service/backend-svc selector updated
 ```
-This changes the existing Service. It is not recreated.
-`set selector` replaces the WHOLE selector. If the old one had two labels, give both.
 
 ---
 
-### Closing routine (same at the end of EVERY question: verify, then exit)
+### Verify
 
 ```
-k get endpoints backend-svc -n web
-```
-You see:
-```
-NAME          ENDPOINTS          AGE
-backend-svc   192.168.1.5:80     2m      <-- an IP:port, not <none>
-```
-
-```
+k get ep backend-svc -n web
 k exec client -n web -- wget -qO- -T 3 backend-svc
 ```
 You see:
 ```
-<!DOCTYPE html>
-<html>
-<head>
-<title>Welcome to nginx!</title>      <-- this line proves it works
+backend-svc   192.168.1.5:80      <-- an IP now
+<title>Welcome to nginx!</title>
 ```
-- `--` = everything after it runs INSIDE the pod.
-- `-qO-` = quiet, print the page to the screen. It is a capital O, not a zero.
-- `-T 3` = give up after 3 seconds.
 
-```
-exit          # exam only
-```
+---
+
+### Three words first
+
+- **Label** = a `key=value` tag on an object, for example `app=backend`.
+- **Selector** = the label a Service looks for. It sends traffic to every pod that has it.
+- **Endpoints** = the pod IPs the Service found. `<none>` means traffic goes nowhere.
+- **`-qO-`** = wget: quiet, print to the screen. Capital O, not zero.
 
 ---
 
@@ -2154,29 +2104,17 @@ exit          # exam only
 
 | You see | Cause | Fix |
 |---|---|---|
-| endpoints still `<none>` | typo in the label you set | compare again with `--show-labels` |
-| endpoints still `<none>`, labels match | the pods are not Ready (READY `0/1`) | fix the pods first |
-| endpoints still `<none>` after `k edit svc` | you changed `metadata.labels`, not `spec.selector` | use `k set selector` |
-| endpoints break again after a rollout | you copied `pod-template-hash` into the selector | use only `app=backend` |
-| `No resources found` / `NotFound` | you forgot `-n web` | add `-n web` |
-| endpoints show an IP, wget still fails | the port is wrong | question 7 |
-| `wget: invalid option -- '0'` | you typed a zero, not a capital O | `-qO-` |
-| `container not found` or `pod ... is not running` | the client pod is still starting | `k get pod client -n web` until Running |
+| `Warning: v1 Endpoints is deprecated` | normal since v1.33 | ignore it; or `k get endpointslices -n web -l kubernetes.io/service-name=backend-svc` |
+| still `<none>` | typo in the label | compare again with `--show-labels` |
+| still `<none>`, labels match | pods not Ready (`0/1`) | fix the pods first |
+| still `<none>` after `k edit svc` | you changed `metadata.labels`, not `spec.selector` | use `k set selector` |
+| breaks again after a rollout | you copied `pod-template-hash` | use only `app=backend` |
+| `No resources found` | forgot `-n web` | add `-n web` |
+| IP shown, wget still fails | wrong port | question 7 |
+| `wget: invalid option -- '0'` | zero instead of capital O | `-qO-` |
+| `pod ... is not running` | client still starting | wait, then retry |
 
----
-
-### Mug this up: the whole answer in 5 lines
-
-```
-k get ep backend-svc -n web                  # <none>
-k get svc backend-svc -n web -o wide         # SELECTOR: app=backend-svc
-k get po -n web --show-labels                # real label: app=backend
-k set selector svc backend-svc app=backend -n web
-k exec client -n web -- wget -qO- -T 3 backend-svc
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 2 minutes.
+In the exam: run the question's `ssh` line first, and `exit` at the end.
 
 ---
 

@@ -110,16 +110,17 @@ for (const x of questions) {
   const examQ = qLines.join('\n').replace(/\n{2,}/g, '\n').trim();
   const meaning = (partB.match(/\*\*What the question is really saying:\*\*\s*\n\n([\s\S]*?)(?=\n\n\*\*Write down)/) || [])[1] || '';
   const write = (partB.match(/\*\*Write down from the question:\*\*\s*(.+)/) || [])[1] || '';
-  const steps = r.split(/\n(?=### )/).filter(p => /^### (Step|Closing)/.test(p)).map(p => {
+  const steps = r.split(/\n(?=### )/).filter(p => /^### (Step|Closing|Verify)/.test(p)).map(p => {
     const body = p.split('\n').slice(1).join('\n').replace(/\n---\s*$/, '');
     return { title: p.split('\n')[0].replace(/^### /, '').replace(/\s*\(same.*\)$/, ''), html: html(body), flow: flowOf(body) };
   });
   const wrong = sec(r, /If something goes wrong|The same question with other causes/);
   const mug = sec(r, /Mug this up/);
-  const tt = (r.match(/\*\*Target time:\*\*\s*(\d+)/) || [])[1];
+  const tt = (r.match(/\*\*Target time:\*\*\s*(\d+)/) || r.match(/### Time budget\s+Target (\d+)/) || [])[1];
   Object.assign(x, {
     words: html(sec(r, /Three words|words first/i)),
     think: html(sec(r, /^### Think\b/)),
+    compact: /^### Think\b/m.test(r) && !/^### Mug this up/m.test(r),
     budget: sec(r, /^### Time budget\b/).replace(/\s+/g, ' ').trim(),
     setup: block.replace(/\nclear\s*$/, '').trim(),
     setupNote: html(partA.replace(/```[\s\S]*?```/, '').trim()),

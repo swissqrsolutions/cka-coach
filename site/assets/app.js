@@ -210,6 +210,44 @@
       <tr><td>YAML</td><td>spaces only, 2 per level</td></tr>
       <tr><td>long name</td><td>type 3 letters + Tab</td></tr></table>
   </div></details>`;
+  // compact page: question + meaning → Think → Part A → steps (command + you see) → verify; the rest folded in "Need help?"
+  function compactBody(q) {
+    const c = q.coach || {};
+    const tick = t => esc(t).replace(/`([^`]+)`/g, '<code>$1</code>');
+    const steps = q.steps.map((s, i) => {
+      const items = s.flow.filter(f => !f.skip);
+      const cmds = items.filter(f => f.k === 'cmd').map(f => f.t);
+      const outs = items.filter(f => f.k === 'out').map(f => f.t);
+      const yamls = items.filter(f => f.k === 'yaml').map(f => f.t);
+      const v = /^Verify/.test(s.title);
+      return `<div class="bstep${v ? ' verify' : ''}"><div class="bnum">${v ? '✓' : i + 1}</div><div class="bbody">
+        <b>${esc(s.title.replace(/^Step \d+\.\s*/, ''))}</b>
+        ${cmds.length ? codeBlock(cmds.join('\n')) + phNotes(cmds) : ''}
+        ${yamls.map(y => codeBlock(y)).join('')}
+        ${outs.length ? `<div class="bsee">You see:</div><pre class="out">${paint(outs.join('\n'))}</pre>` : ''}
+      </div></div>`;
+    }).join('');
+    const traps = (c.traps || []).map(t => typeof t === 'string' ? `<div class="trap">⚠ ${tick(t)}</div>` : `<div class="trap pair"><div class="dont">❌ <b>Don't:</b> ${tick(t.dont)}</div><div class="do">✅ <b>Do:</b> ${tick(t.do)}</div></div>`).join('');
+    const st = q.story || {};
+    return `<section class="card exam"><div class="label">Exam question</div><p class="q">${inline(q.question)}</p>
+        ${q.meaning ? `<div class="means">${q.meaning}</div>` : ''}</section>
+      ${q.think ? `<section class="card think"><div class="label">Think (15 seconds)</div>${q.think}${q.budget ? `<p class="budget">⏱ ${esc(q.budget)}</p>` : ''}</section>` : ''}
+      <h2>Build it in Killercoda</h2>
+      <div class="card">${q.setup ? `<a class="btn block" href="${KILLERCODA}" target="_blank" rel="noopener">Open Killercoda</a>${codeBlock(q.setup)}` : '<p class="small">Cannot be built in a playground. Practise in killer.sh.</p>'}</div>
+      <h2>Solve it</h2>
+      ${steps}
+      <p class="small">Real exam: run the question's <code>ssh</code> line first, <code>exit</code> at the end.</p>
+      <details class="step needhelp"><summary>Need help?</summary><div class="body">
+        ${q.keys && q.keys.length ? `<div class="writedown"><b>Write down:</b> ${q.keys.map(k => `<span class="chip">${inline(k)}</span>`).join(' ')}</div>` : ''}
+        ${st.broken ? `<h3>The story</h3><p>${esc(st.broken)}</p>${st.fix ? `<p>${esc(st.fix)}</p>` : ''}` : ''}
+        ${c.pattern ? `<h3>Spot the pattern</h3><div class="pattern"><div class="ptag">${esc(c.pattern)}</div>${(c.clues || []).map(x => `<div class="clue"><mark>${esc(x.q)}</mark><span>→ ${esc(x.means)}</span></div>`).join('')}</div>` : ''}
+        ${traps ? `<h3>Watch out</h3><div class="traps">${traps}</div>` : ''}
+        ${q.wrong ? `<h3>If something goes wrong</h3><div class="btable">${q.wrong}</div>` : ''}
+        ${q.words ? `<h3>Words</h3>${q.words}` : ''}
+        ${BASICS}
+      </div></details>`;
+  }
+
   // the whole answer in baby steps: one command, what you see, why
   function solution(q) {
     const plainWords = q.meaning || (q.story && q.story.broken ? esc(q.story.broken) : '');
@@ -262,7 +300,14 @@
     const p = prog()[n] || {};
     const back = q.mock ? `<a href="#/mock/${q.mock}" class="small">← Mock exam ${q.mock}</a>` : `<a href="#/" class="small">← Practice</a>`;
     const label = q.mock ? `Mock ${q.mock} · task ${q.n % 100}` : q.n;
-    app.innerHTML = `${back}
+    if (q.compact) app.innerHTML = `${back}
+      <h1>${label}. ${esc(q.title)}</h1>
+      <p class="sub">${q.star ? '<span class="chip star">often in exam</span> ' : ''}${q.target} min ${p.st ? '· ' + ST[p.st] : ''}</p>
+      ${compactBody(q)}
+      <h2>How did it go?</h2>
+      <div class="row"><button class="btn good" data-r="solo">Alone</button><button class="btn warn" data-r="help">With help</button><button class="btn bad" data-r="fail">Not yet</button></div>
+      <div class="pager">${q.mock ? '' : n > 1 ? `<a class="btn ghost" href="#/q/${n - 1}">← ${n - 1}</a>` : ''}${!q.mock && n < 40 ? `<a class="btn ghost" href="#/q/${n + 1}">${n + 1} →</a>` : ''}</div>`;
+    else app.innerHTML = `${back}
       <h1>${label}. ${esc(q.title)}</h1>
       <p class="sub">${q.star ? '<span class="chip star">often in exam</span> ' : ''}${q.target} min ${p.st ? '· ' + ST[p.st] : ''}</p>
       <section class="card exam"><div class="label">Exam question</div><p class="q">${inline(q.question)}</p></section>
