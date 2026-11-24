@@ -5667,30 +5667,6 @@ In a Deployment, all of this sits deeper, under `spec.template.spec`.
 
 ## 31. ★ Sidecar container
 
-### Three words first
-
-- **Sidecar** = a second container in the same pod. It helps the main one, e.g. reads its log file.
-  In YAML it goes under `initContainers:` with `restartPolicy: Always`.
-  That one line makes it a sidecar: it starts first and keeps running.
-- **emptyDir volume** = an empty folder that belongs to the pod.
-  Every container that mounts it sees the same files.
-- **volumeMounts** = where a volume appears inside a container.
-  Two containers in one pod do NOT see each other's files.
-  Only a volume that both mount is shared.
-
----
-
-### PART A. Build the exam (Killercoda only)
-
-```
-k delete ns work --ignore-not-found
-k create ns work
-k create deploy app --image=busybox:1.36 -n work -- sh -c "while true; do date >> /var/log/app.log; sleep 2; done"
-clear
-```
-
----
-
 ### PART B. The exam starts here
 
 **The question, as the exam words it:**
@@ -5699,70 +5675,73 @@ clear
 
 **What the question is really saying:**
 
-Add three things to the Deployment:
-
-```
-1. a volume                          (pod level)
-2. a mount of it in the main container   (container level)
-3. the sidecar, which also mounts it     (pod level, under initContainers)
-```
+One volume, mounted in the old container and in a new one.
 
 **Write down from the question:** namespace = `work` · deployment = `app` · sidecar = `log-shipper`, `busybox:1.36`, `tail -f /var/log/app.log` · volume = `logs` · mount path = `/var/log`
 
 ---
 
-### Opening routine (same 2 commands at the start of EVERY question)
+### Think
+
+- **Wanted:** a second container reading the main one's log.
+- **Look first:** the Deployment's YAML, saved to a file.
+- **Expect:** one container, named `busybox`, no volumes.
+- **Fix:** volume, mount in main, sidecar with the same mount.
+- **Prove:** READY `2/2`; the sidecar logs dates.
+
+### Time budget
+
+Target 8 min. Skip at 12.
+
+---
+
+### PART A. Build the exam (Killercoda only)
 
 ```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
+k delete ns work --ignore-not-found
+rm -f app.yaml app-backup.yaml
+k create ns work
+k create deploy app --image=busybox:1.36 -n work -- sh -c "while true; do date >> /var/log/app.log; sleep 2; done"
+k rollout status deploy/app -n work --timeout=120s
+clear
+k get po -n work
 ```
 
 ---
 
-### Step 1. Open the docs example next to you
+### Step 1. Save the Deployment to a file
 
-1. Open **https://kubernetes.io/docs** → search **`sidecar containers`** → click **"Sidecar Containers"**
-   (direct link: https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/ )
-2. Under the heading **"Example application"** there is a Deployment.
-   Its bottom half is exactly the shape you need:
+**Why:** a long edit is safer in a file, with a backup.
 
-```
-    spec:
-      containers:
-        - name: myapp
-          image: alpine:latest
-          command: ['sh', '-c', 'while true; do echo "logging" >> /opt/logs.txt; sleep 1; done']
-          volumeMounts:
-            - name: data
-              mountPath: /opt
-      initContainers:
-        - name: logshipper
-          image: alpine:latest
-          restartPolicy: Always
-          command: ['sh', '-c', 'tail -F /opt/logs.txt']
-          volumeMounts:
-            - name: data
-              mountPath: /opt
-      volumes:
-        - name: data
-          emptyDir: {}
-```
-Copy three pieces from it:
-the `volumeMounts:` block, the `initContainers:` block, the `volumes:` block.
-
----
-
-### Step 2. Work on a file, not in the live editor
-
-A long edit is safer in a file.
-If the YAML is wrong, you still have the file.
 ```
 k get deploy app -n work -o yaml > app.yaml
 cp app.yaml app-backup.yaml
+grep -A8 "containers:" app.yaml
+```
+You see:
+```
+      containers:
+      - command:
+        - sh
+        - -c
+        - while true; do date >> /var/log/app.log; sleep 2; done
+        image: busybox:1.36
+        imagePullPolicy: IfNotPresent
+        name: busybox   <-- the main container
+        resources: {}
+```
+**Means:** one container, no volume yet.
+
+---
+
+### Step 2. Add the three pieces
+
+**Why:** containers share files only through a volume. Docs page: "Communicate Between Containers in the Same Pod Using a Shared Volume".
+
+```
 vim app.yaml
 ```
-Type `/containers:` and press Enter. You see:
+The pod template's `spec:`, finished. Only `# <-- CHANGE` lines are new:
 ```
     spec:
       containers:
@@ -5774,129 +5753,126 @@ Type `/containers:` and press Enter. You see:
         imagePullPolicy: IfNotPresent
         name: busybox
         resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:                                  # <-- CHANGE
+        - name: logs                                   # <-- CHANGE
+          mountPath: /var/log                          # <-- CHANGE
+      - name: log-shipper                              # <-- CHANGE
+        image: busybox:1.36                            # <-- CHANGE
+        command: ["tail", "-f", "/var/log/app.log"]    # <-- CHANGE
+        volumeMounts:                                  # <-- CHANGE
+        - name: logs                                   # <-- CHANGE
+          mountPath: /var/log                          # <-- CHANGE
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:                                         # <-- CHANGE
+      - name: logs                                     # <-- CHANGE
+        emptyDir: {}                                   # <-- CHANGE
 ```
+**Means:** `volumes:` starts in the same column as `containers:`.
+**Don't:** put the sidecar above `busybox`. The log file must exist first.
+
+Vim: `:set paste` before pasting. Save with `:wq`.
 
 ---
 
-### Step 3. Add the three pieces
+### Step 3. Apply it
 
-Where they go: `app.yaml` has two `spec:` lines.
-Use the SECOND one, directly above `containers:`. It belongs to `template:`.
-Not the top `spec:` under `kind: Deployment`.
-- **First** = type `:set paste` and Enter. Then vim adds no indentation of its own.
-- **Pieces 1 and 3** = cursor on that second `spec:` line. Press `o`. Type the 11 lines.
-- **Piece 2** = cursor on `resources: {}` of the main container. Press `o`. Type the 3 lines.
-
-Lines marked `# ADD` are new. Do not type the `# ADD` text.
-The result looks like this:
-```
-    spec:
-      volumes:                                        # ADD  piece 1
-      - name: logs                                    # ADD
-        emptyDir: {}                                  # ADD
-      initContainers:                                 # ADD  piece 3
-      - name: log-shipper                             # ADD
-        image: busybox:1.36                           # ADD
-        restartPolicy: Always                         # ADD
-        command: ['sh', '-c', 'tail -f /var/log/app.log']   # ADD
-        volumeMounts:                                 # ADD
-        - name: logs                                  # ADD
-          mountPath: /var/log                         # ADD
-      containers:
-      - command:
-        - sh
-        - -c
-        - while true; do date >> /var/log/app.log; sleep 2; done
-        image: busybox:1.36
-        imagePullPolicy: IfNotPresent
-        name: busybox
-        resources: {}
-        volumeMounts:                                 # ADD  piece 2
-        - name: logs                                  # ADD
-          mountPath: /var/log                         # ADD
-```
-
-What changed compared with the docs example:
-
-| The docs say | You write |
-|---|---|
-| volume name `data` (3 places) | `logs` (3 places) |
-| `mountPath: /opt` (2 places) | `/var/log` (2 places) |
-| sidecar `name: logshipper` | `log-shipper` |
-| `image: alpine:latest` | `busybox:1.36` |
-| `tail -F /opt/logs.txt` | `tail -f /var/log/app.log` |
-
-Indentation rule: `volumes:`, `initContainers:` and `containers:` all start in the same column.
-
-Save with `Esc`, `:wq`.
-
----
-
-### Step 4. Apply
+**Why:** the file does nothing until the cluster has it.
 
 ```
 k apply -f app.yaml
 ```
-(A warning about a missing annotation is harmless.)
+You see:
+```
+Warning: resource deployments/app is missing the kubectl.kubernetes.io/last-applied-configuration annotation ...   <-- harmless
+deployment.apps/app configured
+```
 
 ---
 
-### Closing routine (same at the end of EVERY question: verify, then exit)
+### Step 4. Does the new pod run both containers?
+
+**Why:** the change makes a new pod.
 
 ```
 k rollout status deploy app -n work
-k get pods -n work
+k get po -n work
 ```
-You want READY **`2/2`** (main container + sidecar), `Running`.
+You see:
+```
+deployment "app" successfully rolled out
+app-...   2/2   Running   0   20s   <-- main + sidecar
+```
+
+---
+
+### Verify
+
+**Why:** prove the sidecar reads the main container's file.
 
 ```
-k logs deploy/app -c log-shipper -n work | tail -3
+k logs deploy/app -c log-shipper -n work --tail=3
 ```
-You want date lines.
-They prove the sidecar reads the file the main container writes.
+You see:
+```
+Tue Nov 24 10:00:01 UTC 2026   <-- date lines; yours differ
+...
+```
 
-```
-exit          # exam only
-```
+---
+
+### Three words first
+
+- **Sidecar** = a helper container in the same pod.
+- **emptyDir** = an empty folder owned by the pod, shared by its mounts.
+- **volumeMounts** = where a volume appears inside one container.
 
 ---
 
 ### If something goes wrong
 
-| You see | Cause | Fix |
-|---|---|---|
-| `error converting YAML` / `did not find expected key` | indentation, or a Tab | compare with step 3; spaces only |
-| pod stays `Init:0/1` forever | `restartPolicy: Always` is missing. Kubernetes waits for `tail -f` to finish. It never does. | add the line |
-| sidecar log: `tail: can't open '/var/log/app.log'` | the main container does not mount the volume (piece 2 missing), or the names differ | the `name:` must be identical in all 3 places |
-| everything is broken | start over | `cp app-backup.yaml app.yaml` |
-
----
-
-### Mug this up: the whole answer in 5 lines
-
-```
-k get deploy app -n work -o yaml > app.yaml
-vim app.yaml          # 1. volumes: emptyDir   2. volumeMounts in main   3. initContainers + restartPolicy: Always + volumeMounts
-k apply -f app.yaml
-k get pods -n work                           # 2/2
-k logs deploy/app -c log-shipper -n work
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 8 minutes.
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |`|e|r|r|o|r| |c|o|n|v|e|r|t|i|n|g| |Y|A|M|L|`| ||| |w|r|o|n|g| |i|n|d|e|n|t|a|t|i|o|n|,| |o|r| |a| |T|a|b| ||| |s|p|a|c|e|s| |o|n|l|y|;| |c|o|m|p|a|r|e| |w|i|t|h| |S|t|e|p| |2| |||
+||| |`|I|n|i|t|:|C|r|a|s|h|L|o|o|p|B|a|c|k|O|f|f|`| ||| |n|a|t|i|v|e| |s|i|d|e|c|a|r| |(|`|i|n|i|t|C|o|n|t|a|i|n|e|r|s|:|`| |+| |`|r|e|s|t|a|r|t|P|o|l|i|c|y|:| |A|l|w|a|y|s|`|)| |s|t|a|r|t|s| |f|i|r|s|t|;| |`|t|a|i|l| |-|f|`| |q|u|i|t|s|,| |n|o| |f|i|l|e| |y|e|t| ||| |m|o|v|e| |i|t| |u|n|d|e|r| |`|c|o|n|t|a|i|n|e|r|s|:|`|,| |a|f|t|e|r| |`|b|u|s|y|b|o|x|`| |||
+||| |s|i|d|e|c|a|r| |l|o|g|:| |`|t|a|i|l|:| |c|a|n|'|t| |o|p|e|n| |'|/|v|a|r|/|l|o|g|/|a|p|p|.|l|o|g|'|`| ||| |m|a|i|n| |c|o|n|t|a|i|n|e|r| |l|a|c|k|s| |t|h|e| |m|o|u|n|t|,| |o|r| |n|a|m|e|s| |d|i|f|f|e|r| ||| |`|n|a|m|e|:| |l|o|g|s|`| |i|n| |a|l|l| |3| |p|l|a|c|e|s| |||
+||| |R|E|S|T|A|R|T|S| |`|1|`| ||| |t|h|e| |s|i|d|e|c|a|r| |b|e|a|t| |t|h|e| |f|i|l|e| |b|y| |a| |m|o|m|e|n|t| ||| |n|o|t|h|i|n|g|;| |i|t| |r|e|s|t|a|r|t|e|d| |f|i|n|e| |||
+||| |t|h|e| |f|i|l|e| |i|s| |a| |m|e|s|s| ||| |m|a|n|y| |e|d|i|t|s| |w|e|n|t| |w|r|o|n|g| ||| |`|c|p| |a|p|p|-|b|a|c|k|u|p|.|y|a|m|l| |a|p|p|.|y|a|m|l|`|,| |r|e|d|o| |S|t|e|p| |2| |||
 
 ---
 
 ## 32. ★ HPA (autoscaling)
 
-### Three words first
+### PART B. The exam starts here
 
-- **HPA (HorizontalPodAutoscaler)** = changes a Deployment's number of replicas automatically, based on CPU use.
-- **Target 70%** = "keep average CPU use at 70% of what each pod REQUESTED".
-  So the Deployment must have a CPU request.
-  Without one, the HPA cannot calculate anything.
-- **Stabilization window** = how long the HPA waits before it removes pods.
-  So the count does not jump up and down.
+**The question, as the exam words it:**
+
+> In namespace `shop`, create a HorizontalPodAutoscaler named `web` for deployment `web`: minimum `2` replicas, maximum `5` replicas, target average CPU utilization `70`%. Set the scale-down stabilization window to `30` seconds.
+
+**What the question is really saying:**
+
+Create the HPA, then edit in the scale-down window.
+
+**Write down from the question:** namespace = `shop` · HPA = `web` · deployment = `web` · min `2` · max `5` · CPU `70`% · scale-down window `30` s
+
+---
+
+### Think
+
+- **Wanted:** an HPA: min, max, CPU target, scale-down window.
+- **Look first:** does the Deployment have a CPU request?
+- **Expect:** `cpu: 100m` under requests.
+- **Fix:** `k autoscale`, then add `behavior` with `k edit`.
+- **Prove:** TARGETS shows a number; the window reads `30`.
+
+### Time budget
+
+Target 4 min. Skip at 8.
 
 ---
 
@@ -5907,129 +5883,159 @@ k delete ns shop --ignore-not-found
 k create ns shop
 k create deploy web --image=nginx:1.27 -n shop
 k set resources deploy web -n shop --requests=cpu=100m
+k apply -f https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.8.0/components.yaml
+k get deploy metrics-server -n kube-system -o jsonpath='{.spec.template.spec.containers[0].args}' | grep -q kubelet-insecure-tls || k patch deploy metrics-server -n kube-system --type=json -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+k -n kube-system rollout status deploy metrics-server --timeout=180s
+k rollout status deploy/web -n shop --timeout=120s
+for i in $(seq 1 24); do k top nodes >/dev/null 2>&1 && break; sleep 5; done
 clear
+k get hpa -n shop
 ```
 
 ---
 
-### PART B. The exam starts here
+### Step 1. Does the Deployment request CPU?
 
-**The question, as the exam words it:**
+**Why:** 70% means 70% of the CPU request. No request, no percentage.
 
-> In namespace `shop`, create a HorizontalPodAutoscaler named `web` for deployment `web`: minimum `2` replicas, maximum `5` replicas, target average CPU utilization `70`%. Set the scale-down stabilization window to `30` seconds.
-
-**What the question is really saying:**
-
-One command creates the HPA.
-One small edit adds the 3-line "behavior" block.
-The command has no flag for it.
-
-**Write down from the question:** namespace = `shop` · deployment = `web` · min `2` · max `5` · CPU `70`% · scale-down window `30` s
+```
+k get deploy web -n shop -o jsonpath='{.spec.template.spec.containers[0].resources}'
+```
+You see:
+```
+{"requests":{"cpu":"100m"}}   <-- a CPU request exists
+```
+**Means:** the HPA can calculate.
 
 ---
 
-### Opening routine (same 2 commands at the start of EVERY question)
+### Step 2. Create the HPA
 
-```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
-```
-
----
-
-### Step 1. Create the HPA
+**Why:** one command sets min, max and the CPU target.
 
 ```
 k autoscale deploy web --min=2 --max=5 --cpu-percent=70 -n shop
 ```
-The HPA gets the same name as the deployment: `web`.
-A warning that `--cpu-percent` is deprecated is harmless.
-Flag refused? Run `k autoscale --help`.
-Use the newer spelling shown there (`--cpu=70%`).
+You see:
+```
+horizontalpodautoscaler.autoscaling/web autoscaled
+```
+**Means:** the HPA is named after the Deployment: `web`.
+**Don't:** worry about a "deprecated" warning. It still works.
 
 ---
 
-### Step 2. Add the stabilization window
+### Step 3. Add the scale-down window
+
+**Why:** `k autoscale` has no flag for it. Docs page: "Horizontal Pod Autoscaling", heading "Stabilization window".
 
 ```
 k edit hpa web -n shop
 ```
-Type `/maxReplicas` and press Enter.
-Press `O` (capital o: new line ABOVE).
-Type these 3 lines. Start `behavior:` in the same column as `maxReplicas:`:
+The `spec:` part, finished. Only `# <-- CHANGE` lines are new:
 ```
-  behavior:
-    scaleDown:
-      stabilizationWindowSeconds: 30
+spec:
+  behavior:                              # <-- CHANGE
+    scaleDown:                           # <-- CHANGE
+      stabilizationWindowSeconds: 30     # <-- CHANGE
+  maxReplicas: 5
+  metrics:
+  - resource:
+      name: cpu
+      target:
+        averageUtilization: 70
+        type: Utilization
+    type: Resource
+  minReplicas: 2
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: web
 ```
-Save with `Esc`, `:wq`.
-
-Forgot the spelling? Docs search **`horizontal pod autoscaling`**.
-Open page **"Horizontal Pod Autoscaling"** → heading **"Stabilization window"**.
-The same 3 lines are there.
+You see:
+```
+horizontalpodautoscaler.autoscaling/web edited
+```
+**Means:** `behavior:` starts in the same column as `maxReplicas:`.
 
 ---
 
-### Closing routine (same at the end of EVERY question: verify, then exit)
+### Step 4. Does the HPA see CPU numbers?
+
+**Why:** a number in TARGETS proves metrics reach the HPA.
 
 ```
-k get hpa -n shop
+k get hpa web -n shop
 ```
-You want one of these two (both are correct):
+You see:
 ```
-NAME   REFERENCE        TARGETS              MINPODS   MAXPODS   REPLICAS
-web    Deployment/web   cpu: 0%/70%          2         5         2
-web    Deployment/web   cpu: <unknown>/70%   2         5         2
+web   Deployment/web   cpu: 0%/70%   2   5   2   1m   <-- min 2, max 5, target 70%
 ```
-The second line appears when the playground has no metrics-server (see the table below).
-Check MINPODS, MAXPODS and `/70%`.
-```
-k get hpa web -n shop -o yaml | grep -A2 scaleDown
-```
-You want `stabilizationWindowSeconds: 30` directly under `scaleDown:`.
+**Means:** `<unknown>` in the first minute is normal. Run it again.
+
+---
+
+### Verify
+
+**Why:** prove the window is saved.
 
 ```
-exit          # exam only
+k get hpa web -n shop -o jsonpath='{.spec.behavior.scaleDown.stabilizationWindowSeconds}'
 ```
+You see:
+```
+30
+```
+
+---
+
+### Three words first
+
+- **HPA** = HorizontalPodAutoscaler. Sets the replica count by CPU use.
+- **metrics-server** = the add-on that measures pod CPU.
+- **Stabilization window** = how long the HPA waits before it removes pods.
 
 ---
 
 ### If something goes wrong
 
-| You see | Cause | Fix |
-|---|---|---|
-| TARGETS `<unknown>/70%` for more than a minute | the deployment has no CPU request | `k set resources deploy web -n shop --requests=cpu=100m` |
-| TARGETS `<unknown>` and `k top pods` also fails | no metrics-server in this playground | nothing to fix; the exam has it |
-| the question wants a different HPA name | the command names it after the deployment | add `--name=<name>` to step 1 |
-| the question asks for MEMORY | not every kubectl version has a memory flag | run `k autoscale --help`. Lists `--memory`? Use it (e.g. `--memory=80%`). If not: create with CPU. Then `k edit hpa`, change `name: cpu` to `name: memory`. |
-
----
-
-### Mug this up: the whole answer in 3 lines
-
-```
-k autoscale deploy web --min=2 --max=5 --cpu-percent=70 -n shop
-k edit hpa web -n shop            # behavior: / scaleDown: / stabilizationWindowSeconds: 30
-k get hpa -n shop
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 4 minutes.
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |`|A|l|r|e|a|d|y|E|x|i|s|t|s|`| ||| |a|n| |H|P|A| |`|w|e|b|`| |e|x|i|s|t|s| ||| |f|i|x| |i|t| |w|i|t|h| |`|k| |e|d|i|t| |h|p|a| |w|e|b| |-|n| |s|h|o|p|`| |||
+||| |`|<|u|n|k|n|o|w|n|>|`| |a|f|t|e|r| |2| |m|i|n|;| |`|k| |t|o|p| |p|o|d|s| |-|n| |s|h|o|p|`| |f|a|i|l|s| ||| |m|e|t|r|i|c|s|-|s|e|r|v|e|r| |m|i|s|s|i|n|g| |o|r| |s|t|a|r|t|i|n|g| ||| |r|u|n| |P|a|r|t| |A| |a|g|a|i|n|;| |t|h|e| |e|x|a|m| |h|a|s| |i|t| |||
+||| |v|i|m| |r|e|o|p|e|n|s|,| |e|r|r|o|r| |c|o|m|m|e|n|t| |o|n| |t|o|p| ||| |a| |T|a|b| |o|r| |w|r|o|n|g| |i|n|d|e|n|t| ||| |f|i|x| |t|h|e| |3| |l|i|n|e|s|,| |`|:|w|q|`| |a|g|a|i|n| |||
+||| |t|h|e| |q|u|e|s|t|i|o|n| |w|a|n|t|s| |a|n|o|t|h|e|r| |H|P|A| |n|a|m|e| ||| |n|a|m|e|d| |a|f|t|e|r| |t|h|e| |D|e|p|l|o|y|m|e|n|t| ||| |a|d|d| |`|-|-|n|a|m|e|=|<|n|a|m|e|>|`| |i|n| |S|t|e|p| |2| |||
 
 ---
 
 ## 33. ★ PriorityClass
 
-### Three words first
+### PART B. The exam starts here
 
-- **PriorityClass** = an object that holds a number.
-  A pod that names the class gets that priority.
-  Cluster full? Higher numbers are scheduled first.
-  Lower ones can be evicted to make room.
-- **User-defined** = created by an admin.
-  Two classes always exist and belong to Kubernetes: `system-cluster-critical`, `system-node-critical`.
-  They do NOT count as user-defined.
-- **priorityClassName** = the line in the pod template (pod level) that names the class.
+**The question, as the exam words it:**
+
+> 1. Create a PriorityClass named `high-priority` whose value is exactly ONE LESS than the highest existing user-defined PriorityClass.
+> 2. Configure deployment `web` in namespace `shop` to use this PriorityClass.
+
+**What the question is really saying:**
+
+Highest non-system value minus 1; then name the class in the Deployment.
+
+**Write down from the question:** class = `high-priority` · value = highest user-defined minus 1 · deployment = `web` in `shop`
+
+---
+
+### Think
+
+- **Wanted:** a new class one below the top, used by `web`.
+- **Look first:** the existing classes and values.
+- **Expect:** two `system-` classes plus user-defined ones.
+- **Fix:** create the class; set `priorityClassName`.
+- **Prove:** new pods show the class and number.
+
+### Time budget
+
+Target 3 min. Skip at 6.
 
 ---
 
@@ -6042,134 +6048,147 @@ k create ns shop
 k create deploy web --image=nginx:1.27 -n shop
 k create pc mid-prio --value=1000
 k create pc low-prio --value=100
+k rollout status deploy/web -n shop --timeout=120s
 clear
+k get pc
 ```
 
 ---
 
-### PART B. The exam starts here
+### Step 1. Which user-defined class is highest?
 
-**The question, as the exam words it:**
-
-> 1. Create a PriorityClass named `high-priority` whose value is exactly ONE LESS than the highest existing user-defined PriorityClass.
-> 2. Configure deployment `web` in namespace `shop` to use this PriorityClass.
-
-**What the question is really saying:**
-
-Look at the existing numbers. Ignore the two `system-` ones.
-Subtract 1. Create the class.
-Add one line to the Deployment.
-
-**Write down from the question:** class = `high-priority` · value = highest user-defined minus 1 · deployment = `web` in `shop`
-
----
-
-### Opening routine (same 2 commands at the start of EVERY question)
-
-```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
-```
-
----
-
-### Step 1. Look at the existing classes
+**Why:** the new value depends on it. Classes have no namespace.
 
 ```
 k get pc
 ```
-(`pc` = short for `priorityclass`. No namespace.) For example, you see:
+You see:
 ```
-NAME                      VALUE        GLOBAL-DEFAULT   AGE
-low-prio                  100          false            1m
-mid-prio                  1000         false            1m
-system-cluster-critical   2000000000   false            5h
-system-node-critical      2000001000   false            5h
+low-prio                  100          false   1m   ...
+mid-prio                  1000         false   1m   ...   <-- highest user-defined
+system-cluster-critical   2000000000   false   5h   ...   <-- ignore
+system-node-critical      2000001000   false   5h   ...   <-- ignore
 ```
-Ignore both `system-` lines.
-Highest user-defined = `1000`.
-One less = **`999`**.
+**Means:** highest user-defined = `1000`. One less = `999`.
+**Don't:** count the `system-` classes.
 
 ---
 
 ### Step 2. Create the class
 
+**Why:** the Deployment can only name a class that exists.
+
 ```
 k create pc high-priority --value=999
+```
+You see:
+```
+priorityclass.scheduling.k8s.io/high-priority created
 ```
 
 ---
 
-### Step 3. Put it on the Deployment
+### Step 3. Name the class in the Deployment
+
+**Why:** the class goes in the pod template. Docs page: "Pod Priority and Preemption".
 
 ```
 k edit deploy web -n shop
 ```
-Type `/containers:` and press Enter.
-Press `O` (capital o: new line ABOVE).
-Type this, starting in the same column as `containers:`:
+The pod template's `spec:`, finished. Only the `# <-- CHANGE` line is new:
 ```
-      priorityClassName: high-priority
+    spec:
+      priorityClassName: high-priority   # <-- CHANGE
+      containers:
+      - image: nginx:1.27
+        imagePullPolicy: IfNotPresent
+        name: nginx
 ```
-Save with `Esc`, `:wq`.
+You see:
+```
+deployment.apps/web edited
+```
+**Means:** `priorityClassName:` starts in the same column as `containers:`.
+**Don't:** use the first `spec:`. Use the second one.
 
-One-command alternative. Same result, no editor.
+---
+
+### Step 4. Wait for the new pods
+
+**Why:** priority is set at pod creation; pods are replaced.
+
 ```
-k patch deploy web -n shop -p '{"spec":{"template":{"spec":{"priorityClassName":"high-priority"}}}}'
+k rollout status deploy web -n shop
+```
+You see:
+```
+deployment "web" successfully rolled out
 ```
 
 ---
 
-### Closing routine (same at the end of EVERY question: verify, then exit)
+### Verify
+
+**Why:** prove the pods carry the class.
 
 ```
-k rollout status deploy web -n shop
-k get pods -n shop -o custom-columns=NAME:.metadata.name,CLASS:.spec.priorityClassName,PRIO:.spec.priority
+k get po -n shop -o custom-columns=NAME:.metadata.name,CLASS:.spec.priorityClassName,PRIO:.spec.priority
 ```
-You want CLASS `high-priority` and PRIO `999`.
-Old `Terminating` pods show CLASS `<none>`.
-Ignore them, or run the command again after a few seconds.
+You see:
+```
+NAME      CLASS           PRIO
+web-...   high-priority   999   <-- class and value
+```
+**Means:** a `Terminating` pod may show `<none>`. Run it again.
 
-```
-exit          # exam only
-```
+---
+
+### Three words first
+
+- **PriorityClass** = an object holding a number. Higher is scheduled first.
+- **User-defined** = made by an admin, not `system-`.
+- **priorityClassName** = the pod line that names the class.
 
 ---
 
 ### If something goes wrong
 
-| You see | Cause | Fix |
-|---|---|---|
-| you used 1999999999 | you counted a `system-` class | `k delete pc high-priority`, create again with the right value |
-| new pods do not appear, `k describe rs` says `no PriorityClass with name ...` | typo in the class name | fix the line in `k edit deploy` |
-| other pods got evicted after your change | expected: higher priority pods may push out lower ones | nothing to fix |
-| a PriorityClass value cannot be edited | the field is immutable | delete and create again |
-
----
-
-### Mug this up: the whole answer in 4 lines
-
-```
-k get pc                                     # highest NON-system value
-k create pc high-priority --value=<that minus 1>
-k edit deploy web -n shop                    # priorityClassName: high-priority  (above containers:)
-k get pods -n shop -o custom-columns=NAME:.metadata.name,CLASS:.spec.priorityClassName
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 3 minutes.
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |v|a|l|u|e| |`|1|9|9|9|9|9|9|9|9|9|`| ||| |c|o|u|n|t|e|d| |a| |`|s|y|s|t|e|m|-|`| |c|l|a|s|s| ||| |`|k| |d|e|l|e|t|e| |p|c| |h|i|g|h|-|p|r|i|o|r|i|t|y|`|,| |c|r|e|a|t|e| |a|g|a|i|n| |||
+||| |n|o| |n|e|w| |p|o|d|s|;| |`|k| |d|e|s|c|r|i|b|e| |r|s| |-|n| |s|h|o|p|`|:| |`|n|o| |P|r|i|o|r|i|t|y|C|l|a|s|s| |w|i|t|h| |n|a|m|e| |.|.|.|`| ||| |t|y|p|o| |i|n| |t|h|e| |n|a|m|e| ||| |f|i|x| |i|t| |i|n| |`|k| |e|d|i|t| |d|e|p|l|o|y| |w|e|b| |-|n| |s|h|o|p|`| |||
+||| |t|h|e| |v|a|l|u|e| |c|a|n|n|o|t| |b|e| |c|h|a|n|g|e|d| ||| |i|t| |i|s| |i|m|m|u|t|a|b|l|e| ||| |d|e|l|e|t|e| |a|n|d| |c|r|e|a|t|e| |a|g|a|i|n| |||
+||| |o|t|h|e|r| |p|o|d|s| |g|o|t| |e|v|i|c|t|e|d| ||| |h|i|g|h|e|r| |p|r|i|o|r|i|t|y| |p|u|s|h|e|s| |o|u|t| |l|o|w|e|r| ||| |e|x|p|e|c|t|e|d| |||
 
 ---
 
 ## 34. ★ Share a node's resources between pods
 
-### Three words first
+### PART B. The exam starts here
 
-- **Allocatable** = how much CPU and memory a node offers to pods in total.
-- **Allocated (requests)** = how much of that is already reserved by the pods running there.
-- **Request** = what one pod reserves.
-  The scheduler places a pod only if `allocatable − already requested ≥ the pod's request`.
-  Ask for too much and the pod stays Pending.
+**The question, as the exam words it:**
+
+> In namespace `shop`, deployment `web` runs `3` replicas, all on node `node01`. Set CPU and memory requests so that the three pods share the node's available resources equally. Leave roughly 10% headroom so the node stays stable. All 3 pods must be Running afterwards.
+
+**What the question is really saying:**
+
+Request per pod = free resources × 0.9 ÷ 3, for CPU and for memory.
+
+**Write down from the question:** namespace = `shop` · deployment = `web` · 3 replicas · node = `node01` · 10% headroom
+
+---
+
+### Think
+
+- **Wanted:** three equal requests, 10% left free.
+- **Look first:** the node's Allocatable and Allocated resources.
+- **Expect:** other pods already reserve some.
+- **Fix:** free × 0.9 ÷ 3, rounded down.
+- **Prove:** 3 pods Running; node near 90%.
+
+### Time budget
+
+Target 6 min. Skip at 10.
 
 ---
 
@@ -6200,172 +6219,125 @@ spec:
       - name: nginx
         image: nginx:1.27
 EOF
+k rollout status deploy/web -n shop --timeout=120s
 clear
+k get po -n shop -o wide
 ```
 
 ---
 
-### PART B. The exam starts here
+### Step 1. Take `web` out of the numbers
 
-**The question, as the exam words it:**
-
-> In namespace `shop`, deployment `web` runs `3` replicas, all on node `node01`. Set CPU and memory requests so that the three pods share the node's available resources equally. Leave roughly 10% headroom so the node stays stable. All 3 pods must be Running afterwards.
-
-**What the question is really saying:**
-
-A calculation, then one command:
-```
-(allocatable − already requested) × 0.9 ÷ 3  =  request per pod
-```
-
-**Write down from the question:** namespace = `shop` · deployment = `web` · 3 replicas · node = `node01` · 10% headroom
-
----
-
-### Opening routine (same 2 commands at the start of EVERY question)
-
-```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
-```
-
----
-
-### Step 1. Take the deployment out of the calculation
+**Why:** then the node shows only OTHER pods' requests.
 
 ```
 k scale deploy web --replicas=0 -n shop
 ```
-Now the node's numbers show only what OTHER pods use.
+You see:
+```
+deployment.apps/web scaled
+```
 
 ---
 
-### Step 2. Read the two numbers
+### Step 2. Read the node's two numbers
+
+**Why:** free = offered minus reserved.
 
 ```
 k describe node node01 | grep -A7 "Allocatable:"
 k describe node node01 | grep -A6 "Allocated resources:"
 ```
-Example output. **Your numbers will differ.**
-Killercoda's node01 is not this example:
+You see (an example; your numbers differ):
 ```
 Allocatable:
-  cpu:                1
-  ephemeral-storage:  19586931083
-  hugepages-1Gi:      0
-  hugepages-2Mi:      0
-  memory:             1843756Ki
-  pods:               110
+  cpu:                1          <-- offered
+  ...
+  memory:             1843756Ki  <-- offered
 ...
-Allocated resources:
-  (Total limits may be over 100 percent, i.e., overcommitted.)
   Resource           Requests     Limits
   --------           --------     ------
-  cpu                250m (25%)   0 (0%)
-  memory             200Mi (11%)  0 (0%)
-  ephemeral-storage  0 (0%)       0 (0%)
+  cpu                250m (25%)   0 (0%)   <-- reserved
+  memory             200Mi (11%)  0 (0%)   <-- reserved
 ```
-Take `cpu` and `memory` from Allocatable.
-Take the Requests column (not Limits) from Allocated resources.
+**Means:** CPU 1000m − 250m. Memory 1843756Ki − 200Mi.
+**Don't:** take the Limits column. Use Requests.
 
 ---
 
 ### Step 3. Calculate
 
-Convert first: `1` CPU = `1000m`.
-Memory in Ki ÷ 1024 = Mi → `1843756Ki` ≈ `1800Mi`.
+**Why:** the shell does the maths. `$(( ))` always rounds down.
 
-| | CPU | Memory |
-|---|---|---|
-| Allocatable | 1000m | 1800Mi |
-| − already requested | − 250m | − 200Mi |
-| = free | 750m | 1600Mi |
-| × 0.9 (keep 10%) | 675m | 1440Mi |
-| ÷ 3 pods | 225m | 480Mi |
-| round DOWN | **220m** | **480Mi** |
-
-**Use YOUR numbers, not this example.**
-Always round down.
+```
+echo $(( 1843756 / 1024 ))
+echo $(( (1000 - 250) * 9 / 10 / 3 ))
+echo $(( (1800 - 200) * 9 / 10 / 3 ))
+```
+You see:
+```
+1800   <-- memory in Mi
+225    <-- CPU per pod, in m
+480    <-- memory per pod, in Mi
+```
+**Means:** CPU 750m × 0.9 ÷ 3 = 225m. Memory 1600Mi × 0.9 ÷ 3 = 480Mi.
+**Don't:** copy these numbers. Use your own from Step 2.
 
 ---
 
-### Step 4. Set the requests and bring the pods back
+### Step 4. Set the requests, bring the pods back
+
+**Why:** the requests apply to every new pod.
 
 ```
-k set resources deploy web -n shop --requests=cpu=220m,memory=480Mi
+k set resources deploy web -n shop --requests=cpu=225m,memory=480Mi
 k scale deploy web --replicas=3 -n shop
 ```
-Only if the question also asks for limits: add `--limits=cpu=220m,memory=480Mi`.
+You see:
+```
+deployment.apps/web resource requirements updated
+deployment.apps/web scaled
+```
 
 ---
 
-### Closing routine (same at the end of EVERY question: verify, then exit)
+### Verify
+
+**Why:** prove all 3 fit, near 90%.
 
 ```
-k get pods -n shop -o wide
-```
-You want 3 pods, all `Running`, all on `node01`.
-
-```
+k get po -n shop -o wide
 k describe node node01 | grep -A6 "Allocated resources:"
 ```
-You want CPU and memory requests around 90%, not above 100%.
+You see:
+```
+web-...   1/1   Running   0   20s   ...   node01   <-- 3 lines like this
+...
+  cpu                925m (92%)    0 (0%)
+  memory             1640Mi (91%)  0 (0%)
+```
 
-```
-exit          # exam only
-```
+---
+
+### Three words first
+
+- **Allocatable** = the CPU and memory a node offers to pods in total.
+- **Allocated resources** = what running pods already requested.
+- **Request** = what one pod reserves.
 
 ---
 
 ### If something goes wrong
 
-| You see | Cause | Fix |
-|---|---|---|
-| one pod `Pending`, Events: `Insufficient cpu` (or memory) | the requests are a bit too big | lower them by 10% and run step 4 again |
-| the pod has init containers too | init containers run one at a time, before the app. The scheduler reserves the BIGGER of: largest init request, or sum of app requests. | usually nothing to do. Keep each init request at or below the app's request. |
-| the deployment has 2 containers per pod | `set resources` applies the values to EVERY container | divide by (pods × containers), or name one container: `-c <name>` |
-
----
-
-### Mug this up: the whole answer in 5 lines
-
-```
-k scale deploy web --replicas=0 -n shop
-k describe node node01 | grep -A7 "Allocatable:"
-k describe node node01 | grep -A6 "Allocated resources:"
-k set resources deploy web -n shop --requests=cpu=<X>m,memory=<Y>Mi      # (free × 0.9) ÷ 3, rounded down
-k scale deploy web --replicas=3 -n shop      ;  k get pods -n shop
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 6 minutes.
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |o|n|e| |p|o|d| |`|P|e|n|d|i|n|g|`|,| |E|v|e|n|t|s|:| |`|I|n|s|u|f|f|i|c|i|e|n|t| |c|p|u|`| |(|o|r| |m|e|m|o|r|y|)| ||| |r|e|q|u|e|s|t|s| |s|l|i|g|h|t|l|y| |t|o|o| |b|i|g| ||| |l|o|w|e|r| |t|h|e|m| |1|0|%|,| |r|e|p|e|a|t| |S|t|e|p| |4| |||
+||| |2| |c|o|n|t|a|i|n|e|r|s| |p|e|r| |p|o|d| ||| |`|s|e|t| |r|e|s|o|u|r|c|e|s|`| |s|e|t|s| |E|V|E|R|Y| |c|o|n|t|a|i|n|e|r| ||| |d|i|v|i|d|e| |b|y| |6|,| |o|r| |n|a|m|e| |o|n|e| |c|o|n|t|a|i|n|e|r| |w|i|t|h| |`|-|c| |<|n|a|m|e|>|`| |||
+||| |t|h|e| |p|o|d| |h|a|s| |i|n|i|t| |c|o|n|t|a|i|n|e|r|s| ||| |t|h|e| |b|i|g|g|e|r| |o|f| |i|n|i|t| |o|r| |a|p|p| |r|e|q|u|e|s|t|s| |c|o|u|n|t|s| ||| |k|e|e|p| |i|n|i|t| |r|e|q|u|e|s|t|s| |a|t| |o|r| |b|e|l|o|w| |a|p|p| |r|e|q|u|e|s|t|s| |||
 
 ---
 
 ## 35. ConfigMap and Secret in a pod
-
-### Three words first
-
-- **ConfigMap** = holds plain settings as `KEY=VALUE`.
-- **Secret** = the same, for sensitive values (passwords).
-- **As environment variables** = every key becomes a variable inside the container.
-  Written with `envFrom:` at CONTAINER level.
-- **As files (a volume)** = every key becomes a file in a folder in the container.
-  The file's content is the value.
-  Needs two blocks: `volumes:` at POD level, `volumeMounts:` at CONTAINER level.
-  The same `name:` links them.
-
----
-
-### PART A. Build the exam (Killercoda only)
-
-```
-k delete ns app --ignore-not-found
-k create ns app
-clear
-```
-
----
 
 ### PART B. The exam starts here
 
@@ -6378,187 +6350,172 @@ clear
 
 **What the question is really saying:**
 
-Two one-line commands.
-Then a pod YAML. Add two blocks to it:
-`envFrom` for the ConfigMap.
-`volumes` + `volumeMounts` for the Secret.
+Two one-line creates, then a pod YAML with `envFrom` and a Secret volume.
 
 **Write down from the question:** namespace = `app` · ConfigMap = `app-cfg` (`LOG_LEVEL=debug`) · Secret = `db-sec` (`password=s3cret`) · pod = `api`, `nginx:1.27` · mount path = `/etc/db`
 
 ---
 
-### Opening routine (same 2 commands at the start of EVERY question)
+### Think
 
-```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
-```
+- **Wanted:** a ConfigMap, a Secret, and a pod that uses both.
+- **Look first:** what already exists in `app`.
+- **Expect:** only `kube-root-ca.crt` (every namespace has it).
+- **Fix:** create both imperatively; pod YAML from dry-run plus two blocks.
+- **Prove:** the variable and the file exist inside the pod.
 
----
+### Time budget
 
-### Step 1. Create the ConfigMap and the Secret
-
-```
-k create cm app-cfg --from-literal=LOG_LEVEL=debug -n app
-k create secret generic db-sec --from-literal=password=s3cret -n app
-```
-
----
-
-### Step 2. Generate the pod YAML (no typing)
-
-```
-k run api --image=nginx:1.27 -n app --dry-run=client -o yaml > pod.yaml
-vim pod.yaml
-```
-`--dry-run=client -o yaml` = print the YAML, create nothing.
-You see:
-```
-spec:
-  containers:
-  - image: nginx:1.27
-    name: api
-    resources: {}
-  dnsPolicy: ClusterFirst
-  restartPolicy: Always
-```
-
----
-
-### Step 3. If you forget the lines: where they are in the docs
-
-Step 4 shows every line you need.
-Use this table only if you forget them in the exam.
-
-| Block | Docs search | Page | Copy |
-|---|---|---|---|
-| `envFrom` | `configmap` | "Configure a Pod to Use a ConfigMap" → heading "Configure all key-value pairs in a ConfigMap as container environment variables" | the 3 lines `envFrom:` / `- configMapRef:` / `name:` |
-| Secret volume | `secret volume` | "Distribute Credentials Securely Using Secrets" → heading "Create a Pod that has access to the secret data through a Volume" | the `volumeMounts:` block and the `volumes:` block |
-
----
-
-### Step 4. Add the two blocks
-
-In `pod.yaml`, type `:set paste` and Enter first.
-Then vim adds no indentation of its own.
-- **Container level** = cursor on `resources: {}`. Press `o`.
-  Type the 6 lines `envFrom:` to `mountPath: /etc/db`.
-  They start 4 spaces in, same column as `image:`.
-- **Pod level** = stay on the last line you typed. Press `Esc`, `o`.
-  Type the 4 lines `volumes:` to `secretName: db-sec`.
-  They start 2 spaces in, same column as `containers:`.
-
-Lines marked `# ADD` are new. Do not type the `# ADD` text.
-The result looks like this:
-```
-spec:
-  containers:
-  - image: nginx:1.27
-    name: api
-    resources: {}
-    envFrom:                       # ADD  (container level: same column as "image:")
-    - configMapRef:                # ADD
-        name: app-cfg              # ADD
-    volumeMounts:                  # ADD  (container level)
-    - name: db                     # ADD
-      mountPath: /etc/db           # ADD
-  volumes:                         # ADD  (pod level: same column as "containers:")
-  - name: db                       # ADD
-    secret:                        # ADD
-      secretName: db-sec           # ADD
-  dnsPolicy: ClusterFirst
-  restartPolicy: Always
-```
-
-How it reads:
-- `envFrom` → "make every key of ConfigMap `app-cfg` an environment variable"
-- `volumes` → "this pod has storage called `db`. Its content is Secret `db-sec`"
-- `volumeMounts` → "show storage `db` inside the container at `/etc/db`"
-
-`db` is just a linking name you choose.
-It must be the same in both blocks.
-
-Save with `Esc`, `:wq`. Then:
-```
-k apply -f pod.yaml
-```
-
----
-
-### Closing routine (same at the end of EVERY question: verify, then exit)
-
-```
-k get pod api -n app                         # 1/1 Running
-k exec api -n app -- env | grep LOG_LEVEL    # LOG_LEVEL=debug
-k exec api -n app -- ls /etc/db              # password
-k exec api -n app -- cat /etc/db/password    # s3cret
-```
-
-```
-exit          # exam only
-```
-
----
-
-### If something goes wrong
-
-| You see | Cause | Fix |
-|---|---|---|
-| STATUS `CreateContainerConfigError` | the ConfigMap or Secret name in the pod does not exist | `k describe pod api -n app` names it. `k delete pod api -n app`, fix `pod.yaml`, apply again. |
-| `strict decoding error: unknown field "spec.containers[0].volumes"` | `volumes:` is indented under the container | move it to pod level (same column as `containers:`) |
-| `unknown field "secretName"` under configMap | wrong word | Secret volume uses `secretName:`. ConfigMap volume uses `name:`. |
-| `k apply` after a fix says `Forbidden: pod updates may not change fields other than ...` | pods are immutable: env and volumes cannot change after creation | `k delete pod api -n app`, fix the file, apply again |
-
-**Variants:**
-- **Only ONE key as a variable** = `env:` with `valueFrom:` → `configMapKeyRef:` (`name:` + `key:`).
-  Same docs page, heading "Define container environment variables using ConfigMap data".
-- Secret as environment variables: `envFrom:` → `- secretRef:` → `name: db-sec`.
-- ConfigMap as files: `volumes:` → `configMap:` → `name: app-cfg`.
-
----
-
-### Mug this up: the whole answer in 5 lines
-
-```
-k create cm app-cfg --from-literal=LOG_LEVEL=debug -n app
-k create secret generic db-sec --from-literal=password=s3cret -n app
-k run api --image=nginx:1.27 -n app --dry-run=client -o yaml > pod.yaml
-vim pod.yaml          # container: envFrom + volumeMounts      pod: volumes
-k apply -f pod.yaml   ;   k exec api -n app -- env | grep LOG_LEVEL
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 6 minutes.
-
----
-
-## 36. ★ Taint, toleration, nodeSelector
-
-### Three words first
-
-- **Taint** = a mark on a NODE, written `key=value:effect`.
-  Effect `NoSchedule`: the scheduler puts no new pod on that node.
-  Exception: the pod tolerates the taint.
-- **Toleration** = lines in a POD that say "I accept this taint".
-  It only ALLOWS the pod on that node. It does not send the pod there.
-- **nodeSelector** = pod lines: "only put me on a node with this label".
-  This is what SENDS the pod to a node.
-
-Want a pod on a tainted node for sure? You need both:
-toleration (allowed) + nodeSelector (sent).
+Target 6 min. Skip at 10.
 
 ---
 
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete pod x --ignore-not-found
-k taint node node01 env=prod:NoSchedule- 2>/dev/null
-k label node node01 env- 2>/dev/null
+k delete ns app --ignore-not-found
+rm -f pod.yaml
+k create ns app
 clear
+k get cm,secret -n app
 ```
 
 ---
+
+### Step 1. Create the ConfigMap and the Secret
+
+**Why:** both have a one-line create command. No YAML needed.
+
+```
+k create cm app-cfg --from-literal=LOG_LEVEL=debug -n app
+k create secret generic db-sec --from-literal=password=s3cret -n app
+```
+You see:
+```
+configmap/app-cfg created
+secret/db-sec created
+```
+**Don't:** forget `generic`. `k create secret` alone needs a type.
+
+---
+
+### Step 2. Generate the pod YAML
+
+**Why:** `--dry-run=client -o yaml` prints the YAML and creates nothing.
+
+```
+k run api --image=nginx:1.27 -n app --dry-run=client -o yaml > pod.yaml
+cat pod.yaml
+```
+You see:
+```
+...
+spec:
+  containers:
+  - image: nginx:1.27
+    name: api
+    resources: {}   <-- container level starts 4 spaces in
+  dnsPolicy: ClusterFirst   <-- pod level starts 2 spaces in
+...
+```
+
+---
+
+### Step 3. Add envFrom and the Secret volume
+
+**Why:** copy the blocks from the docs pages "Configure a Pod to Use a ConfigMap" and "Secrets".
+
+```
+vim pod.yaml
+```
+The finished file. Only the `# <-- CHANGE` lines are new:
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: api
+  name: api
+  namespace: app
+spec:
+  containers:
+  - image: nginx:1.27
+    name: api
+    resources: {}
+    envFrom:                 # <-- CHANGE
+    - configMapRef:          # <-- CHANGE
+        name: app-cfg        # <-- CHANGE
+    volumeMounts:            # <-- CHANGE
+    - name: db               # <-- CHANGE
+      mountPath: /etc/db     # <-- CHANGE
+  volumes:                   # <-- CHANGE
+  - name: db                 # <-- CHANGE
+    secret:                  # <-- CHANGE
+      secretName: db-sec     # <-- CHANGE
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+```
+**Means:** `envFrom` and `volumeMounts` sit at container level. `volumes` sits at pod level. The name `db` links them.
+**Don't:** delete other lines your file has, like `status: {}`. They do no harm.
+
+Vim tip: type `:set paste` before you press `i` and paste. Save with `:wq`.
+
+---
+
+### Step 4. Create the pod
+
+**Why:** the file does nothing until the cluster has it.
+
+```
+k apply -f pod.yaml
+k get pod api -n app
+```
+You see:
+```
+pod/api created
+api   1/1   Running   0   10s   <-- Running
+```
+
+---
+
+### Verify
+
+**Why:** prove the variable and the file are inside the container.
+
+```
+k exec api -n app -- env | grep LOG_LEVEL
+k exec api -n app -- cat /etc/db/password
+```
+You see:
+```
+LOG_LEVEL=debug
+s3cret   <-- your prompt may follow on the same line
+```
+
+---
+
+### Three words first
+
+- **ConfigMap** = plain settings stored as `KEY=VALUE`.
+- **Secret** = the same, for sensitive values like passwords.
+- **envFrom** = turns every key of a ConfigMap into an environment variable.
+- **volumes + volumeMounts** = `volumes` names the storage; `volumeMounts` shows it at a path. Each key becomes a file.
+
+---
+
+### If something goes wrong
+
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |S|T|A|T|U|S| |`|C|r|e|a|t|e|C|o|n|t|a|i|n|e|r|C|o|n|f|i|g|E|r|r|o|r|`| ||| |t|h|e| |C|o|n|f|i|g|M|a|p| |n|a|m|e| |i|n| |`|e|n|v|F|r|o|m|`| |d|o|e|s| |n|o|t| |e|x|i|s|t| ||| |`|k| |d|e|s|c|r|i|b|e| |p|o|d| |a|p|i| |-|n| |a|p|p|`| |n|a|m|e|s| |i|t|;| |d|e|l|e|t|e| |t|h|e| |p|o|d|,| |f|i|x|,| |a|p|p|l|y| |a|g|a|i|n| |||
+||| |S|T|A|T|U|S| |s|t|a|y|s| |`|C|o|n|t|a|i|n|e|r|C|r|e|a|t|i|n|g|`| ||| |t|h|e| |S|e|c|r|e|t| |n|a|m|e| |i|n| |`|v|o|l|u|m|e|s|`| |d|o|e|s| |n|o|t| |e|x|i|s|t| ||| |r|e|a|d| |E|v|e|n|t|s| |i|n| |`|k| |d|e|s|c|r|i|b|e| |p|o|d| |a|p|i| |-|n| |a|p|p|`|;| |f|i|x| |`|s|e|c|r|e|t|N|a|m|e|:|`| |||
+||| |`|u|n|k|n|o|w|n| |f|i|e|l|d| |"|s|p|e|c|.|c|o|n|t|a|i|n|e|r|s|[|0|]|.|v|o|l|u|m|e|s|"|`| ||| |`|v|o|l|u|m|e|s|:|`| |i|s| |i|n|d|e|n|t|e|d| |u|n|d|e|r| |t|h|e| |c|o|n|t|a|i|n|e|r| ||| |m|o|v|e| |i|t| |t|o| |t|h|e| |c|o|l|u|m|n| |o|f| |`|c|o|n|t|a|i|n|e|r|s|:|`| |||
+||| |`|F|o|r|b|i|d|d|e|n|:| |p|o|d| |u|p|d|a|t|e|s| |m|a|y| |n|o|t| |c|h|a|n|g|e| |f|i|e|l|d|s| |o|t|h|e|r| |t|h|a|n| |.|.|.|`| ||| |a| |p|o|d|'|s| |e|n|v| |a|n|d| |v|o|l|u|m|e|s| |c|a|n|n|o|t| |c|h|a|n|g|e| ||| |`|k| |d|e|l|e|t|e| |p|o|d| |a|p|i| |-|n| |a|p|p|`|,| |t|h|e|n| |a|p|p|l|y| |a|g|a|i|n| |||
+||| |t|h|e| |q|u|e|s|t|i|o|n| |w|a|n|t|s| |O|N|E| |k|e|y| |o|n|l|y| ||| |d|i|f|f|e|r|e|n|t| |b|l|o|c|k| ||| |`|e|n|v|:|`| |w|i|t|h| |`|v|a|l|u|e|F|r|o|m|:|`| |/| |`|c|o|n|f|i|g|M|a|p|K|e|y|R|e|f|:|`| |(|s|a|m|e| |d|o|c|s| |p|a|g|e|)| |||
+
+---
+
+## 36. ★ Taint, toleration, nodeSelector
 
 ### PART B. The exam starts here
 
@@ -6570,172 +6527,174 @@ clear
 
 **What the question is really saying:**
 
-Two commands on the node.
-Then a pod YAML with two added blocks at pod level.
+Mark the node twice, then a pod YAML with a toleration and a nodeSelector.
 
-**Write down from the question:** node = `node01` · taint = `env=prod:NoSchedule` · label = `env=prod` · pod = `x`, `nginx:1.27`
-
----
-
-### Opening routine (same 2 commands at the start of EVERY question)
-
-```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
-```
+**Write down from the question:** node = `node01` · taint = `env=prod:NoSchedule` · label = `env=prod` · pod = `x`, `nginx:1.27` · namespace = `default`
 
 ---
 
-### Step 1. Taint and label the node
+### Think
 
-```
-k taint node node01 env=prod:NoSchedule
-k label node node01 env=prod
-```
-Check:
-```
-k describe node node01 | grep -i taints
-k get node node01 --show-labels | grep -o "env=prod"
-```
+- **Wanted:** pod `x` running on the tainted `node01`.
+- **Look first:** the taints on `node01`.
+- **Expect:** `<none>` before you start.
+- **Fix:** toleration (allowed there) + nodeSelector (sent there).
+- **Prove:** the pod's NODE column says `node01`.
 
----
+### Time budget
 
-### Step 2. Generate the pod YAML
-
-```
-k run x --image=nginx:1.27 --dry-run=client -o yaml > x.yaml
-vim x.yaml
-```
-
----
-
-### Step 3. Where to copy the toleration from
-
-1. Open **https://kubernetes.io/docs** → search **`taints tolerations`** → click **"Taints and Tolerations"**
-   (direct link: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/ )
-2. Near the top, copy this block.
-   In `x.yaml` it goes at POD level, under `spec:`.
-   It starts in the same column as `containers:` (step 4 shows where):
-```
-tolerations:
-- key: "key1"
-  operator: "Equal"
-  value: "value1"
-  effect: "NoSchedule"
-```
-
----
-
-### Step 4. Add two blocks at pod level
-
-In `x.yaml`, type `:set paste` and Enter.
-Put the cursor on the line `spec:` (directly above `containers:`).
-Press `o`, and type the 7 lines.
-Each starts 2 spaces in, the same column as `containers:`.
-Indent the toleration's lines as shown.
-
-Lines marked `# ADD` are new.
-Do not type the `# ADD` text or the comments after it.
-The result looks like this:
-```
-spec:
-  nodeSelector:                    # ADD  (pod level: same column as "containers:")
-    env: prod                      # ADD
-  tolerations:                     # ADD
-  - key: "env"                     # ADD   docs said "key1"
-    operator: "Equal"              # ADD
-    value: "prod"                  # ADD   docs said "value1"
-    effect: "NoSchedule"           # ADD
-  containers:
-  - image: nginx:1.27
-    name: x
-```
-
-How the taint maps to the toleration:
-
-| Taint `env=prod:NoSchedule` | Toleration line |
-|---|---|
-| `env` | `key: "env"` |
-| `prod` | `value: "prod"` |
-| `NoSchedule` | `effect: "NoSchedule"` |
-
-Save with `Esc`, `:wq`. Then:
-```
-k apply -f x.yaml
-```
-
----
-
-### Closing routine (same at the end of EVERY question: verify, then exit)
-
-```
-k get pod x -o wide
-```
-You want `Running` and NODE `node01`.
-
-```
-exit          # exam only
-```
-
----
-
-### If something goes wrong
-
-| You see | Cause | Fix |
-|---|---|---|
-| pod `Pending`, Events: `had untolerated taint {env: prod}` | key, value or effect in the toleration differ from the taint | `k delete pod x`, fix `x.yaml`, apply again |
-| pod `Pending`, Events: `didn't match Pod's node affinity/selector` | the node label is missing or different | `k label node node01 env=prod` |
-| pod is Running but on another node | `nodeSelector` is missing | add it (toleration alone does not send the pod) |
-
-**Related commands:**
-```
-k taint node node01 env=prod:NoSchedule-     # remove a taint: same text + "-" at the end
-k label node node01 env-                     # remove a label: key + "-"
-k describe node <node> | grep -i taints      # see taints
-```
-- `NoSchedule` = no NEW pods.
-- `NoExecute` = also removes pods already running there.
-- A toleration for "any value": `operator: "Exists"` and no `value:` line.
-
----
-
-### Mug this up: the whole answer in 5 lines
-
-```
-k taint node node01 env=prod:NoSchedule
-k label node node01 env=prod
-k run x --image=nginx:1.27 --dry-run=client -o yaml > x.yaml
-vim x.yaml            # pod level: nodeSelector + tolerations (copied from docs)
-k apply -f x.yaml   ;   k get pod x -o wide
-```
-
-**To repeat the question (and clean the node):** paste Part A again.
-**Target time:** 5 minutes.
-
----
-
-## 37. Rolling update and rollback
-
-### Three words first
-
-- **Rolling update** = you change a Deployment's image. It replaces the pods a few at a time.
-  So the app stays available.
-- **Revision** = each change of the pod template creates a new numbered revision.
-  The Deployment keeps the old ones.
-- **Rollback** = go back to an earlier revision: `k rollout undo`.
+Target 5 min. Skip at 8.
 
 ---
 
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete ns shop --ignore-not-found
-k create ns shop
-k create deploy web --image=nginx:1.27 --replicas=3 -n shop
+k delete pod x --ignore-not-found
+rm -f x.yaml
+k taint node node01 env=prod:NoSchedule- || true
+k label node node01 env-
 clear
+k describe node node01 | grep -i taints
 ```
 
 ---
+
+### Step 1. Taint and label the node
+
+**Why:** the taint keeps pods away; the label lets a pod pick this node.
+
+```
+k taint node node01 env=prod:NoSchedule
+k label node node01 env=prod
+```
+You see:
+```
+node/node01 tainted
+node/node01 labeled
+```
+
+---
+
+### Step 2. Check both marks
+
+**Why:** a typo here breaks the pod later.
+
+```
+k describe node node01 | grep -i taints
+k get node node01 -L env
+```
+You see:
+```
+Taints:             env=prod:NoSchedule   <-- the taint
+NAME     STATUS   ROLES    AGE   VERSION   ENV
+node01   Ready    <none>   ...   v1.35.x   prod   <-- the label
+```
+**Means:** the node is ready for the pod.
+
+---
+
+### Step 3. Generate the pod YAML
+
+**Why:** `--dry-run=client -o yaml` prints the YAML and creates nothing.
+
+```
+k run x --image=nginx:1.27 --dry-run=client -o yaml > x.yaml
+grep -n containers x.yaml
+```
+You see:
+```
+...  containers:   <-- the new blocks go above this line, same column
+```
+
+---
+
+### Step 4. Add the toleration and the nodeSelector
+
+**Why:** copy from the docs pages "Taints and Tolerations" and "Assign Pods to Nodes".
+
+```
+vim x.yaml
+```
+The finished file. Only the `# <-- CHANGE` lines are new:
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: x
+  name: x
+spec:
+  nodeSelector:              # <-- CHANGE
+    env: prod                # <-- CHANGE
+  tolerations:               # <-- CHANGE
+  - key: "env"               # <-- CHANGE
+    operator: "Equal"        # <-- CHANGE
+    value: "prod"            # <-- CHANGE
+    effect: "NoSchedule"     # <-- CHANGE
+  containers:
+  - image: nginx:1.27
+    name: x
+    resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+```
+**Means:** the docs say `key1` and `value1`. Use the taint's `env` and `prod`.
+**Don't:** skip `nodeSelector`. A toleration only allows; it does not send.
+
+Vim tip: type `:set paste` before you press `i` and paste. Save with `:wq`.
+
+---
+
+### Step 5. Create the pod
+
+**Why:** the file does nothing until the cluster has it.
+
+```
+k apply -f x.yaml
+```
+You see:
+```
+pod/x created
+```
+
+---
+
+### Verify
+
+**Why:** prove the pod runs on `node01`.
+
+```
+k get pod x -o wide
+```
+You see:
+```
+x   1/1   Running   0   15s   192.168.x.x   node01   ...   <-- NODE = node01
+```
+
+---
+
+### Three words first
+
+- **Taint** = a mark on a node, `key=value:effect`. `NoSchedule`: no new pods, unless they tolerate it.
+- **Toleration** = pod lines that say "I accept this taint". It allows, it does not send.
+- **nodeSelector** = pod lines: "only put me on a node with this label".
+
+---
+
+### If something goes wrong
+
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |`|P|e|n|d|i|n|g|`|,| |E|v|e|n|t|s|:| |`|h|a|d| |u|n|t|o|l|e|r|a|t|e|d| |t|a|i|n|t| |{|e|n|v|:| |p|r|o|d|}|`| ||| |k|e|y|,| |v|a|l|u|e| |o|r| |e|f|f|e|c|t| |d|i|f|f|e|r| |f|r|o|m| |t|h|e| |t|a|i|n|t| ||| |`|k| |d|e|l|e|t|e| |p|o|d| |x|`|,| |f|i|x| |`|x|.|y|a|m|l|`|,| |a|p|p|l|y| |a|g|a|i|n| |||
+||| |`|P|e|n|d|i|n|g|`|,| |E|v|e|n|t|s|:| |`|d|i|d|n|'|t| |m|a|t|c|h| |P|o|d|'|s| |n|o|d|e| |a|f|f|i|n|i|t|y|/|s|e|l|e|c|t|o|r|`| ||| |t|h|e| |n|o|d|e| |l|a|b|e|l| |i|s| |m|i|s|s|i|n|g| |o|r| |d|i|f|f|e|r|e|n|t| ||| |`|k| |l|a|b|e|l| |n|o|d|e| |n|o|d|e|0|1| |e|n|v|=|p|r|o|d|`| |||
+||| |`|a|l|r|e|a|d|y| |h|a|s| |e|n|v| |t|a|i|n|t|(|s|)| |w|i|t|h| |s|a|m|e| |e|f|f|e|c|t|(|s|)|`| ||| |t|h|e| |t|a|i|n|t| |i|s| |a|l|r|e|a|d|y| |t|h|e|r|e| ||| |n|o|t|h|i|n|g| |t|o| |d|o|;| |c|h|e|c|k| |w|i|t|h| |S|t|e|p| |2| |||
+||| |`|'|e|n|v|'| |a|l|r|e|a|d|y| |h|a|s| |a| |v|a|l|u|e|`| ||| |t|h|e| |l|a|b|e|l| |i|s| |a|l|r|e|a|d|y| |t|h|e|r|e| ||| |a|d|d| |`|-|-|o|v|e|r|w|r|i|t|e|`| |o|n|l|y| |i|f| |t|h|e| |v|a|l|u|e| |i|s| |w|r|o|n|g| |||
+||| |`|u|n|k|n|o|w|n| |f|i|e|l|d| |"|s|p|e|c|.|c|o|n|t|a|i|n|e|r|s|[|0|]|.|t|o|l|e|r|a|t|i|o|n|s|"|`| ||| |t|h|e| |b|l|o|c|k|s| |a|r|e| |i|n|d|e|n|t|e|d| |u|n|d|e|r| |t|h|e| |c|o|n|t|a|i|n|e|r| ||| |m|o|v|e| |t|h|e|m| |t|o| |t|h|e| |c|o|l|u|m|n| |o|f| |`|c|o|n|t|a|i|n|e|r|s|:|`| |||
+
+---
+
+## 37. Rolling update and rollback
 
 ### PART B. The exam starts here
 
@@ -6748,147 +6707,142 @@ clear
 
 **What the question is really saying:**
 
-Three commands: change the image, watch it finish, undo.
-Then one output into a file.
+Change the image, wait, undo, then save the current image to a file.
 
 **Write down from the question:** namespace = `shop` · deployment = `web` · new image = `nginx:1.28` · file = `/root/image.txt`
 
 ---
 
-### Opening routine (same 2 commands at the start of EVERY question)
+### Think
+
+- **Wanted:** update, roll back, then the image in a file.
+- **Look first:** the container name and the current image.
+- **Expect:** container `nginx`, image `nginx:1.27`.
+- **Fix:** `set image`, `rollout status`, `rollout undo`, jsonpath into the file.
+- **Prove:** the file says `nginx:1.27`.
+
+### Time budget
+
+Target 3 min. Skip at 6.
+
+---
+
+### PART A. Build the exam (Killercoda only)
 
 ```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
+k delete ns shop --ignore-not-found
+rm -f /root/image.txt
+k create ns shop
+k create deploy web --image=nginx:1.27 --replicas=3 -n shop
+k rollout status deploy/web -n shop --timeout=120s
+clear
+k get deploy web -n shop -o wide
 ```
 
 ---
 
-### Step 1. Find the container name
+### Step 1. What is the container called?
+
+**Why:** `set image` needs the container name, not the deployment name.
 
 ```
 k get deploy web -n shop -o wide
 ```
-Read the CONTAINERS column: `nginx`.
-And IMAGES: `nginx:1.27`.
+You see:
+```
+NAME   READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES       SELECTOR
+web    3/3     3            3           1m    nginx        nginx:1.27   app=web   <-- container nginx
+```
+**Means:** the container is `nginx`. The old image is `nginx:1.27`.
 
 ---
 
-### Step 2. Update and wait
+### Step 2. Update the image and wait
+
+**Why:** `rollout status` waits until all new pods are ready.
 
 ```
 k set image deploy/web nginx=nginx:1.28 -n shop
 k rollout status deploy/web -n shop
 ```
-You want `deployment "web" successfully rolled out`.
+You see:
+```
+deployment.apps/web image updated
+Waiting for deployment "web" rollout to finish: 1 out of 3 new replicas have been updated...
+...
+deployment "web" successfully rolled out   <-- done
+```
+**Don't:** write `web=nginx:1.28`. Left of `=` is the container name.
 
 ---
 
-### Step 3. Look at the history, then roll back
+### Step 3. Roll back
+
+**Why:** `undo` goes back to the previous revision.
 
 ```
 k rollout history deploy/web -n shop
-```
-You see revision 1 and revision 2.
-```
 k rollout undo deploy/web -n shop
 k rollout status deploy/web -n shop
 ```
-To go to one specific revision instead: `k rollout undo deploy/web -n shop --to-revision=1`
+You see:
+```
+REVISION  CHANGE-CAUSE
+1         <none>
+2         <none>   <-- the 1.28 update
+deployment.apps/web rolled back
+deployment "web" successfully rolled out
+```
+**Don't:** run `undo` twice. The second one goes back to `nginx:1.28`.
 
 ---
 
 ### Step 4. Write the image into the file
 
+**Why:** jsonpath prints one field and nothing else.
+
 ```
 k get deploy web -n shop -o jsonpath='{.spec.template.spec.containers[0].image}' > /root/image.txt
+cat /root/image.txt
 ```
-Forgot the jsonpath? This is just as good:
-Read the image with `k get deploy web -n shop -o wide`.
-Then type `echo nginx:1.27 > /root/image.txt`.
+You see:
+```
+nginx:1.27   <-- your prompt may follow on the same line
+```
+**Means:** the rollback worked, and the file holds the answer.
 
 ---
 
-### Closing routine (same at the end of EVERY question: verify, then exit)
+### Verify
+
+**Why:** prove all pods run the old image again.
 
 ```
-cat /root/image.txt                          # nginx:1.27
-k get deploy web -n shop                     # 3/3
+k get deploy web -n shop -o wide
+```
+You see:
+```
+web    3/3     3            3           3m    nginx        nginx:1.27   app=web   <-- 3/3, 1.27
 ```
 
-```
-exit          # exam only
-```
+---
+
+### Three words first
+
+- **Rolling update** = new pods replace old ones a few at a time. The app stays up.
+- **Revision** = each change of the pod template gets a new number. Old ones are kept.
+- **jsonpath** = `-o jsonpath='{...}'` prints only the field you name.
 
 ---
 
 ### If something goes wrong
 
-| You see | Cause | Fix |
-|---|---|---|
-| `rollout status` never finishes | the new image does not exist (typo in the image name or tag) | press `Ctrl+C`, then `k rollout undo deploy/web -n shop` |
-| `unable to find container named ...` | wrong name left of `=` | use the CONTAINERS column from step 1 |
-
-**Related commands:**
-```
-k scale deploy web --replicas=5 -n shop
-k rollout restart deploy/web -n shop         # restart all pods, same image
-k rollout pause deploy/web -n shop           # / resume
-```
-
----
-
-### Two short questions that come from the same area
-
-**Static pod** — "Create a static pod named `static-web` with image `nginx:1.27` on node `node01`."
-The kubelet starts a static pod from a file.
-The file is in `/etc/kubernetes/manifests/` on that node.
-```
-ssh node01
-kubectl run static-web --image=nginx:1.27 --dry-run=client -o yaml > /etc/kubernetes/manifests/static-web.yaml
-exit
-k get pods -A | grep static-web              # static-web-node01   Running
-```
-(On a worker, `--dry-run=client` works, even without a cluster connection.
-`kubectl` missing there? Write the file on the control plane.
-Then copy it: `scp static-web.yaml node01:/etc/kubernetes/manifests/`.)
-To remove it, delete the file.
-`k delete pod` does not work: the kubelet starts it again.
-
-**DaemonSet** — "Run one pod of image `nginx:1.27` on every node, named `agent`."
-There is no `k create daemonset`.
-Generate a Deployment and change 3 things:
-```
-k create deploy agent --image=nginx:1.27 --dry-run=client -o yaml > ds.yaml
-vim ds.yaml
-```
-| Change | |
-|---|---|
-| `kind: Deployment` | → `kind: DaemonSet` |
-| the line `replicas: 1` | delete |
-| the line `strategy: {}` | delete |
-```
-k apply -f ds.yaml
-k get ds agent                               # DESIRED = number of nodes
-```
-Must it also run on the control plane? Add a toleration.
-Put it under `spec.template.spec`, same column as `containers:`.
-Its lines: `key: "node-role.kubernetes.io/control-plane"`, `operator: "Exists"`, `effect: "NoSchedule"`.
-
----
-
-### Mug this up: the whole answer in 5 lines
-
-```
-k get deploy web -n shop -o wide                             # container name
-k set image deploy/web nginx=nginx:1.28 -n shop
-k rollout status deploy/web -n shop
-k rollout undo deploy/web -n shop
-k get deploy web -n shop -o jsonpath='{.spec.template.spec.containers[0].image}' > /root/image.txt
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 3 minutes.
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |`|r|o|l|l|o|u|t| |s|t|a|t|u|s|`| |n|e|v|e|r| |f|i|n|i|s|h|e|s| ||| |t|h|e| |n|e|w| |i|m|a|g|e| |d|o|e|s| |n|o|t| |e|x|i|s|t| |(|t|y|p|o|)| ||| |`|C|t|r|l|+|C|`|,| |c|h|e|c|k| |t|h|e| |t|a|g|,| |`|k| |s|e|t| |i|m|a|g|e|`| |a|g|a|i|n| |||
+||| |`|u|n|a|b|l|e| |t|o| |f|i|n|d| |c|o|n|t|a|i|n|e|r| |n|a|m|e|d| |"|w|e|b|"|`| ||| |d|e|p|l|o|y|m|e|n|t| |n|a|m|e| |l|e|f|t| |o|f| |`|=|`| ||| |u|s|e| |t|h|e| |C|O|N|T|A|I|N|E|R|S| |c|o|l|u|m|n| |f|r|o|m| |S|t|e|p| |1| |||
+||| |`|/|r|o|o|t|/|i|m|a|g|e|.|t|x|t|`| |i|s| |e|m|p|t|y| ||| |a| |t|y|p|o| |i|n| |t|h|e| |j|s|o|n|p|a|t|h| ||| |r|u|n| |i|t| |w|i|t|h|o|u|t| |`|>| |/|r|o|o|t|/|i|m|a|g|e|.|t|x|t|`| |f|i|r|s|t| |||
+||| |t|h|e| |q|u|e|s|t|i|o|n| |w|a|n|t|s| |r|e|v|i|s|i|o|n| |1| |e|x|a|c|t|l|y| ||| |m|o|r|e| |t|h|a|n| |o|n|e| |s|t|e|p| |b|a|c|k| ||| |`|k| |r|o|l|l|o|u|t| |u|n|d|o| |d|e|p|l|o|y|/|w|e|b| |-|n| |s|h|o|p| |-|-|t|o|-|r|e|v|i|s|i|o|n|=|1|`| |||
 
 ---
 
@@ -6916,42 +6870,6 @@ There is no `k create pv`, `k create pvc` or `k create storageclass`.
 
 ## 38. PV + PVC + Pod (build the whole chain)
 
-### Three words first
-
-- **PV** = a disk. It belongs to the whole cluster. So it has NO namespace.
-- **PVC** = a request for a disk. It lives in a namespace.
-  Kubernetes connects it to a PV that matches.
-- **Pod** = uses the PVC by its name.
-  The PVC and the pod must be in the SAME namespace.
-
-The chain is always: **Pod → PVC → PV**
-
-Here nothing exists yet.
-Build all three, from right to left.
-First the PV, then the PVC, then the pod.
-
----
-
-### PART A. Build the exam (Killercoda only)
-
-In the real exam this is already done.
-Paste it once, then forget it.
-
-```
-k delete ns storage --ignore-not-found
-k delete pv pv-data --ignore-not-found
-k create ns storage
-clear
-```
-(The first line can take 20 seconds.
-That is normal.)
-
-What now exists: an empty namespace `storage`.
-What does NOT exist: the PV, the PVC, the pod.
-All three are your job.
-
----
-
 ### PART B. The exam starts here
 
 **The question, as the exam words it:**
@@ -6962,225 +6880,135 @@ All three are your job.
 
 **What the question is really saying:**
 
-Right now the chain shows nothing built yet, for example:
-```
-Pod ✗   →   PVC ✗   →   PV ✗
-```
-Make a disk.
-Make a request that matches the disk.
-Make a pod that uses the request.
+Build the chain Pod → PVC → PV, starting with the disk.
 
-Kubernetes connects a PVC to a PV by comparing three values.
-They are all in the question:
-
-| Value | PV (the disk) | PVC (the request) | Rule |
-|---|---|---|---|
-| storageClassName | `manual` | `manual` | must be the same |
-| accessModes | `ReadWriteOnce` | `ReadWriteOnce` | must be the same |
-| size | `1Gi` | `500Mi` | the disk must be big enough. 1Gi is more than 500Mi: it fits. |
-
-**Write down from the question (always do this):**
-PV = `pv-data`, 1Gi, `/mnt/data` · PVC = `pvc-data`, 500Mi · pod = `web-store`, `nginx:1.27`, `/usr/share/nginx/html` · namespace = `storage` · class = `manual` · mode = `ReadWriteOnce`
+**Write down from the question:** PV = `pv-data`, 1Gi, `/mnt/data` · PVC = `pvc-data`, 500Mi · pod = `web-store`, `nginx:1.27`, `/usr/share/nginx/html` · namespace = `storage` · class = `manual` · mode = `ReadWriteOnce`
 
 ---
 
-### Opening routine (same 2 commands at the start of EVERY question)
+### Think
+
+- **Wanted:** a pod that uses a claim that uses a disk.
+- **Look first:** one docs page has all three files.
+- **Expect:** the PVC shows `Bound` to `pv-data`.
+- **Fix:** build right to left: PV, then PVC, then pod.
+- **Prove:** pod Running; the PV is Bound to `storage/pvc-data`.
+
+### Time budget
+
+Target 8 min. Skip at 12.
+
+---
+
+### PART A. Build the exam (Killercoda only)
 
 ```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
+k delete ns storage --ignore-not-found
+k delete pv pv-data --ignore-not-found
+rm -f pv.yaml pvc.yaml pod.yaml
+k create ns storage
+clear
+k get pv,pvc -n storage
 ```
 
 ---
 
-### Step 1. Open ONE docs page. It has all three pieces.
+### Step 1. Make the disk (PV)
 
-There is no `k create pv` and no `k create pvc` command.
-So you copy.
-
-1. Open **https://kubernetes.io/docs**
-2. In the search box type: **`persistent volume pod`**
-3. Click the result named: **"Configure a Pod to Use a PersistentVolume for Storage"**
-   (direct link: https://kubernetes.io/docs/tutorials/configuration/configure-persistent-volume-storage/ )
-
-Keep this page open.
-You will copy three boxes from it, one per step:
-
-| Step | Heading on the page | Box to copy |
-|---|---|---|
-| 2 | "Create a PersistentVolume" | `pods/storage/pv-volume.yaml` |
-| 3 | "Create a PersistentVolumeClaim" | `pods/storage/pv-claim.yaml` |
-| 4 | "Create a Pod" | `pods/storage/pv-pod.yaml` |
-
----
-
-### Step 2. The PV (the disk)
-
-Copy the box **`pods/storage/pv-volume.yaml`**.
-This is what you copied:
-```
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: task-pv-volume
-  labels:
-    type: local
-spec:
-  storageClassName: manual
-  capacity:
-    storage: 10Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: "/mnt/data"
-```
+**Why:** there is no `k create pv`. Copy `pv-volume.yaml` from the docs page "Configure a Pod to Use a PersistentVolume for Storage".
 
 ```
 vim pv.yaml
 ```
-Press `i`, paste.
-Lines drift more and more to the right? Then:
-Press `Esc`. Type `:set paste` and Enter.
-Type `ggdG` to clear. Press `i`, paste again.
-The same tip works for every paste below.
-**Change 2 lines, delete 2 lines:**
-
-| # | The docs say | You change it to | Why |
-|---|---|---|---|
-| 1 | `name: task-pv-volume` | `name: pv-data` | the name the question asks for |
-| 2 | `storage: 10Gi` | `storage: 1Gi` | the size the question asks for |
-| 3 | `labels:` and `type: local` | delete both lines (`dd` twice) | the question did not ask for labels |
-
-`storageClassName: manual`, `ReadWriteOnce` and `/mnt/data` already match the question. Lucky.
-In the exam, check each one against YOUR question.
-
-No `namespace:` line.
-A PV has no namespace.
-
-The finished file:
+The finished file. Only the `# <-- CHANGE` lines differ from the docs:
 ```
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: pv-data
+  name: pv-data            # <-- CHANGE
 spec:
   storageClassName: manual
   capacity:
-    storage: 1Gi
+    storage: 1Gi           # <-- CHANGE
   accessModes:
     - ReadWriteOnce
   hostPath:
     path: "/mnt/data"
 ```
-Save with `Esc`, `:wq`. Then:
-
 ```
 k apply -f pv.yaml
 k get pv
 ```
-You want:
+You see:
 ```
-NAME      CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   VOLUMEATTRIBUTESCLASS   REASON   AGE
-pv-data   1Gi        RWO            Retain           Available           manual         <unset>                          5s
+NAME      CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   ...
+pv-data   1Gi        RWO            Retain           Available           manual         ...   <-- free disk
 ```
-STATUS `Available` = the disk exists and nobody uses it yet.
+**Means:** the disk exists. Also delete the docs' `labels:` and `type: local` lines.
+**Don't:** add `namespace:`. A PV belongs to the whole cluster.
 
-The chain now looks like this:
-```
-Pod ✗   →   PVC ✗   →   PV ✓
-```
+Vim tip: type `:set paste` before you press `i` and paste. Save with `:wq`.
 
 ---
 
-### Step 3. The PVC (the request)
+### Step 2. Ask for the disk (PVC)
 
-Copy the box **`pods/storage/pv-claim.yaml`**.
-This is what you copied:
-```
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: task-pv-claim
-spec:
-  storageClassName: manual
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 3Gi
-```
+**Why:** a pod cannot use a PV directly. Copy `pv-claim.yaml` from the same page.
 
 ```
 vim pvc.yaml
 ```
-Press `i`, paste. **Change 2 lines, add 1 line:**
-
-| # | The docs say | You change it to | Why |
-|---|---|---|---|
-| 1 | `name: task-pv-claim` | `name: pvc-data` | the name the question asks for |
-| 2 | (no namespace line) | add `namespace: storage` under `name:` | a PVC lives in a namespace |
-| 3 | `storage: 3Gi` | `storage: 500Mi` | the size the question asks for |
-
-The finished file:
+The finished file. Only the `# <-- CHANGE` lines differ from the docs:
 ```
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: pvc-data
-  namespace: storage
+  name: pvc-data           # <-- CHANGE
+  namespace: storage       # <-- CHANGE
 spec:
   storageClassName: manual
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 500Mi
+      storage: 500Mi       # <-- CHANGE
 ```
-Save. Then:
-
 ```
 k apply -f pvc.yaml
 k get pvc -n storage
 ```
-You want:
+You see:
 ```
-NAME       STATUS   VOLUME    CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
-pvc-data   Bound    pv-data   1Gi        RWO            manual         <unset>                 5s
+NAME       STATUS   VOLUME    CAPACITY   ACCESS MODES   STORAGECLASS   ...
+pvc-data   Bound    pv-data   1Gi        RWO            manual         ...   <-- Bound to pv-data
 ```
-Check two columns: STATUS = **`Bound`**, VOLUME = **`pv-data`**.
-
-CAPACITY shows `1Gi`, although you asked for 500Mi.
-That is correct.
-The PVC gets the WHOLE disk it was connected to.
-Do not try to fix it.
-
-**Do not go to step 4 until you see `Bound`.**
-If the PVC is not bound, the pod will never start.
-
-The chain now looks like this:
-```
-Pod ✗   →   PVC ✓   →   PV ✓
-```
+**Means:** class and mode match, and 1Gi fits 500Mi. CAPACITY `1Gi` is correct: the claim gets the whole disk.
+**Don't:** go on before you see `Bound`.
 
 ---
 
-### Step 4. The pod
+### Step 3. Give the claim to a pod
 
-Copy the box **`pods/storage/pv-pod.yaml`**.
-This is what you copied:
+**Why:** copy `pv-pod.yaml` from the same page.
+
+```
+vim pod.yaml
+```
+The finished file. Only the `# <-- CHANGE` lines differ from the docs:
 ```
 apiVersion: v1
 kind: Pod
 metadata:
-  name: task-pv-pod
+  name: web-store          # <-- CHANGE
+  namespace: storage       # <-- CHANGE
 spec:
   volumes:
     - name: task-pv-storage
       persistentVolumeClaim:
-        claimName: task-pv-claim
+        claimName: pvc-data       # <-- CHANGE
   containers:
     - name: task-pv-container
-      image: nginx
+      image: nginx:1.27           # <-- CHANGE
       ports:
         - containerPort: 80
           name: "http-server"
@@ -7188,148 +7016,56 @@ spec:
         - mountPath: "/usr/share/nginx/html"
           name: task-pv-storage
 ```
-
-```
-vim pod.yaml
-```
-Press `i`, paste. **Change 3 lines, add 1 line:**
-
-| # | The docs say | You change it to | Why |
-|---|---|---|---|
-| 1 | `name: task-pv-pod` | `name: web-store` | the name the question asks for |
-| 2 | (no namespace line) | add `namespace: storage` under `name:` | must be the same namespace as the PVC |
-| 3 | `claimName: task-pv-claim` | `claimName: pvc-data` | the NAME of the PVC from step 3 |
-| 4 | `image: nginx` | `image: nginx:1.27` | the image the question asks for |
-
-`mountPath: "/usr/share/nginx/html"` already matches.
-In the exam, check it against YOUR question.
-
-Leave everything else alone.
-`task-pv-storage` appears twice: under `volumes` and under `volumeMounts`.
-It is just a label that links the two blocks.
-It must be the same in both places. Do not touch it.
-
-How the pod file reads, in plain words:
-- `volumes:` = "this pod has a disk. It comes from the PVC `pvc-data`"
-- `volumeMounts:` = "show that disk in the container at `/usr/share/nginx/html`"
-
-Save. Then:
 ```
 k apply -f pod.yaml
 ```
+You see:
+```
+pod/web-store created
+```
+**Means:** `claimName` is the PVC's name. `task-pv-storage` only links `volumes` to `volumeMounts`.
+**Don't:** rename `task-pv-storage` in one place only. Both must match.
 
 ---
 
-### Closing routine (same at the end of EVERY question: verify, then exit)
+### Verify
+
+**Why:** prove the whole chain is connected.
 
 ```
-k get pod -n storage
+k get pod web-store -n storage
+k get pv pv-data
 ```
-You want `web-store   1/1   Running`.
-`ContainerCreating` for a few seconds is normal. Run it again.
+You see:
+```
+web-store   1/1   Running   0   30s   <-- pod runs
+pv-data   1Gi   RWO   Retain   Bound   storage/pvc-data   manual   ...   <-- disk is in use
+```
+**Don't:** panic at `ContainerCreating`. Wait a few seconds, run it again.
 
-```
-k get pv
-```
-You want `pv-data`, STATUS `Bound`, CLAIM `storage/pvc-data`.
+---
 
-```
-exit          # exam only: leave the machine before the next question
-```
+### Three words first
 
-The chain is complete:
-```
-Pod ✓   →   PVC ✓   →   PV ✓
-```
+- **PV** = PersistentVolume, a disk for the whole cluster. No namespace.
+- **PVC** = PersistentVolumeClaim, a request for a disk. It lives in a namespace.
+- **storageClassName** = a group name. PV and PVC must have the same one to connect.
 
 ---
 
 ### If something goes wrong
 
-| You see | Cause | Fix |
-|---|---|---|
-| PVC `Pending` | class or access mode differ between `pv.yaml` and `pvc.yaml`. Or the PVC asks for MORE than the PV has. | `k describe pvc pvc-data -n storage`, read Events. `k delete pvc pvc-data -n storage`, fix the file, apply again. |
-| PVC `Pending` and `k get pv` shows `pv-data` still `Available`; once the pod exists the PVC is `Bound` to a long name like `pvc-3f2a...` | `pvc.yaml` has no `storageClassName` line. So the default class is used. It ignores `pv-data` and makes a NEW empty disk. (Killercoda's default `local-path` waits for a pod first.) | delete the pod and the PVC, put `storageClassName: manual` back, apply both again |
-| Pod `Pending`, Events say `persistentvolumeclaim "..." not found` | `claimName` has a typo, or the pod is in a different namespace than the PVC | `k delete pod web-store -n storage`, fix `pod.yaml`, apply again |
-| Pod `Pending`, Events say `unbound immediate PersistentVolumeClaims` | you skipped the `Bound` check in step 3 | fix the PVC first |
-| `manual` vs `Manual` | class names are case-sensitive | make them identical |
-
-You cannot edit these fields of a PVC or pod after creation.
-Delete, fix the file, apply again.
-It takes 20 seconds.
-
----
-
-### Mug this up: the whole answer in 9 lines
-
-```
-vim pv.yaml                    # docs box 1: name, size. Delete labels. NO namespace.
-k apply -f pv.yaml
-k get pv                       # Available
-vim pvc.yaml                   # docs box 2: name, + namespace, size
-k apply -f pvc.yaml
-k get pvc -n storage           # Bound + VOLUME = pv-data     <- do not continue without this
-vim pod.yaml                   # docs box 3: name, + namespace, claimName, image
-k apply -f pod.yaml
-k get pod -n storage           # 1/1 Running
-```
-
-**To repeat the question:** paste Part A again. It wipes everything.
-
-**Target time:** 8 minutes.
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |P|V|C| |`|P|e|n|d|i|n|g|`| ||| |c|l|a|s|s| |o|r| |a|c|c|e|s|s| |m|o|d|e| |d|i|f|f|e|r|,| |o|r| |t|h|e| |P|V|C| |a|s|k|s| |f|o|r| |m|o|r|e| |t|h|a|n| |1|G|i| ||| |`|k| |d|e|s|c|r|i|b|e| |p|v|c| |p|v|c|-|d|a|t|a| |-|n| |s|t|o|r|a|g|e|`|;| |d|e|l|e|t|e| |t|h|e| |P|V|C|,| |f|i|x| |`|p|v|c|.|y|a|m|l|`|,| |a|p|p|l|y| |a|g|a|i|n| |||
+||| |P|V|C| |`|P|e|n|d|i|n|g|`|,| |`|p|v|-|d|a|t|a|`| |s|t|i|l|l| |`|A|v|a|i|l|a|b|l|e|`|;| |l|a|t|e|r| |B|o|u|n|d| |t|o| |`|p|v|c|-|3|f|2|a|.|.|.|`| ||| |`|p|v|c|.|y|a|m|l|`| |l|o|s|t| |i|t|s| |`|s|t|o|r|a|g|e|C|l|a|s|s|N|a|m|e|`| |l|i|n|e|,| |s|o| |t|h|e| |d|e|f|a|u|l|t| |c|l|a|s|s| |m|a|d|e| |a| |n|e|w| |d|i|s|k| ||| |d|e|l|e|t|e| |t|h|e| |p|o|d| |a|n|d| |P|V|C|,| |a|d|d| |`|s|t|o|r|a|g|e|C|l|a|s|s|N|a|m|e|:| |m|a|n|u|a|l|`|,| |a|p|p|l|y| |b|o|t|h| |||
+||| |P|o|d| |`|P|e|n|d|i|n|g|`|,| |E|v|e|n|t|s|:| |`|p|e|r|s|i|s|t|e|n|t|v|o|l|u|m|e|c|l|a|i|m| |"|.|.|.|"| |n|o|t| |f|o|u|n|d|`| ||| |t|y|p|o| |i|n| |`|c|l|a|i|m|N|a|m|e|`|,| |o|r| |p|o|d| |i|n| |a|n|o|t|h|e|r| |n|a|m|e|s|p|a|c|e| ||| |`|k| |d|e|l|e|t|e| |p|o|d| |w|e|b|-|s|t|o|r|e| |-|n| |s|t|o|r|a|g|e|`|,| |f|i|x| |`|p|o|d|.|y|a|m|l|`|,| |a|p|p|l|y| |a|g|a|i|n| |||
+||| |`|m|a|n|u|a|l|`| |v|s| |`|M|a|n|u|a|l|`| ||| |c|l|a|s|s| |n|a|m|e|s| |a|r|e| |c|a|s|e|-|s|e|n|s|i|t|i|v|e| ||| |m|a|k|e| |t|h|e|m| |i|d|e|n|t|i|c|a|l| |||
+||| |r|e|-|a|p|p|l|y| |f|a|i|l|s| |w|i|t|h| |`|F|o|r|b|i|d|d|e|n|`| ||| |m|o|s|t| |P|V|C| |a|n|d| |p|o|d| |f|i|e|l|d|s| |c|a|n|n|o|t| |c|h|a|n|g|e| |a|f|t|e|r| |c|r|e|a|t|i|o|n| ||| |d|e|l|e|t|e| |t|h|e| |o|b|j|e|c|t|,| |f|i|x| |t|h|e| |f|i|l|e|,| |a|p|p|l|y| |a|g|a|i|n| |||
 
 ---
 
 ## 39. ★ StorageClass (create one and make it the default)
-
-### Three words first
-
-- **StorageClass** = a template.
-  A PVC asks for a disk, and no PV exists?
-  Then Kubernetes uses the template to CREATE a new PV automatically.
-- **Provisioner** = the program that actually makes the disk.
-  It is just a name inside the StorageClass. Copy it from the question.
-- **Default StorageClass** = the template used when a PVC names no class.
-  It shows as `(default)` in `k get sc`.
-
-A PVC forgets the `storageClassName` line?
-Then the default class silently creates a new empty disk.
-
-One more setting you will be asked for:
-
-| volumeBindingMode | Meaning |
-|---|---|
-| `Immediate` | create the disk the moment the PVC appears |
-| `WaitForFirstConsumer` | wait until a pod actually uses the PVC, then create the disk |
-
----
-
-### PART A. Build the exam (Killercoda only)
-
-In the real exam this is already done.
-Paste it once, then forget it.
-
-```
-k delete sc fast standard --ignore-not-found
-k patch sc local-path -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}' 2>/dev/null
-cat <<EOF | k apply -f -
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-  name: standard
-  annotations:
-    storageclass.kubernetes.io/is-default-class: "true"
-provisioner: rancher.io/local-path
-volumeBindingMode: Immediate
-EOF
-clear
-```
-
-What now exists: one default StorageClass called `standard`.
-What does NOT exist: a class called `fast`.
-That is your job.
-
----
 
 ### PART B. The exam starts here
 
@@ -7341,275 +7077,188 @@ That is your job.
 
 **What the question is really saying:**
 
-Three small jobs:
+Make `fast`, move the "default" mark to it, and take the mark off the old default.
 
-```
-1. make a new template called fast
-2. put the "default" mark on fast
-3. take the "default" mark OFF the old one
-```
-
-The "default" mark is an **annotation** (a note on the object).
-It has this exact text:
-`storageclass.kubernetes.io/is-default-class: "true"`
-You never type it. You copy it from the docs.
-
-**Write down from the question (always do this):**
-name = `fast` · provisioner = `rancher.io/local-path` · mode = `WaitForFirstConsumer` · must be the ONLY default
+**Write down from the question:** name = `fast` · provisioner = `rancher.io/local-path` · mode = `WaitForFirstConsumer` · must be the ONLY default
 
 ---
 
-### Opening routine (same 2 commands at the start of EVERY question)
+### Think
 
-```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
-```
+- **Wanted:** exactly one `(default)`, on `fast`.
+- **Look first:** which class is the default now.
+- **Expect:** `local-path (default)`.
+- **Fix:** create `fast` with the mark "true"; patch the old one to "false".
+- **Prove:** `k get sc` shows `(default)` next to `fast` only.
 
----
+### Time budget
 
-### Step 1. Look at what exists
-
-```
-k get sc
-```
-
-You see something like:
-```
-NAME                 PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE   ALLOWVOLUMEEXPANSION   AGE
-local-path           rancher.io/local-path   Delete          WaitForFirstConsumer   false               2h
-standard (default)   rancher.io/local-path   Delete          Immediate              false               10s
-```
-
-Read one thing: **which name has `(default)` next to it.**
-Here: `standard`.
-Write it down. You need it in step 5.
-No `local-path` in your list? That is fine.
-Only `standard` (and later `fast`) matter here.
-
-(`sc` is short for `storageclass`.
-A StorageClass has no namespace, so there is no `-n`.)
-
----
-
-### Step 2. Get the StorageClass text from the docs
-
-There is no `k create storageclass` command. So you copy.
-
-1. Open **https://kubernetes.io/docs**
-2. In the search box type: **`storage classes`**
-3. Click the result named: **"Storage Classes"**
-   (direct link: https://kubernetes.io/docs/concepts/storage/storage-classes/ )
-4. Near the top, find the heading **"StorageClass objects"**.
-   Under it, find "Here's an example of a StorageClass:"
-5. Copy the box right below it.
-
-This is what you copied:
-```
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-  name: low-latency
-  annotations:
-    storageclass.kubernetes.io/is-default-class: "false"
-provisioner: csi-driver.example-vendor.example
-reclaimPolicy: Retain # default value is Delete
-allowVolumeExpansion: true
-mountOptions:
-  - discard # this might enable UNMAP / TRIM at the block storage layer
-volumeBindingMode: WaitForFirstConsumer
-parameters:
-  guaranteedReadWriteLatency: "true" # provider-specific
-```
-
-Good news: the long annotation is already in there.
-So is `volumeBindingMode`.
-
----
-
-### Step 3. Paste it into a file, change 3 lines, delete 6 lines
-
-```
-vim sc.yaml
-```
-Press `i`, paste.
-
-**Change 3 lines:**
-
-| # | The docs say | You change it to | Why |
-|---|---|---|---|
-| 1 | `name: low-latency` | `name: fast` | the name the question asks for |
-| 2 | `is-default-class: "false"` | `is-default-class: "true"` | this IS the "make it default" job |
-| 3 | `provisioner: csi-driver.example-vendor.example` | `provisioner: rancher.io/local-path` | the provisioner the question gives |
-
-**Delete 6 lines.** The question did not ask for them.
-`dd` deletes a line in vim:
-
-```
-reclaimPolicy: Retain ...
-allowVolumeExpansion: true
-mountOptions:
-  - discard ...
-parameters:
-  guaranteedReadWriteLatency: ...
-```
-
-`volumeBindingMode: WaitForFirstConsumer` stays.
-It already matches the question.
-(If your question says `Immediate`, change that word.)
-
-The finished file, 8 lines:
-```
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-  name: fast
-  annotations:
-    storageclass.kubernetes.io/is-default-class: "true"
-provisioner: rancher.io/local-path
-volumeBindingMode: WaitForFirstConsumer
-```
-Press `Esc`, type `:wq`, press Enter.
-
-**Rule for deleting:** keep only what the question names.
-Extra settings from an example can make the grader mark it wrong.
-`parameters` for another provisioner can break disk creation.
-
----
-
-### Step 4. Create it
-
-```
-k apply -f sc.yaml
-k get sc
-```
-
-You see:
-```
-NAME                 PROVISIONER             ...
-fast (default)       rancher.io/local-path   ...
-local-path           rancher.io/local-path   ...
-standard (default)   rancher.io/local-path   ...
-```
-
-Jobs 1 and 2 are done.
-But look: **two** names have `(default)`.
-The question says only one may.
-That is job 3.
-
----
-
-### Step 5. Take the default mark off the old class
-
-Do not type this command.
-Copy it from the docs.
-
-1. Same search box, type: **`change default storage class`**
-2. Click the result named: **"Change the default StorageClass"**
-   (direct link: https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/ )
-3. Find step 2 on that page: **"Mark the default StorageClass as non-default"**.
-4. Copy the command under it.
-
-This is what you copied:
-```
-kubectl patch storageclass standard -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
-```
-
-Change ONE word: `standard` → the name you wrote down in step 1.
-(In this practice it already is `standard`.)
-Then run it.
-
-What it does: `patch` changes one small part of an object.
-Here it sets the annotation to `"false"` on the old class.
-Nothing else on that class changes.
-So you respect "do not modify anything else".
-
-**If you prefer no long command:**
-Type `k edit sc standard`.
-Find the line `storageclass.kubernetes.io/is-default-class: "true"`.
-Change `"true"` to `"false"`.
-Save with `:wq`. Same result.
-
----
-
-### Closing routine (same at the end of EVERY question: verify, then exit)
-
-```
-k get sc
-```
-You want `(default)` next to **`fast` only**:
-```
-NAME             PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ...
-fast (default)   rancher.io/local-path   Delete          WaitForFirstConsumer   ...
-local-path       rancher.io/local-path   Delete          WaitForFirstConsumer   ...
-standard         rancher.io/local-path   Delete          Immediate              ...
-```
-Check three columns on the `fast` row:
-The name has `(default)`.
-PROVISIONER is what the question gave.
-VOLUMEBINDINGMODE is `WaitForFirstConsumer`.
-
-```
-exit          # exam only: leave the machine before the next question
-```
-
----
-
-### Traps
-
-| Trap | What happens | What to do |
-|---|---|---|
-| You skip step 5 | two defaults; the question says only one | always run `k get sc` at the end and count the `(default)` marks |
-| You made a typo in `sc.yaml` and already applied it | provisioner and volumeBindingMode cannot be changed afterwards | `k delete sc fast`, fix the file, `k apply -f sc.yaml` again |
-| You delete the old default class to get rid of its mark | the question said do not delete anything | only change its annotation |
-| You write `is-default-class: true` without quotes | `k apply` is rejected (`cannot unmarshal bool ... of type string`). Annotation values must be strings. | write `"true"` with the quotes |
-| Later a test PVC stays `Pending` | with `WaitForFirstConsumer` that is NORMAL. It waits for a pod. | do not "fix" it |
-
----
-
-### Mug this up: the whole answer in 5 lines
-
-```
-k get sc                                   # who is (default) now? write the name down
-vim sc.yaml                                # docs copy: change 3 lines, delete 6 lines
-k apply -f sc.yaml
-k patch storageclass <old-default> -p '...is-default-class":"false"...'     # copied from the docs
-k get sc                                   # (default) next to fast ONLY
-```
-
-**To repeat the question:** paste Part A again.
-**To put the playground back as it was afterwards:**
-```
-k delete sc fast standard --ignore-not-found
-k patch sc local-path -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
-```
-
-**Target time:** 5 minutes.
-
----
-
-## 40. ★ Reuse an existing PV (the MariaDB question)
-
-### Two words first
-
-- **PV** = a disk. It exists in the cluster.
-  Here it holds the database files.
-- **PVC** = a request for a disk. A pod cannot use a PV directly.
-  A pod uses a PVC. Kubernetes connects the PVC to a PV.
-
-The chain is always: **Pod → PVC → PV**
+Target 5 min. Skip at 8.
 
 ---
 
 ### PART A. Build the exam (Killercoda only)
 
-In the real exam this is already done.
-You never type this part there.
-Paste it once, then forget it.
+```
+k delete sc fast standard --ignore-not-found
+rm -f sc.yaml
+k patch sc local-path -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+clear
+k get sc
+```
+
+---
+
+### Step 1. Who is the default now?
+
+**Why:** you must take the mark off this class later.
+
+```
+k get sc
+```
+You see:
+```
+NAME                   PROVISIONER             ...
+local-path (default)   rancher.io/local-path   ...   <-- write this name down
+```
+**Means:** the old default is `local-path`. A StorageClass has no namespace, so no `-n`.
+
+---
+
+### Step 2. Write the StorageClass
+
+**Why:** there is no `k create sc`. Copy the example under "StorageClass objects" on the docs page "Storage Classes".
+
+```
+vim sc.yaml
+```
+The finished file. Only the `# <-- CHANGE` lines differ from the docs:
+```
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: fast                                              # <-- CHANGE
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"   # <-- CHANGE
+provisioner: rancher.io/local-path                        # <-- CHANGE
+volumeBindingMode: WaitForFirstConsumer
+```
+**Means:** also delete `reclaimPolicy`, `allowVolumeExpansion`, `mountOptions` and `parameters`. The question did not ask for them.
+**Don't:** drop the quotes around `"true"`. Annotation values must be text.
+
+Vim tip: type `:set paste` before you press `i` and paste. Save with `:wq`.
+
+---
+
+### Step 3. Create it
+
+**Why:** the file does nothing until the cluster has it.
+
+```
+k apply -f sc.yaml
+k get sc
+```
+You see:
+```
+storageclass.storage.k8s.io/fast created
+fast (default)         rancher.io/local-path   ...
+local-path (default)   rancher.io/local-path   ...   <-- two defaults
+```
+**Means:** jobs 1 and 2 are done. Job 3 is still open.
+
+---
+
+### Step 4. Take the mark off the old default
+
+**Why:** copy the patch from the docs page "Change the default StorageClass". Change only the class name.
+
+```
+k patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
+```
+You see:
+```
+storageclass.storage.k8s.io/local-path patched
+```
+**Means:** only that one annotation changed. Nothing else on `local-path` was touched.
+**Don't:** delete `local-path` to remove its mark. The question forbids it.
+
+---
+
+### Verify
+
+**Why:** prove `fast` is the only default.
+
+```
+k get sc
+```
+You see:
+```
+NAME             PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ...
+fast (default)   rancher.io/local-path   Delete          WaitForFirstConsumer   ...   <-- only default
+local-path       rancher.io/local-path   ...
+```
+
+---
+
+### Three words first
+
+- **StorageClass** = a template. A PVC asks, and Kubernetes makes a new PV from it.
+- **provisioner** = the program that makes the disk. Copy it from the question.
+- **WaitForFirstConsumer** = make the disk only when a pod uses the PVC. `Immediate` = make it at once.
+
+---
+
+### If something goes wrong
+
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |r|e|-|a|p|p|l|y| |f|a|i|l|s| |w|i|t|h| |`|F|o|r|b|i|d|d|e|n|`| |a|f|t|e|r| |a| |t|y|p|o| ||| |`|p|r|o|v|i|s|i|o|n|e|r|`| |a|n|d| |`|v|o|l|u|m|e|B|i|n|d|i|n|g|M|o|d|e|`| |c|a|n|n|o|t| |c|h|a|n|g|e| |a|f|t|e|r| |c|r|e|a|t|i|o|n| ||| |`|k| |d|e|l|e|t|e| |s|c| |f|a|s|t|`|,| |f|i|x| |`|s|c|.|y|a|m|l|`|,| |a|p|p|l|y| |a|g|a|i|n| |||
+||| |`|c|a|n|n|o|t| |u|n|m|a|r|s|h|a|l| |b|o|o|l| |.|.|.| |o|f| |t|y|p|e| |s|t|r|i|n|g|`| ||| |`|i|s|-|d|e|f|a|u|l|t|-|c|l|a|s|s|:| |t|r|u|e|`| |w|i|t|h|o|u|t| |q|u|o|t|e|s| ||| |w|r|i|t|e| |`|"|t|r|u|e|"|`| |||
+||| |a| |t|e|s|t| |P|V|C| |s|t|a|y|s| |`|P|e|n|d|i|n|g|`| ||| |n|o|r|m|a|l| |w|i|t|h| |`|W|a|i|t|F|o|r|F|i|r|s|t|C|o|n|s|u|m|e|r|`|:| |i|t| |w|a|i|t|s| |f|o|r| |a| |p|o|d| ||| |d|o| |n|o|t| |"|f|i|x|"| |i|t| |||
+||| |n|o| |`|(|d|e|f|a|u|l|t|)|`| |a|t| |a|l|l| ||| |y|o|u| |p|a|t|c|h|e|d| |`|f|a|s|t|`| |i|n|s|t|e|a|d| |o|f| |t|h|e| |o|l|d| |c|l|a|s|s| ||| |p|a|t|c|h| |`|f|a|s|t|`| |b|a|c|k| |t|o| |`|"|t|r|u|e|"|`| |||
+||| |y|o|u| |f|i|n|i|s|h|e|d| |a|n|d| |w|a|n|t| |t|h|e| |p|l|a|y|g|r|o|u|n|d| |a|s| |i|t| |w|a|s| ||| |`|f|a|s|t|`| |i|s| |s|t|i|l|l| |t|h|e| |d|e|f|a|u|l|t| ||| |`|k| |d|e|l|e|t|e| |s|c| |f|a|s|t| |s|t|a|n|d|a|r|d| |-|-|i|g|n|o|r|e|-|n|o|t|-|f|o|u|n|d|`|,| |t|h|e|n| |`|k| |p|a|t|c|h| |s|c| |l|o|c|a|l|-|p|a|t|h| |-|p| |'|{|"|m|e|t|a|d|a|t|a|"|:|{|"|a|n|n|o|t|a|t|i|o|n|s|"|:|{|"|s|t|o|r|a|g|e|c|l|a|s|s|.|k|u|b|e|r|n|e|t|e|s|.|i|o|/|i|s|-|d|e|f|a|u|l|t|-|c|l|a|s|s|"|:|"|t|r|u|e|"|}|}|}|'|`| |||
+
+---
+
+## 40. ★ Reuse an existing PV (the MariaDB question)
+
+### PART B. The exam starts here
+
+**The question, as the exam words it:**
+
+> A MariaDB deployment in namespace `mariadb` was deleted by accident. Its PersistentVolume still exists and holds the data.
+> 1. Create a PersistentVolumeClaim named `mariadb` in namespace `mariadb`, with access mode `ReadWriteOnce` and `250Mi` of storage. It must bind to the existing PersistentVolume.
+> 2. Edit `/root/mariadb-deploy.yaml` so the deployment uses this PVC.
+> 3. Apply the file and make sure the deployment is running.
+
+**What the question is really saying:**
+
+Write a PVC that matches the old disk, then point the app at it.
+
+**Write down from the question:** PVC name = `mariadb` · namespace = `mariadb` · mode = `ReadWriteOnce` · size = `250Mi` · file = `/root/mariadb-deploy.yaml`
+
+---
+
+### Think
+
+- **Wanted:** Pod → new PVC → the OLD PV.
+- **Look first:** the PV's size, access mode and class.
+- **Expect:** `Available`, `250Mi`, `RWO`, empty class.
+- **Fix:** a PVC with the same three values; `claimName: mariadb` in the file.
+- **Prove:** pod Running; the PV is Bound to `mariadb/mariadb`.
+
+### Time budget
+
+Target 7 min. Skip at 10.
+
+---
+
+### PART A. Build the exam (Killercoda only)
 
 ```
 k delete ns mariadb --ignore-not-found
 k delete pv mariadb-pv --ignore-not-found
+rm -f pvc.yaml
 k create ns mariadb
 cat <<EOF | k apply -f -
 apiVersion: v1
@@ -7657,273 +7306,133 @@ spec:
           claimName: ""
 EOF
 clear
-```
-
-What now exists:
-a namespace, the old disk (`mariadb-pv`), the app's file (`/root/mariadb-deploy.yaml`).
-What does NOT exist: a PVC, and a running database.
-Those are your job.
-
----
-
-### PART B. The exam starts here
-
-**The question, as the exam words it:**
-
-> A MariaDB deployment in namespace `mariadb` was deleted by accident. Its PersistentVolume still exists and holds the data.
-> 1. Create a PersistentVolumeClaim named `mariadb` in namespace `mariadb`, with access mode `ReadWriteOnce` and `250Mi` of storage. It must bind to the existing PersistentVolume.
-> 2. Edit `/root/mariadb-deploy.yaml` so the deployment uses this PVC.
-> 3. Apply the file and make sure the deployment is running.
-
-**What the question is really saying:**
-
-Look at the chain. Only the last part is left:
-
-```
-Pod ✗   →   PVC ✗   →   PV ✓
-```
-
-Rebuild the two missing parts.
-Then the new database uses the OLD disk.
-It gets its old data back.
-
-**Write down from the question (always do this):**
-PVC name = `mariadb` · namespace = `mariadb` · mode = `ReadWriteOnce` · size = `250Mi` · file = `/root/mariadb-deploy.yaml`
-
----
-
-### Opening routine (same 2 commands at the start of EVERY question)
-
-```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
+k get pv mariadb-pv
 ```
 
 ---
 
-### Step 1. Look at the old disk
+### Step 1. Read the old disk
+
+**Why:** a PVC never names the disk. It binds to a PV with the same class, mode and enough size.
 
 ```
 k get pv
 ```
-
 You see:
 ```
-NAME         CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   VOLUMEATTRIBUTESCLASS   REASON   AGE
-mariadb-pv   250Mi      RWO            Retain           Available                          <unset>                          1m
+NAME         CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   ...
+mariadb-pv   250Mi      RWO            Retain           Available                          ...   <-- class is EMPTY
 ```
-
-Read four columns:
-
-| Column | Value | Meaning |
-|---|---|---|
-| CAPACITY | `250Mi` | size of the disk |
-| ACCESS MODES | `RWO` | short for ReadWriteOnce |
-| STATUS | `Available` | free; no PVC is using it |
-| STORAGECLASS | (empty) | this disk has NO class. Remember this. |
-
-**Why this step matters:**
-You never write "use disk mariadb-pv" in a PVC.
-You write what you need. Kubernetes picks a disk that matches.
-It compares three things: **class, access mode, size**.
-So your PVC must repeat the values you just read.
+**Means:** 250Mi, ReadWriteOnce, free, and no class. Your PVC must repeat these.
 
 ---
 
-### Step 2. Get the PVC text from the docs
+### Step 2. Write the PVC and bind it
 
-There is no `k create pvc` command.
-So you copy from the docs. Do not type it from memory.
-
-1. Open **https://kubernetes.io/docs**
-2. In the search box type: **`persistent volume pod`**
-3. Click the result named: **"Configure a Pod to Use a PersistentVolume for Storage"**
-   (direct link: https://kubernetes.io/docs/tutorials/configuration/configure-persistent-volume-storage/ )
-4. On the right side of the page, click the heading: **"Create a PersistentVolumeClaim"**
-5. Find the box labelled **`pods/storage/pv-claim.yaml`**.
-6. Click the **copy icon** at the top of that box.
-
-This is what you copied:
-```
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: task-pv-claim
-spec:
-  storageClassName: manual
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 3Gi
-```
-
----
-
-### Step 3. Paste it into a file and change 4 things
+**Why:** there is no `k create pvc`. Copy `pv-claim.yaml` from the docs page "Configure a Pod to Use a PersistentVolume for Storage".
 
 ```
 vim pvc.yaml
 ```
-Press `i`, paste, then make these 4 changes:
-
-| # | The docs say | You change it to | Why |
-|---|---|---|---|
-| 1 | `name: task-pv-claim` | `name: mariadb` | the name the question asks for |
-| 2 | (no namespace line) | add `namespace: mariadb` under `name:` | the question says namespace `mariadb` |
-| 3 | `storageClassName: manual` | `storageClassName: ""` | the old disk's class is empty (step 1) |
-| 4 | `storage: 3Gi` | `storage: 250Mi` | the size the question asks for |
-
-`accessModes: ReadWriteOnce` stays as it is.
-It already matches.
-
-The finished file:
+The finished file. Only the `# <-- CHANGE` lines differ from the docs:
 ```
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: mariadb
-  namespace: mariadb
+  name: mariadb            # <-- CHANGE
+  namespace: mariadb       # <-- CHANGE
 spec:
-  storageClassName: ""
+  storageClassName: ""     # <-- CHANGE
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 250Mi
+      storage: 250Mi       # <-- CHANGE
 ```
-Press `Esc`, type `:wq`, press Enter.
-
-**About change 3, the one people get wrong:**
-Keep the `storageClassName` line.
-Without it, Kubernetes fills in the cluster's default class.
-That class creates a brand-new EMPTY disk for you.
-Your PVC shows "Bound". Everything looks fine.
-But the database has no data, and you lose the points.
-`""` says "no class". That is exactly what the old disk has.
-
----
-
-### Step 4. Create the PVC and check it connected to the OLD disk
-
 ```
 k apply -f pvc.yaml
 k get pvc -n mariadb
 ```
-
-You want:
+You see:
 ```
-NAME      STATUS   VOLUME       CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
-mariadb   Bound    mariadb-pv   250Mi      RWO                           <unset>                 5s
+NAME      STATUS   VOLUME       CAPACITY   ACCESS MODES   ...
+mariadb   Bound    mariadb-pv   250Mi      RWO            ...   <-- the OLD disk
 ```
+**Means:** `""` means "no class", exactly like the old disk.
+**Don't:** delete the `storageClassName` line. The default class would make a new EMPTY disk.
 
-Check two columns:
-STATUS = **`Bound`**.
-VOLUME = **`mariadb-pv`** (the old disk's name).
-
-The chain is now:
-```
-Pod ✗   →   PVC ✓   →   PV ✓
-```
-
-If something else shows up:
-
-| You see | Cause | Fix |
-|---|---|---|
-| STATUS `Pending` | one of the three values does not match the disk | `k describe pvc mariadb -n mariadb`, read Events. Then `k delete pvc mariadb -n mariadb`, fix `pvc.yaml`, apply again. |
-| VOLUME is a long name like `pvc-3f2a...` | the `storageClassName: ""` line is missing. A new empty disk was made. | same: delete the PVC, fix the file, apply again |
-
-(A PVC cannot be edited after creation.
-Delete and re-create is the normal way.)
+Vim tip: type `:set paste` before you press `i` and paste. Save with `:wq`.
 
 ---
 
-### Step 5. Tell the app to use the PVC
+### Step 3. Point the app at the PVC
+
+**Why:** `claimName` is the PVC's name. It is empty now.
 
 ```
 vim /root/mariadb-deploy.yaml
 ```
-Type `/claimName` and press Enter.
-The cursor jumps to the line.
+Type `/claimName`, press Enter. Change `claimName: ""` to `claimName: mariadb`. Save.
 
-| Before | After |
-|---|---|
-| `claimName: ""` | `claimName: mariadb` |
-
-`claimName` is simply the NAME of the PVC you made in step 4.
-One word changes. Touch nothing else in this file.
-Save with `Esc`, `:wq`.
+```
+grep claimName /root/mariadb-deploy.yaml
+```
+You see:
+```
+          claimName: mariadb
+```
+**Means:** one word changed. Touch nothing else in this file.
 
 ---
 
-### Step 6. Start the app
+### Step 4. Start the app
+
+**Why:** the deployment does not exist until you apply the file.
 
 ```
 k apply -f /root/mariadb-deploy.yaml
 ```
+You see:
+```
+deployment.apps/mariadb created
+```
 
 ---
 
-### Closing routine (same at the end of EVERY question: verify, then exit)
+### Verify
+
+**Why:** prove the app runs on the old disk.
 
 ```
 k get pods -n mariadb
-```
-You want `1/1 Running`.
-The first start can take a minute while the image downloads.
-You see `ContainerCreating`? Run it again.
-
-```
-k get pv
-```
-You want `mariadb-pv` with STATUS `Bound` and CLAIM `mariadb/mariadb`.
-This proves the old disk is the one in use.
-
-```
-exit          # exam only: leave the machine before the next question
-```
-
-The chain is complete:
-```
-Pod ✓   →   PVC ✓   →   PV ✓
-```
-
----
-
-### One more trap the exam can set
-
-In step 1, the PV's STATUS is `Released` instead of `Available`.
-It means the disk still remembers its deleted PVC (the `claimRef`).
-It will refuse a new one.
-Fix it with one command.
-```
-k patch pv mariadb-pv -p '{"spec":{"claimRef":null}}'
 k get pv mariadb-pv
 ```
-STATUS is now `Available`. Carry on with step 2.
-(Same result by hand: type `k edit pv mariadb-pv`.
-Delete the line `claimRef:` and the indented lines under it. Save.)
-
-Also: in step 1, did STORAGECLASS show a name (e.g. `local-path`)?
-Then change 3 uses that exact name instead of `""`.
+You see:
+```
+mariadb-...   1/1   Running   0   1m   <-- app runs
+mariadb-pv   250Mi   RWO   Retain   Bound   mariadb/mariadb   ...   <-- old disk in use
+```
+**Don't:** panic at `ContainerCreating`. The image download can take a minute.
 
 ---
 
-### Mug this up: the whole answer in 7 lines
+### Three words first
 
-```
-k get pv                                   # read: size, mode, class
-vim pvc.yaml                               # docs copy + 4 changes
-k apply -f pvc.yaml
-k get pvc -n mariadb                       # Bound + VOLUME = old PV name
-vim /root/mariadb-deploy.yaml              # claimName: mariadb
-k apply -f /root/mariadb-deploy.yaml
-k get pods -n mariadb                      # 1/1 Running
-```
+- **PV** = PersistentVolume, a disk for the whole cluster. Here it holds the database.
+- **PVC** = PersistentVolumeClaim, a request for a disk. A pod uses a PVC, never a PV.
+- **claimName** = the line in a pod or deployment that names the PVC.
 
-**To repeat the question:** paste Part A again. It wipes everything and rebuilds the exam.
+---
 
-**Target time:** 7 minutes.
+### If something goes wrong
+
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |P|V| |S|T|A|T|U|S| |`|R|e|l|e|a|s|e|d|`|,| |n|o|t| |`|A|v|a|i|l|a|b|l|e|`| ||| |t|h|e| |P|V| |s|t|i|l|l| |r|e|m|e|m|b|e|r|s| |i|t|s| |d|e|l|e|t|e|d| |P|V|C| |(|`|c|l|a|i|m|R|e|f|`|)| ||| |`|k| |p|a|t|c|h| |p|v| |m|a|r|i|a|d|b|-|p|v| |-|p| |'|{|"|s|p|e|c|"|:|{|"|c|l|a|i|m|R|e|f|"|:|n|u|l|l|}|}|'|`|,| |t|h|e|n| |s|t|e|p| |2| |||
+||| |P|V|C| |`|P|e|n|d|i|n|g|`| ||| |c|l|a|s|s|,| |m|o|d|e| |o|r| |s|i|z|e| |d|o|e|s| |n|o|t| |m|a|t|c|h| |t|h|e| |P|V| ||| |`|k| |d|e|s|c|r|i|b|e| |p|v|c| |m|a|r|i|a|d|b| |-|n| |m|a|r|i|a|d|b|`|;| |d|e|l|e|t|e| |t|h|e| |P|V|C|,| |f|i|x| |`|p|v|c|.|y|a|m|l|`|,| |a|p|p|l|y| |a|g|a|i|n| |||
+||| |V|O|L|U|M|E| |i|s| |a| |l|o|n|g| |n|a|m|e| |l|i|k|e| |`|p|v|c|-|3|f|2|a|.|.|.|`| ||| |`|s|t|o|r|a|g|e|C|l|a|s|s|N|a|m|e|:| |"|"|`| |w|a|s| |m|i|s|s|i|n|g|;| |a| |n|e|w| |e|m|p|t|y| |d|i|s|k| |w|a|s| |m|a|d|e| ||| |d|e|l|e|t|e| |t|h|e| |P|V|C|,| |f|i|x| |t|h|e| |f|i|l|e|,| |a|p|p|l|y| |a|g|a|i|n| |||
+||| |t|h|e| |P|V|'|s| |S|T|O|R|A|G|E|C|L|A|S|S| |s|h|o|w|s| |a| |n|a|m|e|,| |e|.|g|.| |`|l|o|c|a|l|-|p|a|t|h|`| ||| |t|h|e| |e|x|a|m|'|s| |d|i|s|k| |h|a|s| |a| |c|l|a|s|s| ||| |u|s|e| |t|h|a|t| |e|x|a|c|t| |n|a|m|e| |i|n|s|t|e|a|d| |o|f| |`|"|"|`| |||
+||| |p|o|d| |`|P|e|n|d|i|n|g|`|,| |`|p|e|r|s|i|s|t|e|n|t|v|o|l|u|m|e|c|l|a|i|m| |"|.|.|.|"| |n|o|t| |f|o|u|n|d|`| ||| |t|y|p|o| |i|n| |`|c|l|a|i|m|N|a|m|e|`| ||| |f|i|x| |t|h|e| |f|i|l|e|,| |a|p|p|l|y| |a|g|a|i|n| |||
 
 ---
 
