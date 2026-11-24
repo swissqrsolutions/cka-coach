@@ -216,7 +216,8 @@
   // Exam mode: count up against the question's target time; over it → the weak list
   let qTick = 0;
   const fmtT = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-  const qTimer = n => { const t = store.get('qtimer', null); return t && t.n === n ? t : null; };
+  const qTimer = n => (store.get('qtimers', {})[n] || null);
+  const saveTimer = (n, t) => { const all = store.get('qtimers', {}); if (t) all[n] = t; else delete all[n]; store.set('qtimers', all); };
   // Exam mode: count up against the question's target time; over it → the weak list; Done reveals the rest
   function examTimer(q) {
     const el = $('#qt'); if (!el) return;
@@ -227,13 +228,14 @@
       const sec = Math.floor(((t.end || Date.now()) - t.start) / 1000);
       el.textContent = `${fmtT(sec)} / ${fmtT(lim)}`;
       el.classList.toggle('over', sec > lim);
-      if (sec > lim && !t.flagged) { t.flagged = true; store.set('qtimer', t); setWeak(true, sec); toast('Over the target time: added to your weak list.'); }
+      if (sec > lim && !t.flagged) { t.flagged = true; saveTimer(q.n, t); setWeak(true, sec); toast('Over the target time: added to your weak list.'); }
     };
-    $('#qtStart').onclick = () => { store.set('qtimer', { n: q.n, start: Date.now() }); clearInterval(qTick); qTick = setInterval(upd, 1000); upd(); };
+    $('#qtStart').onclick = () => { saveTimer(q.n, { n: q.n, start: Date.now() }); practice(q.n); };
     $('#qtDone').onclick = () => {
-      const t = qTimer(q.n) || { n: q.n, start: Date.now() };
-      if (!t.end) t.end = Date.now();
-      store.set('qtimer', t); clearInterval(qTick);
+      const t = qTimer(q.n); if (!t) { toast('Tap Start first.'); return; }
+      if (t.end) return;
+      t.end = Date.now();
+      saveTimer(q.n, t); clearInterval(qTick);
       const sec = Math.floor((t.end - t.start) / 1000);
       if (sec <= lim) { setWeak(false); toast(`Done in ${fmtT(sec)}: within the target.`); } else { setWeak(true, sec); toast(`Done in ${fmtT(sec)}: over the target. It stays on your weak list.`); }
       practice(q.n);
@@ -360,8 +362,8 @@
       <div class="modes" role="tablist">${MODES.map(([k, l]) => `<button class="${k === mode ? 'on' : ''}" data-mode="${k}">${l}${k === sugg && k !== mode ? ' ★' : ''}</button>`).join('')}</div>
       <p class="small modehint">${MODEHINT[mode]}${sugg && sugg !== mode ? ` Suggested now: <b>${MODES.find(x => x[0] === sugg)[1]}</b> ★` : ''}</p>
       ${compactBody(q, mode)}
-      <h2>How did it go?</h2>
-      <div class="row"><button class="btn good" data-r="solo">Alone</button><button class="btn warn" data-r="help">With help</button><button class="btn bad" data-r="fail">Not yet</button></div>
+      ${mode === 'exam' && !(qTimer(n) || {}).end ? '' : `<h2>How did it go?</h2>
+      <div class="row"><button class="btn good" data-r="solo">Alone</button><button class="btn warn" data-r="help">With help</button><button class="btn bad" data-r="fail">Not yet</button></div>`}
       <div class="pager">${q.mock ? '' : n > 1 ? `<a class="btn ghost" href="#/q/${n - 1}">← ${n - 1}</a>` : ''}${!q.mock && n < 40 ? `<a class="btn ghost" href="#/q/${n + 1}">${n + 1} →</a>` : ''}</div>`;
     else app.innerHTML = `${back}
       <h1>${label}. ${esc(q.title)}</h1>

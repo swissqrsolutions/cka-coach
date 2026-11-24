@@ -17,10 +17,10 @@ The Service's selector does not match the pods' label.
 ### Think
 
 - **Broken:** no pods behind the Service.
-- **Look first:** `k get ep backend-svc -n web`
+- **Look first:** the Service's endpoints.
 - **Expect:** `<none>`
 - **Fix:** selector = the pods' label.
-- **Prove:** `wget` from `client` → `Welcome to nginx!`
+- **Prove:** the client pod gets the nginx page.
 
 ### Time budget
 
@@ -69,8 +69,9 @@ k get svc backend-svc -n web -o wide
 ```
 You see:
 ```
-SELECTOR  app=backend-svc
+backend-svc   ClusterIP   10.96.x.x   <none>   80/TCP   1m   app=backend-svc   <-- SELECTOR
 ```
+**Means:** the Service looks for pods with `app=backend-svc`.
 
 ---
 
@@ -95,6 +96,10 @@ backend-...   1/1   Running   app=backend,pod-template-hash=...
 
 ```
 k set selector svc backend-svc app=backend -n web
+```
+You see:
+```
+service/backend-svc selector updated
 ```
 **Don't:** add `pod-template-hash`. It changes on every rollout.
 
@@ -126,7 +131,6 @@ You see:
 
 | You see | Cause | Fix |
 |---|---|---|
-| `Warning: v1 Endpoints is deprecated` | normal since v1.33 | ignore it |
 | still `<none>` after the fix | typo, or pods not Ready (`0/1`) | compare with `--show-labels`; fix the pods |
 | still `<none>` after `k edit svc` | you changed `metadata.labels`, not `spec.selector` | use `k set selector` |
 | endpoints show an IP, wget fails | wrong port | question 7 |
