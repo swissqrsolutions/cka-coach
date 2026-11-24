@@ -2038,6 +2038,8 @@ You see:
 backend-svc   <none>      <-- no pods
 ```
 
+💡 "Cannot reach service" → check endpoints first. Empty = the selector matches no pod.
+
 ---
 
 ### Step 2. What label does the Service want?
@@ -2051,6 +2053,8 @@ You see:
 ... app=backend-svc      <-- wanted
 ```
 
+💡 `-o wide` adds the SELECTOR column: the label the Service looks for.
+
 ---
 
 ### Step 3. What label do the pods have?
@@ -2063,6 +2067,8 @@ You see:
 backend-6b7c...   app=backend,pod-template-hash=...   <-- real label
 ```
 
+💡 Compare with step 2. Ignore `pod-template-hash`: it changes on every rollout.
+
 ---
 
 ### Step 4. Fix the selector
@@ -2074,6 +2080,8 @@ You see:
 ```
 service/backend-svc selector updated
 ```
+
+💡 The Service is wrong, not the pods. Don't relabel the pods. Set only `app=backend`.
 
 ---
 
@@ -2088,6 +2096,8 @@ You see:
 backend-svc   192.168.1.5:80      <-- an IP now
 <title>Welcome to nginx!</title>
 ```
+
+💡 busybox has `wget`, not `curl`. `-qO-` is a capital O.
 
 ---
 

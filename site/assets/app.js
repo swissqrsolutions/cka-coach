@@ -86,7 +86,9 @@
       return `<h2>${esc(topicShort(t.name))} <span class="chip">${t.weight}% of exam</span></h2>
         <div class="card"><ul class="qlist">${qs.map(q => `<li><a href="#/q/${q.n}"><span class="num">${q.n}</span><span>${esc(q.title)}</span><span class="st ${statusOf(q.n)}">${ST[statusOf(q.n)] || ''}</span></a></li>`).join('')}</ul></div>`;
     }).join('');
-    app.innerHTML = `${installCard()}<h1>Practice</h1><a class="btn ghost block" href="#/cheat">Cheat sheet (commands, YAML from docs, facts, warm-up)</a><p class="sub">40 questions · ${solo} solved alone. Open one, set it up in Killercoda, solve it.</p>${groups}`;
+    const weak = Object.entries(store.get('weak', {})).filter(([n]) => Q(+n));
+    const weakCard = weak.length ? `<h2>Weak list <span class="chip bad">over target time</span></h2><div class="card"><ul class="qlist">${weak.map(([n, w]) => `<li><a href="#/q/${n}"><span class="num">${n}</span><span>${esc(Q(+n).title)}</span><span class="st fail">${Math.floor(w.sec / 60)}:${String(w.sec % 60).padStart(2, '0')} / ${Q(+n).target}:00</span></a></li>`).join('')}</ul></div>` : '';
+    app.innerHTML = `${installCard()}${weakCard}<h1>Practice</h1><a class="btn ghost block" href="#/cheat">Cheat sheet (commands, YAML from docs, facts, warm-up)</a><p class="sub">40 questions · ${solo} solved alone. Open one, set it up in Killercoda, solve it.</p>${groups}`;
     if ($('#installBtn')) $('#installBtn').onclick = async () => { installEvt.prompt(); await installEvt.userChoice; installEvt = null; render(); };
   }
   function cheatPage() {
@@ -211,7 +213,32 @@
       <tr><td>long name</td><td>type 3 letters + Tab</td></tr></table>
   </div></details>`;
   // compact page: question + meaning → Think → Part A → steps (command + you see) → verify; the rest folded in "Need help?"
-  function compactBody(q) {
+  // Exam mode: count up against the question's target time; over it → the weak list
+  let qTick = 0;
+  function examTimer(q) {
+    const el = $('#qt'), lim = q.target * 60;
+    const fmt = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    const cur = () => { const t = store.get('qtimer', null); return t && t.n === q.n ? t : null; };
+    const setWeak = (on, sec) => { const w = store.get('weak', {}); if (on) w[q.n] = { sec, at: Date.now() }; else delete w[q.n]; store.set('weak', w); };
+    const upd = () => {
+      const t = cur(); if (!t) { el.textContent = `0:00 / ${fmt(lim)}`; return; }
+      const sec = Math.floor(((t.end || Date.now()) - t.start) / 1000);
+      el.textContent = `${fmt(sec)} / ${fmt(lim)}`;
+      el.classList.toggle('over', sec > lim);
+      if (sec > lim && !t.flagged) { t.flagged = true; store.set('qtimer', t); setWeak(true, sec); toast('Over the target time: added to your weak list.'); }
+    };
+    $('#qtStart').onclick = () => { store.set('qtimer', { n: q.n, start: Date.now() }); clearInterval(qTick); qTick = setInterval(upd, 1000); upd(); };
+    $('#qtDone').onclick = () => {
+      const t = cur(); if (!t || t.end) return;
+      t.end = Date.now(); store.set('qtimer', t); clearInterval(qTick); upd();
+      const sec = Math.floor((t.end - t.start) / 1000);
+      if (sec <= lim) { setWeak(false); toast(`Done in ${fmt(sec)}: within the target.`); } else toast(`Done in ${fmt(sec)}: over the target. Practise it again.`);
+    };
+    const t = cur(); if (t && !t.end) qTick = setInterval(upd, 1000);
+    upd();
+  }
+
+  function compactBody(q, mode = 'learn') {
     const c = q.coach || {};
     const tick = t => esc(t).replace(/`([^`]+)`/g, '<code>$1</code>');
     const steps = q.steps.map((s, i) => {
@@ -219,24 +246,36 @@
       const cmds = items.filter(f => f.k === 'cmd').map(f => f.t);
       const outs = items.filter(f => f.k === 'out').map(f => f.t);
       const yamls = items.filter(f => f.k === 'yaml').map(f => f.t);
+      const why = items.filter(f => f.k === 'say' && /^💡/.test(plain(f.h))).map(f => `<div class="why">${f.h}</div>`).join('');
       const v = /^Verify/.test(s.title);
+      const inner = `${cmds.length ? codeBlock(cmds.join('\n')) + phNotes(cmds) : ''}
+        ${yamls.map(y => codeBlock(y)).join('')}
+        ${outs.length ? `<div class="bsee">You see:</div><pre class="out">${paint(outs.join('\n'))}</pre>` : ''}`;
       return `<div class="bstep${v ? ' verify' : ''}"><div class="bnum">${v ? '✓' : i + 1}</div><div class="bbody">
         <b>${esc(s.title.replace(/^Step \d+\.\s*/, ''))}</b>
-        ${cmds.length ? codeBlock(cmds.join('\n')) + phNotes(cmds) : ''}
-        ${yamls.map(y => codeBlock(y)).join('')}
-        ${outs.length ? `<div class="bsee">You see:</div><pre class="out">${paint(outs.join('\n'))}</pre>` : ''}
+        ${mode === 'practise' ? `${why}<details class="reveal"><summary>Show command</summary>${inner}</details>` : inner + why}
       </div></div>`;
     }).join('');
+    const thinkCard = q.think ? `<section class="card think"><div class="label">Think (15 seconds)</div>${q.think}${q.budget ? `<p class="budget">⏱ ${esc(q.budget)}</p>` : ''}</section>` : '';
+    const build = `<h2>Build it in Killercoda</h2>
+      <div class="card">${q.setup ? `<a class="btn block" href="${KILLERCODA}" target="_blank" rel="noopener">Open Killercoda</a>${codeBlock(q.setup)}` : '<p class="small">Cannot be built in a playground. Practise in killer.sh.</p>'}</div>`;
+    const examNote = `<p class="small">Real exam: run the question's <code>ssh</code> line first, <code>exit</code> at the end.</p>`;
+    if (mode === 'exam') return `<section class="card exam"><div class="label">Exam question</div><p class="q">${inline(q.question)}</p></section>
+      ${build}
+      <div class="card qtimer"><div><div class="label">Your time</div><span id="qt">0:00</span></div><div class="row"><button class="btn" id="qtStart">Start</button><button class="btn good" id="qtDone">Done</button></div>
+        <p class="small">Paste Part A, then Start. Solve it without looking. Over ${q.target} min puts it on your weak list.</p></div>
+      ${examNote}
+      <details class="step"><summary>Show the solution</summary><div class="body">${thinkCard}${steps}</div></details>`;
     const traps = (c.traps || []).map(t => typeof t === 'string' ? `<div class="trap">⚠ ${tick(t)}</div>` : `<div class="trap pair"><div class="dont">❌ <b>Don't:</b> ${tick(t.dont)}</div><div class="do">✅ <b>Do:</b> ${tick(t.do)}</div></div>`).join('');
     const st = q.story || {};
     return `<section class="card exam"><div class="label">Exam question</div><p class="q">${inline(q.question)}</p>
         ${q.meaning ? `<div class="means">${q.meaning}</div>` : ''}</section>
-      ${q.think ? `<section class="card think"><div class="label">Think (15 seconds)</div>${q.think}${q.budget ? `<p class="budget">⏱ ${esc(q.budget)}</p>` : ''}</section>` : ''}
-      <h2>Build it in Killercoda</h2>
-      <div class="card">${q.setup ? `<a class="btn block" href="${KILLERCODA}" target="_blank" rel="noopener">Open Killercoda</a>${codeBlock(q.setup)}` : '<p class="small">Cannot be built in a playground. Practise in killer.sh.</p>'}</div>
+      ${thinkCard}
+      ${build}
       <h2>Solve it</h2>
+      ${mode === 'practise' ? '<p class="small">Type each command yourself. Tap "Show command" only to check.</p>' : ''}
       ${steps}
-      <p class="small">Real exam: run the question's <code>ssh</code> line first, <code>exit</code> at the end.</p>
+      ${examNote}
       <details class="step needhelp"><summary>Need help?</summary><div class="body">
         ${q.keys && q.keys.length ? `<div class="writedown"><b>Write down:</b> ${q.keys.map(k => `<span class="chip">${inline(k)}</span>`).join(' ')}</div>` : ''}
         ${st.broken ? `<h3>The story</h3><p>${esc(st.broken)}</p>${st.fix ? `<p>${esc(st.fix)}</p>` : ''}` : ''}
@@ -300,10 +339,13 @@
     const p = prog()[n] || {};
     const back = q.mock ? `<a href="#/mock/${q.mock}" class="small">← Mock exam ${q.mock}</a>` : `<a href="#/" class="small">← Practice</a>`;
     const label = q.mock ? `Mock ${q.mock} · task ${q.n % 100}` : q.n;
+    clearInterval(qTick);
+    const mode = q.compact ? (store.get('mode', {})[n] || 'learn') : '';
     if (q.compact) app.innerHTML = `${back}
       <h1>${label}. ${esc(q.title)}</h1>
-      <p class="sub">${q.star ? '<span class="chip star">often in exam</span> ' : ''}${q.target} min ${p.st ? '· ' + ST[p.st] : ''}</p>
-      ${compactBody(q)}
+      <p class="sub">${q.star ? '<span class="chip star">often in exam</span> ' : ''}${q.target} min ${p.st ? '· ' + ST[p.st] : ''}${store.get('weak', {})[n] ? ' · <span class="chip bad">weak</span>' : ''}</p>
+      <div class="modes" role="tablist">${[['learn', 'Learn'], ['practise', 'Practise'], ['exam', 'Exam']].map(([k, l]) => `<button class="${k === mode ? 'on' : ''}" data-mode="${k}">${l}</button>`).join('')}</div>
+      ${compactBody(q, mode)}
       <h2>How did it go?</h2>
       <div class="row"><button class="btn good" data-r="solo">Alone</button><button class="btn warn" data-r="help">With help</button><button class="btn bad" data-r="fail">Not yet</button></div>
       <div class="pager">${q.mock ? '' : n > 1 ? `<a class="btn ghost" href="#/q/${n - 1}">← ${n - 1}</a>` : ''}${!q.mock && n < 40 ? `<a class="btn ghost" href="#/q/${n + 1}">${n + 1} →</a>` : ''}</div>`;
@@ -317,7 +359,9 @@
       <h2>How did it go?</h2>
       <div class="row"><button class="btn good" data-r="solo">Alone</button><button class="btn warn" data-r="help">With help</button><button class="btn bad" data-r="fail">Not yet</button></div>
       <div class="pager">${q.mock ? '' : n > 1 ? `<a class="btn ghost" href="#/q/${n - 1}">← ${n - 1}</a>` : ''}${!q.mock && n < 40 ? `<a class="btn ghost" href="#/q/${n + 1}">${n + 1} →</a>` : ''}</div>`;
-    if (q.coach) { const qe = $('section.exam .q'); if (qe) for (const x of q.coach.clues || []) { const h = inline(x.q); if (h && qe.innerHTML.includes(h)) qe.innerHTML = qe.innerHTML.replace(h, '<mark>' + h + '</mark>'); } }
+    $$('[data-mode]').forEach(b => b.onclick = () => { const m = store.get('mode', {}); m[n] = b.dataset.mode; store.set('mode', m); practice(n); });
+    if (mode === 'exam') examTimer(q);
+    if (q.coach && mode !== 'exam') { const qe = $('section.exam .q'); if (qe) for (const x of q.coach.clues || []) { const h = inline(x.q); if (h && qe.innerHTML.includes(h)) qe.innerHTML = qe.innerHTML.replace(h, '<mark>' + h + '</mark>'); } }
     $$('[data-r]').forEach(b => b.onclick = () => {
       const all = prog(); all[n] = { st: b.dataset.r, at: Date.now() }; store.set('progress', all);
       toast(b.dataset.r === 'solo' ? 'Saved ✓' : 'Saved. It comes back later.');
