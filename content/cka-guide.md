@@ -2632,26 +2632,6 @@ kube-apiserver-controlplane
 
 ## 13. RBAC: ServiceAccount + Role + RoleBinding
 
-### Three words first
-
-- **ServiceAccount (SA)** = an identity for a program running in the cluster.
-- **Role** = a list of permissions inside ONE namespace. Each permission = verbs (get, list, create...) on resources (pods, deployments...).
-- **RoleBinding** = gives a Role to a ServiceAccount (or user). Without the binding, the Role does nothing.
-
-The chain: **ServiceAccount ← RoleBinding → Role**
-
----
-
-### PART A. Build the exam (Killercoda only)
-
-```
-k delete ns dev --ignore-not-found
-k create ns dev
-clear
-```
-
----
-
 ### PART B. The exam starts here
 
 **The question, as the exam words it:**
@@ -2663,117 +2643,140 @@ clear
 
 **What the question is really saying:**
 
-Three objects, three commands, no YAML. Then prove it works.
+Three objects, three `k create` commands, no YAML. Then prove it works.
 
 **Write down from the question:** namespace = `dev` · SA = `deploy-bot` · Role = `deploy-manager` · verbs = `get,list,create` · resource = `deployments` · binding = `deploy-bot-binding`
 
 ---
 
-### Opening routine (same 2 commands at the start of EVERY question)
+### Think
 
-```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
-```
+- **Wanted:** the SA may get, list and create deployments in `dev`.
+- **Look first:** what the SA may do now.
+- **Expect:** `no`
+- **Fix:** SA, Role, RoleBinding that joins them.
+- **Prove:** ask the API "can this SA create deployments?"
 
----
+### Time budget
 
-### Step 1. The ServiceAccount
-
-```
-k create sa deploy-bot -n dev
-```
-
----
-
-### Step 2. The Role
-
-```
-k create role deploy-manager --verb=get,list,create --resource=deployments -n dev
-```
-- `--verb` = the allowed actions, comma-separated, no spaces
-- `--resource` = what they apply to
-
----
-
-### Step 3. The RoleBinding
-
-```
-k create rolebinding deploy-bot-binding --role=deploy-manager --serviceaccount=dev:deploy-bot -n dev
-```
-`--serviceaccount` is always written `NAMESPACE:NAME`. Here: `dev:deploy-bot`.
-
----
-
-### Closing routine (same at the end of EVERY question: verify, then exit)
-
-Test as the ServiceAccount:
-```
-k auth can-i create deployments -n dev --as=system:serviceaccount:dev:deploy-bot
-k auth can-i delete deployments -n dev --as=system:serviceaccount:dev:deploy-bot
-```
-You want `yes` for the first (allowed) and `no` for the second (not allowed).
-
-The long name is always built the same way: `system:serviceaccount:NAMESPACE:NAME`
-
-```
-exit          # exam only
-```
-
----
-
-### If something goes wrong
-
-| You see | Cause | Fix |
-|---|---|---|
-| first test says `no` | a typo in a NAME (SA, Role, namespace). Kubernetes gives NO error if the SA or Role is missing. | `k describe rolebinding deploy-bot-binding -n dev`. Read Role + Subjects. Delete the wrong object (`k delete rolebinding ... -n dev`). Create it again. |
-| `error: serviceaccount must be <namespace>:<name>` | you wrote `--serviceaccount=deploy-bot` without `dev:` | write `--serviceaccount=dev:deploy-bot` |
-| `the server doesn't have a resource type "deploymnts"` | a spelling mistake in the resource (singular `deployment` is fine; a misspelling is not) | use `deployments` |
-| the question names a USER, not a ServiceAccount | different flag | binding: `--user=alice`. Test: `--as=alice` |
-
----
-
-### Mug this up: the whole answer in 4 lines
-
-```
-k create sa deploy-bot -n dev
-k create role deploy-manager --verb=get,list,create --resource=deployments -n dev
-k create rolebinding deploy-bot-binding --role=deploy-manager --serviceaccount=dev:deploy-bot -n dev
-k auth can-i create deployments -n dev --as=system:serviceaccount:dev:deploy-bot     # yes
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 3 minutes.
-
----
-
-## 14. RBAC: ClusterRole
-
-### Three words first
-
-- **Namespaced resource** = lives inside a namespace: pods, deployments, services, PVCs, secrets.
-- **Cluster-wide resource** = has no namespace: nodes, PersistentVolumes, namespaces, StorageClasses.
-- **ClusterRole + ClusterRoleBinding** = the same as Role + RoleBinding, but for the whole cluster. A Role cannot give access to cluster-wide resources. A ClusterRole can.
-
-How to check which kind a resource is:
-```
-k api-resources | grep -i nodes
-```
-Read the NAMESPACED column: `false` = cluster-wide.
+Target 3 min. Skip at 6.
 
 ---
 
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete ns ops --ignore-not-found
-k delete clusterrole node-reader --ignore-not-found
-k delete clusterrolebinding node-viewer-binding --ignore-not-found
-k create ns ops
+k delete ns dev --ignore-not-found
+k create ns dev
 clear
+k auth can-i create deployments -n dev --as=system:serviceaccount:dev:deploy-bot
 ```
 
 ---
+
+### Step 1. Create the ServiceAccount
+
+**Why:** the SA is the identity that gets the permissions.
+
+```
+k create sa deploy-bot -n dev
+```
+You see:
+```
+serviceaccount/deploy-bot created
+```
+**Means:** the identity exists. It may do nothing yet.
+
+---
+
+### Step 2. Create the Role
+
+**Why:** the Role lists the allowed verbs on a resource.
+
+```
+k create role deploy-manager --verb=get,list,create --resource=deployments -n dev
+k describe role deploy-manager -n dev
+```
+You see:
+```
+role.rbac.authorization.k8s.io/deploy-manager created
+...
+  deployments.apps  []   []   [get list create]   <-- resource + verbs
+```
+**Means:** the Role is right. Kubernetes added the API group `apps` itself.
+**Don't:** put spaces after the commas in `--verb`.
+
+---
+
+### Step 3. Create the RoleBinding
+
+**Why:** without a binding, the Role does nothing.
+
+```
+k create rolebinding deploy-bot-binding --role=deploy-manager --serviceaccount=dev:deploy-bot -n dev
+```
+You see:
+```
+rolebinding.rbac.authorization.k8s.io/deploy-bot-binding created
+```
+**Don't:** write `--serviceaccount=deploy-bot`. It is always `NAMESPACE:NAME`.
+
+---
+
+### Step 4. Does the binding join the right names?
+
+**Why:** Kubernetes gives no error for a typo in a name.
+
+```
+k get rolebinding deploy-bot-binding -n dev -o wide
+```
+You see:
+```
+deploy-bot-binding   Role/deploy-manager   ...   dev/deploy-bot   <-- Role and SA
+```
+**Means:** the binding points to the right Role and SA.
+
+---
+
+### Verify
+
+**Why:** ask the API as the SA. One allowed verb, one not allowed.
+
+```
+k auth can-i create deployments -n dev --as=system:serviceaccount:dev:deploy-bot
+k auth can-i delete deployments -n dev --as=system:serviceaccount:dev:deploy-bot
+```
+You see:
+```
+yes   <-- allowed
+no    <-- not in the Role
+```
+**Don't:** forget `-n dev`. Without it, you test the `default` namespace.
+
+---
+
+### Three words first
+
+- **ServiceAccount (SA)** = an identity for a program in the cluster.
+- **Role** = allowed verbs on resources, inside ONE namespace.
+- **RoleBinding** = gives a Role to an SA or user. The chain: SA ← RoleBinding → Role.
+- **`--as=system:serviceaccount:NS:SA`** = "pretend to be this SA" for the test.
+
+---
+
+### If something goes wrong
+
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |V|e|r|i|f|y| |s|a|y|s| |`|n|o|`| |f|o|r| |c|r|e|a|t|e| ||| |a| |t|y|p|o| |i|n| |a| |n|a|m|e| |i|n| |t|h|e| |b|i|n|d|i|n|g| ||| |`|k| |d|e|s|c|r|i|b|e| |r|o|l|e|b|i|n|d|i|n|g| |d|e|p|l|o|y|-|b|o|t|-|b|i|n|d|i|n|g| |-|n| |d|e|v|`|;| |d|e|l|e|t|e| |i|t|,| |c|r|e|a|t|e| |i|t| |a|g|a|i|n| |||
+||| |`|e|r|r|o|r|:| |s|e|r|v|i|c|e|a|c|c|o|u|n|t| |m|u|s|t| |b|e| |<|n|a|m|e|s|p|a|c|e|>|:|<|n|a|m|e|>|`| ||| |`|d|e|v|:|`| |m|i|s|s|i|n|g| ||| |`|-|-|s|e|r|v|i|c|e|a|c|c|o|u|n|t|=|d|e|v|:|d|e|p|l|o|y|-|b|o|t|`| |||
+||| |`|t|h|e| |s|e|r|v|e|r| |d|o|e|s|n|'|t| |h|a|v|e| |a| |r|e|s|o|u|r|c|e| |t|y|p|e| |"|d|e|p|l|o|y|m|n|t|s|"|`| ||| |r|e|s|o|u|r|c|e| |m|i|s|s|p|e|l|l|e|d| ||| |u|s|e| |`|d|e|p|l|o|y|m|e|n|t|s|`| |||
+||| |`|.|.|.| |a|l|r|e|a|d|y| |e|x|i|s|t|s|`| ||| |y|o|u| |r|a|n| |t|h|e| |c|r|e|a|t|e| |t|w|i|c|e| ||| |f|i|n|e| |i|f| |c|o|r|r|e|c|t|;| |e|l|s|e| |`|k| |d|e|l|e|t|e|`| |i|t| |a|n|d| |c|r|e|a|t|e| |a|g|a|i|n| |||
+||| |t|h|e| |q|u|e|s|t|i|o|n| |n|a|m|e|s| |a| |U|S|E|R|,| |n|o|t| |a|n| |S|A| ||| |d|i|f|f|e|r|e|n|t| |f|l|a|g| ||| |b|i|n|d|i|n|g|:| |`|-|-|u|s|e|r|=|a|l|i|c|e|`|;| |t|e|s|t|:| |`|-|-|a|s|=|a|l|i|c|e|`| |||
+
+---
+
+## 14. RBAC: ClusterRole
 
 ### PART B. The exam starts here
 
@@ -2783,123 +2786,137 @@ clear
 
 **What the question is really saying:**
 
-Same three steps as question 13.
-The only difference: nodes are cluster-wide.
-So the Role and the binding are the "Cluster" versions.
-They take no `-n`.
+Same as question 13, but nodes have no namespace: use the "Cluster" versions.
 
 **Write down from the question:** SA = `node-viewer` in `ops` · ClusterRole = `node-reader` · verbs = `get,list` · resource = `nodes` · binding = `node-viewer-binding`
 
 ---
 
-### Opening routine (same 2 commands at the start of EVERY question)
+### Think
 
-```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
-```
+- **Wanted:** the SA may get and list nodes.
+- **Look first:** is `nodes` namespaced or cluster-wide?
+- **Expect:** NAMESPACED `false`
+- **Fix:** SA (with namespace), ClusterRole and ClusterRoleBinding (without).
+- **Prove:** ask the API "can this SA list nodes?"
 
----
+### Time budget
 
-### Step 1. The ServiceAccount (has a namespace)
-
-```
-k create sa node-viewer -n ops
-```
-
----
-
-### Step 2. The ClusterRole (no namespace)
-
-```
-k create clusterrole node-reader --verb=get,list --resource=nodes
-```
-
----
-
-### Step 3. The ClusterRoleBinding (no namespace)
-
-```
-k create clusterrolebinding node-viewer-binding --clusterrole=node-reader --serviceaccount=ops:node-viewer
-```
-
----
-
-### Closing routine (same at the end of EVERY question: verify, then exit)
-
-```
-k auth can-i list nodes --as=system:serviceaccount:ops:node-viewer       # yes
-k auth can-i delete nodes --as=system:serviceaccount:ops:node-viewer     # no
-```
-You want `yes` for the first and `no` for the second.
-No `-n` needed: nodes have no namespace.
-`-n` on the clusterrole and clusterrolebinding commands is ignored.
-Only the SA needs a namespace.
-
-```
-exit          # exam only
-```
-
----
-
-### The third combination the exam uses
-
-> "Give user `alice` the permissions of the existing ClusterRole `view`, but only in namespace `staging`."
-
-```
-k create rolebinding alice-view --clusterrole=view --user=alice -n staging
-k auth can-i list pods -n staging --as=alice      # yes
-k auth can-i list pods -n default --as=alice      # no
-```
-A **RoleBinding** that points to a **ClusterRole** = those permissions, limited to that one namespace.
-
-| You need access to... | Use |
-|---|---|
-| namespaced resources, in one namespace | Role + RoleBinding |
-| cluster-wide resources (nodes, PVs...) | ClusterRole + ClusterRoleBinding |
-| namespaced resources, in ALL namespaces | ClusterRole + ClusterRoleBinding |
-| an existing ClusterRole, in one namespace only | RoleBinding with `--clusterrole=` |
-
----
-
-### Mug this up: the whole answer in 4 lines
-
-```
-k create sa node-viewer -n ops
-k create clusterrole node-reader --verb=get,list --resource=nodes
-k create clusterrolebinding node-viewer-binding --clusterrole=node-reader --serviceaccount=ops:node-viewer
-k auth can-i list nodes --as=system:serviceaccount:ops:node-viewer       # yes
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 3 minutes.
-
----
-
-## 15. ★ Helm template (Argo CD without CRDs)
-
-### Three words first
-
-- **Helm** = a tool that installs packaged applications into Kubernetes.
-- **Chart** = the package. It lives in a **repo** (a URL). A chart has **values** = settings you can switch.
-- **helm template** = print the YAML the chart WOULD create. Nothing is installed. (`helm install` is the command that really installs.)
-- **Release** = one named copy of a chart (here `my-argo`). **CRD** = a file that teaches Kubernetes a new object type (question 18).
+Target 3 min. Skip at 6.
 
 ---
 
 ### PART A. Build the exam (Killercoda only)
 
 ```
-helm version || curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | DESIRED_VERSION=v3.16.4 bash   # installs a pinned Helm 3 only if helm is missing
-helm repo remove argocd 2>/dev/null
-rm -f /root/argo-helm.yaml
+k delete clusterrolebinding node-viewer-binding --ignore-not-found
+k delete clusterrole node-reader --ignore-not-found
+k delete ns ops --ignore-not-found
+k create ns ops
 clear
+k auth can-i list nodes --as=system:serviceaccount:ops:node-viewer
 ```
-(Does `helm version` print a version? Then nothing is installed.
-Helm 3 and Helm 4 both work for this page.
-If the install URL fails, follow https://helm.sh/docs/intro/install/ .)
 
 ---
+
+### Step 1. Is `nodes` cluster-wide?
+
+**Why:** a Role cannot give access to cluster-wide resources.
+
+```
+k api-resources | grep -w nodes
+```
+You see:
+```
+nodes   no   v1   false   Node   <-- NAMESPACED = false
+```
+**Means:** cluster-wide. You need ClusterRole + ClusterRoleBinding.
+
+---
+
+### Step 2. Create the ServiceAccount
+
+**Why:** the SA still lives in a namespace.
+
+```
+k create sa node-viewer -n ops
+```
+You see:
+```
+serviceaccount/node-viewer created
+```
+
+---
+
+### Step 3. Create the ClusterRole
+
+**Why:** it lists the allowed verbs on nodes, for the whole cluster.
+
+```
+k create clusterrole node-reader --verb=get,list --resource=nodes
+```
+You see:
+```
+clusterrole.rbac.authorization.k8s.io/node-reader created
+```
+**Means:** no `-n`. A ClusterRole has no namespace.
+
+---
+
+### Step 4. Create and check the ClusterRoleBinding
+
+**Why:** it gives the ClusterRole to the SA, cluster-wide.
+
+```
+k create clusterrolebinding node-viewer-binding --clusterrole=node-reader --serviceaccount=ops:node-viewer
+k get clusterrolebinding node-viewer-binding -o wide
+```
+You see:
+```
+clusterrolebinding.rbac.authorization.k8s.io/node-viewer-binding created
+node-viewer-binding   ClusterRole/node-reader   ...   ops/node-viewer   <-- ClusterRole and SA
+```
+**Don't:** write `--role=`. A ClusterRoleBinding needs `--clusterrole=`.
+
+---
+
+### Verify
+
+**Why:** ask the API as the SA. One allowed verb, one not allowed.
+
+```
+k auth can-i list nodes --as=system:serviceaccount:ops:node-viewer
+k auth can-i delete nodes --as=system:serviceaccount:ops:node-viewer
+```
+You see:
+```
+yes   <-- allowed
+no    <-- not in the ClusterRole
+```
+**Means:** no `-n` in the test. Nodes have no namespace.
+
+---
+
+### Three words first
+
+- **Cluster-wide resource** = has no namespace: nodes, PersistentVolumes, namespaces, StorageClasses.
+- **ClusterRole** = a Role for the whole cluster. It can cover cluster-wide resources.
+- **ClusterRoleBinding** = gives a ClusterRole to an SA or user, in all namespaces.
+
+---
+
+### If something goes wrong
+
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |V|e|r|i|f|y| |s|a|y|s| |`|n|o|`| |f|o|r| |l|i|s|t| ||| |y|o|u| |m|a|d|e| |a| |R|o|l|e| |+| |R|o|l|e|B|i|n|d|i|n|g| ||| |d|e|l|e|t|e| |t|h|e|m|;| |u|s|e| |t|h|e| |C|l|u|s|t|e|r| |v|e|r|s|i|o|n|s| |||
+||| |V|e|r|i|f|y| |s|a|y|s| |`|n|o|`|,| |o|b|j|e|c|t|s| |l|o|o|k| |f|i|n|e| ||| |a| |t|y|p|o| |i|n| |t|h|e| |S|A| |o|r| |n|a|m|e|s|p|a|c|e| |i|n| |t|h|e| |b|i|n|d|i|n|g| ||| |`|k| |d|e|s|c|r|i|b|e| |c|l|u|s|t|e|r|r|o|l|e|b|i|n|d|i|n|g| |n|o|d|e|-|v|i|e|w|e|r|-|b|i|n|d|i|n|g|`|;| |d|e|l|e|t|e| |i|t|,| |c|r|e|a|t|e| |i|t| |a|g|a|i|n| |||
+||| |`|e|r|r|o|r|:| |s|e|r|v|i|c|e|a|c|c|o|u|n|t| |m|u|s|t| |b|e| |<|n|a|m|e|s|p|a|c|e|>|:|<|n|a|m|e|>|`| ||| |`|o|p|s|:|`| |m|i|s|s|i|n|g| ||| |`|-|-|s|e|r|v|i|c|e|a|c|c|o|u|n|t|=|o|p|s|:|n|o|d|e|-|v|i|e|w|e|r|`| |||
+||| |q|u|e|s|t|i|o|n| |s|a|y|s| |"|e|x|i|s|t|i|n|g| |C|l|u|s|t|e|r|R|o|l|e| |X|,| |o|n|l|y| |i|n| |n|a|m|e|s|p|a|c|e| |Y|"| ||| |t|h|a|t| |i|s| |a| |R|o|l|e|B|i|n|d|i|n|g| |t|o| |a| |C|l|u|s|t|e|r|R|o|l|e| ||| |`|k| |c|r|e|a|t|e| |r|o|l|e|b|i|n|d|i|n|g| |N|A|M|E| |-|-|c|l|u|s|t|e|r|r|o|l|e|=|X| |-|-|u|s|e|r|=|a|l|i|c|e| |-|n| |Y|`| |||
+
+---
+
+## 15. ★ Helm template (Argo CD without CRDs)
 
 ### PART B. The exam starts here
 
@@ -2911,146 +2928,140 @@ If the install URL fails, follow https://helm.sh/docs/intro/install/ .)
 
 **What the question is really saying:**
 
-Three jobs:
-1. Add the repo.
-2. Find the name of the setting that switches CRDs off.
-3. Write the YAML to a file.
-
-You install nothing.
+Add the repo, find the "CRDs off" setting, write the YAML to a file. Install nothing.
 
 **Write down from the question:** repo name = `argocd` · URL · chart = `argo-cd` · version = `7.7.3` · namespace = `argocd` · CRDs off · file = `/root/argo-helm.yaml`
 
 ---
 
-### Opening routine (same 2 commands at the start of EVERY question)
+### Think
 
-```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
-```
+- **Wanted:** a YAML file with no CRDs in it.
+- **Look first:** the chart's values, near `crds`.
+- **Expect:** `install: true` under `crds:`
+- **Fix:** `helm template` with that setting set to false.
+- **Prove:** the file counts zero CRDs.
 
----
+### Time budget
 
-### Step 1. Add the repo
-
-```
-helm repo add argocd https://argoproj.github.io/argo-helm
-helm repo update
-```
-You see `"argocd" has been added to your repositories`.
-
----
-
-### Step 2. Find the setting that controls CRDs
-
-```
-helm show values argocd/argo-cd --version 7.7.3 | grep -i -A3 "^crds"
-```
-You see:
-```
-crds:
-  # -- Install and upgrade CRDs
-  install: true
-```
-`install` sits under `crds`. Written with a dot, the setting name is **`crds.install`**.
-
----
-
-### Step 3. Generate the file
-
-```
-helm template my-argo argocd/argo-cd --version 7.7.3 --namespace argocd --set crds.install=false > /root/argo-helm.yaml
-```
-
-How to read it:
-
-| Part | Meaning |
-|---|---|
-| `helm template` | print YAML, install nothing |
-| `my-argo` | the release name (a label for this copy of the chart). Any name works; use the one the question gives. Do not confuse it with the repo name `argocd` or the namespace `argocd`. |
-| `argocd/argo-cd` | `<repo-name>/<chart-name>` |
-| `--version 7.7.3` | the chart version from the question |
-| `--namespace argocd` | the namespace from the question |
-| `--set crds.install=false` | the setting from step 2 |
-| `> /root/argo-helm.yaml` | write the output into the file |
-
----
-
-### Closing routine (same at the end of EVERY question: verify, then exit)
-
-```
-ls -l /root/argo-helm.yaml
-grep -c "kind: CustomResourceDefinition" /root/argo-helm.yaml
-```
-You want a file that is not empty (size > 0).
-You also want the count `0`.
-(`grep -c` prints `0` when it finds nothing. It also returns exit code 1.
-Some terminals show that as an error.
-Here `0` IS the success case.)
-
-```
-exit          # exam only
-```
-
----
-
-### If something goes wrong
-
-| You see | Cause | Fix |
-|---|---|---|
-| `Error: repo argocd not found` | step 1 was skipped or the name has a typo | `helm repo list` |
-| `chart "argo-cd" version "..." not found` | wrong version text | `helm search repo argocd/argo-cd --versions | head` |
-| the count is not 0 | the setting name is wrong for this chart version | repeat step 2 and read the exact name |
-| `No such file or directory` | the target folder does not exist | `mkdir -p <folder>` first |
-| you ran `helm install` by mistake | something got installed | `helm uninstall <release> -n argocd` |
-
----
-
-### Mug this up: the whole answer in 5 lines
-
-```
-helm repo add argocd https://argoproj.github.io/argo-helm
-helm repo update
-helm show values argocd/argo-cd --version 7.7.3 | grep -i -A3 "^crds"
-helm template my-argo argocd/argo-cd --version 7.7.3 --namespace argocd --set crds.install=false > /root/argo-helm.yaml
-grep -c "kind: CustomResourceDefinition" /root/argo-helm.yaml      # 0
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 4 minutes.
-
----
-
-## 16. Helm install, upgrade, rollback
-
-### Three words first
-
-- **Release** = one installed copy of a chart. It has a name and lives in a namespace.
-- **Revision** = the version number of a release. Install = revision 1. Every upgrade or rollback adds 1.
-- **--set name=value** = change one of the chart's settings on the command line.
-- **Chart**, **repo**, **values** = the package, its URL, its settings. See question 15.
+Target 4 min. Skip at 8.
 
 ---
 
 ### PART A. Build the exam (Killercoda only)
 
 ```
-helm version || curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | DESIRED_VERSION=v3.16.4 bash   # installs a pinned Helm 3 only if helm is missing
-helm uninstall web -n demo 2>/dev/null
-k delete ns demo --ignore-not-found
-helm repo remove ingress-nginx 2>/dev/null
+helm repo remove argocd 2>/dev/null || true
+rm -f /root/argo-helm.yaml
 clear
+helm repo list
 ```
-Note: the ingress-nginx project was retired. Maintenance ended March 2026.
-Does its repo or chart no longer install?
-Then practise the same steps with a maintained chart.
-- **Repo** = `helm repo add podinfo https://stefanprodan.github.io/podinfo`
-- **Chart** = `podinfo/podinfo`
-- **Setting** = `replicaCount` (top level, no `controller.`)
-
-Only the names change.
 
 ---
+
+### Step 1. Add the repo
+
+**Why:** Helm can only find the chart after the repo is added.
+
+```
+helm repo add argocd https://argoproj.github.io/argo-helm
+helm repo update
+```
+You see:
+```
+"argocd" has been added to your repositories   <-- repo name argocd
+...
+Update Complete. ⎈Happy Helming!⎈
+```
+
+---
+
+### Step 2. Does version 7.7.3 exist?
+
+**Why:** a wrong version text fails later with a vague error.
+
+```
+helm search repo argocd/argo-cd --versions | grep 7.7.3
+```
+You see:
+```
+argocd/argo-cd   7.7.3   ...   A Helm chart for Argo CD, ...   <-- CHART VERSION
+```
+**Means:** the version exists. Use `argocd/argo-cd` = repo/chart.
+
+---
+
+### Step 3. Find the CRD setting
+
+**Why:** each chart names its settings differently. Read them.
+
+```
+helm show values argocd/argo-cd --version 7.7.3 | grep -A3 "^crds"
+```
+You see:
+```
+crds:
+  # -- Install and upgrade CRDs
+  install: true   <-- crds.install
+...
+```
+**Means:** `install` sits under `crds`. The setting is `crds.install`.
+
+---
+
+### Step 4. Write the file
+
+**Why:** `helm template` prints YAML and installs nothing.
+
+```
+helm template my-argo argocd/argo-cd --version 7.7.3 --namespace argocd --set crds.install=false > /root/argo-helm.yaml
+ls -l /root/argo-helm.yaml
+```
+You see:
+```
+-rw-r--r-- 1 root root ... /root/argo-helm.yaml   <-- size is a big number, not 0
+```
+**Means:** `my-argo` is the release name. Any name works if the question gives none.
+**Don't:** run `helm install`. The question wants a file only.
+
+---
+
+### Verify
+
+**Why:** the grader counts CRDs in the file.
+
+```
+grep -c "kind: CustomResourceDefinition" /root/argo-helm.yaml
+```
+You see:
+```
+0   <-- no CRDs
+```
+**Means:** `0` is the success case. grep exits with code 1 here; that is normal.
+
+---
+
+### Three words first
+
+- **Chart** = a Helm package. It lives in a **repo** (a URL). Its **values** are its settings.
+- **helm template** = print the YAML a chart would create. Nothing is installed.
+- **CRD** = CustomResourceDefinition: teaches Kubernetes a new object type.
+
+---
+
+### If something goes wrong
+
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |`|E|r|r|o|r|:| |r|e|p|o| |a|r|g|o|c|d| |n|o|t| |f|o|u|n|d|`| ||| |s|t|e|p| |1| |s|k|i|p|p|e|d|,| |o|r| |a| |t|y|p|o| |i|n| |t|h|e| |n|a|m|e| ||| |`|h|e|l|m| |r|e|p|o| |l|i|s|t|`| |||
+||| |t|h|e| |c|o|u|n|t| |i|s| |n|o|t| |`|0|`| ||| |w|r|o|n|g| |s|e|t|t|i|n|g| |n|a|m|e| |f|o|r| |t|h|i|s| |v|e|r|s|i|o|n| ||| |r|e|p|e|a|t| |s|t|e|p| |3|,| |c|o|p|y| |t|h|e| |e|x|a|c|t| |n|a|m|e| |||
+||| |y|o|u| |u|s|e|d| |`|-|-|s|k|i|p|-|c|r|d|s|`|,| |c|o|u|n|t| |n|o|t| |`|0|`| ||| |t|h|i|s| |c|h|a|r|t| |s|h|i|p|s| |C|R|D|s| |a|s| |n|o|r|m|a|l| |t|e|m|p|l|a|t|e|s| ||| |u|s|e| |`|-|-|s|e|t| |c|r|d|s|.|i|n|s|t|a|l|l|=|f|a|l|s|e|`| |||
+||| |`|N|o| |s|u|c|h| |f|i|l|e| |o|r| |d|i|r|e|c|t|o|r|y|`| ||| |t|h|e| |t|a|r|g|e|t| |f|o|l|d|e|r| |i|s| |m|i|s|s|i|n|g| ||| |`|m|k|d|i|r| |-|p| |<|f|o|l|d|e|r|>|`| |f|i|r|s|t| |||
+||| |y|o|u| |r|a|n| |`|h|e|l|m| |i|n|s|t|a|l|l|`| |b|y| |m|i|s|t|a|k|e| ||| |t|h|e| |c|h|a|r|t| |g|o|t| |i|n|s|t|a|l|l|e|d| ||| |`|h|e|l|m| |u|n|i|n|s|t|a|l|l| |m|y|-|a|r|g|o| |-|n| |a|r|g|o|c|d|`| |||
+
+---
+
+## 16. Helm install, upgrade, rollback
 
 ### PART B. The exam starts here
 
@@ -3063,143 +3074,197 @@ Only the names change.
 
 **What the question is really saying:**
 
-Install with one setting. Change that setting. Undo the change.
-You need the exact name of the "replicas" setting.
-`helm show values` gives it.
+Install with one setting, change it, undo the change.
 
 **Write down from the question:** repo = `ingress-nginx` · release = `web` · namespace = `demo` · replicas 2 → 3 → back to revision 1
 
 ---
 
-### Opening routine (same 2 commands at the start of EVERY question)
+### Think
+
+- **Wanted:** release `web` back at revision 1's settings.
+- **Look first:** the exact name of the replicas setting.
+- **Expect:** `replicaCount` under `controller:`
+- **Fix:** install, upgrade, rollback, each with `-n demo`.
+- **Prove:** revision 3, controller at `2/2`.
+
+### Time budget
+
+Target 5 min. Skip at 10.
+
+---
+
+### PART A. Build the exam (Killercoda only)
 
 ```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
+helm uninstall web -n demo 2>/dev/null || true
+k delete ns demo --ignore-not-found
+k delete ingressclass nginx --ignore-not-found
+k delete validatingwebhookconfiguration web-ingress-nginx-admission --ignore-not-found
+k delete clusterrolebinding web-ingress-nginx web-ingress-nginx-admission --ignore-not-found
+k delete clusterrole web-ingress-nginx web-ingress-nginx-admission --ignore-not-found
+helm repo remove ingress-nginx 2>/dev/null || true
+clear
+helm list -A
 ```
 
 ---
 
 ### Step 1. Add the repo
 
+**Why:** Helm can only find the chart after the repo is added.
+
 ```
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
 helm repo update
 ```
+You see:
+```
+"ingress-nginx" has been added to your repositories
+...
+Update Complete. ⎈Happy Helming!⎈
+```
 
 ---
 
-### Step 2. Find the setting name
+### Step 2. Find the replicas setting
+
+**Why:** the chart has two `replicaCount` settings. You need the controller one.
 
 ```
-helm show values ingress-nginx/ingress-nginx | grep -n replicaCount
+helm show values ingress-nginx/ingress-nginx | grep -E "^[a-z]|replicaCount"
 ```
-You see at least two hits, for example:
+You see:
 ```
-NNN:  replicaCount: 1          <- under controller:
-MMM:    replicaCount: 1        <- under defaultBackend:
+controller:
+...
+  replicaCount: 1   <-- controller.replicaCount
+...
+defaultBackend:
+...
+  replicaCount: 1   <-- not this one
 ```
-Pick the one under `controller:`.
-The question says "controller replicas". It is the first hit.
-To be sure, open the values: `helm show values ingress-nginx/ingress-nginx | less`.
-Type `/replicaCount`. Read the parent key above it. Press `q`.
-So the setting name is **`controller.replicaCount`**.
+**Means:** `^[a-z]` adds the top-level keys. So you see each parent.
 
 ---
 
-### Step 3. Install
+### Step 3. Install with 2 replicas
+
+**Why:** `--set` changes one setting on the command line.
 
 ```
 helm install web ingress-nginx/ingress-nginx -n demo --create-namespace --set controller.replicaCount=2
+k get deploy -n demo
 ```
-Reading it: `helm install <release> <repo>/<chart> -n <namespace>`.
-`--create-namespace` makes the namespace if it does not exist.
+You see:
+```
+STATUS: deployed
+REVISION: 1
+...
+web-ingress-nginx-controller   2/2   2   2   ...   <-- 2 replicas
+```
+**Means:** `--create-namespace` made `demo`. READY `0/2` at first is normal; wait.
 
 ---
 
-### Step 4. Upgrade
+### Step 4. Upgrade to 3 replicas
+
+**Why:** `helm upgrade` changes a running release and adds a revision.
 
 ```
 helm upgrade web ingress-nginx/ingress-nginx -n demo --set controller.replicaCount=3
 ```
+You see:
+```
+Release "web" has been upgraded. Happy Helming!
+...
+REVISION: 2
+```
+**Don't:** use `helm install` again. The name `web` is taken.
 
 ---
 
-### Step 5. Look at the revisions, then roll back
+### Step 5. Roll back to revision 1
+
+**Why:** `helm history` shows which revision holds which change.
 
 ```
 helm history web -n demo
-```
-You see revision 1 (`superseded`) and revision 2 (`deployed`).
-
-```
 helm rollback web 1 -n demo
+```
+You see:
+```
+1   ...   superseded   ingress-nginx-...   ...   Install complete
+2   ...   deployed     ingress-nginx-...   ...   Upgrade complete
+Rollback was a success! Happy Helming!   <-- done
 ```
 
 ---
 
-### Closing routine (same at the end of EVERY question: verify, then exit)
+### Verify
+
+**Why:** a rollback is itself a new revision.
 
 ```
 helm list -n demo
-```
-You want STATUS `deployed`, REVISION `3` (the rollback is itself a new revision).
-
-```
 k get deploy -n demo
 ```
-You want the controller deployment (`web-ingress-nginx-controller`) back at `2/2`.
-(Also looking at `k get svc -n demo`? EXTERNAL-IP `<pending>` is normal.
-The chart asks for a cloud LoadBalancer. A playground does not have one.
-Ignore it.)
+You see:
+```
+web   demo   3   ...   deployed   ingress-nginx-...   <-- REVISION 3
+web-ingress-nginx-controller   2/2   2   2   ...   <-- back to 2
+```
+**Don't:** expect revision 1. Rollback copies revision 1 into a new revision 3.
 
-```
-exit          # exam only
-```
+---
+
+### Three words first
+
+- **Release** = one installed copy of a chart. It has a name and a namespace.
+- **Revision** = the version number of a release. Every install, upgrade or rollback adds 1.
+- **`--set key=value`** = change one chart setting. Dots go down the tree: `controller.replicaCount`.
 
 ---
 
 ### If something goes wrong
 
-| You see | Cause | Fix |
-|---|---|---|
-| `helm list` shows nothing | you forgot `-n demo`. Helm needs the namespace too. | `helm list -A` shows all namespaces |
-| `cannot re-use a name that is still in use` | the release already exists | `helm uninstall web -n demo`, install again |
-| replicas did not change | the setting name is wrong | repeat step 2 |
-
-**Related commands:**
-```
-helm list -A                                 # all releases everywhere
-helm get values web -n demo                  # the settings of a release
-helm uninstall web -n demo                   # remove a release
-helm search repo ingress-nginx --versions    # available chart versions
-```
-
----
-
-### Mug this up: the whole answer in 6 lines
-
-```
-helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx ; helm repo update
-helm show values ingress-nginx/ingress-nginx | grep -n replicaCount
-helm install web ingress-nginx/ingress-nginx -n demo --create-namespace --set controller.replicaCount=2
-helm upgrade web ingress-nginx/ingress-nginx -n demo --set controller.replicaCount=3
-helm history web -n demo
-helm rollback web 1 -n demo
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 5 minutes.
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |`|h|e|l|m| |l|i|s|t|`| |s|h|o|w|s| |n|o|t|h|i|n|g| ||| |`|-|n| |d|e|m|o|`| |m|i|s|s|i|n|g|;| |H|e|l|m| |n|e|e|d|s| |i|t| |t|o|o| ||| |`|h|e|l|m| |l|i|s|t| |-|A|`| |||
+||| |`|c|a|n|n|o|t| |r|e|-|u|s|e| |a| |n|a|m|e| |t|h|a|t| |i|s| |s|t|i|l|l| |i|n| |u|s|e|`| ||| |t|h|e| |r|e|l|e|a|s|e| |a|l|r|e|a|d|y| |e|x|i|s|t|s| ||| |u|s|e| |`|h|e|l|m| |u|p|g|r|a|d|e|`|,| |o|r| |u|n|i|n|s|t|a|l|l| |f|i|r|s|t| |||
+||| |r|e|p|l|i|c|a|s| |d|i|d| |n|o|t| |c|h|a|n|g|e| ||| |w|r|o|n|g| |s|e|t|t|i|n|g| |n|a|m|e| ||| |r|e|p|e|a|t| |s|t|e|p| |2| |||
+||| |`|k| |g|e|t| |s|v|c| |-|n| |d|e|m|o|`| |E|X|T|E|R|N|A|L|-|I|P| |`|<|p|e|n|d|i|n|g|>|`| ||| |n|o| |c|l|o|u|d| |L|o|a|d|B|a|l|a|n|c|e|r| |i|n| |a| |l|a|b| ||| |n|o|r|m|a|l|,| |i|g|n|o|r|e| |i|t| |||
+||| |r|e|p|o| |a|d|d| |o|r| |i|n|s|t|a|l|l| |f|a|i|l|s| ||| |i|n|g|r|e|s|s|-|n|g|i|n|x| |w|a|s| |r|e|t|i|r|e|d| |i|n| |M|a|r|c|h| |2|0|2|6| ||| |p|r|a|c|t|i|s|e| |w|i|t|h| |r|e|p|o| |`|h|t|t|p|s|:|/|/|s|t|e|f|a|n|p|r|o|d|a|n|.|g|i|t|h|u|b|.|i|o|/|p|o|d|i|n|f|o|`|,| |c|h|a|r|t| |`|p|o|d|i|n|f|o|/|p|o|d|i|n|f|o|`|,| |s|e|t|t|i|n|g| |`|r|e|p|l|i|c|a|C|o|u|n|t|`| |||
 
 ---
 
 ## 17. Kustomize
 
-### Three words first
+### PART B. The exam starts here
 
-- **Kustomize** = a way to change a normal YAML file without editing that file. It is built into kubectl.
-- **kustomization.yaml** = the plan file. `resources:` lists the YAML files to use. The rest says what to change (namespace, replicas, image...).
-- **`-k <folder>`** = tell kubectl to read a folder that contains a `kustomization.yaml`. (`-f` is for a normal file.)
+**The question, as the exam words it:**
+
+> A Kustomize configuration exists in `/root/kust`. Change it so that deployment `kweb` runs with `3` replicas, then apply it. Do not edit `deploy.yaml`.
+
+**What the question is really saying:**
+
+Change `kustomization.yaml`, not `deploy.yaml`, then apply the folder with `-k`.
+
+**Write down from the question:** folder = `/root/kust` · deployment = `kweb` · replicas = `3` · do NOT edit `deploy.yaml`
+
+---
+
+### Think
+
+- **Wanted:** `kweb` with 3 replicas, made by Kustomize.
+- **Look first:** the plan file `kustomization.yaml`.
+- **Expect:** a `replicas:` block with `count: 2`.
+- **Fix:** change the count in the plan file, apply the folder.
+- **Prove:** `kweb` shows `3/3` in the namespace the plan sets.
+
+### Time budget
+
+Target 3 min. Skip at 6.
 
 ---
 
@@ -3207,6 +3272,7 @@ helm rollback web 1 -n demo
 
 ```
 k delete ns kust --ignore-not-found
+k delete deploy kweb -n default --ignore-not-found
 rm -rf /root/kust
 mkdir -p /root/kust
 k create deploy kweb --image=nginx:1.27 --dry-run=client -o yaml > /root/kust/deploy.yaml
@@ -3220,144 +3286,126 @@ replicas:
 EOF
 k create ns kust
 clear
+cat /root/kust/kustomization.yaml
 ```
 
 ---
 
-### PART B. The exam starts here
+### Step 1. What does the plan say?
 
-**The question, as the exam words it:**
-
-> A Kustomize configuration exists in `/root/kust`. Change it so that deployment `kweb` runs with `3` replicas, then apply it. Do not edit `deploy.yaml`.
-
-**What the question is really saying:**
-
-The change goes into `kustomization.yaml`, not into the base file.
-Then apply the FOLDER with `-k`.
-
-**Write down from the question:** folder = `/root/kust` · deployment = `kweb` · replicas = `3` · do NOT edit `deploy.yaml`
-
----
-
-### Opening routine (same 2 commands at the start of EVERY question)
+**Why:** the plan file lists the base files and the changes.
 
 ```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
-```
-
----
-
-### Step 1. Read what is there
-
-```
-ls /root/kust
 cat /root/kust/kustomization.yaml
 ```
 You see:
 ```
 resources:
-- deploy.yaml
-namespace: kust
+- deploy.yaml        <-- the base, do not touch
+namespace: kust      <-- everything goes here
 replicas:
 - name: kweb
-  count: 2
+  count: 2           <-- change this
 ```
-How it reads: "Take `deploy.yaml`. Put everything in namespace `kust`. Set `kweb` to 2 replicas."
+**Means:** "Take `deploy.yaml`, put it in `kust`, give `kweb` 2 replicas."
 
 ---
 
-### Step 2. Make the change
+### Step 2. Change the count
+
+**Why:** the change goes into the plan (docs page: "Declarative Management of Kubernetes Objects Using Kustomize").
 
 ```
 vim /root/kust/kustomization.yaml
 ```
-Change `count: 2` to `count: 3`.
-Vim keys, exactly:
-1. Type `/count` and press Enter. The cursor is on the `c`.
-2. Press `$`. It jumps to the last character, the `2`.
-3. Type `r3`. It replaces that one character with `3`.
-4. Type `:wq` and press Enter.
+The file must end up like this:
+```yaml
+resources:
+- deploy.yaml
+namespace: kust
+replicas:
+- name: kweb
+  count: 3   # <-- CHANGE
+```
+In vim: type `/count`, Enter, `$`, `r3`, then `:wq`, Enter.
+
+```
+grep count /root/kust/kustomization.yaml
+```
+You see:
+```
+  count: 3   <-- changed
+```
 
 ---
 
-### Step 3. Preview (creates nothing)
+### Step 3. Preview the result
+
+**Why:** `k kustomize` prints the final YAML and creates nothing.
 
 ```
-k kustomize /root/kust
+k kustomize /root/kust | grep -E 'namespace|replicas'
 ```
-It prints the final YAML.
-Check that you see `replicas: 3` and `namespace: kust`.
+You see:
+```
+  namespace: kust
+  replicas: 3   <-- the plan worked
+```
+**Means:** the plan is right. Now apply it.
 
 ---
 
 ### Step 4. Apply the folder
 
+**Why:** `-k` reads the plan. `-f` would ignore it.
+
 ```
 k apply -k /root/kust
 ```
+You see:
+```
+deployment.apps/kweb created
+```
+**Don't:** use `-f /root/kust`. It applies `deploy.yaml` unchanged into `default`.
 
 ---
 
-### Closing routine (same at the end of EVERY question: verify, then exit)
+### Verify
+
+**Why:** prove 3 pods run in the plan's namespace.
 
 ```
-k get deploy -n kust
+k get deploy kweb -n kust
 ```
-You want `kweb   3/3`.
+You see:
+```
+NAME   READY   UP-TO-DATE   AVAILABLE   AGE
+kweb   3/3     3            3           20s   <-- 3/3
+```
+**Don't:** worry about `1/3` at first. Wait 20 seconds.
 
-```
-exit          # exam only
-```
+---
+
+### Three words first
+
+- **Kustomize** = changes YAML files without editing them. Built into kubectl.
+- **kustomization.yaml** = the plan: `resources:` lists the files, the rest lists changes.
+- **`-k <folder>`** = apply a folder that holds a `kustomization.yaml`.
 
 ---
 
 ### If something goes wrong
 
-| You see | Cause | Fix |
-|---|---|---|
-| `deployment.apps/kweb created` plus an error about `kustomization.yaml` (`kind not set` / `Object 'Kind' is missing`) | you used `-f` with the folder. kubectl applied `deploy.yaml` as-is into `default`. Your changes were ignored. It could not read `kustomization.yaml`. | clean up: `k delete deploy kweb -n default`, then `k apply -k /root/kust` |
-| `No resources found` in `k get deploy` | you looked in the wrong namespace. The kustomization sets it. | read `namespace:` in the file |
-| the question asks for a new image tag instead | different block | add to `kustomization.yaml`: `images:` / `- name: nginx` / `  newTag: "1.28"` |
-
----
-
-### Mug this up: the whole answer in 4 lines
-
-```
-cat /root/kust/kustomization.yaml
-vim /root/kust/kustomization.yaml            # make the change here, not in deploy.yaml
-k kustomize /root/kust                       # preview
-k apply -k /root/kust
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 3 minutes.
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |`|d|e|p|l|o|y|m|e|n|t|.|a|p|p|s|/|k|w|e|b| |c|r|e|a|t|e|d|`| |p|l|u|s| |a|n| |e|r|r|o|r| |w|i|t|h| |`|k|i|n|d| |n|o|t| |s|e|t|`| ||| |y|o|u| |u|s|e|d| |`|-|f|`| |o|n| |t|h|e| |f|o|l|d|e|r| ||| |`|k| |d|e|l|e|t|e| |d|e|p|l|o|y| |k|w|e|b| |-|n| |d|e|f|a|u|l|t|`|,| |t|h|e|n| |`|k| |a|p|p|l|y| |-|k| |/|r|o|o|t|/|k|u|s|t|`| |||
+||| |`|N|o| |r|e|s|o|u|r|c|e|s| |f|o|u|n|d|`| ||| |w|r|o|n|g| |n|a|m|e|s|p|a|c|e| ||| |r|e|a|d| |`|n|a|m|e|s|p|a|c|e|:|`| |i|n| |t|h|e| |p|l|a|n|;| |u|s|e| |`|-|n| |k|u|s|t|`| |||
+||| |`|n|a|m|e|s|p|a|c|e|s| |"|k|u|s|t|"| |n|o|t| |f|o|u|n|d|`| ||| |K|u|s|t|o|m|i|z|e| |d|o|e|s| |n|o|t| |c|r|e|a|t|e| |t|h|e| |n|a|m|e|s|p|a|c|e| ||| |`|k| |c|r|e|a|t|e| |n|s| |k|u|s|t|`|,| |a|p|p|l|y| |a|g|a|i|n| |||
+||| |t|h|e| |q|u|e|s|t|i|o|n| |w|a|n|t|s| |a| |n|e|w| |i|m|a|g|e| |t|a|g| ||| |d|i|f|f|e|r|e|n|t| |b|l|o|c|k| ||| |a|d|d| |`|i|m|a|g|e|s|:|`| |/| |`|-| |n|a|m|e|:| |n|g|i|n|x|`| |/| |`| | |n|e|w|T|a|g|:| |"|1|.|2|8|"|`| |||
 
 ---
 
 ## 18. ★ CRDs
-
-### Three words first
-
-- **CRD (CustomResourceDefinition)** = an object that adds a NEW kind of object to Kubernetes. Example: after installing cert-manager's CRDs, the cluster knows the kind `Certificate`.
-- **k get crd** = lists all CRDs installed in the cluster.
-- **k explain** = prints the documentation of a kind or of one of its fields. It works for the new kinds too.
-
----
-
-### PART A. Build the exam (Killercoda only)
-
-```
-k apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.2/cert-manager.crds.yaml
-rm -f /root/crds.txt /root/subject.txt
-clear
-```
-This installs only cert-manager's CRDs, not cert-manager itself.
-So there are no cert-manager pods. Do not look for them.
-This question only needs the CRDs.
-
----
 
 ### PART B. The exam starts here
 
@@ -3369,134 +3417,143 @@ This question only needs the CRDs.
 
 **What the question is really saying:**
 
-Two outputs into two files. One comes from `k get crd`, the other from `k explain`.
+Two files: one from `k get crd`, one from `k explain`.
 
 **Write down from the question:** files = `/root/crds.txt`, `/root/subject.txt` · kind = `Certificate` · field = `spec.subject`
 
 ---
 
-### Opening routine (same 2 commands at the start of EVERY question)
+### Think
 
-```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
-```
+- **Wanted:** two files the grader opens and compares.
+- **Look first:** the CRD list, filtered to cert-manager.
+- **Expect:** 6 names ending in `cert-manager.io`.
+- **Fix:** list into file 1; field docs into file 2.
+- **Prove:** both files hold what the screen showed.
 
----
+### Time budget
 
-### Step 1. Look first
-
-```
-k get crd | grep cert-manager
-```
-`grep cert-manager` keeps only the lines that contain that word.
-You see 6 lines, for example `certificates.cert-manager.io`.
-
----
-
-### Step 2. Same command, into the file
-
-```
-k get crd | grep cert-manager > /root/crds.txt
-```
-
----
-
-### Step 3. The field documentation, into the file
-
-```
-k explain certificate.spec.subject > /root/subject.txt
-```
-The path is written with dots: `<kind>.spec.<field>`.
-
----
-
-### Closing routine (same at the end of EVERY question: verify, then exit)
-
-```
-cat /root/crds.txt
-cat /root/subject.txt
-```
-You want the 6 lines in the first file.
-The second file starts like this:
-```
-GROUP:      cert-manager.io
-KIND:       Certificate
-VERSION:    v1
-
-FIELD: subject <Object>
-```
-followed by the field's DESCRIPTION.
-
-```
-exit          # exam only
-```
-
----
-
-### If something goes wrong
-
-| You see | Cause | Fix |
-|---|---|---|
-| `error: couldn't find resource for "certificate"` | you do not know the exact kind name | `k api-resources | grep cert-manager` and use a name from the first column |
-| the question gives an exact command format (for example `-o name`) | the grader compares the format | use exactly that: `k get crd -o name | grep cert-manager > /root/crds.txt` |
-| the question also asks you to CREATE an object of the new kind | you need its fields | `k explain <kind>.spec` lists them. Write a small YAML with `apiVersion` and `kind` from the top of that output, `k apply -f`. |
-
----
-
-### Mug this up: the whole answer in 3 lines
-
-```
-k get crd | grep cert-manager > /root/crds.txt
-k explain certificate.spec.subject > /root/subject.txt
-cat /root/crds.txt ; cat /root/subject.txt
-```
-
-**To repeat the question:** paste Part A again.
-**Target time:** 3 minutes.
-
----
-
-## 19. ★ cri-dockerd (prepare a node)
-
-### Three words first
-
-- **Container runtime** = the program on a node that actually runs containers. **cri-dockerd** is an adapter that lets Kubernetes use Docker as that runtime.
-- **.deb file** = an installer package for Debian/Ubuntu. `dpkg -i <file>` installs it.
-- **sysctl** = a Linux kernel setting, written `name = value`. `sysctl -w` sets it until the next reboot. A file in `/etc/sysctl.d/` sets it permanently.
-
-This question uses no kubectl at all. It is Linux work on one machine.
+Target 3 min. Skip at 6.
 
 ---
 
 ### PART A. Build the exam (Killercoda only)
 
-**Playground warning, read first:**
-The free Killercoda playground has NO Docker. It runs containerd.
-So Step 1 (`dpkg -i`) may stop with `dependency problems`.
-Step 2 can NOT finish: `cri-docker` will not start.
-You see `Cannot connect to the Docker daemon`.
-Type those commands for practice. Read the messages. Then move on.
-Steps 3 and 4 (the kernel settings) work fully here.
-Do NOT run `apt-get install -f -y` on the playground.
-Do NOT install Docker on the playground either.
-It can replace the playground's containerd and break the cluster.
-In the exam, Docker is already installed and every step works.
-
 ```
-# 1. put the package where the question expects it (pinned release, matched to your Ubuntu version)
-. /etc/os-release; echo "Ubuntu codename: $VERSION_CODENAME"
-curl -fL -o /root/cri-dockerd.deb https://github.com/Mirantis/cri-dockerd/releases/download/v0.4.10/cri-dockerd_0.4.10.3-0.ubuntu-${VERSION_CODENAME}_amd64.deb
-ls -l /root/cri-dockerd.deb
-# 2. undo the kernel settings, so the task is real (the playground already has them at 1)
-rm -f /etc/sysctl.d/k8s.conf
-sysctl -w net.ipv4.ip_forward=0 net.ipv6.conf.all.forwarding=0 net.bridge.bridge-nf-call-iptables=0
+k apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.2/cert-manager.crds.yaml
+rm -f /root/crds.txt /root/subject.txt
 clear
+k get crd | grep cert-manager
 ```
-- `curl` fails (404)? Then your Ubuntu codename has no build. Replace `${VERSION_CODENAME}` with `jammy`. Run that line again.
-- Pod networking on this machine is broken until you finish Step 4. That is expected.
 
 ---
+
+### Step 1. Which cert-manager CRDs exist?
+
+**Why:** `grep` keeps only lines with the word cert-manager.
+
+```
+k get crd | grep cert-manager
+```
+You see:
+```
+certificaterequests.cert-manager.io   2026-...
+certificates.cert-manager.io          2026-...   <-- one of 6 lines
+...
+```
+**Means:** 6 lines. That is the list the grader wants.
+
+---
+
+### Step 2. The list, into the file
+
+**Why:** same command, `>` sends it into the file.
+
+```
+k get crd | grep cert-manager > /root/crds.txt
+wc -l /root/crds.txt
+```
+You see:
+```
+6 /root/crds.txt   <-- 6 lines saved
+```
+
+---
+
+### Step 3. Read the field docs
+
+**Why:** `k explain` works for new kinds too. The path uses dots.
+
+```
+k explain certificate.spec.subject | head -5
+```
+You see:
+```
+GROUP:      cert-manager.io
+KIND:       Certificate          <-- right kind
+VERSION:    v1
+
+FIELD: subject <Object>          <-- right field
+```
+**Means:** the path is right. Now save the full text.
+
+---
+
+### Step 4. The docs, into the file
+
+**Why:** the grader reads the full text, not only the head.
+
+```
+k explain certificate.spec.subject > /root/subject.txt
+head -2 /root/subject.txt
+```
+You see:
+```
+GROUP:      cert-manager.io
+KIND:       Certificate
+```
+**Don't:** keep `| head` in this command. The file would hold 5 lines only.
+
+---
+
+### Verify
+
+**Why:** the grader reads the files, so read them too.
+
+```
+cat /root/crds.txt /root/subject.txt
+```
+You see:
+```
+certificaterequests.cert-manager.io   2026-...
+...
+FIELD: subject <Object>
+...
+DESCRIPTION:
+```
+
+---
+
+### Three words first
+
+- **CRD (CustomResourceDefinition)** = adds a NEW kind to Kubernetes, like `Certificate`.
+- **k explain** = prints the docs of a kind or one of its fields.
+- **`| grep word`** = keep only the lines that contain `word`.
+
+---
+
+### If something goes wrong
+
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |`|c|o|u|l|d|n|'|t| |f|i|n|d| |r|e|s|o|u|r|c|e| |f|o|r| |"|c|e|r|t|i|f|i|c|a|t|e|"|`| ||| |w|r|o|n|g| |k|i|n|d| |n|a|m|e| ||| |`|k| |a|p|i|-|r|e|s|o|u|r|c|e|s| |||| |g|r|e|p| |c|e|r|t|-|m|a|n|a|g|e|r|`|;| |u|s|e| |a| |n|a|m|e| |f|r|o|m| |t|h|e| |f|i|r|s|t| |c|o|l|u|m|n| |||
+||| |t|h|e| |q|u|e|s|t|i|o|n| |n|a|m|e|s| |a|n| |o|u|t|p|u|t| |f|o|r|m|a|t| |(|e|.|g|.| |`|-|o| |n|a|m|e|`|)| ||| |t|h|e| |g|r|a|d|e|r| |c|o|m|p|a|r|e|s| |t|h|a|t| |f|o|r|m|a|t| ||| |`|k| |g|e|t| |c|r|d| |-|o| |n|a|m|e| |||| |g|r|e|p| |c|e|r|t|-|m|a|n|a|g|e|r| |>| |/|r|o|o|t|/|c|r|d|s|.|t|x|t|`| |||
+||| |t|h|e| |q|u|e|s|t|i|o|n| |a|l|s|o| |a|s|k|s| |t|o| |C|R|E|A|T|E| |s|u|c|h| |a|n| |o|b|j|e|c|t| ||| |y|o|u| |n|e|e|d| |i|t|s| |f|i|e|l|d|s| ||| |`|k| |e|x|p|l|a|i|n| |c|e|r|t|i|f|i|c|a|t|e|.|s|p|e|c|`|;| |c|o|p|y| |`|a|p|i|V|e|r|s|i|o|n|`| |a|n|d| |`|k|i|n|d|`|;| |`|k| |a|p|p|l|y| |-|f|`| |||
+||| |n|o| |c|e|r|t|-|m|a|n|a|g|e|r| |p|o|d|s| |o|n| |K|i|l|l|e|r|c|o|d|a| ||| |P|a|r|t| |A| |i|n|s|t|a|l|l|s| |o|n|l|y| |t|h|e| |C|R|D|s| ||| |n|o|r|m|a|l|;| |t|h|i|s| |q|u|e|s|t|i|o|n| |n|e|e|d|s| |o|n|l|y| |t|h|e| |C|R|D|s| |||
+
+---
+
+## 19. ★ cri-dockerd (prepare a node)
 
 ### PART B. The exam starts here
 
@@ -3513,149 +3570,153 @@ clear
 
 **What the question is really saying:**
 
-Three separate Linux jobs:
-1. Install a package.
-2. Switch a service on.
-3. Write four settings into a file and load them.
+Three Linux jobs, no kubectl: install a package, start a service, write settings into a file.
 
-**Write down from the question:** package path · service = `cri-docker` · the 4 parameters (copy them, do not retype) · must persist (so: a file, not `sysctl -w`)
+**Write down from the question:** package = `/root/cri-dockerd.deb` · service = `cri-docker` · the 4 parameters (copy, do not retype) · must persist = a file, not `sysctl -w`
 
 ---
 
-### Opening routine (same 2 commands at the start of EVERY question)
+### Think
+
+- **Wanted:** package installed, service running, 4 settings saved in a file.
+- **Look first:** the package path from the question.
+- **Expect:** `Setting up cri-dockerd`, then `active`.
+- **Fix:** settings into a file in `/etc/sysctl.d/`, then load them.
+- **Prove:** `sysctl` prints the 4 values from the question.
+
+### Time budget
+
+Target 4 min. Skip at 8.
+
+---
+
+### PART A. Build the exam (Killercoda only)
 
 ```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
+dpkg -r cri-dockerd >/dev/null 2>&1
+. /etc/os-release
+curl -fsL -o /root/cri-dockerd.deb https://github.com/Mirantis/cri-dockerd/releases/download/v0.4.10/cri-dockerd_0.4.10.3-0.ubuntu-${VERSION_CODENAME}_amd64.deb || curl -fsL -o /root/cri-dockerd.deb https://github.com/Mirantis/cri-dockerd/releases/download/v0.4.10/cri-dockerd_0.4.10.3-0.ubuntu-jammy_amd64.deb
+rm -f /etc/sysctl.d/k8s.conf
+sysctl -w net.ipv4.ip_forward=0 net.ipv6.conf.all.forwarding=0 net.bridge.bridge-nf-call-iptables=0 >/dev/null
+clear
+ls -l /root/cri-dockerd.deb && sysctl net.ipv4.ip_forward
 ```
-(If kubectl is not installed on that machine, `k get nodes` fails. For this question that is fine.)
 
 ---
 
 ### Step 1. Install the package
 
+**Why:** `dpkg -i` installs a `.deb` file.
+
 ```
 dpkg -i /root/cri-dockerd.deb
 ```
-You see `Setting up cri-dockerd ...`.
+You see:
+```
+Setting up cri-dockerd ...   <-- installed
+```
+**Don't:** run `apt-get install -f` on Killercoda. It can break the cluster.
 
 ---
 
 ### Step 2. Enable and start the service
 
+**Why:** `enable` = start at boot. `--now` = start it now too.
+
 ```
 systemctl enable --now cri-docker
-systemctl status cri-docker
+systemctl is-enabled cri-docker
+systemctl is-active cri-docker
 ```
-You want `Active: active (running)`. Press `q`.
+You see:
+```
+enabled   <-- starts at boot
+active    <-- running now
+```
 
 ---
 
 ### Step 3. Write the settings into a file
 
+**Why:** files in `/etc/sysctl.d/` are read at every boot (docs page: "Container Runtimes").
+
 ```
 vim /etc/sysctl.d/k8s.conf
 ```
-Vim keys, exactly:
-1. Type `:set paste` and press Enter.
-2. Press `i`.
-3. Paste the four lines from the question:
+In vim: `:set paste`, Enter, `i`, paste, `Esc`, `:wq`, Enter. The file content:
 ```
 net.bridge.bridge-nf-call-iptables = 1
 net.ipv6.conf.all.forwarding = 1
 net.ipv4.ip_forward = 1
 net.netfilter.nf_conntrack_max = 131072
 ```
-4. Press `Esc`. Type `:wq` and press Enter.
-
-The file name can be anything that ends in `.conf`.
+```
+cat /etc/sysctl.d/k8s.conf
+```
+You see:
+```
+net.bridge.bridge-nf-call-iptables = 1   <-- 4 lines, as in the question
+...
+```
+**Don't:** use only `sysctl -w`. It is lost at reboot.
 
 ---
 
 ### Step 4. Load the settings now
 
+**Why:** the file alone waits for a reboot. `--system` loads it now.
+
 ```
 sysctl --system
 ```
-It reads every file in `/etc/sysctl.d/` and prints each setting it applied.
+You see:
+```
+* Applying /etc/sysctl.d/k8s.conf ...   <-- your file
+net.bridge.bridge-nf-call-iptables = 1
+...
+```
 
 ---
 
-### Closing routine (same at the end of EVERY question: verify, then exit)
+### Verify
+
+**Why:** prove all 4 values are live.
 
 ```
 sysctl net.ipv4.ip_forward net.bridge.bridge-nf-call-iptables net.ipv6.conf.all.forwarding net.netfilter.nf_conntrack_max
 ```
-You want the four values from the question.
+You see:
+```
+net.ipv4.ip_forward = 1
+net.bridge.bridge-nf-call-iptables = 1
+net.ipv6.conf.all.forwarding = 1
+net.netfilter.nf_conntrack_max = 131072
+```
 
-```
-systemctl is-enabled cri-docker          # enabled
-systemctl is-active cri-docker           # active
-exit                                     # exam only
-```
+---
+
+### Three words first
+
+- **cri-dockerd** = an adapter so Kubernetes can use Docker to run containers.
+- **`.deb` file** = an Ubuntu installer package. `dpkg -i` installs it.
+- **sysctl** = a kernel setting, `name = value`.
 
 ---
 
 ### If something goes wrong
 
-| You see | Cause | Fix |
-|---|---|---|
-| `sysctl: cannot stat /proc/sys/net/bridge/bridge-nf-call-iptables` | the kernel module for bridging is not loaded | `modprobe br_netfilter`, then `sysctl --system` again |
-| `sysctl: cannot stat /proc/sys/net/netfilter/nf_conntrack_max` | the conntrack module is not loaded | `modprobe nf_conntrack`, then `sysctl --system` again |
-| `dpkg: dependency problems` | a required package (usually Docker) is missing | exam: `apt-get install -f -y`. Playground: expected (no Docker), do not run it, go on to Step 3 |
-| `cri-docker` fails: `Cannot connect to the Docker daemon` | Docker is not installed or not running | exam: `systemctl enable --now docker`, then restart cri-docker. Playground: expected (no Docker), go on to Step 3 |
-| `Unit cri-docker.service not found` | the package did not install, or the service has another name | run `systemctl list-unit-files`, then look for cri |
-
----
-
-### Mug this up: the whole answer in 5 lines
-
-```
-dpkg -i /root/cri-dockerd.deb
-systemctl enable --now cri-docker
-vim /etc/sysctl.d/k8s.conf                   # paste the parameters from the question
-sysctl --system
-sysctl net.ipv4.ip_forward                   # = 1
-```
-
-**Target time:** 4 minutes.
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |K|i|l|l|e|r|c|o|d|a|:| |`|d|e|p|e|n|d|e|n|c|y| |p|r|o|b|l|e|m|s|`| |o|r| |`|C|a|n|n|o|t| |c|o|n|n|e|c|t| |t|o| |t|h|e| |D|o|c|k|e|r| |d|a|e|m|o|n|`| ||| |t|h|e| |p|l|a|y|g|r|o|u|n|d| |h|a|s| |n|o| |D|o|c|k|e|r| ||| |e|x|p|e|c|t|e|d|;| |g|o| |o|n| |t|o| |S|t|e|p| |3|;| |n|e|v|e|r| |i|n|s|t|a|l|l| |D|o|c|k|e|r| |t|h|e|r|e| |||
+||| |`|c|a|n|n|o|t| |s|t|a|t| |/|p|r|o|c|/|s|y|s|/|n|e|t|/|b|r|i|d|g|e|/|.|.|.|`| ||| |b|r|i|d|g|e| |m|o|d|u|l|e| |n|o|t| |l|o|a|d|e|d| ||| |`|m|o|d|p|r|o|b|e| |b|r|_|n|e|t|f|i|l|t|e|r|`|,| |t|h|e|n| |`|s|y|s|c|t|l| |-|-|s|y|s|t|e|m|`| |||
+||| |`|c|a|n|n|o|t| |s|t|a|t| |/|p|r|o|c|/|s|y|s|/|n|e|t|/|n|e|t|f|i|l|t|e|r|/|.|.|.|`| ||| |c|o|n|n|t|r|a|c|k| |m|o|d|u|l|e| |n|o|t| |l|o|a|d|e|d| ||| |`|m|o|d|p|r|o|b|e| |n|f|_|c|o|n|n|t|r|a|c|k|`|,| |t|h|e|n| |`|s|y|s|c|t|l| |-|-|s|y|s|t|e|m|`| |||
+||| |`|r|e|q|u|i|r|e|s| |s|u|p|e|r|u|s|e|r| |p|r|i|v|i|l|e|g|e|`| ||| |y|o|u| |a|r|e| |n|o|t| |r|o|o|t| ||| |`|s|u|d|o| |-|i|`|,| |t|h|e|n| |r|e|p|e|a|t| |t|h|e| |s|t|e|p| |||
+||| |`|U|n|i|t| |c|r|i|-|d|o|c|k|e|r|.|s|e|r|v|i|c|e| |n|o|t| |f|o|u|n|d|`| ||| |p|a|c|k|a|g|e| |n|o|t| |i|n|s|t|a|l|l|e|d| ||| |r|e|p|e|a|t| |S|t|e|p| |1|;| |r|e|a|d| |i|t|s| |e|r|r|o|r|s| |||
+||| |K|i|l|l|e|r|c|o|d|a|:| |p|o|d|s| |s|t|o|p| |t|a|l|k|i|n|g| |a|f|t|e|r| |P|a|r|t| |A| ||| |P|a|r|t| |A| |s|e|t| |`|i|p|_|f|o|r|w|a|r|d|=|0|`| ||| |f|i|n|i|s|h| |S|t|e|p| |3| |(|`|s|y|s|c|t|l| |-|-|s|y|s|t|e|m|`|)| |||
 
 ---
 
 ## 20. ★ Install a CNI (network plug-in)
-
-### Three words first
-
-- **CNI** = the network plug-in. It gives every pod an IP address and lets pods talk to each other. Without it, nodes stay `NotReady` and CoreDNS pods stay `Pending`. Most other new pods sit in `ContainerCreating`, because no IP can be given.
-- **Flannel** and **Calico** = two common CNIs. **Flannel does NOT enforce NetworkPolicy. Calico does.** This one fact decides the question.
-- **Pod CIDR** = the IP range the cluster uses for pods, for example `10.244.0.0/16`. The CNI must be told the same range.
-
----
-
-### PART A. Build the exam (Killercoda only)
-
-**Playground warning, read first:**
-The free Killercoda playground already has a CNI.
-Installing Calico on top of it would break pod networking.
-So in the playground, do ONLY the rehearsal below.
-That is: dry-run, find the range, edit `cidr:`.
-Do NOT run Step 1 (`k create -f` tigera-operator).
-Do NOT run Step 4 (`k apply -f custom-resources.yaml`). Just read them.
-Nodes will already be `Ready` here.
-The full task (nodes going from NotReady to Ready) needs a fresh kubeadm cluster.
-That cluster must have no CNI. Examples: the killer.sh simulator, or your own VMs.
-
-**What you CAN rehearse here, without changing anything** (Calico v3.29.1 as the example URLs):
-```
-k create -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.1/manifests/tigera-operator.yaml --dry-run=client | tail -3
-k -n kube-system get pod -l component=kube-controller-manager -o yaml | grep cluster-cidr
-curl -LO https://raw.githubusercontent.com/projectcalico/calico/v3.29.1/manifests/custom-resources.yaml
-vim custom-resources.yaml        # find cidr:, change it (Step 3), but do NOT apply it here
-clear
-```
-`--dry-run=client` = check the file and print what would be created, but create nothing.
-
----
 
 ### PART B. The exam starts here
 
@@ -3669,167 +3730,139 @@ clear
 
 **What the question is really saying:**
 
-Pick the right one, then install it. "Must support NetworkPolicy" means Calico.
+NetworkPolicy support means Calico. (Killercoda already has a CNI: never run Steps 1 and 4 there.)
 
 **Write down from the question:** the URLs · requirement = NetworkPolicy support → **Calico**
 
 ---
 
-### Opening routine (same 2 commands at the start of EVERY question)
+### Think
 
-```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
-```
-In the exam the nodes show `NotReady`.
-That is expected: there is no network yet.
-(In the playground they are already `Ready`.)
+- **Wanted:** a CNI that enforces NetworkPolicy: Calico, not Flannel.
+- **Look first:** the nodes are `NotReady`; find the cluster's pod range.
+- **Expect:** a range like `10.244.0.0/16`.
+- **Fix:** install the operator, put the range in the settings file, apply it.
+- **Prove:** calico pods Running, all nodes `Ready`.
 
----
+### Time budget
 
-### Step 1. Install the Calico operator
-
-**Exam only. Do not run this step in the Killercoda playground.**
-```
-k create -f <tigera-operator URL from the question>
-```
-Use `create`, not `apply`.
-The file is very large. `apply` refuses it with `metadata.annotations: Too long`.
-
----
-
-### Step 2. Find the cluster's pod IP range
-
-```
-k -n kube-system get pod -l component=kube-controller-manager -o yaml | grep cluster-cidr
-```
-You see for example `- --cluster-cidr=10.244.0.0/16`. Write it down.
-
-Does it print NOTHING? Then kubeadm ran without a pod range.
-Check the kubeadm config:
-```
-k -n kube-system get cm kubeadm-config -o yaml | grep -i podSubnet
-```
-Is that empty too, or does the question give no range?
-Then leave the `cidr:` in the file at its default (`192.168.0.0/16`).
-Skip the edit in Step 3.
-
----
-
-### Step 3. Download the settings file and put the range in
-
-```
-curl -LO <custom-resources URL from the question>
-vim custom-resources.yaml
-```
-Type `/cidr` and press Enter.
-Change the value to the range from step 2:
-```
-      cidr: 10.244.0.0/16
-```
-Vim keys, exactly:
-1. The cursor is on the `c` of `cidr:`.
-2. Press `w` twice. The cursor moves onto the first digit of the value.
-3. Press `C`. It deletes to the end of the line and starts typing.
-4. Type `10.244.0.0/16` (your range).
-5. Press `Esc`. Type `:wq` and press Enter.
-
----
-
-### Step 4. Apply it
-
-**Exam only. Do not run this step in the Killercoda playground.**
-```
-k apply -f custom-resources.yaml
-```
-Do you see `no matches for kind "Installation"` (or `"APIServer"`)?
-Then the operator from step 1 is still registering its CRDs.
-Wait 20 seconds and run the same command again.
-
----
-
-### Closing routine (same at the end of EVERY question: verify, then exit)
-
-Give it 1 to 2 minutes.
-```
-k get pods -A | grep -i -E "calico|tigera"
-k get nodes
-```
-You want the calico pods `Running` and all nodes `Ready`.
-
-```
-exit          # exam only
-```
-
----
-
-### If something goes wrong
-
-| You see | Cause | Fix |
-|---|---|---|
-| calico pods Running but other pods get no IP / stay `ContainerCreating` | the `cidr:` in the file is not the cluster's range | fix the file, `k apply -f custom-resources.yaml` again |
-| `Too long: must have at most 262144 bytes` | you used `apply` for the operator | `k create -f ...` |
-| the question does NOT mention NetworkPolicy | either CNI is fine | Flannel is one command: `k apply -f <flannel URL>` |
-
----
-
-### Mug this up: the whole answer in 5 lines
-
-```
-k create -f <tigera-operator URL>
-k -n kube-system get pod -l component=kube-controller-manager -o yaml | grep cluster-cidr
-curl -LO <custom-resources URL> ; vim custom-resources.yaml      # cidr: <that range>
-k apply -f custom-resources.yaml
-k get nodes                                                       # Ready
-```
-
-**Target time:** 7 minutes.
-
----
-
-## 21. kubeadm upgrade
-
-### Three words first
-
-- **kubeadm** = the tool that installed the cluster. It also upgrades it.
-- Each machine gets three new programs: **kubeadm**, **kubelet**, **kubectl**.
-- **kubelet** = the node agent.
-- **kubectl** = the command line.
-- **drain** = moves the pods off a node. Closes it for new pods.
-- **uncordon** = opens the node again. Drain before the upgrade, uncordon after.
-- Both are kubectl commands. Run them on the control plane.
-- **apt-get** = the Ubuntu package installer.
-- **apt-mark hold** = locks a package, so it is never updated by accident. Unlock (`unhold`), install, lock again.
-- **Version numbers** = `1.35.2` means minor `35`, patch `2`. The apt package text adds a suffix, e.g. `1.35.2-1.1`.
-- **New minor** (1.34 → 1.35) = change one word in the apt source file.
-- **New patch** (1.35.0 → 1.35.2) = no change there.
-- **ssh node01** = log in to the worker machine. `exit` brings you back to the control plane.
-
-**Do not memorise the commands. Follow the docs page line by line.**
-Memorise only the order:
-
-```
-drain → apt-get update → new kubeadm → kubeadm upgrade → new kubelet + kubectl → restart kubelet → uncordon
-```
+Target 7 min. Skip at 12.
 
 ---
 
 ### PART A. Build the exam (Killercoda only)
 
-You can practise only if a newer patch version exists.
-This block shows both versions:
 ```
+cd /root
+rm -f custom-resources.yaml
+clear
 k get nodes
-apt-get update -qq
-apt-cache madison kubeadm | head -5
 ```
-Compare the VERSION column of `k get nodes` with the top line of `apt-cache madison`.
-- **Newer version of the same minor** (e.g. nodes `v1.35.0`, madison `1.35.2-1.1`) = practise the full routine. Use that version in place of `1.35.2`.
-- **Top line is your version** = this playground cannot create the problem. Read the steps below.
-- **Where to practise then** = a Killercoda scenario on an older version. Search Killercoda for "upgrade".
-- **Or** = the killer.sh simulator that comes with the exam.
+
+The playground nodes are already `Ready`: it has a CNI. Rehearse Steps 2 and 3 only. The full task needs a cluster without a CNI (killer.sh, or your own VMs).
 
 ---
+
+### Step 1. Install the Calico operator
+
+**Why:** the operator installs and runs Calico for you. Use the URL from the question.
+
+```
+k create -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.1/manifests/tigera-operator.yaml
+```
+You see:
+```
+...
+deployment.apps/tigera-operator created   <-- last line
+```
+**Don't:** use `apply`. The file is too big: `metadata.annotations: Too long`.
+
+---
+
+### Step 2. Find the cluster's pod range
+
+**Why:** Calico must give pods IPs from the same range as the cluster.
+
+```
+k -n kube-system get pod -l component=kube-controller-manager -o yaml | grep cluster-cidr
+```
+You see:
+```
+    - --cluster-cidr=10.244.0.0/16   <-- write it down
+```
+**Means:** pods get IPs from `10.244.0.0/16`. Yours may differ.
+
+---
+
+### Step 3. Put the range in the settings file
+
+**Why:** the file's default `cidr:` is `192.168.0.0/16`. It must match Step 2.
+
+```
+curl -LO https://raw.githubusercontent.com/projectcalico/calico/v3.29.1/manifests/custom-resources.yaml
+vim custom-resources.yaml
+grep cidr custom-resources.yaml
+```
+In vim: type `/cidr`, Enter, `w` `w`, `C`, type `10.244.0.0/16`, Esc, `:wq`, Enter.
+
+You see:
+```
+      cidr: 10.244.0.0/16   <-- your range now
+```
+
+---
+
+### Step 4. Apply the settings
+
+**Why:** this tells the operator to start Calico with your range.
+
+```
+k apply -f custom-resources.yaml
+```
+You see:
+```
+installation.operator.tigera.io/default created
+apiserver.operator.tigera.io/default created
+```
+
+---
+
+### Verify
+
+**Why:** prove pods get a network. Give it 1 to 2 minutes.
+
+```
+k get pods -A | grep -i -E "calico|tigera"
+k get nodes
+```
+You see:
+```
+calico-system   calico-node-...   1/1   Running   ...   <-- all Running
+controlplane    Ready    control-plane   ...   <-- Ready now
+```
+
+---
+
+### Three words first
+
+- **CNI** = the network plug-in. It gives every pod an IP. Without it, nodes stay `NotReady`.
+- **Flannel / Calico** = two CNIs. Only Calico enforces NetworkPolicy.
+- **Pod CIDR** = the IP range for pods, e.g. `10.244.0.0/16`.
+
+---
+
+### If something goes wrong
+
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |`|n|o| |m|a|t|c|h|e|s| |f|o|r| |k|i|n|d| |"|I|n|s|t|a|l|l|a|t|i|o|n|"|`| ||| |t|h|e| |o|p|e|r|a|t|o|r| |i|s| |s|t|i|l|l| |r|e|g|i|s|t|e|r|i|n|g| |i|t|s| |t|y|p|e|s| ||| |w|a|i|t| |2|0| |s|,| |a|p|p|l|y| |a|g|a|i|n| |||
+||| |S|t|e|p| |2| |p|r|i|n|t|s| |n|o|t|h|i|n|g| ||| |k|u|b|e|a|d|m| |r|a|n| |w|i|t|h|o|u|t| |a| |p|o|d| |r|a|n|g|e| ||| |`|k| |-|n| |k|u|b|e|-|s|y|s|t|e|m| |g|e|t| |c|m| |k|u|b|e|a|d|m|-|c|o|n|f|i|g| |-|o| |y|a|m|l| |||| |g|r|e|p| |-|i| |p|o|d|S|u|b|n|e|t|`|;| |s|t|i|l|l| |e|m|p|t|y|:| |k|e|e|p| |`|1|9|2|.|1|6|8|.|0|.|0|/|1|6|`| |||
+||| |c|a|l|i|c|o| |R|u|n|n|i|n|g|,| |o|t|h|e|r| |p|o|d|s| |s|t|a|y| |`|C|o|n|t|a|i|n|e|r|C|r|e|a|t|i|n|g|`| ||| |`|c|i|d|r|:|`| |i|s| |n|o|t| |t|h|e| |c|l|u|s|t|e|r|'|s| |r|a|n|g|e| ||| |f|i|x| |t|h|e| |f|i|l|e|,| |a|p|p|l|y| |a|g|a|i|n| |||
+||| |t|h|e| |q|u|e|s|t|i|o|n| |d|o|e|s| |N|O|T| |m|e|n|t|i|o|n| |N|e|t|w|o|r|k|P|o|l|i|c|y| ||| |e|i|t|h|e|r| |C|N|I| |i|s| |f|i|n|e| ||| |F|l|a|n|n|e|l| |i|s| |o|n|e| |c|o|m|m|a|n|d|:| |`|k| |a|p|p|l|y| |-|f| |<|f|l|a|n|n|e|l| |U|R|L|>|`| |||
+
+---
+
+## 21. kubeadm upgrade
 
 ### PART B. The exam starts here
 
@@ -3839,211 +3872,127 @@ Compare the VERSION column of `k get nodes` with the top line of `apt-cache madi
 
 **What the question is really saying:**
 
-Do the same routine twice: first on the control plane, then on the worker.
-Only ONE command differs.
-Control plane: `kubeadm upgrade apply v1.35.2`.
-Worker: `kubeadm upgrade node`.
-Drain and uncordon always run on the control plane.
+Same routine twice; only `kubeadm upgrade apply` (control plane) becomes `kubeadm upgrade node` (worker).
 
 **Write down from the question:** target version = `1.35.2` · nodes = `controlplane`, `node01` · drain before, uncordon after
 
 ---
 
-### Opening routine (same 2 commands at the start of EVERY question)
+### Think
 
-```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
-```
-Read the VERSION column.
-That is where you start from.
+- **Wanted:** both nodes on `v1.35.2`, both schedulable.
+- **Look first:** the VERSION column, and the exact apt version text.
+- **Expect:** a package text like `1.35.2-1.1`.
+- **Fix:** follow the docs page "Upgrading kubeadm clusters" in order: kubeadm, upgrade, drain, kubelet, uncordon.
+- **Prove:** `v1.35.2` on both nodes, no `SchedulingDisabled`.
 
----
+### Time budget
 
-### Open the docs page and keep it open
-
-1. Open **https://kubernetes.io/docs**
-2. Search: **`kubeadm upgrade`**
-3. Click: **"Upgrading kubeadm clusters"**
-   (direct link: https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/ )
-4. For the worker, the page links to **"Upgrading Linux nodes"**.
-
-Copy each command from the page and replace the version `x` placeholders with yours.
+Target 12 min. Skip at 18. Do it late in the exam.
 
 ---
 
-### Step 1. Drain the control plane
+### PART A. Build the exam (Killercoda only)
 
-Run this on the control plane.
-Exam: does the prompt not end in `#`? Then type `sudo -i` first.
 ```
-k drain controlplane --ignore-daemonsets --delete-emptydir-data
+apt-get update -qq
+clear
+k get nodes; apt-cache madison kubeadm | head -3
 ```
-You see (first and last lines):
-```
-node/controlplane cordoned
-...
-node/controlplane drained
-```
-Why: the pods move to other nodes.
-No new pods arrive while you replace the node's programs.
+
+Compare the node VERSION with the top madison line.
+Newer patch of the same minor? Practise, using that version instead of `1.35.2`.
+Same version? This playground cannot build the task. Read the steps; practise on killer.sh.
 
 ---
 
-### Step 2. Refresh the package list
+### Step 1. Which version can apt install?
+
+**Why:** apt needs the full package text, not just `1.35.2`.
 
 ```
 cat /etc/apt/sources.list.d/kubernetes.list
 apt-get update
-```
-You see:
-```
-deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.35/deb/ /
-```
-Why: each package source holds ONE minor version (here `v1.35`).
-Patch upgrade (1.35.x → 1.35.2)? It is already right.
-Minor upgrade (the line says e.g. `v1.34`)? Change it first:
-Type `vim /etc/apt/sources.list.d/kubernetes.list`.
-Type `:s/v1.34/v1.35/` and press Enter.
-Type `:wq`.
-Run `apt-get update` again.
-Without `apt-get update`, apt does not know the new version exists.
-
----
-
-### Step 3. Find the exact package version
-
-```
 apt-cache madison kubeadm | head -3
 ```
 You see:
 ```
-   kubeadm | 1.35.2-1.1 | https://pkgs.k8s.io/core:/stable:/v1.35/deb  Packages
+deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.35/deb/ /   <-- v1.35
+   kubeadm | 1.35.2-1.1 | https://pkgs.k8s.io/core:/stable:/v1.35/deb  Packages   <-- copy this
 ```
-Why: apt needs the FULL text `1.35.2-1.1`, not just `1.35.2`.
-Write it down. kubeadm, kubelet and kubectl use the same text.
-(Different suffix in your list? Use yours.)
+**Means:** kubeadm, kubelet and kubectl all use `1.35.2-1.1`.
+**Don't:** forget the source file on a minor upgrade. `v1.34` there? `vim` it to `v1.35`, then `apt-get update` again.
 
 ---
 
-### Step 4. Install the new kubeadm
+### Step 2. New kubeadm, then check the plan
+
+**Why:** kubeadm does the upgrade, so it goes first. `plan` changes nothing.
 
 ```
 apt-mark unhold kubeadm
 apt-get install -y kubeadm=1.35.2-1.1
 apt-mark hold kubeadm
 kubeadm version -o short
+kubeadm upgrade plan
 ```
 You see:
 ```
 kubeadm set on hold.
 v1.35.2
-```
-Why: `kubeadm` performs the upgrade, so it is upgraded first.
-`unhold` unlocks the package. `hold` locks it again.
-
----
-
-### Step 5. Check the upgrade plan
-
-```
-kubeadm upgrade plan
-```
-You see, near the end:
-```
+...
 You can now apply the upgrade by executing the following command:
 
-	kubeadm upgrade apply v1.35.2
+	kubeadm upgrade apply v1.35.2   <-- the next command
 ```
-Why: it checks that the cluster can be upgraded.
-It prints the exact next command. It changes nothing.
 
 ---
 
-### Step 6. Upgrade the control plane
+### Step 3. Upgrade the control plane
+
+**Why:** this upgrades the API server, controller manager, scheduler and etcd. Not the kubelet.
 
 ```
 kubeadm upgrade apply v1.35.2
 ```
-When asked `Are you sure you want to proceed? [y/N]`, type `y` and press Enter.
-It takes a few minutes.
-At the end, look for a line with `SUCCESS!` and `v1.35.2`.
-Why: this upgrades the static pods: API server, controller manager, scheduler and etcd.
-It does NOT touch the kubelet.
+At `Are you sure you want to proceed? [y/N]`, type `y`, Enter. It takes minutes.
+
+You see:
+```
+... SUCCESS! ... upgraded to "v1.35.2" ...   <-- done
+```
 
 ---
 
-### Step 7. Install the new kubelet and kubectl
+### Step 4. Drain, new kubelet and kubectl, uncordon
+
+**Why:** pods leave the node while its kubelet is replaced.
 
 ```
+k drain controlplane --ignore-daemonsets --delete-emptydir-data
 apt-mark unhold kubelet kubectl
 apt-get install -y kubelet=1.35.2-1.1 kubectl=1.35.2-1.1
 apt-mark hold kubelet kubectl
-```
-You see:
-```
-kubelet set on hold.
-kubectl set on hold.
-```
-Why: `k get nodes` shows the kubelet's version as VERSION.
-kubectl is upgraded with it.
-
----
-
-### Step 8. Restart the kubelet
-
-```
 systemctl daemon-reload
 systemctl restart kubelet
-systemctl is-active kubelet
-```
-You see:
-```
-active
-```
-Why: the new kubelet is on disk.
-The old one keeps running until you restart it.
-`daemon-reload` makes systemd read the service files again first.
-
----
-
-### Step 9. Uncordon the control plane
-
-```
 k uncordon controlplane
-k get nodes
 ```
 You see:
 ```
-NAME           STATUS   ROLES           AGE   VERSION
-controlplane   Ready    control-plane   ...   v1.35.2
-node01         Ready    <none>          ...   v1.35.0
-```
-Why: pods may be scheduled on the control plane again.
-node01 still shows its old version (your number may differ).
-That is the next part.
-
----
-
-### Step 10. Drain node01 (from the control plane)
-
-Run this on the control plane, NOT on node01.
-```
-k drain node01 --ignore-daemonsets --delete-emptydir-data
-```
-You see:
-```
-node/node01 cordoned
+node/controlplane drained
 ...
-node/node01 drained
+kubectl set on hold.
+node/controlplane uncordoned
 ```
-Why: `k drain` needs kubectl and the admin kubeconfig.
-Only the control plane has them.
+**Don't:** skip `restart kubelet`. The old kubelet keeps running, VERSION stays old.
 
 ---
 
-### Step 11. Go to node01 and install the new kubeadm
+### Step 5. The same on node01
 
+**Why:** every machine has its own packages. The worker runs `kubeadm upgrade node`.
+
+On node01:
 ```
 ssh node01
 cat /etc/apt/sources.list.d/kubernetes.list
@@ -4051,128 +4000,83 @@ apt-get update
 apt-mark unhold kubeadm
 apt-get install -y kubeadm=1.35.2-1.1
 apt-mark hold kubeadm
-```
-The prompt now shows `node01`.
-(Exam: not root? Type `sudo -i` again.)
-The package source must show `v1.35` here too.
-If not, change it exactly as in step 2.
-Why: every machine has its own packages.
-Same commands as steps 2 to 4.
-
----
-
-### Step 12. Upgrade node01's configuration
-
-```
 kubeadm upgrade node
+exit
 ```
-You want a line saying the configuration for this node was successfully updated.
-Why: this is the ONE different command.
-A worker has no control plane.
-So type `kubeadm upgrade node`, never `apply`.
-
----
-
-### Step 13. New kubelet and kubectl on node01, then restart
-
+Back on the control plane (drain needs kubectl):
 ```
+k drain node01 --ignore-daemonsets --delete-emptydir-data
+```
+On node01 again:
+```
+ssh node01
 apt-mark unhold kubelet kubectl
 apt-get install -y kubelet=1.35.2-1.1 kubectl=1.35.2-1.1
 apt-mark hold kubelet kubectl
 systemctl daemon-reload
 systemctl restart kubelet
+exit
 ```
-Why: same as steps 7 and 8, on this machine.
+You see:
+```
+... The configuration for this node was successfully updated!   <-- after upgrade node
+node/node01 drained
+kubectl set on hold.
+```
+**Don't:** type `kubeadm upgrade apply` on node01. A worker has no control plane.
 
 ---
 
-### Step 14. Back to the control plane, uncordon node01
+### Step 6. Uncordon node01
+
+**Why:** `uncordon` is a kubectl command. It runs on the control plane.
 
 ```
-exit
 k uncordon node01
 ```
-The prompt shows `controlplane` again after `exit`.
-Why: `uncordon` is a kubectl command, so it runs on the control plane.
-node01 takes new pods again.
+You see:
+```
+node/node01 uncordoned
+```
 
 ---
 
-### Closing routine (same at the end of EVERY question: verify, then exit)
+### Verify
+
+**Why:** prove both nodes run the new version and take pods.
 
 ```
 k get nodes
 ```
-You want VERSION `v1.35.2` on both nodes.
-You want STATUS `Ready`, and NO `SchedulingDisabled`.
+You see:
+```
+controlplane   Ready    control-plane   ...   v1.35.2   <-- new
+node01         Ready    <none>          ...   v1.35.2   <-- new, no SchedulingDisabled
+```
 
-```
-exit          # exam only
-```
+---
+
+### Three words first
+
+- **drain** = moves the pods off a node and closes it. **uncordon** opens it again.
+- **apt-mark hold** = locks a package against updates. Unhold, install, hold again.
+- **`1.35.2-1.1`** = the apt package text for Kubernetes `1.35.2`.
 
 ---
 
 ### If something goes wrong
 
-| You see | Cause | Fix |
-|---|---|---|
-| `SchedulingDisabled` next to a node | you forgot `uncordon` | `k uncordon <node>` |
-| `k drain` refuses: "cannot delete Pods with local storage" | missing flag | add `--delete-emptydir-data` |
-| `k drain` refuses: pods "not managed by a controller" | a bare pod is on the node | add `--force` |
-| `Version '1.35.2' not found` | you need the full text | copy it from `apt-cache madison kubeadm` |
-| madison does not list `1.35.2` at all | no `apt-get update`, or the source file still points at the old minor | step 2 |
-| VERSION still old after the upgrade | the kubelet was not restarted | `systemctl daemon-reload && systemctl restart kubelet` |
-| `localhost:8080 was refused` | you ran `k drain` / `k uncordon` while still on node01 (no kubeconfig there) | `exit` first, run it on the control plane |
-
----
-
-### Mug this up: the order, and the one difference
-
-```
-k drain <node> --ignore-daemonsets --delete-emptydir-data        # from the control plane
-ssh node01                                                       # worker only
-apt-get update ; apt-cache madison kubeadm                       # exact version text
-apt: unhold → install kubeadm=<ver> → hold
-kubeadm upgrade plan ; kubeadm upgrade apply v<ver>   # control plane   |  kubeadm upgrade node   # worker
-apt: unhold → install kubelet=<ver> kubectl=<ver> → hold
-systemctl daemon-reload ; systemctl restart kubelet
-exit                                                             # worker only: back to the control plane
-k uncordon <node>                                                # from the control plane
-```
-
-**Target time:** 12 minutes.
-Do this question late in the exam.
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |`|V|e|r|s|i|o|n| |'|1|.|3|5|.|2|'| |n|o|t| |f|o|u|n|d|`| ||| |a|p|t| |n|e|e|d|s| |t|h|e| |f|u|l|l| |t|e|x|t| ||| |c|o|p|y| |i|t| |f|r|o|m| |`|a|p|t|-|c|a|c|h|e| |m|a|d|i|s|o|n| |k|u|b|e|a|d|m|`| |||
+||| |m|a|d|i|s|o|n| |d|o|e|s| |n|o|t| |l|i|s|t| |`|1|.|3|5|.|2|`| ||| |n|o| |`|a|p|t|-|g|e|t| |u|p|d|a|t|e|`|,| |o|r| |t|h|e| |s|o|u|r|c|e| |s|t|i|l|l| |s|a|y|s| |t|h|e| |o|l|d| |m|i|n|o|r| ||| |S|t|e|p| |1| |||
+||| |d|r|a|i|n| |r|e|f|u|s|e|s|:| |"|c|a|n|n|o|t| |d|e|l|e|t|e| |P|o|d|s| |w|i|t|h| |l|o|c|a|l| |s|t|o|r|a|g|e|"| ||| |m|i|s|s|i|n|g| |f|l|a|g| ||| |a|d|d| |`|-|-|d|e|l|e|t|e|-|e|m|p|t|y|d|i|r|-|d|a|t|a|`| |||
+||| |d|r|a|i|n| |r|e|f|u|s|e|s|:| |p|o|d|s| |"|n|o|t| |m|a|n|a|g|e|d| |b|y| |a| |c|o|n|t|r|o|l|l|e|r|"| ||| |a| |b|a|r|e| |p|o|d| |i|s| |o|n| |t|h|e| |n|o|d|e| ||| |a|d|d| |`|-|-|f|o|r|c|e|`| |||
+||| |`|l|o|c|a|l|h|o|s|t|:|8|0|8|0| |w|a|s| |r|e|f|u|s|e|d|`| ||| |y|o|u| |r|a|n| |`|k|`| |o|n| |n|o|d|e|0|1| ||| |`|e|x|i|t|`| |f|i|r|s|t| |||
 
 ---
 
 ## 22. etcd backup and restore (lower priority)
-
-### Three words first
-
-- **etcd** = the database where the cluster stores every object.
-- etcd runs as a static pod from `/etc/kubernetes/manifests/etcd.yaml`.
-- **Snapshot** = a backup file of that database. Made with `etcdctl snapshot save`.
-- **Restore** = unpack a snapshot into a NEW folder. Then point etcd at that folder.
-- **etcdctl** = talks to the running etcd. Use it for snapshot **save**.
-- **etcdutl** = works on files only. Use it for snapshot **restore**.
-- Kubernetes v1.35 uses etcd 3.6. There, `etcdctl snapshot restore` no longer exists.
-
-etcd only accepts connections that show three certificate files.
-Their paths are written in `etcd.yaml`.
-
----
-
-### PART A. Build the exam (Killercoda only)
-
-Nothing to build.
-Run it on the control plane of any playground.
-(Backup only is safe.
-The restore changes the cluster. Do it in a playground you can throw away.)
-```
-rm -f /opt/etcd-backup.db ; rm -rf /var/lib/etcd-restored ; clear
-```
-
----
 
 ### PART B. The exam starts here
 
@@ -4183,54 +4087,66 @@ rm -f /opt/etcd-backup.db ; rm -rf /var/lib/etcd-restored ; clear
 
 **What the question is really saying:**
 
-Part 1 is one long command.
-Part 2 is one command plus a 1-line change in `etcd.yaml`.
+Save with `etcdctl`, restore with `etcdutl`, then change one path in `etcd.yaml`.
 
 **Write down from the question:** endpoint = `https://127.0.0.1:2379` · backup file = `/opt/etcd-backup.db` · restore folder = `/var/lib/etcd-restored`
 
 ---
 
-### Opening routine (same 2 commands at the start of EVERY question)
+### Think
 
-```
-ssh <host-from-the-question>      # exam only. In Killercoda, skip this line.
-k get nodes                       # proves: I am on the right machine, and kubectl answers
-```
+- **Wanted:** a backup file, then etcd running from the restored folder.
+- **Look first:** the three certificate paths in `etcd.yaml`.
+- **Expect:** files under `/etc/kubernetes/pki/etcd/`.
+- **Fix:** save, restore into a NEW folder, point the `etcd-data` hostPath at it.
+- **Prove:** etcd Running, kubectl answers.
 
----
+### Time budget
 
-### Step 1. Get the command from the docs
-
-1. Open **https://kubernetes.io/docs**
-2. Search: **`etcd backup`**
-3. Click: **"Operating etcd clusters for Kubernetes"**
-   (direct link: https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/ )
-4. Go to the heading **"Backing up an etcd cluster"** → **"Snapshot using etcdctl options"**.
-5. Copy the command with `--cacert`, `--cert` and `--key`.
+Target 10 min. Skip at 15.
 
 ---
 
-### Step 2. Check the tools, find the three certificate paths
+### PART A. Build the exam (Killercoda only)
+
+```
+if grep -q etcd-restored /etc/kubernetes/manifests/etcd.yaml; then sed -i 's#/var/lib/etcd-restored#/var/lib/etcd#' /etc/kubernetes/manifests/etcd.yaml; sleep 30; fi
+for i in $(seq 1 24); do k get nodes >/dev/null 2>&1 && break; sleep 5; done
+rm -f /opt/etcd-backup.db
+rm -rf /var/lib/etcd-restored
+clear
+k get nodes
+```
+
+The backup is safe. The restore changes the cluster: use a playground you can throw away.
+
+---
+
+### Step 1. Tools and certificate paths
+
+**Why:** etcd only talks to clients with its certificates. Docs page: "Operating etcd clusters for Kubernetes".
 
 ```
 which etcdctl etcdutl
 grep -E "trusted-ca-file|cert-file|key-file" /etc/kubernetes/manifests/etcd.yaml
 ```
-`which` prints a path for each installed tool.
-In the exam both are normally there.
-`etcdutl` missing in a playground? See "If something goes wrong" below.
-You need it only in step 4.
-Use the three lines WITHOUT the word `peer`:
-
-| Line in etcd.yaml | Flag for etcdctl | Usual value |
-|---|---|---|
-| `--trusted-ca-file=` | `--cacert=` | `/etc/kubernetes/pki/etcd/ca.crt` |
-| `--cert-file=` | `--cert=` | `/etc/kubernetes/pki/etcd/server.crt` |
-| `--key-file=` | `--key=` | `/etc/kubernetes/pki/etcd/server.key` |
+You see:
+```
+.../etcdctl
+.../etcdutl
+    - --cert-file=/etc/kubernetes/pki/etcd/server.crt   <-- --cert
+    - --key-file=/etc/kubernetes/pki/etcd/server.key    <-- --key
+    - --peer-cert-file=/etc/kubernetes/pki/etcd/peer.crt
+    ...
+    - --trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt   <-- --cacert
+```
+**Means:** use the three lines without `peer`.
 
 ---
 
-### Step 3. Take the snapshot
+### Step 2. Take the snapshot
+
+**Why:** `etcdctl` talks to the running etcd.
 
 ```
 etcdctl snapshot save /opt/etcd-backup.db \
@@ -4239,30 +4155,40 @@ etcdctl snapshot save /opt/etcd-backup.db \
   --cert=/etc/kubernetes/pki/etcd/server.crt \
   --key=/etc/kubernetes/pki/etcd/server.key
 ```
-You want `Snapshot saved at /opt/etcd-backup.db`.
-
-Question asks only for a backup? You are finished: `ls -l /opt/etcd-backup.db`.
+You see:
+```
+Snapshot saved at /opt/etcd-backup.db   <-- backup done
+```
+**Means:** backup-only question? You are finished.
 
 ---
 
-### Step 4. Restore into a new folder
+### Step 3. Restore into a new folder
+
+**Why:** `etcdutl` works on files only. No certificates needed.
 
 ```
 etcdutl snapshot restore /opt/etcd-backup.db --data-dir=/var/lib/etcd-restored
+ls /var/lib/etcd-restored
 ```
-No certificates needed: this only unpacks a file.
-Use `etcdutl`, not `etcdctl`.
-etcd 3.6 (Kubernetes v1.35) removed `etcdctl snapshot restore`.
+You see:
+```
+member   <-- the restored database
+```
+**Don't:** use `etcdctl snapshot restore`. etcd 3.6 (Kubernetes v1.35) removed it.
 
 ---
 
-### Step 5. Tell etcd to use the new folder
+### Step 4. Point etcd at the new folder
+
+**Why:** the kubelet runs etcd from this file. Change only the `etcd-data` hostPath.
 
 ```
 cp /etc/kubernetes/manifests/etcd.yaml /root/etcd.yaml.bak
 vim /etc/kubernetes/manifests/etcd.yaml
+grep etcd-restored /etc/kubernetes/manifests/etcd.yaml
 ```
-Press `G` to jump to the end of the file. You see:
+In vim: press `G` to reach the end. Change the path in the `etcd-data` block:
 ```
   volumes:
   - hostPath:
@@ -4270,71 +4196,63 @@ Press `G` to jump to the end of the file. You see:
       type: DirectoryOrCreate
     name: etcd-certs
   - hostPath:
-      path: /var/lib/etcd
+      path: /var/lib/etcd-restored   # <-- CHANGE
       type: DirectoryOrCreate
     name: etcd-data
 ```
-Change **ONE line**: in the block named `etcd-data`, change
-
-| Before | After |
-|---|---|
-| `path: /var/lib/etcd` | `path: /var/lib/etcd-restored` |
-
-Save with `Esc`, `:wq`.
-
-Why only this line:
-`hostPath` is the folder on the machine.
-The container shows it at `/var/lib/etcd` (that is the `mountPath`).
-etcd reads `/var/lib/etcd` inside the container (that is `--data-dir`).
-You change only the `hostPath`. etcd keeps reading the same place.
-But that place now shows the restored folder.
-Leave `--data-dir` and `mountPath` alone.
-
-Check:
+You see:
 ```
-grep -n "etcd-restored" /etc/kubernetes/manifests/etcd.yaml
+      path: /var/lib/etcd-restored   <-- exactly 1 line
 ```
-You want exactly 1 line.
+**Don't:** change `--data-dir` or `mountPath`. Inside the container it is still `/var/lib/etcd`.
 
 ---
 
-### Closing routine (same at the end of EVERY question: verify, then exit)
+### Step 5. Wait for etcd
 
-The kubelet restarts etcd by itself.
-kubectl does not answer for up to 60 seconds. That is normal.
-```
-k get nodes
-k get pods -n kube-system | grep etcd        # 1/1 Running
-```
+**Why:** the kubelet sees the changed file and restarts etcd itself.
 
 ```
-exit          # exam only
+crictl ps | grep etcd
 ```
+You see:
+```
+...   Running   etcd   ...   <-- up again
+```
+**Means:** kubectl may not answer for up to 60 seconds. That is normal.
+
+---
+
+### Verify
+
+**Why:** prove the cluster works on the restored data.
+
+```
+k get pods -n kube-system | grep etcd
+```
+You see:
+```
+etcd-controlplane   1/1   Running   ...   <-- etcd is back
+```
+
+---
+
+### Three words first
+
+- **etcd** = the cluster database. Runs as a static pod from `etcd.yaml`.
+- **Snapshot** = a backup file of that database.
+- **etcdctl / etcdutl** = `etcdctl` talks to running etcd (save). `etcdutl` works on files (restore).
 
 ---
 
 ### If something goes wrong
 
-| You see | Cause | Fix |
-|---|---|---|
-| snapshot save hangs or says `context deadline exceeded` | a certificate path or the endpoint is wrong | compare with step 2 |
-| kubectl does not come back after 2 minutes | a typo in `etcd.yaml` | `crictl ps -a | grep etcd`, `crictl logs <id>`. Or put the backup back: `cp /root/etcd.yaml.bak /etc/kubernetes/manifests/etcd.yaml` |
-| `data-dir ... not empty` on restore | the target folder already exists | choose a new folder name or `rm -rf` it first |
-| `etcdutl: command not found` (playground) | the tool is not installed there | Read the etcd version: `k -n kube-system get pod etcd-controlplane -o jsonpath='{..image}'`. Example: `3.6.5-0` → `v3.6.5`. Download: `curl -sLo /tmp/etcd.tgz https://github.com/etcd-io/etcd/releases/download/v3.6.5/etcd-v3.6.5-linux-amd64.tar.gz`. Unpack: `tar xzf /tmp/etcd.tgz -C /tmp`. Then run `/tmp/etcd-v3.6.5-linux-amd64/etcdutl` instead of `etcdutl`. Use your version number. |
-
----
-
-### Mug this up: the whole answer in 5 lines
-
-```
-grep -E "trusted-ca-file|cert-file|key-file" /etc/kubernetes/manifests/etcd.yaml
-etcdctl snapshot save /opt/etcd-backup.db --endpoints=https://127.0.0.1:2379 --cacert=... --cert=... --key=...
-etcdutl snapshot restore /opt/etcd-backup.db --data-dir=/var/lib/etcd-restored    # etcdutl, never etcdctl
-vim /etc/kubernetes/manifests/etcd.yaml      # hostPath path: /var/lib/etcd-restored
-k get nodes                                  # wait up to 60 s
-```
-
-**Target time:** 10 minutes.
+||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
+|||-|-|-|||-|-|-|||-|-|-|||
+||| |s|a|v|e| |h|a|n|g|s| |o|r| |`|c|o|n|t|e|x|t| |d|e|a|d|l|i|n|e| |e|x|c|e|e|d|e|d|`| ||| |w|r|o|n|g| |c|e|r|t|i|f|i|c|a|t|e| |p|a|t|h| |o|r| |e|n|d|p|o|i|n|t| ||| |c|o|m|p|a|r|e| |w|i|t|h| |S|t|e|p| |1| |||
+||| |k|u|b|e|c|t|l| |s|t|i|l|l| |d|e|a|d| |a|f|t|e|r| |2| |m|i|n|u|t|e|s| ||| |t|y|p|o| |i|n| |`|e|t|c|d|.|y|a|m|l|`| ||| |`|c|r|i|c|t|l| |p|s| |-|a| |||| |g|r|e|p| |e|t|c|d|`|,| |`|c|r|i|c|t|l| |l|o|g|s| |<|i|d|>|`|;| |o|r| |`|c|p| |/|r|o|o|t|/|e|t|c|d|.|y|a|m|l|.|b|a|k| |/|e|t|c|/|k|u|b|e|r|n|e|t|e|s|/|m|a|n|i|f|e|s|t|s|/|e|t|c|d|.|y|a|m|l|`| |||
+||| |r|e|s|t|o|r|e| |s|a|y|s| |t|h|e| |d|a|t|a| |d|i|r| |e|x|i|s|t|s| ||| |t|h|e| |f|o|l|d|e|r| |i|s| |a|l|r|e|a|d|y| |t|h|e|r|e| ||| |`|r|m| |-|r|f|`| |i|t|,| |o|r| |p|i|c|k| |a| |n|e|w| |n|a|m|e| |||
+||| |`|e|t|c|d|u|t|l|:| |c|o|m|m|a|n|d| |n|o|t| |f|o|u|n|d|`| |(|p|l|a|y|g|r|o|u|n|d|)| ||| |n|o|t| |i|n|s|t|a|l|l|e|d| |t|h|e|r|e| ||| |r|e|a|d| |t|h|e| |v|e|r|s|i|o|n|:| |`|k| |-|n| |k|u|b|e|-|s|y|s|t|e|m| |g|e|t| |p|o|d| |e|t|c|d|-|c|o|n|t|r|o|l|p|l|a|n|e| |-|o| |j|s|o|n|p|a|t|h|=|'|{|.|.|i|m|a|g|e|}|'|`| |(|e|.|g|.| |`|3|.|6|.|5|-|0|`|)|;| |`|c|u|r|l| |-|s|L|o| |/|t|m|p|/|e|t|c|d|.|t|g|z| |h|t|t|p|s|:|/|/|g|i|t|h|u|b|.|c|o|m|/|e|t|c|d|-|i|o|/|e|t|c|d|/|r|e|l|e|a|s|e|s|/|d|o|w|n|l|o|a|d|/|v|3|.|6|.|5|/|e|t|c|d|-|v|3|.|6|.|5|-|l|i|n|u|x|-|a|m|d|6|4|.|t|a|r|.|g|z|`|;| |`|t|a|r| |x|z|f| |/|t|m|p|/|e|t|c|d|.|t|g|z| |-|C| |/|t|m|p|`|;| |r|u|n| |`|/|t|m|p|/|e|t|c|d|-|v|3|.|6|.|5|-|l|i|n|u|x|-|a|m|d|6|4|/|e|t|c|d|u|t|l|`| |||
 
 ---
 
