@@ -212,6 +212,8 @@ fs.writeFileSync(path.join(ROOT, 'site', 'data.json'), JSON.stringify(data));
 
 // ---- version stamps + offline file list
 const stamp = f => crypto.createHash('sha1').update(fs.readFileSync(path.join(ROOT, 'site', f))).digest('hex').slice(0, 8);
+// the film module is imported by motion.js: stamp it so phones never keep an old copy
+{ const mp = path.join(ROOT, 'site', 'assets', 'motion.js'); const m = fs.readFileSync(mp, 'utf8'); fs.writeFileSync(mp, m.replace(/film3d\.js\?v=[a-f0-9]*/, `film3d.js?v=${stamp('assets/film3d.js')}`)); }
 let index = fs.readFileSync(path.join(ROOT, 'site', 'index.html'), 'utf8');
 index = index.replace(/(app\.js|motion\.js|style\.css|data\.json)\?v=[a-f0-9]*/g, (m, f) => `${f}?v=${stamp(f === 'data.json' ? 'data.json' : 'assets/' + f)}`);
 fs.writeFileSync(path.join(ROOT, 'site', 'index.html'), index);

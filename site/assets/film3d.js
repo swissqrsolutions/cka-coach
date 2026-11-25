@@ -12,7 +12,7 @@ const NAMES = ['chef', 'waiter', 'manager', 'guest1', 'guest2', 'nina', 'dad', '
 let cache = null;
 const load = () => (cache ||= Promise.all([
   ...NAMES.map(n => new GLTFLoader().loadAsync(new URL('models/' + n + '.glb', BASE).href).then(g => [n, g])),
-  fetch(new URL('voice.json', BASE)).then(r => r.ok ? r.json() : null).catch(() => null).then(v => ['_voice', v]),
+  fetch(new URL('voice.json', BASE), { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).catch(() => null).then(v => ['_voice', v]),
 ]).then(Object.fromEntries));
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);

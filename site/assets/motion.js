@@ -205,7 +205,7 @@ async function build(host, kind) {
 function scan(root) {
   root.querySelectorAll('[data-motion]:not(.motion)').forEach(h => {
     const k = h.dataset.motion;
-    if (k === 'home') import('./film3d.js').then(m => m.mountFilm(h)).catch(e => { console.warn('motion', e); h.remove(); });
+    if (k === 'home') import('./film3d.js?v=3dec8310').then(m => m.mountFilm(h)).catch(e => { console.warn('motion', e); h.remove(); });
     else if (SHORTS[k]) build(h, k).catch(e => { console.warn('motion', e); h.remove(); });
     else h.remove();
   });
