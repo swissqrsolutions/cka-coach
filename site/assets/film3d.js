@@ -176,8 +176,9 @@ function makeScene(G, tagsEl) {
 
   // ── characters
   const C = {}, mixers = [], SKIN = { chef: '#f0c39a', manager: '#c98e62', waiter: '#f3cfb1', guest1: '#8d5a3b', guest2: '#e8b48c' };
+  // the model's 'Face' material is the eyes: make them dark, with a little shine
   const actor = (name, x, z, ry) => {
-    const o = put(name, x, 0, z, ry, .5); o.traverse(m => { if (m.isMesh && m.material?.name === 'Skin') m.material.color.set(SKIN[name]); }); const mx = new THREE.AnimationMixer(o); mixers.push(mx);
+    const o = put(name, x, 0, z, ry, .5); o.traverse(m => { if (!m.isMesh) return; if (m.material?.name === 'Skin') m.material.color.set(SKIN[name]); if (m.material?.name === 'Face') { m.material.color.set('#1b1b1f'); m.material.roughness = .35; } }); const mx = new THREE.AnimationMixer(o); mixers.push(mx);
     const clips = Object.fromEntries(G[name].animations.map(c => [c.name, mx.clipAction(c)]));
     const a = { o, mx, clips, cur: null, name };
     a.play = (n, { once = false, fade = .25, speed = 1 } = {}) => { const c = clips[n]; if (!c || a.cur === c) return; c.reset(); c.setEffectiveTimeScale(speed); c.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat); c.clampWhenFinished = once; c.fadeIn(fade).play(); if (a.cur) a.cur.fadeOut(fade); a.cur = c; };
