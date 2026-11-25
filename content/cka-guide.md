@@ -979,9 +979,11 @@ api-5d9c7b6f4-x2x9k   0/1   CrashLoopBackOff   3 (20s ago)   70s   <-- RESTARTS
 ```
 k logs <pod-name> --previous -n app
 ```
+`exit 1` prints nothing, so the log is empty.
+
 You see:
 ```
-(no output)      <-- exit 1 prints nothing
+(no output)
 ```
 **Means:** no message here. In the exam, a message here is the cause.
 
@@ -999,11 +1001,11 @@ You see:
     Command:
       sh
       -c
-      exit 1             <-- the command
+      exit 1   <-- cmd
     ...
     Last State:     Terminated
       Reason:       Error
-      Exit Code:    1    <-- non-zero = failed
+      Exit Code: 1  <-- failed
 ```
 **Means:** the command stops at once with an error.
 
@@ -1018,11 +1020,12 @@ k edit deployment/api -n app
 ```
 In vim, type `/exit 1`, Enter. Press `C`, type `sleep 3600`, `Esc`, `:wq`.
 
+Only the last line changes, `exit 1` becomes `sleep 3600`:
 ```yaml
       - command:
         - sh
         - -c
-        - sleep 3600      # <-- CHANGE
+        - sleep 3600
 ```
 You see:
 ```
@@ -1043,7 +1046,7 @@ k get pods -n app
 You see:
 ```
 deployment "api" successfully rolled out
-api-7f9b8c6d5-k4m2p   1/1   Running   0   25s   <-- RESTARTS 0
+api-7f9b8c6d5-k4m2p   1/1   Running   0   25s   <-- RESTARTS
 ```
 **Don't:** stop here. Wait 20 s, run `k get pods` again. RESTARTS must stay `0`.
 
@@ -1053,7 +1056,6 @@ api-7f9b8c6d5-k4m2p   1/1   Running   0   25s   <-- RESTARTS 0
 
 - **Exit code** = the number a command returns. `0` = OK. Anything else = error.
 - **CrashLoopBackOff** = it starts, stops, restarts. Kubernetes waits longer each time.
-- **`--previous`** = logs of the container that just stopped.
 
 ---
 

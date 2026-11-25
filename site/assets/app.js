@@ -11,6 +11,12 @@
   const KILLERCODA = 'https://killercoda.com/playgrounds/scenario/cka';
   const DOCS = 'https://kubernetes.io/docs/';
   const app = $('#app');
+  // tables become cards on phones: give every cell the label of its column (You see / Cause / Fix)
+  new MutationObserver(() => app.querySelectorAll('.btable table:not([data-cards])').forEach(t => {
+    const hs = [...t.querySelectorAll('thead th')].map(th => th.textContent.trim());
+    t.querySelectorAll('tbody tr').forEach(tr => [...tr.children].forEach((td, i) => td.setAttribute('data-label', hs[i] || '')));
+    t.setAttribute('data-cards', '');
+  })).observe(app, { childList: true, subtree: true });
   let D = null;
 
   // ---------- offline + updates ----------
