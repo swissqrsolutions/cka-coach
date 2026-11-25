@@ -201,7 +201,9 @@ const KW = fs.existsSync(kwFile) ? JSON.parse(fs.readFileSync(kwFile, 'utf8')) :
 const kre = k => new RegExp('(^|[^a-z0-9])' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + 's?(?![a-z0-9])', 'i');
 for (const x of questions) {
   const text = `${x.title}\n${x.question}`;
-  x.kw = KW.map(e => ({ e, hit: e.keys.find(k => kre(k).test(text)) })).filter(m => m.hit).slice(0, 4)
+  // show the keyword as written in the question (e.g. "CrashLoopBackOff", not the lowercase key)
+  const found = e => { for (const k of e.keys) { const m = kre(k).exec(text); if (m) return m[0].replace(/^[^a-zA-Z0-9]/, ''); } return null; };
+  x.kw = KW.map(e => ({ e, hit: found(e) })).filter(m => m.hit).slice(0, 4)
     .map(({ e, hit }) => ({ word: hit, hint: e.hint, cmds: e.cmds }));
 }
 

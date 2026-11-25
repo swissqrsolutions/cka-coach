@@ -183,8 +183,13 @@
     [/^old PV name$/i, 'the PV name from <code>k get pv</code>.'],
     [/^svc-clusterIP$/i, 'the CLUSTER-IP column of <code>k get svc -n &lt;namespace&gt;</code>.'],
   ];
+  let phSeen = null; // pilot (questions with coach.plan): each placeholder hint only at its first use
+  const PH_SHORT = '<code>&lt;pod-name&gt;</code> = first column of <code>k get pods</code>. Type the first letters + Tab.';
   const phNotes = cmds => {
-    const found = [...new Set(cmds.join('\n').match(/<(?!none>)[a-zA-Z][^<>]{0,44}>/g) || [])];
+    let found = [...new Set(cmds.join('\n').match(/<(?!none>)[a-zA-Z][^<>]{0,44}>/g) || [])];
+    if (phSeen) { found = found.filter(p => !phSeen.has(p)); found.forEach(p => phSeen.add(p)); }
+    if (!found.length) return '';
+    if (phSeen) return `<div class="phnote">${found.map(p => { const k = p.slice(1, -1), hit = PH.find(([re]) => re.test(k)); return `<p>${/^(pod|pod-name)$/i.test(k) ? PH_SHORT : `Replace <mark class="ph">${esc(p)}</mark> with ${hit ? hit[1] : 'the real value from the output above or from the question.'}`}</p>`; }).join('')}</div>`;
     if (!found.length) return '';
     return `<div class="phnote">${found.map(p => { const k = p.slice(1, -1), hit = PH.find(([re]) => re.test(k)); return `<p>Replace <mark class="ph">${esc(p)}</mark> with ${hit ? hit[1] : 'the real value from the output above or from the question.'}</p>`; }).join('')}</div>`;
   };
@@ -272,13 +277,17 @@
   // all commands of the solution in one box, to learn by heart
   const kwBox = q => (q.kw || []).length ? `<h2>Keywords → what to remember</h2><div class="card kwbox">${q.kw.map(k => `<div class="kw"><p><b>If the question says “${esc(k.word)}”:</b> ${esc(k.hint)}</p>${codeBlock(k.cmds)}</div>`).join('')}<p class="small">Same keyword in a new question → same commands.</p></div>` : '';
   const mugBox = q => q.cmds ? `<h2>Commands to learn by heart</h2><div class="card mugbox">${codeBlock(q.cmds)}<p class="small">Type them from memory, in this order, until you can do it without looking.</p></div>${kwBox(q)}` : kwBox(q);
+  const merkBox = q => (q.kw || []).length ? `<h2>Merken</h2><div class="card kwbox">${q.kw.map(k => `<div class="kw"><p><b>If the question says “${esc(k.word)}”:</b> ${esc(k.hint)}</p>${codeBlock(k.cmds)}</div>`).join('')}<p class="small">Same keyword in a new question → same commands.</p></div>` : '';
   function compactBody(q, mode = 'learn') {
     const st = q.story || {};
+    const plan = (q.coach || {}).plan;
     const all = q.steps.map((s, i) => ({ s, i, v: /^Verify/.test(s.title) }));
-    const stepsAll = all.map(x => stepHtml(x.s, x.i)).join('');
-    const stepsOnly = all.filter(x => !x.v).map(x => stepHtml(x.s, x.i)).join('');
-    const verify = all.filter(x => x.v).map(x => stepHtml(x.s, x.i)).join('');
-    const thinkCard = q.think ? `<section class="card think"><div class="label">Think (15 seconds)</div>${q.think}${q.budget ? `<p class="budget">⏱ ${esc(q.budget)}</p>` : ''}</section>` : '';
+    const steps = list => list.map(x => stepHtml(x.s, x.i)).join('');
+    phSeen = plan ? new Set() : null; const stepsAll = steps(all);
+    phSeen = plan ? new Set() : null; const stepsOnly = steps(all.filter(x => !x.v)); const verify = steps(all.filter(x => x.v));
+    phSeen = null;
+    const learnBox = plan ? merkBox(q) : mugBox(q);
+    const thinkCard = plan ? `<section class="card think"><div class="label">Plan</div><p class="plan">${esc(plan)}</p>${q.budget ? `<p class="budget">⏱ ${esc(q.budget)}</p>` : ''}</section>` : q.think ? `<section class="card think"><div class="label">Think (15 seconds)</div>${q.think}${q.budget ? `<p class="budget">⏱ ${esc(q.budget)}</p>` : ''}</section>` : '';
     const build = `<h2>Build it in Killercoda</h2>
       <div class="card">${q.setup ? `<a class="btn block" href="${KILLERCODA}" target="_blank" rel="noopener">Open Killercoda</a>${codeBlock(q.setup)}<p class="small">Exam: already set up. Run <code>ssh</code> first, <code>exit</code> last.</p>` : '<p class="small">Cannot be built in a playground. Practise in killer.sh.</p>'}</div>`;
     const examNote = '';
@@ -289,19 +298,19 @@
         <p class="small"><a href="#/basics">New here? The basics →</a></p>
       </div></details>`;
     const question = withMeaning => `<section class="card exam"><div class="label">Exam question</div><p class="q">${inline(q.question)}</p>
-        ${withMeaning && q.meaning ? `<div class="means">${q.meaning}</div>` : ''}</section>`;
+        ${withMeaning && q.meaning && !plan ? `<div class="means">${q.meaning}</div>` : ''}</section>`;
     if (mode === 'exam') {
       const t = qTimer(q.n), done = !!(t && t.end);
       return `${question(false)}${build}
         <div class="card qtimer"><div><div class="label">Your time</div><span id="qt">0:00</span></div><div class="row"><button class="btn" id="qtStart">${t ? 'Restart' : 'Start'}</button><button class="btn good" id="qtDone">Done</button></div>
           <p class="small">Paste Part A, then Start. Solve it without the app. Over ${q.target} min puts it on your weak list.</p></div>
-        ${done ? `${thinkCard}<h2>The solution</h2>${stepsAll}${help}${mugBox(q)}` : examNote}`;
+        ${done ? `${thinkCard}<h2>The solution</h2>${stepsAll}${help}${learnBox}` : examNote}`;
     }
     if (mode === 'practise') return `${question(true)}${thinkCard}${build}
       <h2>Solve it yourself</h2>
       <details class="step"><summary>Show steps</summary><div class="body">${stepsOnly}</div></details>
-      ${verify}${examNote}${help}${mugBox(q)}`;
-    return `${question(true)}${thinkCard}${build}<h2>Solve it</h2>${stepsAll}${examNote}${help}${mugBox(q)}`;
+      ${verify}${examNote}${help}${learnBox}`;
+    return `${question(true)}${thinkCard}${build}<h2>Solve it</h2>${stepsAll}${examNote}${help}${learnBox}`;
   }
 
   // the whole answer in baby steps: one command, what you see, why

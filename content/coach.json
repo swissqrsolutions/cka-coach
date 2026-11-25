@@ -76,7 +76,7 @@
    },
    {
     "dont": "Misaligning the items of the `command:` list in vim",
-    "do": "Indent every `command:` item evenly (`- sleep`, `- \"3600\"`), because broken indentation makes kubectl reject the edit"
+    "do": "Indent every `command:` item evenly (`- sh`, `- -c`, `- sleep 3600`), because broken indentation makes kubectl reject the edit"
    }
   ],
   "verify": [
@@ -98,7 +98,8 @@
    "k edit deployment/api -n app  # exit 1 → sleep 3600",
    "k get pods -n app"
   ],
-  "minutes": 3
+  "minutes": 3,
+  "plan": "CrashLoopBackOff → logs --previous → describe (Command, Exit Code) → edit deployment → RESTARTS stays 0"
  },
  "3": {
   "pattern": "Pod Pending → describe Events → lower resource requests",
