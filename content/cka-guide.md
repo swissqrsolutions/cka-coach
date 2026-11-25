@@ -5910,9 +5910,9 @@ k get deployment web -o jsonpath='{.spec.template.spec.containers[0].resources}'
 ```
 You see:
 ```
-{"requests":{"cpu":"100m"}}   <-- a CPU request exists
+{"requests":{"cpu":"100m"}}
 ```
-**Means:** the HPA can calculate.
+**Means:** a CPU request exists. The HPA can calculate.
 
 ---
 
@@ -5939,12 +5939,12 @@ horizontalpodautoscaler.autoscaling/web autoscaled
 ```
 k edit hpa/web -n shop
 ```
-The `spec:` part, finished. Only `# <-- CHANGE` lines are new:
+The `spec:` part, finished. New: the 3 `behavior:` lines at the top:
 ```
 spec:
-  behavior:                              # <-- CHANGE
-    scaleDown:                           # <-- CHANGE
-      stabilizationWindowSeconds: 30     # <-- CHANGE
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 30
   maxReplicas: 5
   metrics:
   - resource:
@@ -5974,9 +5974,11 @@ horizontalpodautoscaler.autoscaling/web edited
 ```
 k get hpa web -n shop
 ```
+Columns: TARGETS `cpu: 0%/70%`, MINPODS `2`, MAXPODS `5`, REPLICAS `2`.
+
 You see:
 ```
-web   Deployment/web   cpu: 0%/70%   2   5   2   1m   <-- min 2, max 5, target 70%
+web   Deployment/web   cpu: 0%/70%   2   5   2   1m
 ```
 **Means:** `<unknown>` in the first minute is normal. Run it again.
 
@@ -6072,7 +6074,7 @@ k get priorityclass
 You see:
 ```
 low-prio                  100          false   1m   ...
-mid-prio                  1000         false   1m   ...   <-- highest user-defined
+mid-prio                  1000         false   1m   ...   <-- highest
 system-cluster-critical   2000000000   false   5h   ...   <-- ignore
 system-node-critical      2000001000   false   5h   ...   <-- ignore
 ```
@@ -6102,10 +6104,10 @@ priorityclass.scheduling.k8s.io/high-priority created
 ```
 k edit deployment/web -n shop
 ```
-The pod template's `spec:`, finished. Only the `# <-- CHANGE` line is new:
+The pod template's `spec:`, finished. New: the `priorityClassName:` line:
 ```
     spec:
-      priorityClassName: high-priority   # <-- CHANGE
+      priorityClassName: high-priority
       containers:
       - image: nginx:1.27
         imagePullPolicy: IfNotPresent
@@ -6144,7 +6146,7 @@ k get pods -o custom-columns=NAME:.metadata.name,CLASS:.spec.priorityClassName,P
 You see:
 ```
 NAME      CLASS           PRIO
-web-...   high-priority   999   <-- class and value
+web-...   high-priority   999
 ```
 **Means:** a `Terminating` pod may show `<none>`. Run it again.
 
@@ -6153,8 +6155,6 @@ web-...   high-priority   999   <-- class and value
 ### Three words first
 
 - **PriorityClass** = an object holding a number. Higher is scheduled first.
-- **User-defined** = made by an admin, not `system-`.
-- **priorityClassName** = the pod line that names the class.
 
 ---
 
@@ -6255,17 +6255,19 @@ deployment.apps/web scaled
 k describe node node01 | grep -A7 "Allocatable:"
 k describe node node01 | grep -A6 "Allocated resources:"
 ```
-You see (an example; your numbers differ):
+Read `cpu` and `memory` twice: under Allocatable (offered) and in the Requests column (reserved). This is an example; your numbers differ.
+
+You see:
 ```
 Allocatable:
-  cpu:                1          <-- offered
+  cpu:                1
   ...
-  memory:             1843756Ki  <-- offered
+  memory:             1843756Ki
 ...
   Resource           Requests     Limits
   --------           --------     ------
-  cpu                250m (25%)   0 (0%)   <-- reserved
-  memory             200Mi (11%)  0 (0%)   <-- reserved
+  cpu                250m (25%)   0 (0%)
+  memory             200Mi (11%)  0 (0%)
 ```
 **Means:** CPU 1000m − 250m. Memory 1843756Ki − 200Mi.
 **Don't:** take the Limits column. Use Requests.
@@ -6283,9 +6285,9 @@ echo $(( (1800 - 200) * 9 / 10 / 3 ))
 ```
 You see:
 ```
-1800   <-- memory in Mi
-225    <-- CPU per pod, in m
-480    <-- memory per pod, in Mi
+1800  <-- memory Mi
+225   <-- CPU/pod (m)
+480   <-- mem/pod (Mi)
 ```
 **Means:** CPU 750m × 0.9 ÷ 3 = 225m. Memory 1600Mi × 0.9 ÷ 3 = 480Mi.
 **Don't:** copy these numbers. Use your own from Step 2.
@@ -6316,9 +6318,11 @@ deployment.apps/web scaled
 k get pods -o wide -n shop
 k describe node node01 | grep -A6 "Allocated resources:"
 ```
+Three pod lines like the first one, all on `node01`.
+
 You see:
 ```
-web-...   1/1   Running   0   20s   ...   node01   <-- 3 lines like this
+web-...   1/1   Running   0   20s   ...   node01
 ...
   cpu                925m (92%)    0 (0%)
   memory             1640Mi (91%)  0 (0%)
@@ -6414,6 +6418,8 @@ secret/db-sec created
 k run api --image=nginx:1.27 --dry-run=client -o yaml -n app > pod.yaml
 cat pod.yaml
 ```
+`resources:` shows the container level (4 spaces in). `dnsPolicy:` shows the pod level (2 spaces in).
+
 You see:
 ```
 ...
@@ -6421,8 +6427,8 @@ spec:
   containers:
   - image: nginx:1.27
     name: api
-    resources: {}   <-- container level starts 4 spaces in
-  dnsPolicy: ClusterFirst   <-- pod level starts 2 spaces in
+    resources: {}
+  dnsPolicy: ClusterFirst
 ...
 ```
 
@@ -6435,7 +6441,7 @@ spec:
 ```
 vim pod.yaml
 ```
-The finished file. Only the `# <-- CHANGE` lines are new:
+The finished file. New: the `envFrom:`, `volumeMounts:` and `volumes:` blocks:
 ```yaml
 apiVersion: v1
 kind: Pod
@@ -6449,16 +6455,16 @@ spec:
   - image: nginx:1.27
     name: api
     resources: {}
-    envFrom:                 # <-- CHANGE
-    - configMapRef:          # <-- CHANGE
-        name: app-cfg        # <-- CHANGE
-    volumeMounts:            # <-- CHANGE
-    - name: db               # <-- CHANGE
-      mountPath: /etc/db     # <-- CHANGE
-  volumes:                   # <-- CHANGE
-  - name: db                 # <-- CHANGE
-    secret:                  # <-- CHANGE
-      secretName: db-sec     # <-- CHANGE
+    envFrom:
+    - configMapRef:
+        name: app-cfg
+    volumeMounts:
+    - name: db
+      mountPath: /etc/db
+  volumes:
+  - name: db
+    secret:
+      secretName: db-sec
   dnsPolicy: ClusterFirst
   restartPolicy: Always
 ```
@@ -6480,7 +6486,7 @@ k get pod api -n app
 You see:
 ```
 pod/api created
-api   1/1   Running   0   10s   <-- Running
+api   1/1   Running   0   10s
 ```
 
 ---
@@ -6493,10 +6499,12 @@ api   1/1   Running   0   10s   <-- Running
 k exec api -n app -- env | grep LOG_LEVEL
 k exec api -n app -- cat /etc/db/password
 ```
+The file has no newline at the end, so your prompt may follow `s3cret` on the same line.
+
 You see:
 ```
 LOG_LEVEL=debug
-s3cret   <-- your prompt may follow on the same line
+s3cret
 ```
 
 ---
@@ -6593,9 +6601,9 @@ k get node node01 -L env
 ```
 You see:
 ```
-Taints:             env=prod:NoSchedule   <-- the taint
+Taints:             env=prod:NoSchedule   <-- taint
 NAME     STATUS   ROLES    AGE   VERSION   ENV
-node01   Ready    <none>   ...   v1.35.x   prod   <-- the label
+node01   Ready    <none>   ...   v1.35.x   prod   <-- label
 ```
 **Means:** the node is ready for the pod.
 
@@ -6609,9 +6617,11 @@ node01   Ready    <none>   ...   v1.35.x   prod   <-- the label
 k run x --image=nginx:1.27 --dry-run=client -o yaml > x.yaml
 grep -n containers x.yaml
 ```
+The new blocks go above `containers:`, in the same column.
+
 You see:
 ```
-...  containers:   <-- the new blocks go above this line, same column
+...  containers:
 ```
 
 ---
@@ -6623,7 +6633,7 @@ You see:
 ```
 vim x.yaml
 ```
-The finished file. Only the `# <-- CHANGE` lines are new:
+The finished file. New: the `nodeSelector:` and `tolerations:` blocks:
 ```yaml
 apiVersion: v1
 kind: Pod
@@ -6632,13 +6642,13 @@ metadata:
     run: x
   name: x
 spec:
-  nodeSelector:              # <-- CHANGE
-    env: prod                # <-- CHANGE
-  tolerations:               # <-- CHANGE
-  - key: "env"               # <-- CHANGE
-    operator: "Equal"        # <-- CHANGE
-    value: "prod"            # <-- CHANGE
-    effect: "NoSchedule"     # <-- CHANGE
+  nodeSelector:
+    env: prod
+  tolerations:
+  - key: "env"
+    operator: "Equal"
+    value: "prod"
+    effect: "NoSchedule"
   containers:
   - image: nginx:1.27
     name: x
@@ -6676,7 +6686,7 @@ k get pod x -o wide
 ```
 You see:
 ```
-x   1/1   Running   0   15s   192.168.x.x   node01   ...   <-- NODE = node01
+x   1/1   Running   0   15s   192.168.x.x   node01   ...   <-- NODE
 ```
 
 ---
@@ -6684,7 +6694,6 @@ x   1/1   Running   0   15s   192.168.x.x   node01   ...   <-- NODE = node01
 ### Three words first
 
 - **Taint** = a mark on a node, `key=value:effect`. `NoSchedule`: no new pods, unless they tolerate it.
-- **Toleration** = pod lines that say "I accept this taint". It allows, it does not send.
 - **nodeSelector** = pod lines: "only put me on a node with this label".
 
 ---
@@ -6758,7 +6767,7 @@ k get deployment web -o wide -n shop
 You see:
 ```
 NAME   READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES       SELECTOR
-web    3/3     3            3           1m    nginx        nginx:1.27   app=web   <-- container nginx
+web    3/3     3            3           1m    nginx        nginx:1.27   app=web   <-- nginx
 ```
 **Means:** the container is `nginx`. The old image is `nginx:1.27`.
 
@@ -6777,7 +6786,7 @@ You see:
 deployment.apps/web image updated
 Waiting for deployment "web" rollout to finish: 1 out of 3 new replicas have been updated...
 ...
-deployment "web" successfully rolled out   <-- done
+deployment "web" successfully rolled out
 ```
 **Don't:** write `web=nginx:1.28`. Left of `=` is the container name.
 
@@ -6796,7 +6805,7 @@ You see:
 ```
 REVISION  CHANGE-CAUSE
 1         <none>
-2         <none>   <-- the 1.28 update
+2         <none>  <-- 1.28
 deployment.apps/web rolled back
 deployment "web" successfully rolled out
 ```
@@ -6812,9 +6821,11 @@ deployment "web" successfully rolled out
 k get deployment web -o jsonpath='{.spec.template.spec.containers[0].image}' -n shop > /root/image.txt
 cat /root/image.txt
 ```
+Your prompt may follow on the same line.
+
 You see:
 ```
-nginx:1.27   <-- your prompt may follow on the same line
+nginx:1.27
 ```
 **Means:** the rollback worked, and the file holds the answer.
 
@@ -6829,7 +6840,7 @@ k get deployment web -o wide -n shop
 ```
 You see:
 ```
-web    3/3     3            3           3m    nginx        nginx:1.27   app=web   <-- 3/3, 1.27
+web    3/3     3            3           3m    nginx        nginx:1.27   app=web   <-- 1.27
 ```
 
 ---
@@ -6838,7 +6849,6 @@ web    3/3     3            3           3m    nginx        nginx:1.27   app=web 
 
 - **Rolling update** = new pods replace old ones a few at a time. The app stays up.
 - **Revision** = each change of the pod template gets a new number. Old ones are kept.
-- **jsonpath** = `-o jsonpath='{...}'` prints only the field you name.
 
 ---
 
@@ -6927,16 +6937,16 @@ k get pv,pvc -n storage
 ```
 vim pv.yaml
 ```
-The finished file. Only the `# <-- CHANGE` lines differ from the docs:
+The finished file. Only `name: pv-data` and `storage: 1Gi` differ from the docs:
 ```
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: pv-data            # <-- CHANGE
+  name: pv-data
 spec:
   storageClassName: manual
   capacity:
-    storage: 1Gi           # <-- CHANGE
+    storage: 1Gi
   accessModes:
     - ReadWriteOnce
   hostPath:
@@ -6949,7 +6959,7 @@ k get pv
 You see:
 ```
 NAME      CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   ...
-pv-data   1Gi        RWO            Retain           Available           manual         ...   <-- free disk
+pv-data   1Gi        RWO            Retain           Available           manual         ...   <-- free
 ```
 **Means:** the disk exists. Also delete the docs' `labels:` and `type: local` lines.
 **Don't:** add `namespace:`. A PV belongs to the whole cluster.
@@ -6965,20 +6975,20 @@ Vim tip: type `:set paste` before you press `i` and paste. Save with `:wq`.
 ```
 vim pvc.yaml
 ```
-The finished file. Only the `# <-- CHANGE` lines differ from the docs:
+The finished file. Only `name:`, `namespace:` and `storage: 500Mi` differ from the docs:
 ```
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: pvc-data           # <-- CHANGE
-  namespace: storage       # <-- CHANGE
+  name: pvc-data
+  namespace: storage
 spec:
   storageClassName: manual
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 500Mi       # <-- CHANGE
+      storage: 500Mi
 ```
 ```
 k apply -f pvc.yaml
@@ -6987,7 +6997,7 @@ k get pvc -n storage
 You see:
 ```
 NAME       STATUS   VOLUME    CAPACITY   ACCESS MODES   STORAGECLASS   ...
-pvc-data   Bound    pv-data   1Gi        RWO            manual         ...   <-- Bound to pv-data
+pvc-data   Bound    pv-data   1Gi        RWO            manual         ...   <-- Bound
 ```
 **Means:** class and mode match, and 1Gi fits 500Mi. CAPACITY `1Gi` is correct: the claim gets the whole disk.
 **Don't:** go on before you see `Bound`.
@@ -7001,21 +7011,21 @@ pvc-data   Bound    pv-data   1Gi        RWO            manual         ...   <--
 ```
 vim pod.yaml
 ```
-The finished file. Only the `# <-- CHANGE` lines differ from the docs:
+The finished file. Only `name:`, `namespace:`, `claimName:` and `image:` differ from the docs:
 ```
 apiVersion: v1
 kind: Pod
 metadata:
-  name: web-store          # <-- CHANGE
-  namespace: storage       # <-- CHANGE
+  name: web-store
+  namespace: storage
 spec:
   volumes:
     - name: task-pv-storage
       persistentVolumeClaim:
-        claimName: pvc-data       # <-- CHANGE
+        claimName: pvc-data
   containers:
     - name: task-pv-container
-      image: nginx:1.27           # <-- CHANGE
+      image: nginx:1.27
       ports:
         - containerPort: 80
           name: "http-server"
@@ -7045,8 +7055,8 @@ k get pv pv-data
 ```
 You see:
 ```
-web-store   1/1   Running   0   30s   <-- pod runs
-pv-data   1Gi   RWO   Retain   Bound   storage/pvc-data   manual   ...   <-- disk is in use
+web-store   1/1   Running   0   30s
+pv-data   1Gi   RWO   Retain   Bound   storage/pvc-data   manual   ...   <-- in use
 ```
 **Don't:** panic at `ContainerCreating`. Wait a few seconds, run it again.
 
@@ -7126,7 +7136,7 @@ k get storageclass
 You see:
 ```
 NAME                   PROVISIONER             ...
-local-path (default)   rancher.io/local-path   ...   <-- write this name down
+local-path (default)   rancher.io/local-path   ...   <-- old default
 ```
 **Means:** the old default is `local-path`. A StorageClass has no namespace, so no `-n`.
 
@@ -7139,15 +7149,15 @@ local-path (default)   rancher.io/local-path   ...   <-- write this name down
 ```
 vim sc.yaml
 ```
-The finished file. Only the `# <-- CHANGE` lines differ from the docs:
+The finished file. Only `name: fast`, the `is-default-class` annotation and `provisioner:` differ from the docs:
 ```
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: fast                                              # <-- CHANGE
+  name: fast
   annotations:
-    storageclass.kubernetes.io/is-default-class: "true"   # <-- CHANGE
-provisioner: rancher.io/local-path                        # <-- CHANGE
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: rancher.io/local-path
 volumeBindingMode: WaitForFirstConsumer
 ```
 **Means:** also delete `reclaimPolicy`, `allowVolumeExpansion`, `mountOptions` and `parameters`. The question did not ask for them.
@@ -7328,7 +7338,7 @@ k get pv
 You see:
 ```
 NAME         CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   ...
-mariadb-pv   250Mi      RWO            Retain           Available                          ...   <-- class is EMPTY
+mariadb-pv   250Mi      RWO            Retain           Available                          ...   <-- no class
 ```
 **Means:** 250Mi, ReadWriteOnce, free, and no class. Your PVC must repeat these.
 
@@ -7341,20 +7351,20 @@ mariadb-pv   250Mi      RWO            Retain           Available               
 ```
 vim pvc.yaml
 ```
-The finished file. Only the `# <-- CHANGE` lines differ from the docs:
+The finished file. Only `name:`, `namespace:`, `storageClassName: ""` and `storage: 250Mi` differ from the docs:
 ```
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: mariadb            # <-- CHANGE
-  namespace: mariadb       # <-- CHANGE
+  name: mariadb
+  namespace: mariadb
 spec:
-  storageClassName: ""     # <-- CHANGE
+  storageClassName: ""
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 250Mi       # <-- CHANGE
+      storage: 250Mi
 ```
 ```
 k apply -f pvc.yaml
@@ -7363,7 +7373,7 @@ k get pvc -n mariadb
 You see:
 ```
 NAME      STATUS   VOLUME       CAPACITY   ACCESS MODES   ...
-mariadb   Bound    mariadb-pv   250Mi      RWO            ...   <-- the OLD disk
+mariadb   Bound    mariadb-pv   250Mi      RWO            ...   <-- old disk
 ```
 **Means:** `""` means "no class", exactly like the old disk.
 **Don't:** delete the `storageClassName` line. The default class would make a new EMPTY disk.
@@ -7416,8 +7426,8 @@ k get pv mariadb-pv
 ```
 You see:
 ```
-mariadb-...   1/1   Running   0   1m   <-- app runs
-mariadb-pv   250Mi   RWO   Retain   Bound   mariadb/mariadb   ...   <-- old disk in use
+mariadb-...   1/1   Running   0   1m
+mariadb-pv   250Mi   RWO   Retain   Bound   mariadb/mariadb   ...   <-- in use
 ```
 **Don't:** panic at `ContainerCreating`. The image download can take a minute.
 
@@ -7427,7 +7437,6 @@ mariadb-pv   250Mi   RWO   Retain   Bound   mariadb/mariadb   ...   <-- old disk
 
 - **PV** = PersistentVolume, a disk for the whole cluster. Here it holds the database.
 - **PVC** = PersistentVolumeClaim, a request for a disk. A pod uses a PVC, never a PV.
-- **claimName** = the line in a pod or deployment that names the PVC.
 
 ---
 

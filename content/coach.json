@@ -1676,21 +1676,22 @@
   "verify": [
    {
     "need": "min/max/target",
-    "cmd": "k get hpa -n shop",
-    "see": "web  cpu: …/70%  MINPODS 2  MAXPODS 5"
+    "cmd": "k get hpa web -n shop",
+    "see": "web  cpu: 0%/70%  MINPODS 2  MAXPODS 5"
    },
    {
     "need": "window 30 s",
-    "cmd": "k get hpa web -o yaml -n shop | grep -A2 scaleDown",
-    "see": "stabilizationWindowSeconds: 30"
+    "cmd": "k get hpa web -o jsonpath='{.spec.behavior.scaleDown.stabilizationWindowSeconds}' -n shop",
+    "see": "30"
    }
   ],
   "memorise": [
    "k autoscale deployment web --min=2 --max=5 --cpu=70% -n shop",
    "k edit hpa/web -n shop   # spec: behavior: scaleDown: stabilizationWindowSeconds: 30",
-   "k get hpa -n shop"
+   "k get hpa web -n shop"
   ],
-  "minutes": 4
+  "minutes": 4,
+  "plan": "HPA task → CPU request exists (100m) → autoscale (--min=2 --max=5 --cpu=70%) → edit hpa (behavior.scaleDown window 30) → TARGETS 0%/70%, window 30"
  },
  "33": {
   "pattern": "PriorityClass value from existing ones, attach to deployment",
@@ -1726,17 +1727,18 @@
    },
    {
     "need": "pods use it",
-    "cmd": "k get pods -o custom-columns=NAME:.metadata.name,CLASS:.spec.priorityClassName -n shop",
-    "see": "high-priority on new pods"
+    "cmd": "k get pods -o custom-columns=NAME:.metadata.name,CLASS:.spec.priorityClassName,PRIO:.spec.priority -n shop",
+    "see": "high-priority 999 on new pods"
    }
   ],
   "memorise": [
    "k get priorityclass",
    "k create priorityclass high-priority --value=<highest-1>",
    "k edit deployment/web -n shop  # priorityClassName: high-priority (above containers:)",
-   "k get pods -o custom-columns=NAME:.metadata.name,CLASS:.spec.priorityClassName -n shop"
+   "k get pods -o custom-columns=NAME:.metadata.name,CLASS:.spec.priorityClassName,PRIO:.spec.priority -n shop"
   ],
-  "minutes": 3
+  "minutes": 3,
+  "plan": "Class one below the top → get priorityclass (ignore system-) → create priorityclass (--value=999) → edit deployment (priorityClassName above containers:) → pods show high-priority 999"
  },
  "34": {
   "pattern": "Compute requests from node allocatable, split across replicas",
@@ -1770,9 +1772,9 @@
   ],
   "verify": [
    {
-    "need": "requests set",
-    "cmd": "k get deployment web -o jsonpath='{..resources}' -n shop",
-    "see": "requests cpu/memory"
+    "need": "node near 90%",
+    "cmd": "k describe node node01 | grep -A6 \"Allocated resources:\"",
+    "see": "cpu ~92%, memory ~91% (Requests)"
    },
    {
     "need": "all Running",
@@ -1782,12 +1784,13 @@
   ],
   "memorise": [
    "k scale deployment/web --replicas=0 -n shop",
-   "k describe node node01 | grep -A7 'Allocatable:'",
-   "k describe node node01 | grep -A6 'Allocated resources:'",
+   "k describe node node01 | grep -A7 \"Allocatable:\"",
+   "k describe node node01 | grep -A6 \"Allocated resources:\"",
    "k set resources deployment/web --requests=cpu=<X>m,memory=<Y>Mi -n shop  # (free × 0.9) ÷ 3",
-   "k scale deployment/web --replicas=3 -n shop; k get pods -n shop"
+   "k scale deployment/web --replicas=3 -n shop; k get pods -o wide -n shop"
   ],
-  "minutes": 6
+  "minutes": 6,
+  "plan": "Equal requests, 10% headroom → scale to 0 → describe node (Allocatable − Requests) → free × 0.9 ÷ 3 → set resources --requests, scale to 3 → 3 Running, node ~90%"
  },
  "35": {
   "pattern": "ConfigMap as env (envFrom) + Secret as volume in a pod",
@@ -1838,7 +1841,8 @@
    "vim pod.yaml   # envFrom: - configMapRef: name: app-cfg; volumeMounts /etc/db; volumes: secret: secretName: db-sec",
    "k apply -f pod.yaml"
   ],
-  "minutes": 6
+  "minutes": 6,
+  "plan": "ConfigMap + Secret for a pod → create configmap, create secret generic → run --dry-run=client -o yaml → add envFrom (configMapRef) + secret volume (secretName) → LOG_LEVEL in env, /etc/db/password"
  },
  "36": {
   "pattern": "Taint + label node; pod with toleration + nodeSelector",
@@ -1873,8 +1877,8 @@
   "verify": [
    {
     "need": "taint + label",
-    "cmd": "k describe node node01 | grep -E 'Taints|env='",
-    "see": "env=prod:NoSchedule and env=prod"
+    "cmd": "k describe node node01 | grep -i taints; k get node node01 -L env",
+    "see": "env=prod:NoSchedule; ENV prod"
    },
    {
     "need": "pod on node01",
@@ -1889,7 +1893,8 @@
    "vim x.yaml   # spec: nodeSelector: env: prod; tolerations: - key: env operator: Equal value: prod effect: NoSchedule",
    "k apply -f x.yaml; k get pod x -o wide"
   ],
-  "minutes": 5
+  "minutes": 5,
+  "plan": "Pod on tainted node01 → taint + label node01 → check (Taints, -L env) → dry-run YAML + nodeSelector + tolerations (env, prod, NoSchedule) → NODE node01"
  },
  "37": {
   "pattern": "set image → rollout status → undo → record image",
@@ -1924,13 +1929,13 @@
   "verify": [
    {
     "need": "rolled back",
-    "cmd": "k rollout history deployment/web -n shop",
-    "see": "revisions 2 and 3; revision 1 is gone (it became 3)"
+    "cmd": "k get deployment web -o wide -n shop",
+    "see": "3/3, IMAGES nginx:1.27"
    },
    {
     "need": "file correct",
     "cmd": "cat /root/image.txt",
-    "see": "old image (not nginx:1.28)"
+    "see": "nginx:1.27"
    }
   ],
   "memorise": [
@@ -1940,7 +1945,8 @@
    "k rollout undo deployment/web -n shop",
    "k get deployment web -o jsonpath='{.spec.template.spec.containers[0].image}' -n shop > /root/image.txt"
   ],
-  "minutes": 3
+  "minutes": 3,
+  "plan": "Update, then roll back → -o wide (container nginx) → set image (nginx=nginx:1.28) + rollout status → rollout undo (once) → jsonpath image > /root/image.txt → nginx:1.27"
  },
  "38": {
   "pattern": "PV → PVC (Bound) → Pod mounting the claim",
@@ -1974,9 +1980,9 @@
   ],
   "verify": [
    {
-    "need": "PVC bound to PV",
-    "cmd": "k get pvc -n storage",
-    "see": "pvc-data Bound pv-data"
+    "need": "PV bound to the PVC",
+    "cmd": "k get pv pv-data",
+    "see": "Bound storage/pvc-data"
    },
    {
     "need": "pod running",
@@ -1989,9 +1995,10 @@
    "pv.yaml: name pv-data, 1Gi, RWO, storageClassName manual, hostPath /mnt/data (no namespace)",
    "pvc.yaml: name pvc-data, namespace storage, 500Mi, RWO, manual",
    "pod.yaml: web-store, namespace storage, nginx:1.27, claimName pvc-data, mountPath /usr/share/nginx/html",
-   "k get pvc -n storage; k get pods -n storage"
+   "k get pvc -n storage; k get pod web-store -n storage"
   ],
-  "minutes": 8
+  "minutes": 8,
+  "plan": "PV → PVC → Pod → pv.yaml (1Gi, manual, no namespace) → pvc.yaml (500Mi, manual) until Bound → pod.yaml (claimName pvc-data) → pod Running, PV Bound storage/pvc-data"
  },
  "39": {
   "pattern": "New StorageClass as default; un-default the old one",
@@ -2026,13 +2033,13 @@
   "verify": [
    {
     "need": "fast exists correctly",
-    "cmd": "k get storageclass fast",
-    "see": "rancher.io/local-path WaitForFirstConsumer"
+    "cmd": "k get storageclass",
+    "see": "fast (default)  rancher.io/local-path  WaitForFirstConsumer"
    },
    {
     "need": "only fast default",
     "cmd": "k get storageclass",
-    "see": "(default) only next to fast"
+    "see": "local-path without (default)"
    }
   ],
   "memorise": [
@@ -2042,7 +2049,8 @@
    "k apply -f sc.yaml",
    "k patch storageclass <old> -p '{\"metadata\":{\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"false\"}}}'"
   ],
-  "minutes": 5
+  "minutes": 5,
+  "plan": "Only one default → get storageclass (old default local-path) → sc.yaml (is-default-class \"true\", WaitForFirstConsumer) → apply → patch local-path to \"false\" → (default) on fast only"
  },
  "40": {
   "pattern": "PVC that binds to an existing PV; point deployment at it",
@@ -2076,9 +2084,9 @@
   ],
   "verify": [
    {
-    "need": "PVC bound to old PV",
-    "cmd": "k get pvc -n mariadb",
-    "see": "mariadb Bound <old PV name>"
+    "need": "old PV in use",
+    "cmd": "k get pv mariadb-pv",
+    "see": "Bound mariadb/mariadb"
    },
    {
     "need": "deployment running",
@@ -2093,7 +2101,8 @@
    "vim /root/mariadb-deploy.yaml   # claimName: mariadb",
    "k apply -f /root/mariadb-deploy.yaml; k get pods -n mariadb"
   ],
-  "minutes": 7
+  "minutes": 7,
+  "plan": "Reuse the old PV → get pv (250Mi, RWO, no class) → pvc.yaml (storageClassName: \"\") → Bound to mariadb-pv → claimName: mariadb → apply → PV Bound mariadb/mariadb"
  },
  "101": {
   "pattern": "Node NotReady → ssh → kubelet stopped → enable --now",
