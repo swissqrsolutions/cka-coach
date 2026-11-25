@@ -416,3 +416,6 @@ details.reveal{margin-top:8px}details.reveal summary{cursor:pointer;font-weight:
 /* highlighted words keep dark text in dark mode too, including inline code inside them */
 .exam .q mark, .clue mark, .vexam mark, mark.ph{color:#152033}
 .exam .q mark code, .clue mark code{background:rgba(255,255,255,.55);color:#152033}
+/* long inline paths/URLs in prose (question cards, explanations, notes) wrap instead of widening the page */
+.card p code, .card li code, .bwhy code, .ln code, .phnote code, .trap code, .clue code, .plain code, .means code{overflow-wrap:anywhere}
+.exam .q, .exam .q a{overflow-wrap:anywhere}
