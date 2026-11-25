@@ -2,7 +2,6 @@
 // One glossy board = one map of the cluster. Same boxes, same positions in the home film and every short.
 // No sound. Plays once, Replay button, no loop. prefers-reduced-motion → still frame + caption.
 import * as W from './wb/wb.js';
-import { homeFilm, HOME_H } from './home-film.js';
 
 const { INK } = W;
 const VW = 1080, VH = 1350, BW = 2400, BH = 3420;
@@ -181,7 +180,7 @@ async function build(host, kind) {
   host.classList.add('motion', kind === 'home' ? 'mhome' : 'mshort');
   host.innerHTML = `<div class="mwrap"><canvas width="${VW}" height="${VH}" aria-hidden="true"></canvas></div><p class="mcap" aria-live="polite"></p><div class="mbar"><button type="button" class="btn ghost mrep" hidden>↻ Replay</button></div>`;
   await font();
-  const F = kind === 'home' ? makeFilm(homeFilm, HOME_H) : makeFilm(shortFilm(kind));
+  const F = makeFilm(shortFilm(kind));
   const cv = host.querySelector('canvas'), ctx = cv.getContext('2d'), cap = host.querySelector('.mcap'), rep = host.querySelector('.mrep');
   let raf = 0;
   const showCap = t => {
@@ -206,7 +205,8 @@ async function build(host, kind) {
 function scan(root) {
   root.querySelectorAll('[data-motion]:not(.motion)').forEach(h => {
     const k = h.dataset.motion;
-    if (k === 'home' || SHORTS[k]) build(h, k).catch(e => { console.warn('motion', e); h.remove(); });
+    if (k === 'home') import('./film3d.js').then(m => m.mountFilm(h)).catch(e => { console.warn('motion', e); h.remove(); });
+    else if (SHORTS[k]) build(h, k).catch(e => { console.warn('motion', e); h.remove(); });
     else h.remove();
   });
 }
