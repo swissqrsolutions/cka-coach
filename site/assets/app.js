@@ -298,6 +298,17 @@
     const kw = (q.kw || [])[0];
     return `<h2>Remember</h2><div class="card kwbox"><div class="kw"><p>${kw ? `<b>If the question says “${esc(kw.word)}”</b>, this is how this question was solved:` : 'The commands of this question, in order:'}</p>${codeBlock(cmds.join('\n'))}</div><p class="small">Same keyword in a new question → same commands.</p></div>`;
   };
+  // "Ask Claude": opens claude.ai in a new tab with this question already filled in (nothing is sent until you press Enter there)
+  const askBox = q => {
+    const plan = (q.coach || {}).plan, cmds = ownCmds(q);
+    let t = 'I am practising for the CKA exam (Kubernetes v1.37, alias k=kubectl). Answer short, in simple English, with the same command form as below.\n\n'
+      + 'Question: ' + String(q.question).replace(/`/g, '').trim() + '\n'
+      + (plan ? '\nPlan: ' + plan + '\n' : '')
+      + (cmds.length ? '\nSolution commands:\n' + cmds.join('\n') + '\n' : '')
+      + '\nMy question: ';
+    if (t.length > 3500) t = t.slice(0, 3400) + '\n...\n\nMy question: ';
+    return `<h2>Ask Claude</h2><div class="card"><a class="btn block" href="https://claude.ai/new?q=${encodeURIComponent(t)}" target="_blank" rel="noopener">Ask Claude about this question</a><p class="small">Opens claude.ai in a new tab with this question, the plan and the commands filled in. Type your question at the end and press Enter.</p></div>`;
+  };
   function compactBody(q, mode = 'learn') {
     const st = q.story || {};
     const plan = (q.coach || {}).plan;
@@ -324,13 +335,13 @@
       return `${question(false)}${build}
         <div class="card qtimer"><div><div class="label">Your time</div><span id="qt">0:00</span></div><div class="row"><button class="btn" id="qtStart">${t ? 'Restart' : 'Start'}</button><button class="btn good" id="qtDone">Done</button></div>
           <p class="small">Paste Part A, then Start. Solve it without the app. Over ${q.target} min puts it on your weak list.</p></div>
-        ${done ? `${thinkCard}<h2>The solution</h2>${stepsAll}${help}${learnBox}` : examNote}`;
+        ${done ? `${thinkCard}<h2>The solution</h2>${stepsAll}${help}${learnBox}${askBox(q)}` : examNote}`;
     }
     if (mode === 'practise') return `${question(true)}${thinkCard}${build}
       <h2>Solve it yourself</h2>
       <details class="step"><summary>Show steps</summary><div class="body">${stepsOnly}</div></details>
-      ${verify}${examNote}${help}${learnBox}`;
-    return `${question(true)}${thinkCard}${build}<h2>Solve it</h2>${stepsAll}${examNote}${help}${learnBox}`;
+      ${verify}${examNote}${help}${learnBox}${askBox(q)}`;
+    return `${question(true)}${thinkCard}${build}<h2>Solve it</h2>${stepsAll}${examNote}${help}${learnBox}${askBox(q)}`;
   }
 
   // the whole answer in baby steps: one command, what you see, why
@@ -377,7 +388,7 @@
       <div class="card">${q.setup ? `<a class="btn block" href="${KILLERCODA}" target="_blank" rel="noopener">Open Killercoda</a>${codeBlock(q.setup)}<p class="small">Paste this first. In the real exam it is already set up. Then try to solve it before you look below.</p>` : `${/no setup needed/i.test(plain(q.meaning||'')) ? '<a class="btn block" href="'+KILLERCODA+'" target="_blank" rel="noopener">Open Killercoda</a><p class="small">No setup needed: it works as is on Killercoda. Try it before you look below.</p>' : '<p class="small">This one cannot be set up in a playground. Read the steps; practise it in killer.sh.</p>'}`}</div>
       ${tried ? `<details class="step solution"><summary>Try first, then show the solution</summary><div class="body">${solveBlock}</div></details>` : `<h2>Solution, step by step</h2>${solveBlock}`}
       ${q.wrong ? `<h2>If something goes wrong</h2><div class="card btable">${q.wrong}</div>` : ''}
-      ${(q.coach || {}).plan ? merkBox(q) : (memorise || mugBox(q))}`;
+      ${(q.coach || {}).plan ? merkBox(q) : (memorise || mugBox(q))}${askBox(q)}`;
   }
 
   function practice(n) {
