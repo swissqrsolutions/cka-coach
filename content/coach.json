@@ -267,7 +267,7 @@
    },
    {
     "q": "Do not delete or recreate the service",
-    "means": "Change it in place: k set selector or k edit service"
+    "means": "Change it in place: k set selector"
    }
   ],
   "traps": [
@@ -594,10 +594,6 @@
    {
     "dont": "`k logs api > /opt/api.log`",
     "do": "`k logs api -n app > /opt/api.log`, because pod api lives in namespace app, not default"
-   },
-   {
-    "dont": "Ignoring the 'Defaulted container' message from `k logs`",
-    "do": "Add `-c <container>` when the question names a container, because otherwise kubectl picks the first container for you"
    }
   ],
   "verify": [
@@ -810,10 +806,6 @@
    {
     "dont": "Expecting REVISION 1 in `helm list -n demo` after rollback",
     "do": "Expect a new revision 3 with revision 1's settings, because Helm records every rollback as a new revision"
-   },
-   {
-    "dont": "Trying to fix EXTERNAL-IP `<pending>` on the controller Service",
-    "do": "Ignore `<pending>`, because the playground has no cloud load balancer to give out an external IP"
    }
   ],
   "verify": [
@@ -1001,11 +993,11 @@
   "traps": [
    {
     "dont": "`k apply -f <Flannel URL>`",
-    "do": "Install Calico: `k create -f <tigera-operator URL>`, because Flannel does not enforce NetworkPolicy and Calico does"
+    "do": "Install Calico: `k create -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.1/manifests/tigera-operator.yaml`, because Flannel does not enforce NetworkPolicy and Calico does"
    },
    {
-    "dont": "`k apply -f <tigera-operator URL>`",
-    "do": "`k create -f <tigera-operator URL>`, because apply stores a huge annotation and fails with 'Too long'"
+    "dont": "`k apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.1/manifests/tigera-operator.yaml`",
+    "do": "`k create -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.1/manifests/tigera-operator.yaml`, because apply stores a huge annotation and fails with 'Too long'"
    },
    {
     "dont": "Keeping `cidr: 192.168.0.0/16` without checking",
@@ -1029,9 +1021,9 @@
    }
   ],
   "memorise": [
-   "k create -f <tigera-operator URL>",
+   "k create -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.1/manifests/tigera-operator.yaml",
    "k get pods -l component=kube-controller-manager -o yaml -n kube-system | grep cluster-cidr",
-   "curl -LO <custom-resources URL>; vim custom-resources.yaml   # cidr: <cluster-cidr>",
+   "curl -LO https://raw.githubusercontent.com/projectcalico/calico/v3.29.1/manifests/custom-resources.yaml; vim custom-resources.yaml   # cidr: <cluster-cidr>",
    "k apply -f custom-resources.yaml; k get nodes"
   ],
   "minutes": 7,
@@ -1092,13 +1084,13 @@
    }
   ],
   "memorise": [
-   "k drain <node> --ignore-daemonsets --delete-emptydir-data   # always on the control plane",
+   "k drain controlplane --ignore-daemonsets --delete-emptydir-data   # later k drain node01 ..., always from the control plane",
    "apt-get update; apt-cache madison kubeadm   # exact text, e.g. 1.35.2-1.1",
    "apt-mark unhold kubeadm; apt-get install -y kubeadm=1.35.2-1.1; apt-mark hold kubeadm",
    "kubeadm upgrade plan; kubeadm upgrade apply v1.35.2   # worker (after ssh node01): kubeadm upgrade node",
    "apt-mark unhold kubelet kubectl; apt-get install -y kubelet=1.35.2-1.1 kubectl=1.35.2-1.1; apt-mark hold kubelet kubectl",
    "systemctl daemon-reload; systemctl restart kubelet",
-   "exit   # back from node01; then k uncordon <node>"
+   "exit   # back from node01; then k uncordon node01"
   ],
   "minutes": 12,
   "plan": "Upgrade node by node → madison (1.35.2-1.1) → kubeadm + upgrade apply v1.35.2 → drain, kubelet + kubectl, restart kubelet, uncordon → node01 the same with upgrade node → both v1.35.2, Ready"
@@ -1122,7 +1114,7 @@
   "traps": [
    {
     "dont": "`--cert=/etc/kubernetes/pki/etcd/peer.crt --key=/etc/kubernetes/pki/etcd/peer.key`",
-    "do": "`--cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key`, as listed by `grep cert-file` in etcd.yaml"
+    "do": "`--cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key`, as listed by the `grep -E` on etcd.yaml in Step 1"
    },
    {
     "dont": "Changing `--data-dir` or `mountPath` in etcd.yaml",
@@ -1156,12 +1148,12 @@
   ],
   "memorise": [
    "docs: 'etcd backup' → Operating etcd clusters",
-   "grep -E 'trusted-ca-file|cert-file|key-file' /etc/kubernetes/manifests/etcd.yaml",
+   "grep -E \"trusted-ca-file|cert-file|key-file\" /etc/kubernetes/manifests/etcd.yaml",
    "etcdctl snapshot save /opt/etcd-backup.db --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key",
    "etcdutl snapshot restore /opt/etcd-backup.db --data-dir=/var/lib/etcd-restored",
    "vim /etc/kubernetes/manifests/etcd.yaml   # etcd-data hostPath path: /var/lib/etcd-restored"
   ],
-  "minutes": 8,
+  "minutes": 10,
   "plan": "etcd backup + restore → grep certs in etcd.yaml → etcdctl snapshot save (endpoint + 3 certs) → etcdutl snapshot restore (--data-dir) → etcd-data hostPath → etcd Running"
  },
  "23": {
@@ -1296,7 +1288,7 @@
     "do": "Add `tls: mode: Terminate` with `certificateRefs: - name: <secret>` to the listener, because HTTPS needs the Ingress's certificate"
    },
    {
-    "dont": "`parentRefs: - name: gateway` copied from the docs",
+    "dont": "`parentRefs: - name: example-gateway` copied from the docs",
     "do": "`parentRefs: - name: web-gw`, because the route attaches only to the Gateway with that exact name"
    },
    {
@@ -1316,8 +1308,8 @@
    },
    {
     "need": "route has the right values",
-    "cmd": "k get httproute web-route -o yaml -n web | grep -E 'name: web-gw|value: /|backend-svc'",
-    "see": "web-gw, path /, backend-svc (Killercoda has no controller, so attachment cannot be checked; in the exam: k describe httproute → Status Parents Accepted True)"
+    "cmd": "k get httproute web-route -o yaml -n web | grep -E \"name: web-gw|value: /|name: backend-svc|port: 80\"",
+    "see": "web-gw, backend-svc, port 80, path / (Killercoda has no controller, so attachment cannot be checked; in the exam: k describe httproute → Status Parents Accepted True)"
    },
    {
     "need": "ingress gone",
@@ -1326,11 +1318,11 @@
    }
   ],
   "memorise": [
-   "k get ingress web-ing -o yaml -n web  # host, secretName, path, service, port",
+   "k describe ingress web-ing -n web   # TLS: secret + host; rule: path, Service:port",
    "k get gatewayclass",
    "docs: 'gateway api' → copy Gateway example → listener HTTPS 443 + hostname + tls: mode Terminate, certificateRefs: - name <secret>",
    "docs: copy HTTPRoute example → parentRefs web-gw, hostnames, path, backendRefs",
-   "k apply -f gw.yaml -f route.yaml; k delete ingress web-ing -n web"
+   "k apply -f gw.yaml; k apply -f route.yaml; k delete ingress web-ing -n web"
   ],
   "minutes": 8,
   "plan": "Ingress → Gateway API → describe ingress (host, secret, path, Service:port) → get gatewayclass → Gateway (HTTPS 443 + tls) → HTTPRoute (parentRefs web-gw) → delete ingress → route values, no Ingress"
@@ -1383,7 +1375,7 @@
    "name: db-policy; namespace: prod; podSelector app: db; from podSelector app: api; ports TCP 80",
    "k apply -f np.yaml"
   ],
-  "minutes": 5,
+  "minutes": 6,
   "plan": "Only app=api may reach app=db → get pods --show-labels → docs example (delete Egress, ipBlock, namespaceSelector) → apply → describe → api gets the page, other times out"
  },
  "27": {
@@ -1495,7 +1487,7 @@
    "k rollout restart deployment/nginx-static -n nginx-static",
    "k rollout status deployment/nginx-static -n nginx-static"
   ],
-  "minutes": 3,
+  "minutes": 4,
   "plan": "Only TLSv1.3 → back up configmap → subPath (no live update) → edit configmap (remove TLSv1.2, keep ;) → rollout restart → TLSv1.2 alert, TLSv1.3 New"
  },
  "29": {
@@ -2033,12 +2025,12 @@
   ],
   "traps": [
    {
-    "dont": "Leaving the old class marked `(default)`",
-    "do": "`k patch storageclass <old> -p '{\"metadata\":{\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"false\"}}}'`, because only one class may be default"
+    "dont": "Leaving `local-path` marked `(default)`",
+    "do": "`k patch storageclass local-path -p '{\"metadata\": {\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"false\"}}}'`, because only one class may be default"
    },
    {
-    "dont": "`k delete storageclass <old>`",
-    "do": "Patch the old class's annotation to \"false\" instead, because the task forbids deleting anything"
+    "dont": "`k delete storageclass local-path`",
+    "do": "Patch the annotation of `local-path` to \"false\" instead, because the task forbids deleting anything"
    },
    {
     "dont": "`storageclass.kubernetes.io/is-default-class: true`",
@@ -2062,7 +2054,7 @@
    "docs: 'storage classes' → copy example; annotations: storageclass.kubernetes.io/is-default-class: \"true\"",
    "name: fast; provisioner: rancher.io/local-path; volumeBindingMode: WaitForFirstConsumer",
    "k apply -f sc.yaml",
-   "k patch storageclass <old> -p '{\"metadata\":{\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"false\"}}}'"
+   "k patch storageclass local-path -p '{\"metadata\": {\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"false\"}}}'"
   ],
   "minutes": 5,
   "plan": "Only one default → get storageclass (old default local-path) → sc.yaml (is-default-class \"true\", WaitForFirstConsumer) → apply → patch local-path to \"false\" → (default) on fast only"
@@ -2197,8 +2189,8 @@
     "do": "Fix the Service selector with `k patch service cart ... -n shop`. The task forbids changing the Deployment."
    },
    {
-    "dont": "`k patch service cart ... -n shop` when the selector key is wrong",
-    "do": "Run `k edit service/cart -n shop` and fix the key. A merge patch adds a second key. That second key must also match."
+    "dont": "Testing with `wget` from your own terminal",
+    "do": "Run `k run tmp --rm -it --restart=Never --image=busybox:1.36 -n shop -- wget -qO- -T3 cart`. The name cart only resolves inside the cluster."
    },
    {
     "dont": "`k get service cart` without `-n shop`",
@@ -2253,8 +2245,8 @@
     "do": "Use `--requests=memory=128Mi`, because the scheduler uses requests to find room for the pods"
    },
    {
-    "dont": "Leaving an existing memory limit below 128Mi",
-    "do": "If a limit exists, raise it to at least 128Mi too. A limit below the request is invalid."
+    "dont": "`k delete pods -l app=reporter -n batch`",
+    "do": "Lower the request with `k set resources deployment/reporter --requests=memory=128Mi -n batch`. New Pods from the same template would stay Pending."
    }
   ],
   "verify": [
@@ -2403,8 +2395,8 @@
     "do": "Add `--version 7.7.3` to the install too, otherwise Helm takes the newest chart"
    },
    {
-    "dont": "Install into namespace argocd without checking it exists",
-    "do": "Check `k get namespace argocd`; if missing, add `--create-namespace`, so Helm creates it"
+    "dont": "`helm template ... > /root/argo-helm.yaml` without `--namespace argocd`",
+    "do": "Add `--namespace argocd` to the template too, otherwise the YAML is rendered for namespace default"
    }
   ],
   "verify": [
@@ -2626,7 +2618,7 @@
   "traps": [
    {
     "dont": "A Service selector that does not match the Pod labels",
-    "do": "Check `k get pods --show-labels -n front`. Use `app: front-end`. Otherwise the Service has no endpoints."
+    "do": "Use `selector: {app: front-end}`, the Pod label from the Deployment template. Otherwise the Service has no endpoints."
    },
    {
     "dont": "Leave `nodePort: 30080` out of the Service",
@@ -2711,10 +2703,10 @@
   ],
   "memorise": [
    "ssh cka01011",
-   "k get ingress web -o yaml -n web-app | grep -A12 \"^spec\"",
+   "k get ingress web -o yaml -n web-app | grep -A15 \"^spec\"",
    "cat <<'EOF' > gw.yaml   # Gateway: gatewayClassName nginx; listener https/HTTPS/443/hostname gateway.web.example; tls: mode Terminate, certificateRefs Secret web-tls",
    "cat <<'EOF' > route.yaml   # HTTPRoute: parentRefs web-gateway; hostnames gateway.web.example; PathPrefix /; backendRefs web 80",
-   "k apply -f gw.yaml -f route.yaml; k delete ingress web -n web-app"
+   "k apply -f gw.yaml; k apply -f route.yaml; k delete ingress web -n web-app"
   ],
   "minutes": 9,
   "plan": "Ingress → Gateway → read Ingress (host, secret) → Gateway (HTTPS 443, certificateRefs web-tls) → HTTPRoute (/ → web:80) → delete Ingress"
@@ -2789,7 +2781,7 @@
   "traps": [
    {
     "dont": "Use a system-* value as the highest",
-    "do": "Read `k get priorityclass`, ignore system-* rows, then `k create priorityclass urgent --value=<highest-1>`"
+    "do": "Read `k get priorityclass` and ignore the system-* rows. The highest user value is 5000, so `--value=4999`."
    },
    {
     "dont": "Put `priorityClassName` directly under the Deployment `spec`",
@@ -2815,7 +2807,7 @@
   "memorise": [
    "ssh cka01013",
    "k get priorityclass",
-   "k create priorityclass urgent --value=<highest-1>",
+   "k create priorityclass urgent --value=4999 --description=\"user workloads\"   # highest user value 5000 - 1",
    "k patch deployment busybox-logger -p '{\"spec\":{\"template\":{\"spec\":{\"priorityClassName\":\"urgent\"}}}}' -n priority",
    "k rollout status deployment/busybox-logger -n priority"
   ],
@@ -2849,7 +2841,7 @@
    },
    {
     "dont": "`k apply -f hpa.yaml` with no namespace set",
-    "do": "Set `namespace: autoscale` in metadata, or use `k apply -f hpa.yaml -n autoscale`. Otherwise it lands in default."
+    "do": "Keep `namespace: autoscale` in the metadata of hpa.yaml. Otherwise `k apply -f hpa.yaml` puts it in default."
    }
   ],
   "verify": [
@@ -2969,7 +2961,8 @@
   ],
   "memorise": [
    "ssh cka01016",
-   "k get pv mariadb-pv   # Released? → k patch pv mariadb-pv -p '{\"spec\":{\"claimRef\":null}}'",
+   "k get pv mariadb-pv",
+   "k patch pv mariadb-pv -p '{\"spec\":{\"claimRef\":null}}'   # only if STATUS is Released",
    "cat <<'EOF' | k apply -f -   # PVC mariadb, ns mariadb, RWO, 250Mi, storageClassName: \"\", volumeName: mariadb-pv",
    "sed -i 's/claimName: \"\"/claimName: mariadb/' /root/mariadb-deploy.yaml   # replace text in the file",
    "k apply -f /root/mariadb-deploy.yaml; k get pods -n mariadb"
@@ -3118,10 +3111,6 @@
    {
     "dont": "Treat NXDOMAIN lines in the output as failure",
     "do": "Look for Name/Address of kubernetes.default.svc.cluster.local, because NXDOMAIN lines are just search-domain tries"
-   },
-   {
-    "dont": "Stop looking when CoreDNS replicas look fine",
-    "do": "Check `k get configmap coredns -n kube-system`. Check the kube-dns Service endpoints too. The Corefile or Service may be broken."
    }
   ],
   "verify": [
@@ -3355,8 +3344,8 @@
   ],
   "memorise": [
    "ssh cka02007; sudo -i",
-   "export ETCDCTL_API=3",
-   "etcdctl --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key snapshot save /opt/backup/etcd-snap.db",
+   "export ETCDCTL_API=3; mkdir -p /opt/backup",
+   "ETCDCTL_API=3 etcdctl --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key snapshot save /opt/backup/etcd-snap.db",
    "etcdutl --write-out=table snapshot status /opt/backup/etcd-snap.db   # etcd 3.6 removed it from etcdctl"
   ],
   "minutes": 4,
@@ -3507,7 +3496,7 @@
   "verify": [
    {
     "need": "rule",
-    "cmd": "k describe ingress echo -n echo-sound | grep -A3 Rules",
+    "cmd": "k describe ingress echo -n echo-sound | grep -A4 Rules",
     "see": "example.org /echo echo:8080"
    },
    {
@@ -3520,7 +3509,7 @@
    "ssh cka02010",
    "k get service echo -n echo-sound",
    "k create ingress echo --class=nginx --rule=\"example.org/echo*=echo:8080\" -n echo-sound",
-   "k describe ingress echo -n echo-sound"
+   "k describe ingress echo -n echo-sound | grep -A4 Rules"
   ],
   "minutes": 3,
   "plan": "Ingress task → service port (8080) → create ingress (--class=nginx, echo*=echo:8080) → describe Rules → pathType Prefix"
@@ -3627,10 +3616,10 @@
   ],
   "memorise": [
    "ssh cka02012",
-   "docs: 'network policies' → copy example → keep Ingress only",
-   "podSelector app: db; from: - namespaceSelector: matchLabels kubernetes.io/metadata.name: api   (no dash) podSelector: matchLabels role: api",
-   "ports: - protocol: TCP port: 80",
-   "cat <<'EOF' > /root/np.yaml (or vim) → k apply -f /root/np.yaml; k describe networkpolicy db-allow-api -n db"
+   "cat <<'EOF' > /root/np.yaml   # NetworkPolicy db-allow-api, ns db: podSelector app: db; policyTypes [Ingress]; ONE from item: namespaceSelector kubernetes.io/metadata.name: api + podSelector role: api (no dash); ports TCP 80",
+   "k apply -f /root/np.yaml",
+   "k exec api -n api -- wget -qO- -T2 db.db | head -2",
+   "k exec web -n api -- wget -qO- -T2 db.db   # must time out"
   ],
   "minutes": 6,
   "plan": "Allow only api → db → policy (one from item: namespaceSelector + podSelector) → apply → CNI enforces → api works, web times out"
@@ -3726,7 +3715,7 @@
    },
    {
     "dont": "Use Ki values directly, or write M instead of Mi",
-    "do": "Run `echo $(( <memKi> / 1024 ))` to get Mi. Always write `Mi`. M means 1000-based units."
+    "do": "Run `echo $(( 1928288 / 1024 ))` with YOUR Allocatable Ki to get Mi. Always write `Mi`. M means 1000-based units."
    }
   ],
   "verify": [
@@ -3743,10 +3732,12 @@
   ],
   "memorise": [
    "ssh cka02014; k scale deployment/wordpress --replicas=0 -n wp",
-   "k describe node node01 | grep -A7 Allocatable; k describe node node01 | grep -A6 'Allocated resources'   # Requests column",
-   "echo $(( <memKi> / 1024 ))   # Mi;  echo $(( (<alloc> - <requested>) * 90 / 100 / 3 ))   # cpu in m, memory in Mi",
-   "k set resources deployment/wordpress -c init --requests=cpu=<X>m,memory=<Y>Mi -n wp",
-   "k set resources deployment/wordpress -c wordpress --requests=cpu=<X>m,memory=<Y>Mi -n wp",
+   "k describe node node01 | grep -A7 Allocatable; k describe node node01 | grep -A6 \"Allocated resources\"   # Requests column",
+   "echo $(( 1928288 / 1024 ))   # YOUR Allocatable memory Ki → Mi",
+   "echo cpu=$(( (1000 - 250) * 90 / 100 / 3 ))m",
+   "echo memory=$(( (1883 - 150) * 90 / 100 / 3 ))Mi   # put YOUR numbers in",
+   "k set resources deployment/wordpress -c init --requests=cpu=225m,memory=519Mi -n wp",
+   "k set resources deployment/wordpress -c wordpress --requests=cpu=225m,memory=519Mi -n wp",
    "k scale deployment/wordpress --replicas=3 -n wp; k get pods -o wide -n wp"
   ],
   "minutes": 8,
@@ -3853,10 +3844,10 @@
   ],
   "memorise": [
    "ssh cka02016",
-   "docs: 'configure persistent volume storage' → PV, PVC, Pod boxes",
-   "PV app-pv 1Gi RWO manual hostPath /srv/app-data; PVC app-pvc ns app-store 500Mi manual",
-   "Pod app-writer busybox:1.36 command [sleep, \"3600\"], claimName app-pvc, mountPath /data",
-   "cat <<'EOF' > /root/all.yaml (PV --- PVC --- Pod) → k apply -f /root/all.yaml; k get pvc,pods -n app-store"
+   "cat <<'EOF' > /root/all.yaml   # PV app-pv (1Gi, RWO, manual, hostPath /srv/app-data) --- PVC app-pvc (app-store, RWO, manual, 500Mi) --- Pod app-writer (busybox:1.36, [sleep, \"3600\"], claimName app-pvc, mountPath /data)",
+   "k apply -f /root/all.yaml",
+   "k get pv app-pv; k get pvc,pods -n app-store",
+   "k exec app-writer -n app-store -- sh -c \"echo hi > /data/t && cat /data/t\""
   ],
   "minutes": 6,
   "plan": "PV/PVC/Pod task → one file (PV --- PVC --- Pod, class manual) → apply → PVC Bound, Pod Running → write /data/t"
@@ -4063,9 +4054,9 @@
   "memorise": [
    "ssh cka03004",
    "k get pods -l k8s-app=kube-dns --show-labels -n kube-system",
-   "docs: 'network policies' → name allow-dns, ns secure, podSelector: {}, policyTypes [Egress]",
-   "egress: - to: - namespaceSelector: matchLabels kubernetes.io/metadata.name: kube-system  podSelector: matchLabels k8s-app: kube-dns; ports UDP 53, TCP 53",
-   "cat <<'EOF' > /root/dns.yaml (or vim) → k apply -f /root/dns.yaml; k exec client -n secure -- wget -qO- -T3 backend"
+   "cat <<'EOF' > /root/dns.yaml   # NetworkPolicy allow-dns, ns secure: podSelector {}; policyTypes [Egress]; ONE to item: namespaceSelector kubernetes.io/metadata.name: kube-system + podSelector k8s-app: kube-dns; ports UDP 53 and TCP 53",
+   "k apply -f /root/dns.yaml",
+   "k exec client -n secure -- wget -qO- -T3 backend | head -2"
   ],
   "minutes": 5,
   "plan": "name fails, IP works → DNS pods (k8s-app=kube-dns) → allow-dns (Egress, kube-system AND kube-dns, UDP+TCP 53) → wget by name works"
@@ -4075,7 +4066,7 @@
   "clues": [
    {
     "q": "Roll the Deployment back to the last working revision",
-    "means": "k rollout history, then undo (to the previous or --to-revision=N)"
+    "means": "k rollout history, then k rollout undo (back to the previous revision)"
    },
    {
     "q": "write the image used by the running Pods",
@@ -4220,8 +4211,8 @@
   "memorise": [
    "ssh cka03007",
    "helm repo add argocd https://argoproj.github.io/argo-helm; helm repo update",
-   "helm show values argocd/argo-cd --version 7.7.3 > /root/argocd-values.yaml; grep -n -A3 \"^crds:\" /root/argocd-values.yaml",
-   "sed -n '/^server:/,/^[a-z]/p' /root/argocd-values.yaml | grep -n -A8 \"^  service:\"",
+   "helm show values argocd/argo-cd --version 7.7.3 > /root/argocd-values.yaml; grep -A3 \"^crds:\" /root/argocd-values.yaml",
+   "sed -n '/^server:/,/^[a-z]/p' /root/argocd-values.yaml | grep -A8 \"^  service:\"",
    "helm template argo argocd/argo-cd --version 7.7.3 --namespace gitops --set crds.install=false --set server.service.type=NodePort > /root/argocd-template.yaml",
    "k create namespace gitops; k apply -f /root/argocd-template.yaml -n gitops; k get service argo-argocd-server -n gitops"
   ],
@@ -4374,7 +4365,7 @@
   "verify": [
    {
     "need": "rules stored",
-    "cmd": "k describe httproute shop-route -n shop-gw | grep -A20 Rules",
+    "cmd": "k describe httproute shop-route -n shop-gw | grep -A30 Rules",
     "see": "header rule + weighted rule (no Accepted status here: no gateway controller in the playground)"
    },
    {
@@ -4385,10 +4376,10 @@
   ],
   "memorise": [
    "ssh cka03010",
-   "docs: 'gateway api' → HTTPRoute (gateway-api.sigs.k8s.io: 'HTTP header matching', 'traffic splitting')",
-   "rules: - matches: - headers: - name: x-version value: v2  backendRefs: - name: shop-v2 port: 80",
-   "- backendRefs: - name: shop-v1 port: 80 weight: 80 / - name: shop-v2 port: 80 weight: 20",
-   "cat <<'EOF' > /root/route.yaml (or vim) → k apply -f /root/route.yaml"
+   "k get gateway shop-gw -o yaml -n shop-gw | grep -A6 listeners",
+   "cat <<'EOF' > /root/route.yaml   # HTTPRoute shop-route: parentRefs shop-gw; hostnames shop.example.com; rule 1: headers x-version v2 -> shop-v2:80; rule 2: PathPrefix / -> shop-v1:80 weight 80 + shop-v2:80 weight 20",
+   "k apply -f /root/route.yaml",
+   "k describe httproute shop-route -n shop-gw | grep -A30 Rules"
   ],
   "minutes": 7,
   "plan": "Gateway listener http :80 → HTTPRoute (parentRefs shop-gw, hostname) → rule 1: header x-version v2 to shop-v2 → rule 2: weights 80/20 → describe shows both"
@@ -4492,7 +4483,7 @@
    "k expose deployment catalog --name=catalog-svc --port=8080 --target-port=80 -n dns-lab",
    "k expose deployment catalog --name=catalog-headless --port=80 --cluster-ip=None -n dns-lab",
    "k run dnsq --rm -i --restart=Never --image=busybox:1.36 -n dns-lab -- nslookup catalog-svc.dns-lab.svc.cluster.local > /root/svc-dns.txt",
-   "(same with catalog-headless… > /root/headless-dns.txt)"
+   "k run dnsq --rm -i --restart=Never --image=busybox:1.36 -n dns-lab -- nslookup catalog-headless.dns-lab.svc.cluster.local > /root/headless-dns.txt"
   ],
   "minutes": 5,
   "plan": "rollout status → expose --port=8080 --target-port=80 → expose --cluster-ip=None → nslookup from busybox (--rm -i) > files → svc 1 IP, headless 2 pod IPs"
@@ -4502,7 +4493,7 @@
   "clues": [
    {
     "q": "60% average CPU utilisation AND 70% average memory utilisation",
-    "means": "Two Resource metrics: cpu 60, memory 70 (k autoscale --cpu/--memory cannot set behavior → use YAML)"
+    "means": "Two Resource metrics: cpu 60, memory 70 (behavior needs autoscaling/v2 YAML)"
    },
    {
     "q": "scale up by at most 2 Pods per 60 seconds",
@@ -4541,10 +4532,10 @@
   ],
   "memorise": [
    "ssh cka03013",
-   "docs: 'horizontal pod autoscale walkthrough' / k explain hpa.spec.behavior",
-   "autoscaling/v2; scaleTargetRef Deployment worker; min 2 max 6; metrics cpu 60 + memory 70 (type Utilization)",
-   "behavior: scaleUp: policies: - {type: Pods, value: 2, periodSeconds: 60}; scaleDown: stabilizationWindowSeconds: 120",
-   "cat <<'EOF' > /root/hpa.yaml (or vim) → k apply -f /root/hpa.yaml; k get hpa -n metrics-app"
+   "cat <<'EOF' > /root/hpa.yaml   # autoscaling/v2; scaleTargetRef Deployment worker; minReplicas 2; maxReplicas 6; cpu 60 + memory 70 (type Utilization); behavior: scaleUp policies {type: Pods, value: 2, periodSeconds: 60}; scaleDown stabilizationWindowSeconds: 120",
+   "k apply -f /root/hpa.yaml",
+   "k get hpa worker-hpa -n metrics-app",
+   "k get deployment worker -n metrics-app"
   ],
   "minutes": 7,
   "plan": "autoscaling/v2 YAML → cpu 60 + memory 70 → behavior (scaleUp Pods 2/60s, scaleDown window 120) → get hpa: /60%, /70%, 2–6 → worker 2/2"
@@ -4572,7 +4563,7 @@
    },
    {
     "dont": "`value: 1999999999` from a system-* class",
-    "do": "`k get priorityclass --sort-by=.value`, take the highest non-system value minus 1"
+    "do": "`k get priorityclass --sort-by=.value -o custom-columns=NAME:.metadata.name,VALUE:.value | grep -v system-`: take the highest value (team-b 7000) minus 1 = 6999"
    },
    {
     "dont": "`globalDefault: true`",
@@ -4597,8 +4588,8 @@
   ],
   "memorise": [
    "ssh cka03014",
-   "k get priorityclass --sort-by=.value",
-   "cat <<'EOF' > /root/pc.yaml: scheduling.k8s.io/v1 PriorityClass critical-jobs; value: <highest-1>; globalDefault: false; preemptionPolicy: PreemptLowerPriority; description: \"critical batch\" → k apply -f /root/pc.yaml",
+   "k get priorityclass --sort-by=.value -o custom-columns=NAME:.metadata.name,VALUE:.value | grep -v system-",
+   "cat <<'EOF' > /root/pc.yaml: scheduling.k8s.io/v1 PriorityClass critical-jobs; value: 6999 (7000 - 1); globalDefault: false; preemptionPolicy: PreemptLowerPriority; description: \"critical batch\" → k apply -f /root/pc.yaml",
    "k patch deployment payments-api -p '{\"spec\":{\"template\":{\"spec\":{\"priorityClassName\":\"critical-jobs\"}}}}' -n prio",
    "k rollout status deployment/payments-api -n prio"
   ],
@@ -4649,10 +4640,11 @@
   ],
   "memorise": [
    "ssh cka03015",
-   "docs: 'storage classes' → name retain-local, provisioner rancher.io/local-path, reclaimPolicy: Retain, volumeBindingMode: WaitForFirstConsumer, allowVolumeExpansion: true",
-   "docs: 'statefulset' example → Service clusterIP: None name cache + StatefulSet cache, ns cache, replicas 2, redis:7-alpine",
-   "volumeClaimTemplates: name data, storageClassName retain-local, 100Mi; mountPath /data",
-   "cat <<'EOF' > /root/sc.yaml and /root/sts.yaml (or vim) → k apply -f /root/sc.yaml -f /root/sts.yaml; k get pods,pvc -n cache"
+   "cat <<'EOF' > /root/sc.yaml   # StorageClass retain-local (top level, no default annotation): provisioner rancher.io/local-path, reclaimPolicy: Retain, volumeBindingMode: WaitForFirstConsumer, allowVolumeExpansion: true",
+   "k apply -f /root/sc.yaml",
+   "cat <<'EOF' > /root/sts.yaml   # headless Service cache (clusterIP: None) --- StatefulSet cache: serviceName cache, replicas 2, redis:7-alpine, volumeClaimTemplates data (retain-local, 100Mi), mountPath /data",
+   "k apply -f /root/sts.yaml",
+   "k get pods,pvc -n cache; k get pv | grep retain-local"
   ],
   "minutes": 6,
   "plan": "StorageClass retain-local (Retain, WaitForFirstConsumer, expansion, not default) → headless Service + StatefulSet (claim template data 100Mi) → data-cache-0/1 Bound, PV Retain"

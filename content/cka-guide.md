@@ -907,7 +907,6 @@ deployment "api" successfully rolled out
 |---|---|---|
 | `unable to find container named "api"` | deployment name left of `=` | use the container name (`nginx`) |
 | still `ImagePullBackOff` | typo in the new image | run `describe` again, fix the typo |
-| Events say `pull access denied` or `repository does not exist` | the image NAME is wrong, not the tag | fix the name, e.g. `ngnix` to `nginx` |
 | fixed pod, new pod breaks again | you ran `k edit pod` | fix the deployment with `k set image` |
 | old pod shows the error a few seconds | it is being replaced | wait, run `k get pods -n app` again |
 
@@ -1065,7 +1064,6 @@ api-7f9b8c6d5-k4m2p   1/1   Running   0   25s   <-- RESTARTS
 | `previous terminated container ... not found` | no restart yet | wait 20 s, try again |
 | vim reopens with `# Error:` lines | the edit broke the YAML indentation | fix it, or `:q!` and run `k patch deployment api --type=json -p='[{"op":"replace","path":"/spec/template/spec/containers/0/command","value":["sh","-c","sleep 3600"]}]' -n app` |
 | `Forbidden: pod updates may not change fields...` | you ran `k edit pod` | `k edit deployment/api -n app` |
-| describe says `Reason: OOMKilled` | memory limit too small | `k set resources deployment/api --limits=memory=<value> -n app` |
 | `No resources found` | forgot `-n app` | add `-n app` |
 
 ---
@@ -1207,8 +1205,6 @@ deployment "api" successfully rolled out
 | no `FailedScheduling` in describe | you described the Running pod | describe the `Pending` one |
 | a new pod is Pending after you deleted one | the deployment re-creates it | fix the deployment, not the pod |
 | `must be less than or equal to cpu limit` | you set `--limits`, not `--requests` | use `--requests=cpu=100m` |
-| Events: `had untolerated taint` on every node | a taint blocks the pod | question 36 |
-| Events: `didn't match Pod's node affinity/selector` | the pod wants a node label none has | fix `nodeSelector:` in `k edit deployment/api -n app` |
 
 ---
 
@@ -1363,8 +1359,6 @@ node/node01 condition met
 |---|---|---|
 | `The connection to the server localhost:8080 was refused` | you ran kubectl on node01 | `exit`, run it again |
 | kubelet already `active (running)` before the fix | you are on the control plane | `exit`, then `ssh node01` |
-| `Active: activating (auto-restart)` after starting | the kubelet is misconfigured | question 5 |
-| kubelet `active (running)`, node stays NotReady | the container runtime is stopped | on node01: `systemctl enable --now containerd` |
 | `timed out waiting for the condition` | the kubelet needs more time, or failed | `k get nodes` again; on node01 check `systemctl status kubelet --no-pager` |
 
 ---
@@ -1541,8 +1535,6 @@ node01         Ready    <none>          ...   v1.35.0   <-- Ready
 | You see | Cause | Fix |
 |---|---|---|
 | `Warning: The unit file ... changed on disk` | no `daemon-reload` | `systemctl daemon-reload`, then restart |
-| `inactive (dead)` in Step 1 | kubelet only stopped | question 4: `systemctl start kubelet` |
-| log says `failed to load kubelet config file` | bad `/var/lib/kubelet/config.yaml` | fix that file, restart kubelet |
 | `localhost:8080 was refused` | you ran `k` on node01 | `exit` first |
 | line looks wrong after `6x` | cursor was elsewhere | press `u` to undo |
 
@@ -1683,7 +1675,6 @@ You see:
 |---|---|---|
 | still `<none>` after the fix | typo, or pods not Ready (`0/1`) | compare with `--show-labels`; fix the pods |
 | still `<none>` after `k edit service` | you changed `metadata.labels`, not `spec.selector` | use `k set selector` |
-| endpoints show an IP, wget fails | wrong port | question 7 |
 | `No resources found` | forgot `-n web` | add `-n web` |
 
 ---
@@ -1831,7 +1822,6 @@ You see:
 | You see | Cause | Fix |
 |---|---|---|
 | `wget: download timed out` in Step 2 | your network plug-in drops instead of refuses | same meaning, go on |
-| the question does not name the app's port | you must find it | `k describe pod <pod> -n web`, read `Port:` |
 | `Edit cancelled, no changes made.` | saved nothing, or quit with `:q!` | run `k edit` again |
 | still refused after the fix | you changed `containerPort` in the Deployment | undo it; fix the Service |
 | vim gets in the way | you want one command | `k patch service backend-svc -p '{"spec":{"ports":[{"port":80,"targetPort":80}]}}' -n web` |
@@ -1989,7 +1979,6 @@ controlplane   Ready    control-plane   ...   v1.35.0   <-- works
 |---|---|---|
 | still `6443 was refused` after 20 s | the kubelet needs time | wait up to 60 s |
 | `crictl ps -a` shows no apiserver at all | YAML mistake, the kubelet cannot read the file | `journalctl -u kubelet -n 30 --no-pager \| grep apiserver`; compare with `/root/kube-apiserver.yaml.orig` |
-| log says `open /etc/kubernetes/pki/...: no such file or directory` | wrong certificate path | `ls /etc/kubernetes/pki/`, fix the path |
 | `localhost:8080 was refused` | wrong machine | `ssh` to the host the question names |
 | crictl says `permission denied` | you are not root | `sudo -i` first |
 
@@ -2156,7 +2145,6 @@ test   1/1     Running   0          5m
 | your `k edit pod/kube-scheduler-...` did nothing | that is the mirror pod | edit the file in `manifests/` |
 | deleted scheduler pod comes back broken | the kubelet rebuilds it from the file | fix the file |
 | scheduler disappears after your edit | YAML broken (Tab or indent) | compare with `/root/kube-scheduler.yaml.orig`; spaces only |
-| scaled Deployment makes NO new pods | controller-manager is broken, not the scheduler | same method, `kube-controller-manager.yaml` |
 
 ---
 
@@ -2336,7 +2324,6 @@ You see:
 | still a timeout, labels match | the policy landed in `default` | `k get networkpolicy -A`; set `namespace: web`, apply; `k delete networkpolicy allow-client -n default` |
 | `error parsing np.yaml` or `unknown field` | indentation broke while deleting lines | compare the spaces with the finished file, line by line |
 | Part A's wget already prints the nginx page | the network plugin does not enforce policies | write and apply anyway; the exam cluster enforces them |
-| still a timeout, the Service maps 80 to another pod port | a policy matches the pod's port, not the Service port | the policy needs the pod's port: `k get endpoints backend-svc -n web` |
 
 ---
 
@@ -2476,9 +2463,6 @@ Address:   10.96.0.1  <-- IP
 | You see | Cause | Fix |
 |---|---|---|
 | `pods "t" already exists` | an old test pod was left behind | `k delete pod t`, test again |
-| CoreDNS pods in `CrashLoopBackOff` | a typo in the CoreDNS config | `k logs -l k8s-app=kube-dns -n kube-system`; fix with `k edit configmap/coredns -n kube-system`; `k rollout restart deployment/coredns -n kube-system` |
-| pods `1/1 Running`, DNS still fails | the `kube-dns` Service lost its pods | `k get endpoints kube-dns -n kube-system`; if `<none>`: `k set selector service/kube-dns k8s-app=kube-dns -n kube-system` |
-| CoreDNS pods `Pending` | a scheduling problem | question 3 |
 | `ErrImagePull` on pod `t` | the test image could not be pulled | check the tag `busybox:1.36`, retry |
 
 ---
@@ -2575,10 +2559,10 @@ kube-system   kube-apiserver-controlplane   45m          310Mi   <-- top
 **Why:** the grader compares the file with one pod name.
 
 ```
-echo kube-apiserver-controlplane > /opt/top.txt
+echo <first-row-pod-name> > /opt/top.txt
 cat /opt/top.txt
 ```
-The file holds one name, nothing else.
+Put in the NAME from step 2's first row, here `kube-apiserver-controlplane`. The file holds one name, nothing else.
 
 You see:
 ```
@@ -2617,8 +2601,6 @@ kube-apiserver-controlplane
 | `error: Metrics API not available` | metrics-server missing or still starting | run Part A again, wait 60 s; the exam has it |
 | `No such file or directory` on `>` | the folder does not exist | `mkdir -p /opt` |
 | `Permission denied` on `>` | you are not root; `/opt` belongs to root | `k logs api -n app | sudo tee /opt/api.log > /dev/null` |
-| `Defaulted container "x" out of: x, y` | the pod has 2 containers | if the question names one: `k logs api -c <container> -n app > /opt/api.log` |
-| the question wants a crashed container's logs | current logs are empty | add `--previous` |
 
 ---
 
@@ -2779,7 +2761,6 @@ no    <-- not in the Role
 | `error: serviceaccount must be <namespace>:<name>` | `dev:` missing | `--serviceaccount=dev:deploy-bot` |
 | `the server doesn't have a resource type "deploymnts"` | resource misspelled | use `deployments` |
 | `... already exists` | you ran the create twice | fine if correct; else `k delete` it and create again |
-| the question names a USER, not an SA | different flag | binding: `--user=alice`; test: `--as=alice` |
 
 ---
 
@@ -2919,7 +2900,6 @@ no    <-- not granted
 | Verify says `no` for list | you made a Role + RoleBinding | delete them; use the Cluster versions |
 | Verify says `no`, objects look fine | a typo in the SA or namespace in the binding | `k describe clusterrolebinding node-viewer-binding`; delete it, create it again |
 | `error: serviceaccount must be <namespace>:<name>` | `ops:` missing | `--serviceaccount=ops:node-viewer` |
-| question says "existing ClusterRole X, only in namespace Y" | that is a RoleBinding to a ClusterRole | `k create rolebinding NAME --clusterrole=X --user=alice -n Y` |
 
 ---
 
@@ -3064,7 +3044,6 @@ You see:
 | `Error: repo argocd not found` | step 1 skipped, or a typo in the name | `helm repo list` |
 | the count is not `0` | wrong setting name for this version | repeat step 3, copy the exact name |
 | you used `--skip-crds`, count not `0` | this chart ships CRDs as normal templates | use `--set crds.install=false` |
-| `No such file or directory` | the target folder is missing | `mkdir -p <folder>` first |
 | you ran `helm install` by mistake | the chart got installed | `helm uninstall my-argo -n argocd` |
 
 ---
@@ -3240,7 +3219,6 @@ web-ingress-nginx-controller   2/2   2   2   ...   <-- READY
 | `helm list` shows nothing | `-n demo` missing; Helm needs it too | `helm list -A` |
 | `cannot re-use a name that is still in use` | the release already exists | use `helm upgrade`, or uninstall first |
 | replicas did not change | wrong setting name | repeat step 2 |
-| `k get services -n demo` EXTERNAL-IP `<pending>` | no cloud LoadBalancer in a lab | normal, ignore it |
 | repo add or install fails | ingress-nginx was retired in March 2026 | practise with repo `https://stefanprodan.github.io/podinfo`, chart `podinfo/podinfo`, setting `replicaCount` |
 
 ---
@@ -3405,8 +3383,6 @@ kweb   3/3     3            3           20s   <-- READY
 |---|---|---|
 | `deployment.apps/kweb created` plus an error with `kind not set` | you used `-f` on the folder | `k delete deployment kweb -n default`, then `k apply -k /root/kust` |
 | `No resources found` | wrong namespace | read `namespace:` in the plan; use `-n kust` |
-| `namespaces "kust" not found` | Kustomize does not create the namespace | `k create namespace kust`, apply again |
-| the question wants a new image tag | different block | add `images:` / `- name: nginx` / `  newTag: "1.28"` |
 
 ---
 
@@ -3552,9 +3528,7 @@ DESCRIPTION:
 
 | You see | Cause | Fix |
 |---|---|---|
-| `couldn't find resource for "certificate"` | wrong kind name | `k api-resources | grep cert-manager`; use a name from the first column |
-| the question names an output format (e.g. `-o name`) | the grader compares that format | `k get crd -o name | grep cert-manager > /root/crds.txt` |
-| the question also asks to CREATE such an object | you need its fields | `k explain certificate.spec`; copy `apiVersion` and `kind`; `k apply -f` |
+| `the server doesn't have a resource type "certficate"` | the kind name is misspelled | `k api-resources | grep cert-manager`; use a name from the first column |
 | no cert-manager pods on Killercoda | Part A installs only the CRDs | normal; this question needs only the CRDs |
 
 ---
@@ -3868,7 +3842,6 @@ controlplane    Ready    control-plane   ...   <-- Ready
 | `no matches for kind "Installation"` | the operator is still registering its types | wait 20 s, apply again |
 | Step 2 prints nothing | kubeadm ran without a pod range | `k get configmap kubeadm-config -o yaml -n kube-system | grep -i podSubnet`; still empty: keep `192.168.0.0/16` |
 | calico Running, other pods stay `ContainerCreating` | `cidr:` is not the cluster's range | fix the file, apply again |
-| the question does NOT mention NetworkPolicy | either CNI is fine | Flannel is one command: `k apply -f <flannel URL>` |
 
 ---
 
@@ -3969,9 +3942,13 @@ kubeadm upgrade apply v1.35.2
 ```
 At `Are you sure you want to proceed? [y/N]`, type `y`, Enter. It takes minutes.
 
+Shortened: the real output is much longer.
+
 You see:
 ```
-... SUCCESS! ... upgraded to "v1.35.2" ...   <-- done
+...
+[upgrade] SUCCESS! A control plane node of your cluster was upgraded to "v1.35.2".   <-- done
+...
 ```
 
 ---
@@ -4169,10 +4146,15 @@ etcdctl snapshot save /opt/etcd-backup.db \
   --cacert=/etc/kubernetes/pki/etcd/ca.crt \
   --cert=/etc/kubernetes/pki/etcd/server.crt \
   --key=/etc/kubernetes/pki/etcd/server.key
+ls -l /opt/etcd-backup.db
 ```
+Shortened: etcdctl first prints a few log lines.
+
 You see:
 ```
+...
 Snapshot saved at /opt/etcd-backup.db
+-rw------- 1 root root 6094880 ... /opt/etcd-backup.db   <-- size above 0
 ```
 **Means:** backup-only question? You are finished.
 
@@ -4188,6 +4170,7 @@ ls /var/lib/etcd-restored
 ```
 You see:
 ```
+...
 member   <-- restored data
 ```
 **Don't:** use `etcdctl snapshot restore`. etcd 3.6 (Kubernetes v1.35) removed it.
@@ -4355,10 +4338,16 @@ Type `/image:` and Enter. Add the last three lines, under `name: nginx`:
         - containerPort: 80
           protocol: TCP
 ```
-Save with `Esc`, `:wq`.
+Save with `Esc`, `:wq`. Then check the port:
+```
+k get deployment np -o jsonpath='{..ports}' -n web
+```
+Your prompt may follow on the same line.
+
 You see:
 ```
 deployment.apps/np edited
+[{"containerPort":80,"protocol":"TCP"}]
 ```
 **Don't:** start `ports:` under the `-` of `- image:`. It lines up with `name:`.
 
@@ -4593,8 +4582,6 @@ Ingress Class:    nginx
 | `<error: services "..." not found>` | Service name typo | `k delete ingress web-ing -n web`, create again |
 | empty brackets `()`, no pod IP | wrong Service port, or pods not Ready | check PORT(S) in step 2; delete and create again |
 | `Ingress Class: <none>` | forgot `--class` | delete and create again |
-| the question asks for TLS with secret `web-tls` | add it to the rule | `--rule="shop.example.com/*=backend-svc:80,tls=web-tls"` |
-| the question asks for an annotation | add a flag | `--annotation nginx.ingress.kubernetes.io/rewrite-target=/` |
 
 ---
 
@@ -4798,13 +4785,17 @@ ingress.networking.k8s.io "web-ing" deleted ...
 
 ```
 k get ingress -n web
-k get httproute web-route -o yaml -n web | grep -E "name: web-gw|value: /|backend-svc|port: 80"
+k get httproute web-route -o yaml -n web | grep -E "name: web-gw|value: /|name: backend-svc|port: 80"
 ```
 You see:
 ```
 No resources found in web namespace.
+    name: web-gw
+      name: backend-svc
+      port: 80
+        value: /
 ```
-then the four route lines. If the question gives a `curl`, run it.
+If the question gives a `curl`, run it.
 
 ---
 
@@ -4822,7 +4813,6 @@ then the four route lines. If the question gives a `curl`, run it.
 | `no matches for kind "Gateway"` | wrong `apiVersion`, or no CRDs | `gateway.networking.k8s.io/v1`; Part A line 1 |
 | route not `Accepted`, curl 404 | `parentRefs` name or hostname differs from the Gateway | make them identical |
 | Gateway listener `ResolvedRefs` `False` | wrong secret name in `certificateRefs` | use the secret from step 1 |
-| the Ingress had no TLS | plain HTTP | `protocol: HTTP`, `port: 80`, no `tls:` block |
 
 ---
 
@@ -4993,8 +4983,6 @@ wget: download timed out
 | `other` still gets the page | the network plugin does not enforce policies | check with `k describe networkpolicy`; the exam cluster enforces them |
 | `api` also times out | wrong label in `from`, or `ports:` under the wrong item | compare with the finished file and `--show-labels` |
 | `did not find expected key` | indentation broke while deleting lines | `- podSelector:` starts 4 spaces in, under `- from:` |
-| `api` lives in another namespace | `from` needs a namespace too | add `namespaceSelector` with `kubernetes.io/metadata.name: <ns>` under the SAME `-` |
-| asked to pick the least permissive file | do not edit files | apply the one with exactly these labels and the port |
 
 ---
 
@@ -5050,9 +5038,13 @@ k get networkpolicy -n prod
 ```
 k exec app -n prod -- wget -qO- -T 3 web
 ```
+Shortened: the whole nginx page scrolls by.
+
 You see:
 ```
+...
 <title>Welcome to nginx!</title>
+...
 ```
 **Means:** nothing blocks traffic yet. Remember this line for the end.
 
@@ -5303,13 +5295,16 @@ You see:
 ```
 k edit configmap/nginx-config -n nginx-static
 ```
-In vim: type `/ssl_protocols`, Enter. Then type `:s/TLSv1.2 //`, Enter. Save with `:wq`.
-
+In vim: type `/ssl_protocols`, Enter. Then type `:s/TLSv1.2 //`, Enter. Save with `:wq`. Then check the line:
+```
+k get configmap nginx-config -o yaml -n nginx-static | grep ssl_protocols
+```
 You see:
 ```
 configmap/nginx-config edited
+    ssl_protocols TLSv1.3;
 ```
-**Means:** the line is now `ssl_protocols TLSv1.3;`.
+**Means:** only `TLSv1.3` is left, and the `;` is still there.
 **Don't:** delete the `;` at the end. nginx then fails to start.
 
 ---
@@ -5490,11 +5485,15 @@ configmap/coredns edited
 ```
 k rollout restart deployment/coredns -n kube-system
 k rollout status deployment/coredns -n kube-system
+k get pods -l k8s-app=kube-dns -n kube-system
 ```
 You see:
 ```
 deployment.apps/coredns restarted
+...
 deployment "coredns" successfully rolled out
+coredns-...   1/1   Running   0   15s
+coredns-...   1/1   Running   0   20s
 ```
 **Means:** CoreDNS runs with your line.
 
@@ -5530,7 +5529,6 @@ Address: 10.x.x.x  <-- Step 2
 |---|---|---|
 | CoreDNS pods in `CrashLoopBackOff` | a typo in the Corefile | `k replace --force -f /root/coredns-backup.yaml`; restart CoreDNS; do Step 3 again |
 | `NXDOMAIN` for `api.example.com` | the line is outside `.:53 { }`, or a typo in the target | `k edit configmap/coredns -n kube-system`, check the line, restart |
-| the question wants a whole domain sent to another DNS server | that needs a new block, not `rewrite` | docs "Customizing DNS Service": `example.org:53 { forward . 10.0.0.53 }` |
 | `pods "t" already exists` | an old test pod was left behind | `k delete pod t`, test again |
 
 ---
@@ -5607,8 +5605,10 @@ k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup backend-svc.we
 ```
 You see:
 ```
+...
 Name:	backend-svc.web.svc.cluster.local
 Address: 10.x.x.x  <-- Step 1
+...
 ```
 **Means:** the name is right. Now save it.
 **Don't:** use only `backend-svc`. From `default` that name is not found.
@@ -6048,7 +6048,6 @@ You see:
 | `AlreadyExists` | an HPA `web` exists | fix it with `k edit hpa/web -n shop` |
 | `<unknown>` after 2 min; `k top pod -n shop` fails | metrics-server missing or starting | run Part A again; the exam has it |
 | vim reopens, error comment on top | a Tab or wrong indent | fix the 3 lines, `:wq` again |
-| the question wants another HPA name | named after the Deployment | add `--name=<name>` in Step 2 |
 
 ---
 
@@ -6378,8 +6377,6 @@ web-...   1/1   Running   0   20s   ...   node01
 | You see | Cause | Fix |
 |---|---|---|
 | one pod `Pending`, Events: `Insufficient cpu` (or memory) | requests slightly too big | lower them 10%, repeat Step 4 |
-| 2 containers per pod | `set resources` sets EVERY container | divide by 6, or name one container with `-c <name>` |
-| the pod has init containers | the bigger of init or app requests counts | keep init requests at or below app requests |
 
 ---
 
@@ -6561,7 +6558,6 @@ s3cret
 | STATUS stays `ContainerCreating` | the Secret name in `volumes` does not exist | read Events in `k describe pod api -n app`; fix `secretName:` |
 | `unknown field "spec.containers[0].volumes"` | `volumes:` is indented under the container | move it to the column of `containers:` |
 | `Forbidden: pod updates may not change fields other than ...` | a pod's env and volumes cannot change | `k delete pod api -n app`, then apply again |
-| the question wants ONE key only | different block | `env:` with `valueFrom:` / `configMapKeyRef:` (same docs page) |
 
 ---
 
@@ -6894,7 +6890,6 @@ web    3/3     3            3           3m    nginx        nginx:1.27   app=web 
 | `rollout status` never finishes | the new image does not exist (typo) | `Ctrl+C`, check the tag, `k set image` again |
 | `unable to find container named "web"` | deployment name left of `=` | use the CONTAINERS column from Step 1 |
 | `/root/image.txt` is empty | a typo in the jsonpath | run it without `> /root/image.txt` first |
-| the question wants revision 1 exactly | more than one step back | `k rollout undo deployment/web --to-revision=1 -n shop` |
 
 ---
 
