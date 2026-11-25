@@ -1,0 +1,302 @@
+[
+ {
+  "keys": [
+   "imagepullbackoff",
+   "errimagepull",
+   "image name",
+   "wrong image",
+   "update deployment",
+   "to image"
+  ],
+  "hint": "Image problem or new image → set the image on the DEPLOYMENT (container name left of =)",
+  "cmds": "k describe pod <pod> -n <ns>\nk get deployment <name> -o wide -n <ns>\nk set image deployment/<name> <container>=<image> -n <ns>\nk rollout status deployment/<name> -n <ns>"
+ },
+ {
+  "keys": [
+   "crashloopbackoff",
+   "keeps restarting",
+   "restarts",
+   "not running",
+   "never becomes ready",
+   "not ready"
+  ],
+  "hint": "Pod crashes or is not ready → logs of the LAST run, then describe (Last State, Exit Code, Events)",
+  "cmds": "k logs <pod> --previous -n <ns>\nk describe pod <pod> -n <ns>\nk edit deployment/<name> -n <ns>\nk get pods -n <ns>"
+ },
+ {
+  "keys": [
+   "pending"
+  ],
+  "hint": "Pod Pending → Events say why: requests too big, taint, nodeSelector, missing PVC",
+  "cmds": "k describe pod <pod> -n <ns>\nk describe node <node>\nk get pvc -n <ns>"
+ },
+ {
+  "keys": [
+   "roll back",
+   "rollback",
+   "previous revision",
+   "undo"
+  ],
+  "hint": "Rollback → history, then undo",
+  "cmds": "k rollout history deployment/<name> -n <ns>\nk rollout undo deployment/<name> -n <ns>\nk rollout status deployment/<name> -n <ns>"
+ },
+ {
+  "keys": [
+   "replicas",
+   "scale"
+  ],
+  "hint": "Replicas → scale the deployment",
+  "cmds": "k scale deployment/<name> --replicas=<n> -n <ns>"
+ },
+ {
+  "keys": [
+   "horizontalpodautoscaler",
+   "hpa",
+   "autoscale",
+   "autoscaler",
+   "autoscaling"
+  ],
+  "hint": "HPA → autoscale with --cpu=<n>%; behavior (scaleUp/scaleDown) or memory targets only via YAML",
+  "cmds": "k autoscale deployment <name> --min=<n> --max=<n> --cpu=<n>% -n <ns>\nk get hpa -n <ns>\nk explain hpa.spec.behavior"
+ },
+ {
+  "keys": [
+   "service",
+   "expose",
+   "nodeport",
+   "clusterip",
+   "targetport"
+  ],
+  "hint": "Service → expose; wrong traffic → compare selector/labels and targetPort with the endpoints",
+  "cmds": "k expose deployment <name> --port=<p> --target-port=<tp> --type=NodePort -n <ns>\nk get endpoints <svc> -n <ns>\nk describe service <svc> -n <ns>\nk get pods --show-labels -n <ns>"
+ },
+ {
+  "keys": [
+   "dns",
+   "nslookup",
+   "resolve"
+  ],
+  "hint": "DNS → test from a pod with nslookup; service name.<ns>.svc.cluster.local",
+  "cmds": "k run tmp --image=busybox:1.36 --rm -it --restart=Never -n <ns> -- nslookup <svc>.<ns>.svc.cluster.local\nk get pods -n kube-system -l k8s-app=kube-dns"
+ },
+ {
+  "keys": [
+   "networkpolicy",
+   "network policy",
+   "only allow",
+   "deny"
+  ],
+  "hint": "NetworkPolicy → select target pods, allow by podSelector/namespaceSelector + port; no create shortcut for rules: write YAML",
+  "cmds": "k get networkpolicy -n <ns>\nk get pods --show-labels -n <ns>\nk get namespace --show-labels\nk apply -f np.yaml"
+ },
+ {
+  "keys": [
+   "ingress"
+  ],
+  "hint": "Ingress → create ingress with --rule host/path=svc:port",
+  "cmds": "k create ingress <name> --rule=\"<host>/<path>=<svc>:<port>\" -n <ns>\nk describe ingress <name> -n <ns>"
+ },
+ {
+  "keys": [
+   "gateway",
+   "httproute"
+  ],
+  "hint": "Gateway API → Gateway (listener, TLS secret) + HTTPRoute (parentRefs, backendRefs); write YAML from the docs",
+  "cmds": "k get gatewayclass\nk explain gateway.spec.listeners\nk explain httproute.spec.rules\nk apply -f gateway.yaml"
+ },
+ {
+  "keys": [
+   "serviceaccount",
+   "role",
+   "rolebinding",
+   "rbac",
+   "permission",
+   "allowed to"
+  ],
+  "hint": "RBAC → serviceaccount, role, rolebinding, then prove it with auth can-i",
+  "cmds": "k create serviceaccount <sa> -n <ns>\nk create role <role> --verb=get,list --resource=pods -n <ns>\nk create rolebinding <rb> --role=<role> --serviceaccount=<ns>:<sa> -n <ns>\nk auth can-i list pods --as=system:serviceaccount:<ns>:<sa> -n <ns>"
+ },
+ {
+  "keys": [
+   "configmap"
+  ],
+  "hint": "ConfigMap → create from literal/file, mount or envFrom, restart pods to pick it up",
+  "cmds": "k create configmap <name> --from-literal=<k>=<v> -n <ns>\nk edit configmap/<name> -n <ns>\nk rollout restart deployment/<name> -n <ns>"
+ },
+ {
+  "keys": [
+   "secret",
+   "tls"
+  ],
+  "hint": "Secret → generic or tls; check with describe (values stay hidden)",
+  "cmds": "k create secret generic <name> --from-literal=<k>=<v> -n <ns>\nk create secret tls <name> --cert=<crt> --key=<key> -n <ns>\nk describe secret <name> -n <ns>"
+ },
+ {
+  "keys": [
+   "persistentvolumeclaim",
+   "pvc",
+   "persistentvolume",
+   "storageclass",
+   "volume"
+  ],
+  "hint": "Storage → PVC must match a PV/StorageClass (size, accessModes, storageClassName); check Bound",
+  "cmds": "k get pv,pvc -n <ns>\nk get storageclass\nk describe pvc <name> -n <ns>\nk explain persistentvolumeclaim.spec"
+ },
+ {
+  "keys": [
+   "default storageclass",
+   "default storage class"
+  ],
+  "hint": "Default StorageClass → annotation is-default-class=true (remove it from the old one)",
+  "cmds": "k annotate storageclass <name> storageclass.kubernetes.io/is-default-class=true --overwrite\nk get storageclass"
+ },
+ {
+  "keys": [
+   "sidecar",
+   "init container",
+   "initcontainer"
+  ],
+  "hint": "Sidecar / init container → edit the deployment YAML; shared emptyDir volume for the log file",
+  "cmds": "k get deployment <name> -o yaml -n <ns> > d.yaml\nk apply -f d.yaml\nk logs <pod> -c <container> -n <ns>"
+ },
+ {
+  "keys": [
+   "taint",
+   "toleration"
+  ],
+  "hint": "Taints → see them on the node, add a toleration to the pod, or remove the taint with -",
+  "cmds": "k describe node <node> | grep -i taint\nk taint nodes <node> <key>=<value>:NoSchedule\nk taint nodes <node> <key>=<value>:NoSchedule-"
+ },
+ {
+  "keys": [
+   "nodeselector",
+   "node affinity",
+   "label the node",
+   "schedule on"
+  ],
+  "hint": "Placement → label the node, nodeSelector/affinity in the pod spec",
+  "cmds": "k label nodes <node> <key>=<value>\nk get nodes --show-labels"
+ },
+ {
+  "keys": [
+   "drain",
+   "cordon",
+   "maintenance"
+  ],
+  "hint": "Node maintenance → cordon/drain, then uncordon",
+  "cmds": "k drain <node> --ignore-daemonsets --delete-emptydir-data\nk uncordon <node>"
+ },
+ {
+  "keys": [
+   "notready",
+   "kubelet"
+  ],
+  "hint": "Node NotReady → kubelet on that node: status, logs, config, restart",
+  "cmds": "ssh <node>\nsystemctl status kubelet\njournalctl -u kubelet -n 30 --no-pager\nsystemctl restart kubelet"
+ },
+ {
+  "keys": [
+   "apiserver",
+   "api server",
+   "connection refused",
+   "static pod",
+   "manifests"
+  ],
+  "hint": "Control plane down → static pod manifests in /etc/kubernetes/manifests; crictl shows the containers",
+  "cmds": "crictl ps -a | grep kube-apiserver\ncrictl logs <id>\nvim /etc/kubernetes/manifests/kube-apiserver.yaml\njournalctl -u kubelet -n 30 --no-pager"
+ },
+ {
+  "keys": [
+   "etcd",
+   "snapshot",
+   "backup"
+  ],
+  "hint": "etcd backup → etcdctl snapshot save with the 3 cert flags; check with etcdutl",
+  "cmds": "ETCDCTL_API=3 etcdctl --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key snapshot save <file>\netcdutl --write-out=table snapshot status <file>"
+ },
+ {
+  "keys": [
+   "upgrade",
+   "kubeadm"
+  ],
+  "hint": "Upgrade → kubeadm first, then kubelet + kubectl, one node at a time (drain/uncordon)",
+  "cmds": "kubeadm upgrade plan\nkubeadm upgrade apply v<version>\nkubeadm upgrade node\nsystemctl restart kubelet"
+ },
+ {
+  "keys": [
+   "helm"
+  ],
+  "hint": "Helm → repo add, then install/upgrade or template; -n and --version from the question",
+  "cmds": "helm repo add <name> <url>\nhelm repo update\nhelm template <release> <repo>/<chart> --version <v> -n <ns> > out.yaml\nhelm install <release> <repo>/<chart> --version <v> -n <ns>"
+ },
+ {
+  "keys": [
+   "kustomize",
+   "kustomization"
+  ],
+  "hint": "Kustomize → build or apply -k on the folder",
+  "cmds": "k kustomize <dir>\nk apply -k <dir>"
+ },
+ {
+  "keys": [
+   "crd",
+   "customresourcedefinition",
+   "custom resource",
+   "cert-manager"
+  ],
+  "hint": "CRDs → list them, explain the fields, output exactly the format the question names",
+  "cmds": "k get crd\nk api-resources | grep <group>\nk explain <kind>.spec"
+ },
+ {
+  "keys": [
+   "priorityclass",
+   "priority"
+  ],
+  "hint": "PriorityClass → create it, set priorityClassName in the pod spec",
+  "cmds": "k create priorityclass <name> --value=<n> --description=\"<text>\"\nk get priorityclass"
+ },
+ {
+  "keys": [
+   "log",
+   "logs",
+   "write the",
+   "save the output",
+   "to the file"
+  ],
+  "hint": "Output to a file → redirect exactly to the path in the question; check with cat",
+  "cmds": "k logs <pod> -n <ns> > /opt/<file>\ncat /opt/<file>"
+ },
+ {
+  "keys": [
+   "cni",
+   "calico",
+   "flannel",
+   "pod network",
+   "podsubnet",
+   "pod cidr"
+  ],
+  "hint": "CNI → pod CIDR from kubeadm-config, then install the CNI from its docs",
+  "cmds": "k get configmap kubeadm-config -n kube-system -o yaml | grep -i podSubnet\nk get pods -n kube-system"
+ },
+ {
+  "keys": [
+   "cri-dockerd",
+   "sysctl",
+   "container runtime",
+   "kernel param"
+  ],
+  "hint": "Node prep → install package, enable service, sysctl params persistent in /etc/sysctl.d",
+  "cmds": "dpkg -i <file>.deb\nsystemctl enable --now <service>\nsysctl --system"
+ },
+ {
+  "keys": [
+   "resources",
+   "requests",
+   "limits",
+   "memory",
+   "cpu"
+  ],
+  "hint": "Requests/limits → set resources on the deployment, then check the pods schedule",
+  "cmds": "k set resources deployment/<name> --requests=cpu=<c>,memory=<m> --limits=cpu=<c>,memory=<m> -n <ns>\nk describe node <node> | grep -A6 Allocated"
+ }
+]

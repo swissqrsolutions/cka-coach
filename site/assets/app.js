@@ -270,7 +270,8 @@
   const NEXT = { learn: 'practise', practise: 'exam', exam: 'exam' };
   const MODEHINT = { learn: 'Round 1: follow every step.', practise: 'Round 2: type it yourself.', exam: 'Round 3: no help, beat the time.' };
   // all commands of the solution in one box, to learn by heart
-  const mugBox = q => q.cmds ? `<h2>Commands to learn by heart</h2><div class="card mugbox">${codeBlock(q.cmds)}<p class="small">Type them from memory, in this order, until you can do it without looking.</p></div>` : '';
+  const kwBox = q => (q.kw || []).length ? `<h2>Keywords → what to remember</h2><div class="card kwbox">${q.kw.map(k => `<div class="kw"><p><b>If the question says “${esc(k.word)}”:</b> ${esc(k.hint)}</p>${codeBlock(k.cmds)}</div>`).join('')}<p class="small">Same keyword in a new question → same commands.</p></div>` : '';
+  const mugBox = q => q.cmds ? `<h2>Commands to learn by heart</h2><div class="card mugbox">${codeBlock(q.cmds)}<p class="small">Type them from memory, in this order, until you can do it without looking.</p></div>${kwBox(q)}` : kwBox(q);
   function compactBody(q, mode = 'learn') {
     const st = q.story || {};
     const all = q.steps.map((s, i) => ({ s, i, v: /^Verify/.test(s.title) }));

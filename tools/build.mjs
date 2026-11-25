@@ -195,6 +195,15 @@ for (const x of questions) {
   }
   x.cmds = out.join('\n');
 }
+// ---- keyword hints: "if the question says X → remember these commands" (content/keywords.json), max 4 per question
+const kwFile = path.join(ROOT, 'content', 'keywords.json');
+const KW = fs.existsSync(kwFile) ? JSON.parse(fs.readFileSync(kwFile, 'utf8')) : [];
+const kre = k => new RegExp('(^|[^a-z0-9])' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + 's?(?![a-z0-9])', 'i');
+for (const x of questions) {
+  const text = `${x.title}\n${x.question}`;
+  x.kw = KW.map(e => ({ e, hit: e.keys.find(k => kre(k).test(text)) })).filter(m => m.hit).slice(0, 4)
+    .map(({ e, hit }) => ({ word: hit, hint: e.hint, cmds: e.cmds }));
+}
 
 const data = { sources: data_sources, built: new Date().toISOString(), topics: topics.map(t => ({ name: t.name, weight: t.weight, intro: html(t.intro) })), refs: refs.map(r => ({ title: r.title, html: html(r.body) })), questions, mocks };
 fs.writeFileSync(path.join(ROOT, 'site', 'data.json'), JSON.stringify(data));

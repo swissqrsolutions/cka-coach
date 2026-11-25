@@ -389,3 +389,8 @@ details.reveal{margin-top:8px}details.reveal summary{cursor:pointer;font-weight:
 .ln.dont{padding:6px 10px;border-left:4px solid #d62828;background:rgba(214,40,40,.07)}
 .needhelp .story{font-style:italic}
 .modehint{margin:-4px 0 12px}
+
+/* keyword hints under "Commands to learn by heart" */
+.kwbox .kw{padding:4px 0 10px;border-bottom:1px solid var(--line)}
+.kwbox .kw:last-of-type{border-bottom:0}
+.kwbox .kw p{margin:8px 0}
