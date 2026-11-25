@@ -433,3 +433,5 @@ details.reveal{margin-top:8px}details.reveal summary{cursor:pointer;font-weight:
 .mtag{position:absolute;left:0;top:0;padding:4px 9px 5px;border-radius:10px;background:rgba(255,255,255,.92);color:#14213d;text-align:center;line-height:1.15;box-shadow:0 2px 8px rgba(0,0,0,.25);white-space:nowrap;transition:opacity .3s}
 .mtag b{display:block;font-size:13px}.mtag small{display:block;font-size:11px;color:#2f6fde;font-weight:600}
 .mload{position:absolute;inset:0;display:grid;place-items:center;color:#f4e9d8;font-size:15px}
+.mtag i{display:block;font-size:11px;font-style:normal;color:#5b6880}
+.msnd{position:absolute;right:10px;top:10px;min-height:36px;padding:0 12px;border:0;border-radius:18px;background:rgba(20,33,61,.75);color:#fff;font:600 13px var(--sans)}

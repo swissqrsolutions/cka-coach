@@ -1,299 +1,380 @@
-// "Friday night": Kubernetes as a restaurant, a small 3D film (three.js, MIT).
-// Models: Quaternius Ultimate Animated Character Pack, KayKit, Kenney, Quaternius props (all CC0), in assets/3d/models/.
-// Plays once, Replay, no sound, no loop. Reduced motion → last frame + caption.
+// "An evening at Luigi's": Kubernetes explained as a real restaurant. One long, slow episode (three.js, MIT).
+// Models: Quaternius Ultimate Animated Character Pack, KayKit Restaurant Bits, Kenney, Quaternius props (all CC0): assets/3d/models/.
+// Plays once, Replay, no loop. Reduced motion → last frame + caption. Voice + music: assets/3d/voice.json (optional).
 import * as THREE from './3d/three.module.min.js';
 import { GLTFLoader } from './3d/GLTFLoader.js';
 import { clone as skClone } from './3d/SkeletonUtils.js';
 
-const BASE = new URL('./3d/models/', import.meta.url);
-const NAMES = ['chef', 'waiter', 'manager', 'guest1', 'guest2', 'oven', 'stove', 'counter', 'counter_long', 'table', 'chair', 'plate', 'pizza', 'pizza_box', 'shelf', 'book', 'menu', 'phone', 'fridge', 'door', 'crate'];
+const BASE = new URL('./3d/', import.meta.url);
+const NAMES = ['chef', 'waiter', 'manager', 'guest1', 'guest2', 'nina', 'dad', 'mom', 'oven', 'stove', 'counter', 'counter_long', 'table', 'chair', 'plate', 'pizza', 'pizza_box', 'shelf', 'book', 'phone',
+  'modular_walls', 'modular_kitchen_parts', 'extractor_hood', 'kitchen_cabinet', 'pot', 'pan', 'cutting_board', 'crate_tomatoes', 'crate_cheese', 'plant_pothos_medium', 'houseplant_quaternius',
+  'candle', 'glass_wine', 'bottle_wine', 'flowers_vase_creativetrio', 'menu_sign_wooden', 'painting', 'fridge'];
 let cache = null;
-const load = () => (cache ||= Promise.all(NAMES.map(n => new GLTFLoader().loadAsync(new URL(n + '.glb', BASE).href).then(g => [n, g]))).then(Object.fromEntries));
+const load = () => (cache ||= Promise.all([
+  ...NAMES.map(n => new GLTFLoader().loadAsync(new URL('models/' + n + '.glb', BASE).href).then(g => [n, g])),
+  fetch(new URL('voice.json', BASE)).then(r => r.ok ? r.json() : null).catch(() => null).then(v => ['_voice', v]),
+]).then(Object.fromEntries));
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
 const ss = u => { u = clamp(u); return u * u * u * (u * (u * 6 - 15) + 10); };
 const lerp = (a, b, u) => a + (b - a) * u;
+const F = .8;           // KayKit scale
+const CH = .5;          // character scale (about 1.9 m)
 
-// ───────── the film script (seconds)
-const CAPS = [
-  [0.3, 'Friday night. A busy little restaurant. Watch closely: this is exactly how Kubernetes works.'],
-  [5.0, '1. The chef writes a new recipe. That is your Java code, saved in GitHub.'],
-  [9.5, '2. The test kitchen cooks it once to check it works: GitHub Actions runs mvn package.'],
-  [14.0, '3. The meal is packed into a meal kit (docker build) and stored in the warehouse (the registry).'],
-  [19.0, '4. Head office sends one order: "always 2 pizzas". That is helm upgrade. It sends it once and never checks again.'],
-  [24.5, '5. The order desk (API server) writes it in the order book (etcd).'],
-  [28.5, '6. The manager reads the book: 2 wanted, 0 ready, so make 2. He is the controller manager.'],
-  [32.5, '7. The ticket goes to a kitchen with free space: Kitchen 1. That choice is the scheduler.'],
-  [36.5, '8. The chef of Kitchen 1 (kubelet) gets the meal kit from the warehouse and puts it in the oven (containerd).'],
-  [44.0, '9. Two pizzas are ready: the Pods are Running. The chef tells the desk.'],
-  [48.5, '10. A guest calls the one phone number (the Service). The waiter (kube-proxy) brings a ready pizza.'],
-  [55.0, 'Then… CRASH.'],
-  [58.5, 'One pizza is gone. Nobody called the chef.'],
-  [61.5, 'The manager checks the book: 2 wanted, only 1 ready.'],
-  [64.5, 'So the chef makes a new one. Right away. On his own.'],
-  [71.0, 'That is Kubernetes: you say what you want, and it keeps it true. Even when things break.'],
+// ───────── the episode: one line of narration per scene; the camera holds on each scene
+// shot: [camera position, look-at, fov]; min: shortest length in seconds (actions need the time)
+export const SCENES = [
+  { id: 'open', say: "This is Luigi's, a small pizza restaurant. Tonight, it will show you how Kubernetes works.", shot: [V(9, 7.5, 15), V(0, 1, -1), 40], min: 7 },
+  { id: 'idea', say: "In Kubernetes, you never cook the food yourself. You only say what you want, and a team makes sure it happens. Let's meet the team.", shot: [V(5, 4.2, 10), V(-1, 1, -1), 42], min: 8 },
+  { id: 'leo', say: "This is Leo. He sits at the order desk. Every order, from anyone, goes through Leo. In Kubernetes, Leo is the API server.", shot: [V(-3.8, 2.0, 1.6), V(-5.6, 1.5, -1.9), 38], tags: ['leo'], min: 8 },
+  { id: 'book', say: "Leo writes every order in this book. The book is the single source of truth: what is written here is what we want. In Kubernetes, this book is called etcd.", shot: [V(-3.9, 2.1, 1.4), V(-5.5, 1.5, -1.6), 40], tags: ['book'], min: 9 },
+  { id: 'sofia', say: "This is Sofia, the manager. All night she does one thing: she compares the book with what is really on the counter. If they are different, she makes them the same. In Kubernetes, Sofia is the controller manager.", shot: [V(-1.2, 2.1, 1.1), V(-3.4, 1.45, -1.6), 38], tags: ['sofia'], min: 11 },
+  { id: 'kitchen', say: "Behind this wall is the kitchen. A big restaurant has many kitchens, and each one is a node. Ours is Kitchen 1.", shot: [V(.4, 2.4, 3.2), V(0, 2.0, -3), 42], tags: ['sign'], min: 8 },
+  { id: 'marco', say: "This is Marco, the chef of Kitchen 1. He cooks whatever is given to his kitchen, and tells Leo when it is ready. In Kubernetes, Marco is the kubelet: there is one on every node.", shot: [V(.4, 2.3, -3.7), V(2.3, 1.2, -5.4), 44], tags: ['marco'], min: 10 },
+  { id: 'oven', say: "Marco doesn't bake by hand. He puts a meal kit in the oven, and the oven does the baking. In Kubernetes, the oven is the container runtime, called containerd.", shot: [V(3.0, 1.9, -3.9), V(4.4, 1.0, -6.3), 38], tags: ['oven'], min: 9 },
+  { id: 'store', say: "The meal kits wait here, in the store room. A kit is packed once, and it bakes the same pizza every time. The store room is the registry, and each meal kit is an image.", shot: [V(-4.2, 2.2, -3.8), V(-7.3, 1.1, -5.2), 42], tags: ['store'], min: 10 },
+  { id: 'build', say: "Where do the kits come from? The recipe is your Java code on GitHub. When it changes, GitHub Actions builds it and packs a new kit: docker build. Then the kit is stored here: docker push.", shot: [V(-4.6, 1.8, -4.2), V(-7.3, 1.2, -5.0), 34], tags: ['kit'], min: 11 },
+  { id: 'window', say: "Guests never walk into the kitchen. All food comes out of one place: this serving window. It is always the same window, whichever kitchen cooked. In Kubernetes, that is a Service.", shot: [V(3.6, 1.9, 1.2), V(3.2, 1.5, -3), 38], tags: ['window'], min: 10 },
+  { id: 'nina', say: "And this is Nina. She takes the food from the serving window to the right table. In Kubernetes, Nina is kube-proxy.", shot: [V(4.6, 1.9, 1.8), V(2.6, 1.2, -1.6), 38], tags: ['nina'], min: 9 },
+  { id: 'meet', say: "Now you know the team. Let's watch a real evening.", shot: [V(8, 6.5, 13), V(0, 1, -1), 42], min: 5 },
+  { id: 'call', say: "The phone rings. It's head office: from now on, always keep two Margherita pizzas ready. That phone call is you, running helm upgrade, or kubectl apply.", shot: [V(-3.8, 2.0, 1.5), V(-5.7, 1.4, -1.6), 40], tags: ['phone'], min: 10 },
+  { id: 'write', say: "Leo writes it in the book: Margherita, two wanted. Head office hangs up. It does not watch. It said what it wants, once.", shot: [V(-3.9, 2.1, 1.4), V(-5.5, 1.5, -1.6), 40], min: 9 },
+  { id: 'compare', say: "Sofia reads the book. Two wanted. On the counter: zero. That is a difference, so she acts.", shot: [V(-2.6, 2.2, 1.9), V(-4.8, 1.5, -1.6), 42], min: 8 },
+  { id: 'ticket', say: "She picks a kitchen with free space, Kitchen 1, and hangs the ticket there. Choosing the kitchen is the job of the scheduler.", shot: [V(-1.6, 4.8, .8), V(.8, .9, -4.0), 52], tags: ['sched'], min: 11 },
+  { id: 'fetch', say: "Marco sees the ticket. He walks to the store room and takes a Margherita kit.", shot: [V(.4, 5.6, -.6), V(-2.2, .6, -5.2), 52], min: 9 },
+  { id: 'bake', say: "He puts the kit into the oven, and the oven bakes it.", shot: [V(2.2, 2.3, -3.8), V(4.0, 1.0, -6.0), 42], min: 10 },
+  { id: 'pods', say: "Two pizzas come out. Marco puts them on the serving counter. In Kubernetes, these two pizzas are two Pods, running.", shot: [V(1.8, 2.0, -4.6), V(3.4, 1.0, -3.6), 40], tags: ['pods'], min: 11 },
+  { id: 'calm', say: "Marco tells Leo, and Leo updates the book: two wanted, two ready. The difference is gone. Everyone is calm.", shot: [V(-3.9, 2.1, 1.4), V(-5.5, 1.5, -1.6), 40], min: 8 },
+  { id: 'family', say: "The door opens. A family comes in. It's Mia's birthday, and she is very excited.", shot: [V(6.5, 3.2, 8.5), V(3.2, 1.0, 3.2), 42], tags: ['mia'], min: 11 },
+  { id: 'order', say: "Her dad orders a Margherita. Nina goes to the serving window and takes one of the two pizzas.", shot: [V(5.2, 2.4, 2.4), V(3.0, 1.2, -2.2), 42], min: 9 },
+  { id: 'carry', say: "She carries it carefully across the room...", shot: [V(6.6, 2.0, .4), V(3.2, 1.0, .6), 42], min: 5 },
+  { id: 'crash', say: '', shot: [V(6.4, 1.4, .6), V(3.5, .5, 2.0), 40], min: 4.5 },
+  { id: 'gone', say: "The pizza is on the floor. Mia looks at it. Her birthday pizza is gone.", shot: [V(3.4, 1.05, 1.2), V(5.2, .75, 2.4), 36], min: 9 },
+  { id: 'sofia2', say: "But look at Sofia. She doesn't panic. She just looks at the book. Two wanted. Only one ready.", shot: [V(-2.6, 2.2, 1.9), V(-4.8, 1.5, -1.6), 42], min: 9 },
+  { id: 'heal', say: "Nobody shouts. Nobody calls Marco. Sofia simply sees the difference, and a new ticket goes to Kitchen 1.", shot: [V(-1.6, 4.8, .8), V(.8, .9, -4.0), 52], min: 9 },
+  { id: 'again', say: "Marco takes a new kit from the store room and puts it in the oven. Same kit, same recipe, the same pizza.", shot: [V(.4, 5.6, -.6), V(-.4, .6, -5.2), 56], min: 12 },
+  { id: 'ready', say: "A new pizza is ready, and the book says it again: two wanted, two ready.", shot: [V(1.8, 2.0, -4.6), V(3.4, 1.0, -3.6), 40], min: 8 },
+  { id: 'serve', say: "Nina brings it to Mia's table, with a birthday candle.", shot: [V(7.0, 2.6, 2.0), V(3.4, 1.0, .8), 44], min: 9 },
+  { id: 'smile', say: "Mia smiles. The evening goes on, as if nothing had happened.", shot: [V(3.4, 1.05, 1.2), V(5.2, .75, 2.4), 36], min: 8 },
+  { id: 'moral', say: "That is Kubernetes. You don't fix things one by one. You write down what you want, and the team keeps it true. Even when a plate falls.", shot: [V(8, 6.8, 13.5), V(0, 1, -1), 40], min: 10 },
+  { id: 'recap', say: "So remember. Leo is the API server, and his book is etcd. Sofia is the controller manager, and choosing the kitchen is the scheduler. Marco is the kubelet, on a node. The oven is containerd, and a meal kit is an image. Each pizza is a Pod. The serving window is a Service, and Nina is kube-proxy.", shot: [V(9.5, 8.5, 15.5), V(0, .8, -1.4), 40], tags: ['leo', 'book', 'sofia', 'marco', 'oven', 'store', 'pods', 'window', 'nina'], min: 24 },
 ];
-const END = 76;
 
-// labels: [t, key, big, small]
-const LABELS = [
-  [5.6, 'menu', 'Recipe', 'Java code in GitHub'], [10.0, 'stove', 'Test kitchen', 'GitHub Actions'],
-  [15.0, 'shelf', 'Warehouse', 'registry'], [19.6, 'door', 'Head office', 'helm upgrade'],
-  [24.8, 'desk', 'Order desk', 'API server'], [25.6, 'book', 'Order book', 'etcd'],
-  [28.8, 'manager', 'Manager', 'controller manager'],
-  [37.0, 'chef', 'Chef', 'kubelet'], [38.0, 'oven', 'Oven', 'containerd'], [44.4, 'pass', 'Pizzas', 'Pods'],
-  [49.0, 'phone', 'Phone number', 'Service'], [50.0, 'waiter', 'Waiter', 'kube-proxy'],
-];
+// people: model file, skin colour, start [x, z, facing]
+const CAST = {
+  marco: ['chef', '#e8b48c', [2.2, -5.0, Math.PI]], leo: ['manager', '#c98e62', [-5.6, -2.15, 0]], sofia: ['waiter', '#f0c8a8', [-3.4, -1.6, .3]],
+  nina: ['nina', '#8d5a3b', [2.2, -1.9, -.4]], dad: ['dad', '#f3cfb1', [5.6, 8.4, Math.PI]], mom: ['mom', '#f0c39a', [6.3, 8.6, Math.PI]],
+  mia: ['guest2', '#f3cfb1', [6.0, 9.2, Math.PI]], diner: ['guest1', '#c98e62', [-2.75, 3.3, Math.PI / 2]],
+};
+// name cards: [anchor, name, what they are in the restaurant, Kubernetes name]
+const CARDS = {
+  leo: ['leo', 'Leo', 'order desk', 'API server'], book: ['book', 'The order book', 'what we want', 'etcd'], sofia: ['sofia', 'Sofia', 'manager', 'controller manager'],
+  sign: ['sign', 'Kitchen 1', 'one kitchen', 'node'], marco: ['marco', 'Marco', 'chef of Kitchen 1', 'kubelet'], oven: ['oven', 'The oven', 'bakes the kit', 'containerd'],
+  store: ['shelf', 'Store room', 'all meal kits', 'registry'], kit: ['shelf', 'Meal kit', 'packed once', 'image'], window: ['window', 'Serving window', 'one fixed place', 'Service'],
+  nina: ['nina', 'Nina', 'waiter', 'kube-proxy'], phone: ['phone', 'Head office call', 'that is you', 'helm / kubectl'], sched: ['sign', 'Ticket → Kitchen 1', 'choosing a kitchen', 'scheduler'],
+  pods: ['pass', 'Two pizzas', 'running', 'Pods'], mia: ['mia', 'Mia', 'birthday girl', 'a user'],
+};
 
-// camera: [t, pos, target, fov]
-const SHOTS = [
-  [0, V(8, 7, 12), V(0, .6, 0), 40], [4.6, V(5.5, 4.6, 9), V(-.5, .8, -.5), 40, 1],
-  [5.4, V(-3.0, 2.3, -.2), V(-4.8, 1.1, -3.3), 40], [9.2, V(-3.2, 2.1, -.6), V(-4.8, 1.1, -3.3), 36, 1],
-  [13.6, V(-3.6, 2.6, 2.6), V(-7.4, 1.2, -.6), 42], [18.6, V(-1.6, 2.9, 7.6), V(-6.6, 1.3, 2.4), 46],
-  [24.0, V(-1.0, 2.1, 3.0), V(-2.4, 1.1, .3), 36], [28.2, V(-1.1, 2.05, 2.8), V(-2.4, 1.45, -.5), 34],
-  [32.2, V(1.2, 3.4, 4.6), V(2.4, 1.9, -3.0), 46], [36.2, V(-.6, 4.6, 6.8), V(-2.2, .9, -1.4), 52],
-  [42.0, V(3.9, 2.4, 2.6), V(3.3, 1.0, -1.6), 40], [43.4, V(3.6, 2.0, 1.9), V(3.2, .8, -.6), 36],
-  [48.0, V(.4, 4.0, 8.8), V(1.6, .8, 1.6), 46],
-  [54.8, V(5.4, 1.5, 2.2), V(3.7, .5, .3), 38],
-  [58.2, V(1.9, 1.7, 5.9), V(3.4, 1.1, 3.4), 30],
-  [61.2, V(-1.3, 1.9, 2.2), V(-2.4, 1.4, -.3), 32],
-  [64.2, V(.4, 4.6, 6.0), V(-.6, 1, -1.4), 54],
-  [70.6, V(7.5, 6.6, 11.5), V(0, .6, 0), 40], [END, V(8.4, 7.2, 12.6), V(0, .5, 0), 40, 1],
-];
+function timeline(voice) {
+  let t = 0; const out = [];
+  for (const s of SCENES) {
+    const words = s.say ? s.say.split(/\s+/).length : 0;
+    const vd = voice?.dur?.[s.id];
+    const d = Math.max(s.min, (vd ?? words / 2.4) + 1.4);
+    out.push({ ...s, t, d }); t += d;
+  }
+  return { list: out, end: t + 1 };
+}
 
 export async function mountFilm(host) {
   host.classList.add('motion', 'mhome', 'm3d');
-  host.innerHTML = `<div class="mwrap"><canvas aria-hidden="true"></canvas><div class="mtags"></div><div class="mload">Loading the restaurant…</div></div><p class="mcap" aria-live="polite"></p><div class="mbar"><button type="button" class="btn ghost mrep" hidden>↻ Replay</button></div>`;
-  const wrap = host.querySelector('.mwrap'), canvas = host.querySelector('canvas'), tags = host.querySelector('.mtags'), cap = host.querySelector('.mcap'), rep = host.querySelector('.mrep');
+  host.innerHTML = `<div class="mwrap"><canvas aria-hidden="true"></canvas><div class="mtags"></div><div class="mload">Loading Luigi's…</div><button type="button" class="msnd" hidden aria-label="Sound on or off">🔇 Tap for sound</button></div><p class="mcap" aria-live="polite"></p><div class="mbar"><button type="button" class="btn ghost mrep" hidden>↻ Replay</button></div>`;
+  const wrap = host.querySelector('.mwrap'), canvas = host.querySelector('canvas'), tags = host.querySelector('.mtags'), cap = host.querySelector('.mcap'), rep = host.querySelector('.mrep'), snd = host.querySelector('.msnd');
   const G = await load();
   host.querySelector('.mload').remove();
+  const TL = timeline(G._voice);
+  let S = null, raf = 0, playing = false, T = 0;
+  // sound: one mixed track (voice + music), muted until tapped
+  let audio = null, muted = true;
+  if (G._voice?.file) {
+    audio = new Audio(new URL(G._voice.file, BASE).href); audio.preload = 'auto'; snd.hidden = false;
+    snd.onclick = () => { muted = !muted; snd.textContent = muted ? '🔇 Tap for sound' : '🔊'; if (muted) audio.pause(); else if (playing) { audio.currentTime = T; audio.play().catch(() => {}); } };
+  }
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
-  const camera = new THREE.PerspectiveCamera(38, 4 / 5, 0.1, 100);
+  renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
+  const camera = new THREE.PerspectiveCamera(40, 4 / 5, 0.1, 120);
   const size = () => { const w = wrap.clientWidth || 358, h = Math.round(w * 5 / 4); renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); };
   size(); addEventListener('resize', size);
 
-  let S = null, raf = 0;
-  const build = () => { S?.dispose(); S = makeScene(G, tags); };
-  const frame = (t, dt) => { S.step(t, dt); shoot(camera, t); renderer.render(S.scene, camera); S.tagsAt(camera, t, wrap); showCap(t); canvas.style.filter = S.filter(t); };
-  const showCap = t => { let c = null; for (const x of CAPS) if (t >= x[0]) c = x; if (!c) return (cap.style.opacity = 0); if (cap.dataset.s !== c[1]) { cap.dataset.s = c[1]; cap.textContent = c[1]; } cap.style.opacity = Math.min(1, (t - c[0]) / .4); };
-  const seek = t => { cancelAnimationFrame(raf); build(); const dt = 1 / 30; for (let x = 0; x < t; x += dt) S.step(Math.min(x + dt, t), dt); frame(t, 0); };
+  const build = () => { S?.dispose(); S = makeScene(G, tags, TL); };
+  const frame = (t, dt) => { S.step(t, dt); shoot(camera, t, TL); renderer.render(S.scene, camera); S.tagsAt(camera, t, wrap); showCap(t); canvas.style.filter = S.filter(t); };
+  const showCap = t => { let c = null; for (const s of TL.list) if (t >= s.t && s.say) c = s; if (!c) return (cap.style.opacity = 0); if (cap.dataset.s !== c.id) { cap.dataset.s = c.id; cap.textContent = c.say; } cap.style.opacity = Math.min(1, (t - c.t) / .5); };
+  const seek = t => { cancelAnimationFrame(raf); playing = false; audio?.pause(); build(); const dt = 1 / 30; for (let x = 0; x < t; x += dt) S.step(Math.min(x + dt, t), dt); frame(t, 0); };
   const play = () => {
-    cancelAnimationFrame(raf); build(); rep.hidden = true; let last = performance.now(), t = 0;
-    const tick = now => { if (!host.isConnected) return; const dt = Math.min(.05, (now - last) / 1000); last = now; t += dt; frame(Math.min(t, END), dt); if (t < END) raf = requestAnimationFrame(tick); else rep.hidden = false; };
+    cancelAnimationFrame(raf); build(); rep.hidden = true; playing = true; T = 0; let last = performance.now();
+    if (audio && !muted) { audio.currentTime = 0; audio.play().catch(() => {}); }
+    const tick = now => {
+      if (!host.isConnected) { audio?.pause(); return; }
+      const dt = Math.min(.05, (now - last) / 1000); last = now;
+      T = audio && !muted && !audio.paused ? audio.currentTime : T + dt;   // the sound leads when it plays
+      frame(Math.min(T, TL.end), dt);
+      if (T < TL.end) raf = requestAnimationFrame(tick); else { playing = false; rep.hidden = false; }
+    };
     raf = requestAnimationFrame(tick);
   };
   rep.onclick = play;
-  host._seek = seek;
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return seek(END);
+  host._seek = seek; host._end = TL.end; host._scenes = TL.list.map(s => [s.id, +s.t.toFixed(1)]);
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return seek(TL.end);
   seek(0);
   const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); play(); } }, { threshold: .4 });
   io.observe(host);
 }
 
-function shoot(cam, t) {
-  let i = 0; while (i < SHOTS.length - 2 && t >= SHOTS[i + 1][0]) i++;
-  // hold each shot, then move to the next one in about 1.5 s (a 'drift' key moves for the whole gap: a slow dolly)
-  const a = SHOTS[i], b = SHOTS[i + 1], gap = b[0] - a[0], mv = b[4] ? gap : Math.min(1.5, gap * .45), u = ss((t - (b[0] - mv)) / mv);
-  // cuts: very short gaps (<1 s) ease fast, long ones drift slowly (a dolly)
-  cam.position.lerpVectors(a[1], b[1], u);
-  const tg = new THREE.Vector3().lerpVectors(a[2], b[2], u);
-  const shake = t > 55 && t < 56.2 ? (56.2 - t) * .06 : 0;
-  cam.position.x += Math.sin(t * 9.1) * .015 + Math.sin(t * 53) * shake; cam.position.y += Math.sin(t * 7.3) * .012 + Math.cos(t * 47) * shake;
-  cam.fov = lerp(a[3], b[3], u); cam.updateProjectionMatrix();
-  cam.lookAt(tg);
+// camera: move to each scene's shot in about 2 s, then a slow push in while it is held
+function shoot(cam, t, TL) {
+  const L = TL.list; let i = 0; while (i < L.length - 1 && t >= L[i + 1].t) i++;
+  const cur = L[i], prev = L[Math.max(0, i - 1)], mv = i ? Math.min(2.2, cur.d * .3) : .01, u = ss((t - cur.t) / mv);
+  const push = clamp((t - cur.t) / cur.d) * .07;
+  const p = new THREE.Vector3().lerpVectors(prev.shot[0], cur.shot[0], u), g = new THREE.Vector3().lerpVectors(prev.shot[1], cur.shot[1], u);
+  p.lerp(g, push);
+  const shake = cur.id === 'crash' ? Math.max(0, 1 - Math.abs(t - cur.t - 1.4) * 1.6) * .05 : 0;
+  cam.position.set(p.x + Math.sin(t * .7) * .03 + Math.sin(t * 53) * shake, p.y + Math.sin(t * .9) * .02 + Math.cos(t * 47) * shake, p.z);
+  cam.fov = lerp(prev.shot[2], cur.shot[2], u); cam.updateProjectionMatrix(); cam.lookAt(g);
 }
 
-// ───────── the scene
-function makeScene(G, tagsEl) {
+// ───────── the restaurant
+function makeScene(G, tagsEl, TL) {
+  const T = Object.fromEntries(TL.list.map(s => [s.id, s.t]));   // scene start times
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#1c1714'); scene.fog = new THREE.Fog('#1c1714', 18, 34);
-  const disposables = [];
-  // room: warm wood floor, cream walls with a dark wainscot, pendant lamps
-  const floorTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d'); for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#8a5a3b' : '#93623f'; g.fillRect(0, i * 32, 256, 32); g.fillStyle = 'rgba(0,0,0,.12)'; g.fillRect(0, i * 32 + 31, 256, 1); g.fillRect((i * 97) % 256, i * 32, 1, 32); } const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(4, 4); t.colorSpace = THREE.SRGBColorSpace; return t; })();
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(18, 14), new THREE.MeshStandardMaterial({ map: floorTex, roughness: .8 }));
-  floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
-  const wallM = new THREE.MeshStandardMaterial({ color: '#efe3cf', roughness: .95 }), woodM = new THREE.MeshStandardMaterial({ color: '#5b3a28', roughness: .7 });
-  const wall = (w, x, z, ry) => { const g = new THREE.Group(); const p = new THREE.Mesh(new THREE.PlaneGeometry(w, 5), wallM); p.position.y = 2.5; const b = new THREE.Mesh(new THREE.BoxGeometry(w, 1.1, .08), woodM); b.position.set(0, .55, .04); g.add(p, b); g.position.set(x, 0, z); g.rotation.y = ry; p.receiveShadow = true; scene.add(g); };
-  wall(18, 0, -4.6, 0); wall(14, -8.6, 2.4, Math.PI / 2);
-  // kitchen tiles behind the oven
-  const tile = new THREE.Mesh(new THREE.PlaneGeometry(6.2, 2.4), new THREE.MeshStandardMaterial({ color: '#dfe9ee', roughness: .4 })); tile.position.set(3, 1.9, -4.55); scene.add(tile);
-  scene.add(new THREE.HemisphereLight('#ffe7c4', '#3a2a20', .9));
-  const key = new THREE.DirectionalLight('#fff1dc', 1.6); key.position.set(6, 12, 8); key.castShadow = true; key.shadow.mapSize.set(1024, 1024);
-  Object.assign(key.shadow.camera, { left: -11, right: 11, top: 10, bottom: -10, near: 1, far: 40 }); key.shadow.bias = -.0005; scene.add(key);
-  const lamps = [];
-  for (const [x, z] of [[-2.4, .6], [2.8, 3.4], [3.2, -1.4], [-4.8, -2.4]]) {
-    const shade = new THREE.Mesh(new THREE.ConeGeometry(.35, .3, 20, 1, true), new THREE.MeshStandardMaterial({ color: '#2d3a33', side: THREE.DoubleSide }));
-    const bulb = new THREE.Mesh(new THREE.SphereGeometry(.1, 12, 8), new THREE.MeshBasicMaterial({ color: '#ffd9a0' }));
-    const cord = new THREE.Mesh(new THREE.CylinderGeometry(.01, .01, 1.3), new THREE.MeshBasicMaterial({ color: '#222' }));
-    shade.position.set(x, 3.6, z); bulb.position.set(x, 3.45, z); cord.position.set(x, 4.35, z);
-    const pl = new THREE.PointLight('#ffc98a', 6, 7, 1.6); pl.position.set(x, 3.3, z);
-    scene.add(shade, bulb, cord, pl); lamps.push(pl);
+  scene.background = new THREE.Color('#141a26'); scene.fog = new THREE.Fog('#141a26', 26, 48);
+  const canvasTex = (draw, rep) => { const c = document.createElement('canvas'); c.width = c.height = 256; draw(c.getContext('2d')); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(...rep); t.colorSpace = THREE.SRGBColorSpace; return t; };
+  const wood = canvasTex(g => { for (let i = 0; i < 8; i++) { g.fillStyle = ['#8a5a3b', '#93623f', '#87573a', '#956641'][i % 4]; g.fillRect(0, i * 32, 256, 32); g.fillStyle = 'rgba(0,0,0,.14)'; g.fillRect(0, i * 32 + 31, 256, 1); g.fillRect((i * 97) % 256, i * 32, 1, 32); } }, [4, 4]);
+  const tiles = canvasTex(g => { for (let x = 0; x < 4; x++) for (let y = 0; y < 4; y++) { g.fillStyle = (x + y) % 2 ? '#e9ecef' : '#cfd6dc'; g.fillRect(x * 64, y * 64, 64, 64); } }, [8, 2.4]);
+  const floorD = new THREE.Mesh(new THREE.PlaneGeometry(16.6, 10.2), new THREE.MeshStandardMaterial({ map: wood, roughness: .75 })); floorD.rotation.x = -Math.PI / 2; floorD.position.set(0, 0, 2.1); floorD.receiveShadow = true;
+  const floorK = new THREE.Mesh(new THREE.PlaneGeometry(16.6, 4.6), new THREE.MeshStandardMaterial({ map: tiles, roughness: .5 })); floorK.rotation.x = -Math.PI / 2; floorK.position.set(0, .001, -5.3); floorK.receiveShadow = true;
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshStandardMaterial({ color: '#2b2f3a' })); ground.rotation.x = -Math.PI / 2; ground.position.y = -.02;
+  scene.add(floorD, floorK, ground);
+  for (const x of [-8.7, 8.7]) { const n = new THREE.Mesh(new THREE.PlaneGeometry(14, 4), new THREE.MeshBasicMaterial({ color: '#1d3156' })); n.position.set(x, 2, 1); n.rotation.y = x < 0 ? Math.PI / 2 : -Math.PI / 2; scene.add(n); }
+
+  const shade = o => o.traverse(m => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; if (m.isSkinnedMesh) m.frustumCulled = false; if (m.material) m.material = m.material.clone(); } });
+  const put = (name, x, y, z, ry = 0, s = F) => { const o = G[name].animations.length ? skClone(G[name].scene) : G[name].scene.clone(true); o.position.set(x, y, z); o.rotation.y = ry; o.scale.setScalar(s); shade(o); scene.add(o); return o; };
+  const piece = (file, node, x, y, z, ry = 0, s = F) => { const src = G[file].scene.getObjectByName(node); const o = src.clone(true); o.position.set(x, y, z); o.rotation.set(0, ry, 0); o.scale.setScalar(s); shade(o); scene.add(o); return o; };
+  // walls (KayKit modular pieces: 4 wide, 4 high, centred)
+  const WY = 2 * F;
+  [['wall', -6.4], ['wall', -3.2], ['wall_doorway', 0], ['wall_orderwindow_decorated', 3.2], ['wall', 6.4]].forEach(([n, x]) => piece('modular_walls', n, x, WY, -3));
+  [-6.4, -3.2, 0, 3.2, 6.4].forEach(x => piece('modular_walls', 'wall', x, WY, -7.5));
+  for (const sx of [-1, 1]) {
+    const x = sx * 8.1, ry = Math.PI / 2;
+    piece('modular_walls', 'wall', x, WY, -5.9, ry); piece('modular_walls', 'wall', x, WY, -4.3, ry);
+    piece('modular_walls', 'wall_window_closed', x, WY, -1.3, ry); piece('modular_walls', 'wall', x, WY, 1.9, ry); piece('modular_walls', sx < 0 ? 'wall_window_closed' : 'wall_window_open', x, WY, 5.1, ry);
   }
-  const ovenGlow = new THREE.PointLight('#ff7a2e', 0, 4, 1.5); ovenGlow.position.set(3.4, .9, -2.5); scene.add(ovenGlow);
-  const stoveGlow = new THREE.PointLight('#ff8a3c', 0, 3.5, 1.5); stoveGlow.position.set(-4.8, 1.3, -2.8); scene.add(stoveGlow);
+  // kitchen
+  piece('modular_kitchen_parts', 'kitchencounter_straight_A_backsplash', -2.2, .5 * F, -6.7);
+  piece('modular_kitchen_parts', 'kitchencounter_straight_A_decorated', -.6, 1.0 * F, -6.7);
+  piece('modular_kitchen_parts', 'kitchencounter_sink_backsplash', 1.0, .9 * F, -6.7);
+  put('stove', 2.7, 0, -6.6); put('extractor_hood', 2.7, 0, -6.6);
+  const oven = put('oven', 4.5, 0, -6.55); put('fridge', 6.6, 0, -6.6);
+  put('kitchen_cabinet', -2.2, 0, -6.95); put('kitchen_cabinet', -.6, 0, -6.95);
+  put('pot', 2.4, 1.2 * F, -6.55, 0, .45); put('pan', 3.1, 1.2 * F, -6.4, .5, .45); put('cutting_board', -.6, .82 * F + .05, -6.5, 0, .45);
+  const pass = put('counter_long', 3.2, 0, -3.95, 0, .7);
+  // store room (left side of the kitchen)
+  const shelf = put('shelf', -7.55, 0, -5.1, Math.PI / 2, .5);
+  put('crate_tomatoes', -6.2, 0, -6.6, 0, .42); put('crate_cheese', -4.9, 0, -6.6, .2, .42);
+  const kitMat = [new THREE.MeshStandardMaterial({ color: '#b98a55', roughness: .9 }), new THREE.MeshStandardMaterial({ color: '#d9c28f', roughness: .8 })];
+  const box = () => { const g = new THREE.Group(); const b = new THREE.Mesh(new THREE.BoxGeometry(.42, .22, .42), kitMat[0]); const t = new THREE.Mesh(new THREE.BoxGeometry(.43, .005, .1), kitMat[1]); t.position.y = .111; const l = new THREE.Mesh(new THREE.PlaneGeometry(.18, .1), new THREE.MeshBasicMaterial({ color: '#c8413a' })); l.position.set(0, 0, .211); g.add(b, t, l); b.castShadow = b.receiveShadow = true; g.position.y = .11; const w = new THREE.Group(); w.add(g); scene.add(w); return w; };
+  const kits = [[.05, -5.75], [.05, -5.25], [.82, -5.7], [.82, -4.85], [1.58, -5.45], [1.58, -4.8]].map(([y, z]) => { const k = box(); k.position.set(-7.25, y, z); k.rotation.y = Math.PI / 2; return k; });
+  // dining room
+  put('counter', -5.6, 0, -1.25, 0, .75); const book = put('book', -5.25, .75 + .22, -1.1, -.4, .5); const phone = put('phone', -6.05, .75 + .13, -1.0, .5, .28);
+  put('table', 3.4, 0, 3.0, 0, 1.0); put('chair', 2.45, 0, 3.0, Math.PI / 2, .9); put('chair', 4.35, 0, 3.0, -Math.PI / 2, .9);
+  put('table', -2.0, 0, 3.3, 0, .85); put('chair', -2.75, 0, 3.3, Math.PI / 2, .85); put('chair', -1.25, 0, 3.3, -Math.PI / 2, .85);
+  put('table', -2.0, 0, .2, 0, .85); put('chair', -2.75, 0, .2, Math.PI / 2, .85);
+  put('candle', 3.0, 1.0, 3.25, 0, .9); put('flowers_vase_creativetrio', -2.0, .85, 3.3, 0, 1.6); put('glass_wine', -1.7, .85, 3.2, 0, 1.4); put('bottle_wine', -2.3, .85, 3.5, 0, 1.4); 
+  put('plant_pothos_medium', 7.3, .45, -2.2, 0, .9); put('plant_pothos_medium', -7.3, .45, 5.6, 1, .9); put('houseplant_quaternius', 7.2, 0, 5.6, 0, 1.0);
+  put('menu_sign_wooden', 6.2, 0, 7.0, -.5, .9);
+  const pic = put('painting', -7.95, 2.0, 1.9, 0, 4); pic.rotation.set(Math.PI / 2, 0, -Math.PI / 2);
+  // lamps
+  const lamps = [];
+  for (const [x, z, c] of [[3.4, 3.0, '#ffc98a'], [-2.0, 3.3, '#ffc98a'], [-2.0, .2, '#ffc98a'], [-5.6, -1.2, '#ffd9a8'], [0, -5.2, '#f4f7ff'], [3.6, -5.2, '#f4f7ff'], [-5.6, -5.2, '#f4f7ff']]) {
+    const sh = new THREE.Mesh(new THREE.ConeGeometry(.32, .28, 20, 1, true), new THREE.MeshStandardMaterial({ color: '#2d3a33', side: THREE.DoubleSide }));
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(.09, 12, 8), new THREE.MeshBasicMaterial({ color: c }));
+    sh.position.set(x, 2.9, z); bulb.position.set(x, 2.77, z);
+    const pl = new THREE.PointLight(c, 5.5, 7.5, 1.5); pl.position.set(x, 2.6, z); scene.add(sh, bulb, pl); lamps.push(pl);
+  }
+  scene.add(new THREE.HemisphereLight('#ffe9cc', '#2a2420', .75));
+  const key = new THREE.DirectionalLight('#fff1dc', 1.3); key.position.set(5, 14, 10); key.castShadow = true; key.shadow.mapSize.set(2048, 2048);
+  Object.assign(key.shadow.camera, { left: -10, right: 10, top: 10, bottom: -10, near: 1, far: 40 }); key.shadow.bias = -.0004; scene.add(key);
+  const ovenGlow = new THREE.PointLight('#ff7a2e', 0, 3.5, 1.4); ovenGlow.position.set(4.5, .8, -5.6); scene.add(ovenGlow);
+  const candleLight = new THREE.PointLight('#ffb35c', 0, 2.2, 1.5); candleLight.position.set(3.4, 1.4, 2.8); scene.add(candleLight);
 
-  const put = (name, x, y, z, ry = 0, s = 1) => {
-    const o = (G[name].animations.length ? skClone(G[name].scene) : G[name].scene.clone(true));
-    o.position.set(x, y, z); o.rotation.y = ry; o.scale.setScalar(s);
-    o.traverse(m => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; if (m.isSkinnedMesh) m.frustumCulled = false; if (m.material) m.material = m.material.clone(); } });
-    scene.add(o); return o;
+  // the kitchen sign and the book's page (canvas sprites)
+  const sprite = (lines, w, h, bg, fg) => {
+    const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false })); s.renderOrder = 9;
+    s.draw = (ls, col = fg, b = bg) => { g.clearRect(0, 0, w, h); g.fillStyle = b; g.beginPath(); g.roundRect(4, 4, w - 8, h - 8, 24); g.fill(); g.textAlign = 'center'; ls.forEach((l, i) => { g.fillStyle = Array.isArray(col) ? col[i] : col; g.font = `${i ? 600 : 800} ${h * (ls.length > 2 ? .2 : .3)}px system-ui,sans-serif`; g.fillText(l, w / 2, h * ((i + 1) / (ls.length + 1)) + h * .08); }); tex.needsUpdate = true; };
+    s.draw(lines); scene.add(s); return s;
   };
-  // ── props
-  const F = .8;   // KayKit furniture scale
-  const P = {
-    stove: put('stove', -4.8, 0, -3.6, 0, F), menu: put('menu', -5.3, F * 1.2, -3.5, .3, .6), fridge: put('fridge', -6.7, 0, -3.6, 0, F),
-    shelf: put('shelf', -8.15, 0, -.2, Math.PI / 2, .55),
-    oven: put('oven', 3.4, 0, -3.6, 0, F), oven2: put('stove', 1.6, 0, -3.6, 0, F),
-    pass: put('counter_long', 3.2, 0, -.6, 0, F),
-    desk: put('counter', -2.4, 0, .6, 0, F), book: put('book', -2.15, F + .23, .55, -.5, .55),
-    door: put('door', -8.55, 0, 2.8, Math.PI / 2),
-    table: put('table', 2.8, 0, 3.4, 0, .9), chair1: put('chair', 2.0, 0, 3.4, Math.PI / 2, .9), chair2: put('chair', 3.6, 0, 3.4, -Math.PI / 2, .9),
-    stand: put('crate', -.8, 0, 4.2, 0, .35), phone: put('phone', -.8, .28 + .45 * .3, 4.2, .4, .3),
-  };
-  // warehouse: meal kits on the shelf, one appears at step 3
-  const kits = [];
-  for (const [y, z] of [[.03, -.9], [.03, -.3], [.82, -.8], [.82, .2], [1.62, -.5]]) { const k = put('pizza_box', -7.9, y, z, Math.PI / 2, .42); kits.push(k); }
-  const newKit = put('pizza_box', -4.6, F * 1.2, -3.3, 0, .42); newKit.visible = false;
-  const carryKit = put('pizza_box', 0, 0, 0, 0, .42); carryKit.visible = false;
-  // plates + pizzas on the pass; a third plate for the guest
-  const plates = [put('plate', 2.6, F, -.5, 0, .55), put('plate', 3.8, F, -.5, 0, .55)];
-  const pizzas = plates.map(p => { const z = put('pizza', p.position.x, F + .05, p.position.z, Math.random(), .14); z.visible = false; return z; });
-  const ticket = new THREE.Mesh(new THREE.PlaneGeometry(.32, .45), new THREE.MeshStandardMaterial({ color: '#fffdf5', side: THREE.DoubleSide })); ticket.visible = false; scene.add(ticket);
-  const envelope = new THREE.Mesh(new THREE.BoxGeometry(.5, .04, .34), new THREE.MeshStandardMaterial({ color: '#f3e7c9' })); envelope.visible = false; envelope.castShadow = true; scene.add(envelope);
-  // "Kitchen 1" sign + book text as canvas sprites
-  const sprite = (lines, w = 512, h = 160, bg = '#14213d', fg = '#fff') => {
-    const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d');
-    const draw = (ls, col = fg, b = bg) => { g.clearRect(0, 0, w, h); g.fillStyle = b; g.beginPath(); g.roundRect(4, 4, w - 8, h - 8, 26); g.fill(); g.fillStyle = col; g.textAlign = 'center'; g.font = `700 ${h * .36}px system-ui,sans-serif`; ls.forEach((l, i) => g.fillText(l, w / 2, h * (ls.length === 1 ? .62 : .42 + i * .36))); tex.needsUpdate = true; };
-    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
-    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false })); s.scale.set(w / h * .32, .32, 1); s.renderOrder = 9; draw(lines); s.draw = draw; scene.add(s); return s;
-  };
-  const sign = sprite(['KITCHEN 1', 'node'], 512, 190, '#2f6fde'); sign.position.set(2.5, 3.3, -4.4); sign.scale.multiplyScalar(1.6);
-  const bookNote = sprite(['2 pizzas'], 420, 130, '#fffdf5', '#14213d'); bookNote.position.set(-1.85, 1.28, .75); bookNote.visible = false; bookNote.scale.multiplyScalar(.7);
+  const sign = sprite(['KITCHEN 1'], 512, 120, '#2f6fde', '#fff'); sign.position.set(0, 2.95, -2.55); sign.scale.set(1.1, .26, 1); sign.material.depthTest = true;
+  const page = sprite(['Order book', 'nothing yet', ''], 420, 260, '#fffdf5', '#14213d'); page.material.depthTest = true; page.position.set(-5.6, 2.45, -2.55); page.scale.set(1.0, .62, 1);
+  const mkTicket = () => { const m = new THREE.Mesh(new THREE.PlaneGeometry(.18, .26), new THREE.MeshStandardMaterial({ color: '#fffdf5', side: THREE.DoubleSide })); m.visible = false; scene.add(m); return m; };
+  const rail = new THREE.Mesh(new THREE.BoxGeometry(.9, .04, .04), new THREE.MeshStandardMaterial({ color: '#888' })); rail.position.set(1.9, 1.85, -3.55); scene.add(rail);
+  const tickets = [mkTicket(), mkTicket()];
 
-  // ── characters
-  const C = {}, mixers = [], SKIN = { chef: '#f0c39a', manager: '#c98e62', waiter: '#f3cfb1', guest1: '#8d5a3b', guest2: '#e8b48c' };
-  // the model's 'Face' material is the eyes: make them dark, with a little shine
-  const actor = (name, x, z, ry) => {
-    const o = put(name, x, 0, z, ry, .5); o.traverse(m => { if (!m.isMesh) return; if (m.material?.name === 'Skin') m.material.color.set(SKIN[name]); if (m.material?.name === 'Face') { m.material.color.set('#1b1b1f'); m.material.roughness = .35; } }); const mx = new THREE.AnimationMixer(o); mixers.push(mx);
-    const clips = Object.fromEntries(G[name].animations.map(c => [c.name, mx.clipAction(c)]));
-    const a = { o, mx, clips, cur: null, name };
-    a.play = (n, { once = false, fade = .25, speed = 1 } = {}) => { const c = clips[n]; if (!c || a.cur === c) return; c.reset(); c.setEffectiveTimeScale(speed); c.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat); c.clampWhenFinished = once; c.fadeIn(fade).play(); if (a.cur) a.cur.fadeOut(fade); a.cur = c; };
-    a.play('Idle'); C[name] = a; return a;
-  };
-  actor('chef', -4.0, -2.3, Math.PI); actor('manager', -2.4, -.55, 0); actor('waiter', .6, 1.6, -.5);
-  actor('guest1', 2.0, 3.4, Math.PI / 2); actor('guest2', 3.6, 3.4, -Math.PI / 2);
-  for (const g of [C.guest1, C.guest2]) g.o.visible = false;
-  const anchors = { menu: P.menu, stove: P.stove, shelf: P.shelf, door: P.door, desk: P.desk, book: P.book, manager: C.manager.o, sign, chef: C.chef.o, oven: P.oven, pass: P.pass, phone: P.phone, waiter: C.waiter.o };
-  const tagOff = { menu: .7, stove: 1.3, shelf: 2.6, door: 3.0, desk: 1.3, book: .55, manager: 2.15, sign: .45, chef: 2.3, oven: 1.9, pass: 1.25, phone: .55, waiter: 2.1 };
+  // food
+  const plateAt = (x, y, z) => { const p = put('plate', x, y, z, 0, .45), pz = put('pizza', x, y + .04, z, Math.random() * 3, .12); p.visible = pz.visible = false; return { p, z: pz, set(x, y, z) { p.position.set(x, y, z); pz.position.set(x, y + .04, z); }, show(v) { p.visible = pz.visible = v; } }; };
+  const P1 = plateAt(2.8, .7, -3.95), P2 = plateAt(3.6, .7, -3.95), P3 = plateAt(3.2, .7, -3.95);
+  const kitC = box(); kitC.visible = false;
+  const candle2 = put('candle', 0, 0, 0, 0, .5); candle2.visible = false;
 
-  // ── particles (steam / smoke) and shards
-  const puffTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); const r = g.createRadialGradient(32, 32, 2, 32, 32, 30); r.addColorStop(0, 'rgba(255,255,255,.9)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
-  const puffs = [];
-  const puff = (x, y, z, col = '#ffffff', life = 1.6, size = .5) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: puffTex, color: col, transparent: true, depthWrite: false })); s.position.set(x, y, z); s.userData = { age: 0, life, size, vx: (Math.random() - .5) * .2, vz: (Math.random() - .5) * .2 }; scene.add(s); puffs.push(s); };
-  const shards = [];
-  const shatter = (x, y, z) => { for (let i = 0; i < 14; i++) { const m = new THREE.Mesh(new THREE.TetrahedronGeometry(.06 + Math.random() * .06), new THREE.MeshStandardMaterial({ color: '#f4f1ea' })); m.position.set(x, y, z); m.castShadow = true; m.userData = { v: V((Math.random() - .5) * 2.6, 1.2 + Math.random() * 1.8, (Math.random() - .2) * 2.6), r: V(Math.random() * 9, Math.random() * 9, 0) }; scene.add(m); shards.push(m); } };
-
-  // ── timeline: scheduled one-shot events + continuous tweens
+  // ───────── timeline helpers
   const ev = [], tw = [];
   const at = (t, f) => ev.push({ t, f, done: false });
   const tween = (t0, t1, f) => tw.push({ t0, t1, f });
-  const walk = (a, pts, t0, speed = 1.7, clip = 'Walk', end = 'Idle', carry) => {
-    let t = t0; const segs = [];
-    for (let i = 1; i < pts.length; i++) { const d = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); segs.push({ a: pts[i - 1], b: pts[i], t0: t, t1: t + d / speed }); t += d / speed; }
-    at(t0, () => a.play(clip, { speed: clip.startsWith('Run') ? 1 : 1.1 }));
-    for (const s of segs) tween(s.t0, s.t1, u => { a.o.position.x = lerp(s.a[0], s.b[0], u); a.o.position.z = lerp(s.a[1], s.b[1], u); a.o.rotation.y = Math.atan2(s.b[0] - s.a[0], s.b[1] - s.a[1]); if (carry) { carry.position.set(a.o.position.x + Math.sin(a.o.rotation.y) * .45, 1.05, a.o.position.z + Math.cos(a.o.rotation.y) * .45); carry.rotation.y = a.o.rotation.y; } });
-    at(t, () => a.play(end)); return t;
+  const pageAt = (t, lines, col) => at(t, () => page.draw(lines, col));
+
+  // ───────── people
+  const mixers = [], C = {};
+  for (const [k, [file, skin, [x, z, ry]]] of Object.entries(CAST)) {
+    const o = put(file, x, 0, z, ry, k === 'mia' ? .32 : CH);
+    o.traverse(m => { if (!m.isMesh || !m.material) return; if (m.material.name === 'Skin') m.material.color.set(skin); if (m.material.name === 'Face') { m.material.color.set('#1b1b1f'); m.material.roughness = .35; } });
+    const mx = new THREE.AnimationMixer(o); mixers.push(mx);
+    const clips = Object.fromEntries(G[file].animations.map(c => [c.name, mx.clipAction(c)]));
+    const a = { o, clips, cur: null };
+    a.play = (n, { once = false, fade = .3, speed = 1 } = {}) => { const c = clips[n]; if (!c || a.cur === c) return; c.reset(); c.setEffectiveTimeScale(speed); c.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat); c.clampWhenFinished = once; c.fadeIn(fade).play(); if (a.cur) a.cur.fadeOut(fade); a.cur = c; };
+    a.play('Idle'); C[k] = a;
+  }
+  for (const k of ['dad', 'mom', 'mia']) C[k].o.visible = false;
+  at(0, () => C.diner.play('SitDown', { once: true, fade: .01 }));
+
+  const walk = (a, pts, t0, speed = 1.3, clip = 'Walk', carry) => {
+    let t = t0;
+    for (let i = 1; i < pts.length; i++) {
+      const A = pts[i - 1], Bp = pts[i], d = Math.hypot(Bp[0] - A[0], Bp[1] - A[1]), t1 = t + d / speed;
+      tween(t, t1, u => { a.o.position.x = lerp(A[0], Bp[0], u); a.o.position.z = lerp(A[1], Bp[1], u); a.o.rotation.y = Math.atan2(Bp[0] - A[0], Bp[1] - A[1]); if (carry) carry(a); });
+      t = t1;
+    }
+    at(t0, () => a.play(clip, { speed: clip.startsWith('Run') ? 1 : .95 })); at(t, () => a.play('Idle'));
+    return t;
   };
-  const face = (a, ry, t0, d = .5) => { let from; tween(t0, t0 + d, u => { if (from === undefined) from = a.o.rotation.y; a.o.rotation.y = lerp(from, ry, ss(u)); }); };
-  const fly = (o, from, to, t0, t1, arc = 1.2, spin = 0) => { at(t0, () => { o.visible = true; }); tween(t0, t1, u => { const e = ss(u); o.position.set(lerp(from.x, to.x, e), lerp(from.y, to.y, e) + Math.sin(Math.PI * e) * arc, lerp(from.z, to.z, e)); o.rotation.y = spin * e; }); };
+  const turn = (a, ry, t0, d = .6) => { let from; tween(t0, t0 + d, u => { if (from === undefined) from = a.o.rotation.y; const dr = ((ry - from + Math.PI * 3) % (Math.PI * 2)) - Math.PI; a.o.rotation.y = from + dr * ss(u); }); };
+  const act = (a, clip, t, back = 'Idle', len = 1.4) => { at(t, () => a.play(clip, { once: true })); if (back) at(t + len, () => a.play(back)); };
+  const held = (o, dy = .78, fwd = .42) => a => { o.position.set(a.o.position.x + Math.sin(a.o.rotation.y) * fwd, dy, a.o.position.z + Math.cos(a.o.rotation.y) * fwd); o.rotation.y = a.o.rotation.y; };
+  const heldPlate = (P, dy = .98) => a => P.set(a.o.position.x + Math.sin(a.o.rotation.y) * .4, dy, a.o.position.z + Math.cos(a.o.rotation.y) * .4);
+  const glow = (t0, d) => tween(t0, t0 + d, u => { ovenGlow.intensity = 9 * Math.sin(Math.PI * u) * (1 + .15 * Math.sin(u * 80)); });
 
-  // 1–3: recipe, test kitchen, meal kit → warehouse
-  walk(C.chef, [[-4.0, -2.3], [-4.8, -2.5]], 5.2); at(6.4, () => { face(C.chef, Math.PI, 6.4); }); at(7.0, () => C.chef.play('PickUp', { once: true })); at(8.6, () => C.chef.play('Idle'));
-  tween(9.6, 13.4, u => { stoveGlow.intensity = 5 * Math.sin(Math.PI * u) * (1 + .15 * Math.sin(u * 60)); }); for (let k = 0; k < 8; k++) at(10 + k * .4, () => puff(-4.8 + Math.random() * .4, 1.2, -3.4, '#ffffff', 1.8, .6));
-  at(12.2, () => C.chef.play('Victory', { once: true })); at(13.6, () => C.chef.play('Idle'));
-  at(14.2, () => { newKit.visible = true; newKit.position.set(-4.6, F * 1.2, -3.3); newKit.scale.setScalar(.01); }); tween(14.2, 14.8, u => newKit.scale.setScalar(.42 * Math.max(.01, ss(u))));
-  fly(newKit, V(-4.6, F * 1.2, -3.3), V(-7.9, 1.62, .4), 15.4, 17.2, 1.4, Math.PI / 2);
-  // 4: order form flies in from the door to the desk
-  fly(envelope, V(-8.2, 1.6, 3.6), V(-2.4, F + .05, .75), 19.8, 22.2, 1.6, Math.PI * 2);
-  at(22.4, () => C.manager.play('PickUp', { once: true })); at(23.8, () => { envelope.visible = false; C.manager.play('Idle'); });
-  // 5: order book
-  at(25.8, () => { bookNote.visible = true; bookNote.draw(['2 pizzas']); }); tween(25.8, 26.3, u => bookNote.scale.set(420 / 130 * .17 * ss(u) + .001, .17 * ss(u) + .001, 1));
-  // 6: manager compares
-  face(C.manager, -.9, 29.4, .6); face(C.manager, .9, 30.4, .6); face(C.manager, 0, 31.4, .5);
-  at(30.0, () => bookNote.draw(['wanted 2', 'ready 0'], '#c8413a', '#fffdf5'));
-  // 7: ticket → Kitchen 1
-  fly(ticket, V(-2.3, 1.2, .5), V(2.5, 2.7, -4.3), 32.8, 34.8, 1.4, Math.PI * 4); at(35.2, () => { ticket.visible = false; sign.draw(['KITCHEN 1 ✓', 'node'], '#fff', '#2e7a4d'); });
-  // 8: chef → shelf, kit → oven
-  walk(C.chef, [[-4.8, -2.5], [-7.3, -.4]], 36.8, 2.0);
-  at(38.0, () => { face(C.chef, -Math.PI / 2, 38.0, .3); C.chef.play('PickUp', { once: true }); }); at(38.9, () => { kits[1].visible = false; carryKit.visible = true; });
-  const back = walk(C.chef, [[-7.3, -.4], [-1, -2.0], [3.4, -2.0]], 39.6, 2.6, 'Walk_Carry', 'Idle', carryKit);
-  at(back, () => { face(C.chef, Math.PI, back, .3); C.chef.play('PickUp', { once: true }); }); at(back + .7, () => { carryKit.visible = false; });
-  tween(back + .6, back + 3.4, u => { ovenGlow.intensity = 9 * Math.sin(Math.PI * u) * (1 + .2 * Math.sin(u * 70)); });
-  // 9: pizzas pop onto the plates
-  pizzas.forEach((z, i) => { at(44.2 + i * .5, () => { z.visible = true; }); tween(44.2 + i * .5, 44.7 + i * .5, u => z.scale.setScalar(.14 * Math.max(.01, ss(u)))); for (let k = 0; k < 4; k++) at(44.6 + i * .5 + k * .35, () => puff(z.position.x, 1.25, z.position.z, '#ffffff', 1.4, .35)); });
-  at(45.2, () => { C.chef.play('Victory', { once: true }); bookNote.draw(['wanted 2', 'ready 2'], '#2e7a4d', '#fffdf5'); }); at(47, () => C.chef.play('Idle'));
-  // 10: guests arrive and sit; the phone rings; waiter serves pizza 1
-  at(48.6, () => { for (const g of [C.guest1, C.guest2]) { g.o.visible = true; g.play('SitDown', { once: true, fade: .01 }); } });
-  tween(49.0, 50.4, u => { P.phone.rotation.z = Math.sin(u * 60) * .12 * (1 - u); });
-  const served = walk(C.waiter, [[.6, 1.6], [2.6, .75]], 50.4, 2.2);
-  at(served, () => { face(C.waiter, Math.PI, served, .25); });
-  at(served + .3, () => { pizzas[0].userData.carried = true; plates[0].userData.carried = true; });
-  const toTable = walk(C.waiter, [[2.6, .75], [2.8, 2.5]], served + .6, 1.8, 'Walk_Carry', 'Idle', plates[0]);
-  tween(served + .6, toTable, () => { pizzas[0].position.set(plates[0].position.x, plates[0].position.y + .05, plates[0].position.z); });
-  at(toTable, () => { plates[0].position.set(2.6, .9, 3.25); pizzas[0].position.set(2.6, .95, 3.25); });
-  walk(C.waiter, [[2.8, 2.5], [.4, 1.4]], toTable + .6, 1.8);
-  // TWIST: the second plate slides off the pass and shatters
-  tween(55.0, 55.7, u => { plates[1].position.z = -.5 + ss(u) * .62; pizzas[1].position.z = plates[1].position.z; });
-  tween(55.7, 56.4, u => { const e = u * u; plates[1].position.set(3.8, F - e * (F - .05), .12 + u * .5); plates[1].rotation.x = e * 1.6; pizzas[1].position.set(3.8, F + .05 - e * F, .12 + u * .55); pizzas[1].rotation.x = e * 2.4; });
-  at(56.4, () => { plates[1].visible = false; shatter(3.8, .08, .62); pizzas[1].traverse(m => { if (m.isMesh) m.material.color.set('#2a1c14'); }); pizzas[1].position.set(3.6, .03, .8); pizzas[1].rotation.set(0, 0, 0); for (let k = 0; k < 10; k++) at(56.5 + k * .25, () => puff(3.6, .25, .8, '#5a5a5a', 2.4, .7)); C.chef.play('Defeat', { once: true }); });
-  at(58.4, () => C.guest2.play('Defeat', { once: true, fade: .4 }));
-  // the manager checks
-  at(61.6, () => bookNote.draw(['wanted 2', 'ready 1'], '#c8413a', '#fffdf5')); face(C.manager, -.7, 62.4, .5);
-  // the fix: chef runs, new kit, oven, new pizza → guest 2
-  const k2 = walk(C.chef, [[3.4, -2.0], [-1, -2.0], [-7.3, -.4]], 64.6, 4.6, 'Run');
-  at(k2, () => { kits[2].visible = false; carryKit.visible = true; });
-  const b2 = walk(C.chef, [[-7.3, -.4], [-1, -2.0], [3.4, -2.0]], k2 + .2, 4.6, 'Run_Carry', 'Idle', carryKit);
-  at(b2, () => { carryKit.visible = false; face(C.chef, Math.PI, b2, .2); });
-  tween(b2, b2 + 1.6, u => { ovenGlow.intensity = 10 * Math.sin(Math.PI * u); });
-  const p3 = put('plate', 3.8, F, -.5, 0, .55), z3 = put('pizza', 3.8, F + .05, -.5, 1, .14); p3.visible = z3.visible = false;
-  at(b2 + 1.2, () => { p3.visible = z3.visible = true; bookNote.draw(['wanted 2', 'ready 2'], '#2e7a4d', '#fffdf5'); }); tween(b2 + 1.2, b2 + 1.7, u => z3.scale.setScalar(.14 * Math.max(.01, ss(u))));
-  at(b2 + 1.6, () => { C.chef.play('Victory', { once: true }); });
-  tween(b2 + 1.8, b2 + 3.4, u => { const e = ss(u); p3.position.set(lerp(3.8, 3.05, e), lerp(F, .9, e) + Math.sin(Math.PI * e) * .5, lerp(-.5, 3.45, e)); z3.position.set(p3.position.x, p3.position.y + .05, p3.position.z); });
-  at(b2 + 3.4, () => { C.guest2.play('Victory', { once: true, fade: .3 }); });
+  // particles
+  const puffTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); const r = g.createRadialGradient(32, 32, 2, 32, 32, 30); r.addColorStop(0, 'rgba(255,255,255,.9)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
+  const puffs = [], shards = [];
+  const puff = (x, y, z, col = '#fff', life = 1.6, size = .35) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: puffTex, color: col, transparent: true, depthWrite: false })); s.position.set(x, y, z); s.userData = { age: 0, life, size, vx: (Math.random() - .5) * .15, vz: (Math.random() - .5) * .15 }; scene.add(s); puffs.push(s); };
+  const steam = (t, x, y, z, n = 5) => { for (let k = 0; k < n; k++) at(t + k * .45, () => puff(x + (Math.random() - .5) * .2, y, z)); };
+  const shatter = (x, y, z) => { for (let i = 0; i < 16; i++) { const m = new THREE.Mesh(new THREE.TetrahedronGeometry(.04 + Math.random() * .05), new THREE.MeshStandardMaterial({ color: '#f4f1ea' })); m.position.set(x, y, z); m.castShadow = true; m.userData = { v: V((Math.random() - .5) * 2.4, 1 + Math.random() * 1.6, (Math.random() - .5) * 2.4), r: V(Math.random() * 9, Math.random() * 9, 0) }; scene.add(m); shards.push(m); } };
 
-  // ── tags (HTML, app font): big restaurant name + small Kubernetes name
-  const tagEls = LABELS.map(([t, k, big, small]) => { const d = document.createElement('div'); d.className = 'mtag'; d.innerHTML = `<b></b><small></small>`; d.firstChild.textContent = big; d.lastChild.textContent = small; d.style.opacity = 0; tagsEl.appendChild(d); return { t, k, d }; });
-  const tmp = new THREE.Vector3(), END_TAGS = ['shelf', 'desk', 'chef', 'pass', 'waiter', 'phone'];
+  // ───────── the story
+  act(C.leo, 'PickUp', T.leo + 2.0); turn(C.sofia, -.6, T.sofia + 2.5); turn(C.sofia, .6, T.sofia + 4.5); turn(C.sofia, .3, T.sofia + 6.5);
+  act(C.marco, 'PickUp', T.marco + 1.5, 'Idle', 1.6); steam(T.marco + 2, 2.6, 1.4, -6.4, 7);
+  glow(T.oven + 1.5, 4);
+  tween(T.store + .5, T.store + 3, u => { kits.forEach(k => k.scale.setScalar(1 + .08 * Math.sin(u * Math.PI * 4) * (1 - u))); });
+  const ninaHome = [2.2, -1.9];
+  const nw = walk(C.nina, [ninaHome, [3.2, -2.4]], T.nina + 1.0, 1.2); turn(C.nina, Math.PI, nw); const nb = walk(C.nina, [[3.2, -2.4], [3.4, .4], ninaHome], nw + 1.6, 1.2); turn(C.nina, -.4, nb);
+  // the call
+  tween(T.call + .3, T.call + 2.2, u => { phone.rotation.z = Math.sin(u * 70) * .15 * (1 - u); });
+  act(C.leo, 'PickUp', T.call + 2.4, 'Idle', 1.8);
+  pageAt(T.write + 1.5, ['Order book', 'Margherita', 'wanted 2'], ['#14213d', '#14213d', '#14213d']);
+  // Sofia compares, then hangs the ticket in Kitchen 1
+  const s1 = walk(C.sofia, [[-3.4, -1.6], [-4.6, -1.7]], T.compare + .5, 1.1); turn(C.sofia, -1.2, s1); pageAt(T.compare + 2.5, ['Margherita', 'wanted 2', 'ready 0'], ['#14213d', '#14213d', '#c8413a']);
+  const s2 = walk(C.sofia, [[-4.6, -1.7], [-.4, -2.2], [0, -3.6], [1.9, -3.9]], T.ticket + .3, 1.4); turn(C.sofia, Math.PI, s2);
+  act(C.sofia, 'PickUp', s2 + .3); at(s2 + 1.1, () => { tickets[0].visible = true; tickets[0].position.set(1.75, 1.7, -3.57); });
+  walk(C.sofia, [[1.9, -3.9], [0, -3.6], [-.4, -2.2], [-3.4, -1.6]], s2 + 2.4, 1.4);
+  // Marco fetches a kit and bakes
+  const m1 = walk(C.marco, [[2.2, -5.0], [-5.0, -4.9], [-6.5, -5.2]], T.fetch + .4, 1.45); turn(C.marco, -Math.PI / 2, m1, .4);
+  act(C.marco, 'PickUp', m1 + .4); at(m1 + 1.0, () => { kits[1].visible = false; kitC.visible = true; });
+  const m2 = walk(C.marco, [[-6.5, -5.2], [-4.6, -4.9], [4.5, -4.9]], Math.max(m1 + 1.8, T.bake + .2), 1.6, 'Walk_Carry', held(kitC)); turn(C.marco, Math.PI, m2, .3);
+  act(C.marco, 'PickUp', m2 + .3); at(m2 + .8, () => { kitC.visible = false; }); glow(m2 + .9, 4.5);
+  // two pizzas onto the serving counter
+  const pz = Math.max(m2 + 5.6, T.pods + .4);
+  at(pz, () => { P1.show(true); P1.set(4.5, .98, -4.5); });
+  const m3 = walk(C.marco, [[4.5, -4.9], [3.0, -4.6]], pz, 1.2, 'Walk_Carry', heldPlate(P1)); turn(C.marco, 0, m3, .3);
+  at(m3 + .4, () => P1.set(2.8, .7, -3.95)); steam(m3 + .4, 2.8, .9, -3.95, 4);
+  const m4 = walk(C.marco, [[3.0, -4.6], [4.5, -4.9]], m3 + 1.0, 1.4); at(m4 + .3, () => { P2.show(true); P2.set(4.5, .98, -4.5); });
+  const m5 = walk(C.marco, [[4.5, -4.9], [3.7, -4.6]], m4 + .6, 1.2, 'Walk_Carry', heldPlate(P2)); turn(C.marco, 0, m5, .3);
+  at(m5 + .4, () => P2.set(3.6, .7, -3.95)); steam(m5 + .4, 3.6, .9, -3.95, 4);
+  act(C.marco, 'Victory', m5 + 1.0, 'Idle', 2.2);
+  pageAt(T.calm + 1.4, ['Margherita', 'wanted 2', 'ready 2'], ['#14213d', '#14213d', '#2e7a4d']);
+  // the family
+  for (const [k, path, sit] of [['dad', [[5.6, 8.4], [5.4, 5.0], [2.45, 3.6], [2.45, 3.0]], Math.PI / 2], ['mom', [[6.3, 8.6], [6.0, 5.0], [4.35, 3.6], [4.35, 3.0]], -Math.PI / 2], ['mia', [[6.0, 9.2], [5.8, 4.4], [5.2, 2.4]], -1.9]]) {
+    at(T.family + .2, () => { C[k].o.visible = true; });
+    const e = walk(C[k], path, T.family + .3 + (k === 'mia' ? .6 : 0), k === 'mia' ? 1.7 : 1.3);
+    turn(C[k], sit, e, .4);
+    if (k !== 'mia') at(e + .5, () => C[k].play('SitDown', { once: true })); else act(C.mia, 'Victory', e + .6, 'Idle', 2.2);
+  }
+  // the order: Nina takes pizza 1 from the serving window
+  const n1 = walk(C.nina, [ninaHome, [2.8, -2.35]], T.order + 2.5, 1.2); turn(C.nina, Math.PI, n1, .3); act(C.nina, 'PickUp', n1 + .3);
+  at(n1 + 1.0, () => P1.set(2.8, 1.0, -2.75));
+  const n2 = walk(C.nina, [[2.8, -2.35], [3.2, -.4], [3.35, 1.7]], Math.max(n1 + 1.4, T.carry + .2), .8, 'Walk_Carry', heldPlate(P1, 1.0));
+  // the crash
+  const cr = T.crash + .4;
+  at(cr, () => { C.nina.play('Defeat', { once: true, fade: .15 }); });
+  tween(cr, cr + .9, u => { const e = u * u; P1.p.position.set(3.4, 1.0 - e * .95, 1.95 + u * .7); P1.p.rotation.x = e * 2.2; P1.z.position.set(3.45, 1.04 - e * 1.0, 2.0 + u * .9); P1.z.rotation.x = e * Math.PI; });
+  at(cr + .9, () => { P1.p.visible = false; shatter(3.4, .06, 2.6); P1.z.position.set(3.5, .02, 2.9); for (let k = 0; k < 4; k++) at(cr + 1 + k * .3, () => puff(3.4, .15, 2.7, '#d8d0c4', 1.6, .3)); });
+  at(T.gone + .5, () => C.nina.play('Idle'));
+  act(C.mia, 'Defeat', T.gone + 1.2, null);
+  pageAt(T.sofia2 + 2.5, ['Margherita', 'wanted 2', 'ready 1'], ['#14213d', '#14213d', '#c8413a']);
+  turn(C.sofia, -1.4, T.sofia2 + 1.0);
+  // healing: a new ticket, a new kit, a new pizza
+  const s3 = walk(C.sofia, [[-3.4, -1.6], [-.4, -2.2], [0, -3.6], [1.9, -3.9]], T.heal + 1.6, 1.6); turn(C.sofia, Math.PI, s3); act(C.sofia, 'PickUp', s3 + .3);
+  at(s3 + 1.0, () => { tickets[1].visible = true; tickets[1].position.set(2.05, 1.7, -3.57); }); walk(C.sofia, [[1.9, -3.9], [0, -3.6], [-.4, -2.2], [-3.4, -1.6]], s3 + 2.4, 1.6);
+  const g1 = walk(C.marco, [[3.7, -4.6], [-5.0, -4.9], [-6.5, -5.2]], T.again + .3, 2.6, 'Run'); turn(C.marco, -Math.PI / 2, g1, .3);
+  at(g1 + .5, () => { kits[3].visible = false; kitC.visible = true; });
+  const g2 = walk(C.marco, [[-6.5, -5.2], [-4.6, -4.9], [4.5, -4.9]], g1 + .9, 2.6, 'Run_Carry', held(kitC)); turn(C.marco, Math.PI, g2, .3);
+  act(C.marco, 'PickUp', g2 + .2); at(g2 + .7, () => { kitC.visible = false; }); glow(g2 + .8, 3);
+  const rz = Math.max(g2 + 3.8, T.ready + .3);
+  at(rz, () => { P3.show(true); P3.set(4.5, .98, -4.5); });
+  const g3 = walk(C.marco, [[4.5, -4.9], [3.2, -4.6]], rz, 1.2, 'Walk_Carry', heldPlate(P3)); turn(C.marco, 0, g3, .3);
+  at(g3 + .4, () => P3.set(3.2, .7, -3.95)); steam(g3 + .4, 3.2, .9, -3.95, 4);
+  pageAt(T.ready + 3.0, ['Margherita', 'wanted 2', 'ready 2'], ['#14213d', '#14213d', '#2e7a4d']);
+  // Nina serves the new pizza, with a candle
+  const v1 = walk(C.nina, [[3.35, 1.7], [3.2, -2.35]], T.serve + .1, 1.6); turn(C.nina, Math.PI, v1, .3);
+  at(v1 + .5, () => { candle2.visible = true; });
+  const candleOn = a => { heldPlate(P3, 1.0)(a); candle2.position.set(P3.p.position.x, 1.06, P3.p.position.z); };
+  const v2 = walk(C.nina, [[3.2, -2.35], [3.4, 1.6]], v1 + .8, 1.1, 'Walk_Carry', candleOn); turn(C.nina, 0, v2, .3);
+  at(v2 + .4, () => { P3.set(3.4, 1.0, 2.75); candle2.position.set(3.4, 1.06, 2.75); }); tween(v2 + .4, v2 + 1.5, u => { candleLight.intensity = 3 * u; });
+  act(C.mia, 'Victory', T.smile + .6, 'Idle', 2.4); act(C.mia, 'Victory', T.smile + 3.4, 'Idle', 2.4);
+  act(C.marco, 'Victory', T.smile + 1.2, 'Idle', 2.2);
 
-  let last = 0;
+  // ───────── name cards (HTML): name, what they are, Kubernetes name
+  const anchors = { leo: [C.leo.o, 2.25], book: [book, .5], sofia: [C.sofia.o, 2.2], sign: [sign, .35], marco: [C.marco.o, 2.45], oven: [oven, 1.75], shelf: [shelf, 2.3], window: [pass, 1.9],
+    nina: [C.nina.o, 2.15], phone: [phone, .45], pass: [pass, 1.25], mia: [C.mia.o, 1.35] };
+  const cardEls = {};
+  for (const [k, [anc, name, what, k8s]] of Object.entries(CARDS)) { const d = document.createElement('div'); d.className = 'mtag'; d.innerHTML = '<b></b><i></i><small></small>'; d.children[0].textContent = name; d.children[1].textContent = what; d.children[2].textContent = k8s; d.style.opacity = 0; tagsEl.appendChild(d); cardEls[k] = { d, anc }; }
+  const tmp = new THREE.Vector3();
+
   return {
     scene,
     step(t, dt) {
       for (const e of ev) if (!e.done && t >= e.t) { e.done = true; e.f(); }
       for (const w of tw) if (t >= w.t0 && !w.fin) { w.f(clamp((t - w.t0) / Math.max(1e-3, w.t1 - w.t0))); if (t >= w.t1) w.fin = true; }
       for (const m of mixers) m.update(dt);
-      for (let i = puffs.length - 1; i >= 0; i--) { const s = puffs[i], u = s.userData; u.age += dt; const k = u.age / u.life; s.position.y += dt * .5; s.position.x += u.vx * dt; s.position.z += u.vz * dt; s.scale.setScalar(u.size * (.4 + k)); s.material.opacity = .55 * (1 - k); if (k >= 1) { scene.remove(s); puffs.splice(i, 1); } }
-      for (const m of shards) { const u = m.userData; if (m.position.y > .03) { u.v.y -= 9.8 * dt; m.position.addScaledVector(u.v, dt); m.rotation.x += u.r.x * dt; m.rotation.y += u.r.y * dt; } else { m.position.y = .03; u.v.multiplyScalar(.8); m.position.addScaledVector(u.v.setY(0), dt); } }
-      lamps.forEach((l, i) => { l.intensity = 6 * (t > 55.9 && t < 58 ? .55 : 1) * (1 + .03 * Math.sin(t * 3 + i)); });
-      last = t;
+      for (let i = puffs.length - 1; i >= 0; i--) { const s = puffs[i], u = s.userData; u.age += dt; const k = u.age / u.life; s.position.y += dt * .45; s.position.x += u.vx * dt; s.position.z += u.vz * dt; s.scale.setScalar(u.size * (.4 + k)); s.material.opacity = .5 * (1 - k); if (k >= 1) { scene.remove(s); puffs.splice(i, 1); } }
+      for (const m of shards) { const u = m.userData; if (m.position.y > .03) { u.v.y -= 9.8 * dt; m.position.addScaledVector(u.v, dt); m.rotation.x += u.r.x * dt; m.rotation.y += u.r.y * dt; } else { m.position.y = .03; u.v.multiplyScalar(.85); m.position.addScaledVector(u.v.setY(0), dt); } }
+      const dim = t > T.crash + 1.2 && t < T.sofia2 ? .55 : 1;
+      lamps.forEach((l, i) => { l.intensity = 5.5 * dim * (1 + .03 * Math.sin(t * 2 + i)); });
+      if (candle2.visible && t > T.serve) candleLight.intensity = Math.min(3, candleLight.intensity) * (1 + .08 * Math.sin(t * 13));
     },
     tagsAt(cam, t, wrap) {
-      const W = wrap.clientWidth, H = wrap.clientHeight;
-      for (const g of tagEls) {
-        const on = (t >= g.t && t < g.t + 6.5 && t < 54.8) || (t >= 71.5 && END_TAGS.includes(g.k));
-        if (!on) { g.d.style.opacity = 0; continue; }
-        const o = anchors[g.k]; o.getWorldPosition(tmp); tmp.y += (tagOff[g.k] || 1) * (o.isSprite ? 0 : 1) + (o.isSprite ? .32 : 0); tmp.project(cam);
-        const vis = tmp.z < 1 && tmp.x > -1.1 && tmp.x < 1.1 && tmp.y > -1.1 && tmp.y < 1.1;
-        g.d.style.opacity = vis ? Math.min(1, (t - (t >= 71.5 ? 71.5 : g.t)) / .4) : 0;
-        const px = clamp((tmp.x + 1) / 2 * W, 60, W - 60), py = clamp((1 - tmp.y) / 2 * H, 44, H - 4);
-        g.d.style.transform = `translate(${px.toFixed(1)}px, ${py.toFixed(1)}px) translate(-50%, -100%)`;
+      const Wd = wrap.clientWidth, H = wrap.clientHeight; let cur = TL.list[0]; for (const s of TL.list) if (t >= s.t) cur = s;
+      for (const [k, c] of Object.entries(cardEls)) {
+        let on = (cur.tags || []).includes(k) && t > cur.t + 1.4;
+        if (cur.id === 'recap') { const L = cur.tags, i = L.indexOf(k), step = (cur.d - 3) / L.length; on = i >= 0 && t >= cur.t + 2 + i * step && t < cur.t + 2 + (i + 1) * step; }
+        if (!on) { c.d.style.opacity = 0; continue; }
+        const [o, off] = anchors[c.anc]; o.getWorldPosition(tmp); tmp.y += off; tmp.project(cam);
+        const vis = tmp.z < 1 && Math.abs(tmp.x) < 1.15 && Math.abs(tmp.y) < 1.15;
+        const px = clamp((tmp.x + 1) / 2 * Wd, 70, Wd - 70), py = clamp((1 - tmp.y) / 2 * H, 64, H - 6);
+        c.d.style.opacity = vis ? 1 : 0; c.d.style.transform = `translate(${px.toFixed(1)}px, ${py.toFixed(1)}px) translate(-50%, -100%)`;
       }
     },
-    filter: t => t > 56.3 && t < 61.2 ? `saturate(${t < 58 ? .25 : .25 + (t - 58) / 3.2 * .75}) contrast(1.08)` : 'none',
-    dispose() { tagsEl.innerHTML = ''; scene.traverse(o => { if (o.isMesh) { o.geometry?.dispose?.(); } }); },
+    filter: t => t > T.crash + 1.0 && t < T.sofia2 + 1.5 ? `saturate(${t < T.gone + 4 ? .3 : .3 + (t - T.gone - 4) / 6 * .7}) contrast(1.06)` : 'none',
+    dispose() { tagsEl.innerHTML = ''; },
   };
 }
