@@ -17,8 +17,8 @@
   ],
   "traps": [
    {
-    "dont": "`k set image deploy/api api=nginx:1.27 -n app`",
-    "do": "`k set image deploy/api nginx=nginx:1.27 -n app`. Left of = is the container (nginx)."
+    "dont": "`k set image deployment/api api=nginx:1.27 -n app`",
+    "do": "`k set image deployment/api nginx=nginx:1.27 -n app`. Left of = is the container (nginx)."
    },
    {
     "dont": "`k get pods` without `-n app`",
@@ -37,15 +37,15 @@
    },
    {
     "need": "deployment not deleted",
-    "cmd": "k get deploy api -n app",
+    "cmd": "k get deployment api -n app",
     "see": "api 1/1"
    }
   ],
   "memorise": [
    "k get pods -n app",
    "k describe pod <pod> -n app   # Events: ImagePullBackOff, bad tag",
-   "k set image deploy/api nginx=nginx:1.27 -n app",
-   "k rollout status deploy/api -n app"
+   "k set image deployment/api nginx=nginx:1.27 -n app",
+   "k rollout status deployment/api -n app"
   ],
   "minutes": 2
  },
@@ -58,7 +58,7 @@
    },
    {
     "q": "Do not delete the deployment",
-    "means": "Fix the pod template with k edit deploy"
+    "means": "Fix the pod template with k edit deployment"
    },
    {
     "q": "The container should run",
@@ -68,11 +68,11 @@
   "traps": [
    {
     "dont": "`k logs <pod> -n app` without `--previous`",
-    "do": "`k logs <pod> -n app --previous`, because it shows the crashed container's output, not the fresh, still empty one"
+    "do": "`k logs <pod> --previous -n app`, because it shows the crashed container's output, not the fresh, still empty one"
    },
    {
-    "dont": "`k edit pod <pod> -n app`",
-    "do": "`k edit deploy api -n app`, because the deployment owns the pod and replaces any pod you edit"
+    "dont": "`k edit pod/<pod> -n app`",
+    "do": "`k edit deployment/api -n app`, because the deployment owns the pod and replaces any pod you edit"
    },
    {
     "dont": "Misaligning the items of the `command:` list in vim",
@@ -87,15 +87,15 @@
    },
    {
     "need": "container runs sleep 3600",
-    "cmd": "k get deploy api -n app -o yaml | grep -A3 command",
+    "cmd": "k get deployment api -o yaml -n app | grep -A3 command",
     "see": "sleep 3600"
    }
   ],
   "memorise": [
    "k get pods -n app",
-   "k logs <pod> -n app --previous",
+   "k logs <pod> --previous -n app",
    "k describe pod <pod> -n app",
-   "k edit deploy api -n app   # exit 1 → sleep 3600",
+   "k edit deployment/api -n app  # exit 1 → sleep 3600",
    "k get pods -n app"
   ],
   "minutes": 3
@@ -114,12 +114,12 @@
   ],
   "traps": [
    {
-    "dont": "`k set resources deploy api -n app --limits=cpu=100m`",
-    "do": "`k set resources deploy api -n app --requests=cpu=100m`, because the scheduler places pods by their requests, not their limits"
+    "dont": "`k set resources deployment/api --limits=cpu=100m -n app`",
+    "do": "`k set resources deployment/api --requests=cpu=100m -n app`, because the scheduler places pods by their requests, not their limits"
    },
    {
-    "dont": "`k edit pod <pod> -n app`",
-    "do": "`k set resources deploy api -n app ...`, because the deployment owns the pod and recreates it from its template"
+    "dont": "`k edit pod/<pod> -n app`",
+    "do": "`k set resources deployment/api ... -n app`, because the deployment owns the pod and recreates it from its template"
    },
    {
     "dont": "Checking `k get pods -n app` once, right after the fix",
@@ -134,14 +134,14 @@
    },
    {
     "need": "request is 100m",
-    "cmd": "k get deploy api -n app -o jsonpath='{..resources}'",
+    "cmd": "k get deployment api -o jsonpath='{..resources}' -n app",
     "see": "\"requests\":{\"cpu\":\"100m\"}"
    }
   ],
   "memorise": [
    "k get pods -n app",
    "k describe pod <pod> -n app   # Insufficient cpu",
-   "k set resources deploy api -n app --requests=cpu=100m",
+   "k set resources deployment/api --requests=cpu=100m -n app",
    "k get pods -n app"
   ],
   "minutes": 2
@@ -257,13 +257,13 @@
    },
    {
     "q": "Do not delete or recreate the service",
-    "means": "Change it in place: k set selector or k edit svc"
+    "means": "Change it in place: k set selector or k edit service"
    }
   ],
   "traps": [
    {
-    "dont": "`k label pod <pod> -n web ...` to match the service",
-    "do": "`k set selector svc backend-svc app=backend -n web`, because the service selector is wrong, not the pods"
+    "dont": "`k label pod <pod> ... -n web` to match the service",
+    "do": "`k set selector service/backend-svc app=backend -n web`, because the service selector is wrong, not the pods"
    },
    {
     "dont": "Adding `pod-template-hash=...` to the service selector",
@@ -288,9 +288,9 @@
   ],
   "memorise": [
    "k get endpoints backend-svc -n web",
-   "k describe svc backend-svc -n web   # Selector",
-   "k get pods -n web --show-labels",
-   "k set selector svc backend-svc app=backend -n web",
+   "k describe service backend-svc -n web  # Selector",
+   "k get pods --show-labels -n web",
+   "k set selector service/backend-svc app=backend -n web",
    "k exec client -n web -- wget -qO- -T 3 backend-svc"
   ],
   "minutes": 3
@@ -304,17 +304,17 @@
    },
    {
     "q": "without recreating the service",
-    "means": "k edit svc and change targetPort only"
+    "means": "k edit service and change targetPort only"
    }
   ],
   "traps": [
    {
-    "dont": "Changing `port:` in `k edit svc backend-svc -n web`",
+    "dont": "Changing `port:` in `k edit service/backend-svc -n web`",
     "do": "Change `targetPort:` to 80, because targetPort is the pod's port (nginx listens on 80); port is the service's own port"
    },
    {
-    "dont": "`k delete svc backend-svc -n web`, then `k expose` again",
-    "do": "`k edit svc backend-svc -n web`, because the task forbids recreating the service"
+    "dont": "`k delete service backend-svc -n web`, then `k expose` again",
+    "do": "`k edit service/backend-svc -n web`, because the task forbids recreating the service"
    },
    {
     "dont": "Seeing endpoints listed and assuming the service works",
@@ -336,7 +336,7 @@
   "memorise": [
    "k get endpoints backend-svc -n web   # IP:wrongport",
    "k exec client -n web -- wget -qO- -T 3 backend-svc",
-   "k edit svc backend-svc -n web   # targetPort: 80",
+   "k edit service/backend-svc -n web  # targetPort: 80",
    "k exec client -n web -- wget -qO- -T 3 backend-svc"
   ],
   "minutes": 2
@@ -405,7 +405,7 @@
     "do": "Fix the scheduler, because `k describe pod test` shows `Node: <none>`: nothing is placing pods, the pod itself is fine"
    },
    {
-    "dont": "`k edit pod kube-scheduler-controlplane -n kube-system`",
+    "dont": "`k edit pod/kube-scheduler-controlplane -n kube-system`",
     "do": "`vim /etc/kubernetes/manifests/kube-scheduler.yaml` (`kube-schedulerx` to `kube-scheduler`), because it is a static pod built from that file"
    },
    {
@@ -476,12 +476,12 @@
    },
    {
     "need": "policies present, old untouched",
-    "cmd": "k get netpol -n web",
+    "cmd": "k get networkpolicy -n web",
     "see": "deny-all and allow-client"
    }
   ],
   "memorise": [
-   "k get pods -n web --show-labels   # backend app=backend, client run=client",
+   "k get pods --show-labels -n web   # backend app=backend, client run=client",
    "docs: 'network policies' → copy example → keep ingress only",
    "name: allow-client; podSelector app=backend; from podSelector run=client; ports TCP 80",
    "k apply -f np.yaml",
@@ -508,11 +508,11 @@
   "traps": [
    {
     "dont": "`k get pods | grep dns` in the default namespace",
-    "do": "`k get pods -n kube-system -l k8s-app=kube-dns`, because CoreDNS runs in the kube-system namespace"
+    "do": "`k get pods -l k8s-app=kube-dns -n kube-system`, because CoreDNS runs in the kube-system namespace"
    },
    {
-    "dont": "`k delete pod` on CoreDNS pods that do not exist",
-    "do": "`k scale deploy coredns -n kube-system --replicas=2`, because `k get deploy coredns` shows 0/0: it was scaled to zero"
+    "dont": "`k delete pods` on CoreDNS pods that do not exist",
+    "do": "`k scale deployment/coredns --replicas=2 -n kube-system`, because `k get deployment coredns` shows 0/0: it was scaled to zero"
    },
    {
     "dont": "`k run t --image=busybox:1.36 -it ...` without `--rm`",
@@ -526,7 +526,7 @@
   "verify": [
    {
     "need": "2 CoreDNS replicas",
-    "cmd": "k get pods -n kube-system -l k8s-app=kube-dns",
+    "cmd": "k get pods -l k8s-app=kube-dns -n kube-system",
     "see": "2 pods 1/1 Running"
    },
    {
@@ -537,9 +537,9 @@
   ],
   "memorise": [
    "k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup kubernetes.default.svc.cluster.local",
-   "k get pods -n kube-system -l k8s-app=kube-dns",
-   "k get deploy coredns -n kube-system   # 0/0",
-   "k scale deploy coredns -n kube-system --replicas=2"
+   "k get pods -l k8s-app=kube-dns -n kube-system",
+   "k get deployment coredns -n kube-system  # 0/0",
+   "k scale deployment/coredns --replicas=2 -n kube-system"
   ],
   "minutes": 3
  },
@@ -552,7 +552,7 @@
    },
    {
     "q": "uses the most CPU across all namespaces",
-    "means": "k top pods -A --sort-by=cpu, take the first row"
+    "means": "k top pod -A --sort-by=cpu, take the first row"
    },
    {
     "q": "write its name to `/opt/top.txt`",
@@ -561,11 +561,11 @@
   ],
   "traps": [
    {
-    "dont": "`k top pods --sort-by=cpu`",
-    "do": "`k top pods -A --sort-by=cpu`, because `-A` compares pods in all namespaces, not only default"
+    "dont": "`k top pod --sort-by=cpu`",
+    "do": "`k top pod -A --sort-by=cpu`, because `-A` compares pods in all namespaces, not only default"
    },
    {
-    "dont": "`k top pods -A --sort-by=cpu > /opt/top.txt`",
+    "dont": "`k top pod -A --sort-by=cpu > /opt/top.txt`",
     "do": "`echo <first-row-pod-name> > /opt/top.txt`, because the file must hold only the pod name"
    },
    {
@@ -591,7 +591,7 @@
   ],
   "memorise": [
    "k logs api -n app > /opt/api.log",
-   "k top pods -A --sort-by=cpu",
+   "k top pod -A --sort-by=cpu",
    "echo <first-row-pod-name> > /opt/top.txt",
    "cat /opt/api.log /opt/top.txt"
   ],
@@ -634,20 +634,20 @@
   "verify": [
    {
     "need": "SA can create deployments",
-    "cmd": "k auth can-i create deployments -n dev --as=system:serviceaccount:dev:deploy-bot",
+    "cmd": "k auth can-i create deployments --as=system:serviceaccount:dev:deploy-bot -n dev",
     "see": "yes"
    },
    {
     "need": "nothing extra allowed",
-    "cmd": "k auth can-i delete deployments -n dev --as=system:serviceaccount:dev:deploy-bot",
+    "cmd": "k auth can-i delete deployments --as=system:serviceaccount:dev:deploy-bot -n dev",
     "see": "no"
    }
   ],
   "memorise": [
-   "k create sa deploy-bot -n dev",
+   "k create serviceaccount deploy-bot -n dev",
    "k create role deploy-manager --verb=get,list,create --resource=deployments -n dev",
    "k create rolebinding deploy-bot-binding --role=deploy-manager --serviceaccount=dev:deploy-bot -n dev",
-   "k auth can-i create deployments -n dev --as=system:serviceaccount:dev:deploy-bot"
+   "k auth can-i create deployments --as=system:serviceaccount:dev:deploy-bot -n dev"
   ],
   "minutes": 3
  },
@@ -656,7 +656,7 @@
   "clues": [
    {
     "q": "in namespace `ops`",
-    "means": "Only the SA is namespaced: k create sa -n ops; serviceaccount=ops:node-viewer"
+    "means": "Only the SA is namespaced: k create serviceaccount node-viewer -n ops; serviceaccount=ops:node-viewer"
    },
    {
     "q": "`get` and `list` nodes",
@@ -674,7 +674,7 @@
    },
    {
     "dont": "Worrying about `-n ops` on clusterrole and clusterrolebinding",
-    "do": "Use `-n ops` only in `k create sa node-viewer -n ops`, because cluster objects have no namespace; kubectl ignores `-n` there"
+    "do": "Use `-n ops` only in `k create serviceaccount node-viewer -n ops`, because cluster objects have no namespace; kubectl ignores `-n` there"
    },
    {
     "dont": "`--serviceaccount=node-viewer`",
@@ -694,7 +694,7 @@
    }
   ],
   "memorise": [
-   "k create sa node-viewer -n ops",
+   "k create serviceaccount node-viewer -n ops",
    "k create clusterrole node-reader --verb=get,list --resource=nodes",
    "k create clusterrolebinding node-viewer-binding --clusterrole=node-reader --serviceaccount=ops:node-viewer",
    "k auth can-i list nodes --as=system:serviceaccount:ops:node-viewer"
@@ -797,7 +797,7 @@
    },
    {
     "need": "2 replicas again",
-    "cmd": "k get deploy -n demo",
+    "cmd": "k get deployments -n demo",
     "see": "controller 2/2"
    }
   ],
@@ -835,8 +835,8 @@
     "do": "Edit `/root/kust/kustomization.yaml` (`replicas: count: 3`), because the task forbids editing deploy.yaml"
    },
    {
-    "dont": "`k get deploy` in the default namespace",
-    "do": "`k get deploy -n kust`, because kustomization.yaml puts the deployment in namespace kust"
+    "dont": "`k get deployments` in the default namespace",
+    "do": "`k get deployments -n kust`, because kustomization.yaml puts the deployment in namespace kust"
    }
   ],
   "verify": [
@@ -847,7 +847,7 @@
    },
    {
     "need": "applied",
-    "cmd": "k get deploy -n kust",
+    "cmd": "k get deployments -n kust",
     "see": "kweb 3/3"
    }
   ],
@@ -856,7 +856,7 @@
    "vim /root/kust/kustomization.yaml   # replicas: count: 2 → 3",
    "k kustomize /root/kust",
    "k apply -k /root/kust",
-   "k get deploy -n kust"
+   "k get deployments -n kust"
   ],
   "minutes": 3
  },
@@ -998,13 +998,13 @@
    },
    {
     "need": "pods get IPs and DNS runs",
-    "cmd": "k get pods -n kube-system -l k8s-app=kube-dns",
+    "cmd": "k get pods -l k8s-app=kube-dns -n kube-system",
     "see": "coredns pods Running (no longer Pending)"
    }
   ],
   "memorise": [
    "k create -f <tigera-operator URL>",
-   "k -n kube-system get pod -l component=kube-controller-manager -o yaml | grep cluster-cidr",
+   "k get pods -l component=kube-controller-manager -o yaml -n kube-system | grep cluster-cidr",
    "curl -LO <custom-resources URL>; vim custom-resources.yaml   # cidr: <cluster-cidr>",
    "k apply -f custom-resources.yaml; k get nodes"
   ],
@@ -1140,7 +1140,7 @@
   "clues": [
    {
     "q": "the container declares port `80` (TCP)",
-    "means": "k edit deploy: add ports: - containerPort: 80 protocol: TCP under the container"
+    "means": "k edit deployment: add ports: - containerPort: 80 protocol: TCP under the container"
    },
    {
     "q": "of type `NodePort`",
@@ -1148,7 +1148,7 @@
    },
    {
     "q": "using node port `30080`",
-    "means": "k expose can't set it: k edit svc → nodePort: 30080"
+    "means": "k expose can't set it: k edit service → nodePort: 30080"
    }
   ],
   "traps": [
@@ -1158,22 +1158,22 @@
    },
    {
     "dont": "Keeping the random nodePort that `k expose` picked",
-    "do": "`k edit svc np-svc -n web` and set `nodePort: 30080`, because `k expose` cannot choose the node port"
+    "do": "`k edit service/np-svc -n web` and set `nodePort: 30080`, because `k expose` cannot choose the node port"
    },
    {
-    "dont": "`k expose deploy np ...` without `-n web`",
+    "dont": "`k expose deployment np ...` without `-n web`",
     "do": "Add `-n web` to every command, because otherwise kubectl looks for np in default"
    }
   ],
   "verify": [
    {
     "need": "container declares 80",
-    "cmd": "k get deploy np -n web -o jsonpath='{..ports}'",
+    "cmd": "k get deployment np -o jsonpath='{..ports}' -n web",
     "see": "containerPort 80 TCP"
    },
    {
     "need": "service correct",
-    "cmd": "k get svc np-svc -n web",
+    "cmd": "k get service np-svc -n web",
     "see": "NodePort 80:30080/TCP"
    },
    {
@@ -1183,10 +1183,10 @@
    }
   ],
   "memorise": [
-   "k edit deploy np -n web   # under image: ports: - containerPort: 80 / protocol: TCP",
-   "k expose deploy np --name=np-svc --port=80 --target-port=80 --type=NodePort -n web",
-   "k edit svc np-svc -n web   # nodePort: 30080",
-   "k get svc np-svc -n web"
+   "k edit deployment/np -n web  # under image: ports: - containerPort: 80 / protocol: TCP",
+   "k expose deployment np --name=np-svc --port=80 --target-port=80 --type=NodePort -n web",
+   "k edit service/np-svc -n web  # nodePort: 30080",
+   "k get service np-svc -n web"
   ],
   "minutes": 4
  },
@@ -1223,19 +1223,19 @@
   "verify": [
    {
     "need": "rule correct",
-    "cmd": "k describe ing web-ing -n web",
+    "cmd": "k describe ingress web-ing -n web",
     "see": "shop.example.com / backend-svc:80 (<pod IP>:80)"
    },
    {
     "need": "class set",
-    "cmd": "k get ing web-ing -n web",
+    "cmd": "k get ingress web-ing -n web",
     "see": "CLASS nginx"
    }
   ],
   "memorise": [
    "k get ingressclass",
    "k create ingress web-ing --class=nginx --rule=\"shop.example.com/*=backend-svc:80\" -n web",
-   "k describe ing web-ing -n web"
+   "k describe ingress web-ing -n web"
   ],
   "minutes": 3
  },
@@ -1256,7 +1256,7 @@
    },
    {
     "q": "Delete the Ingress",
-    "means": "k delete ing web-ing -n web — only after route is created"
+    "means": "k delete ingress web-ing -n web — only after route is created"
    }
   ],
   "traps": [
@@ -1285,21 +1285,21 @@
    },
    {
     "need": "route has the right values",
-    "cmd": "k get httproute web-route -n web -o yaml | grep -E 'name: web-gw|value: /|backend-svc'",
+    "cmd": "k get httproute web-route -o yaml -n web | grep -E 'name: web-gw|value: /|backend-svc'",
     "see": "web-gw, path /, backend-svc (Killercoda has no controller, so attachment cannot be checked; in the exam: k describe httproute → Status Parents Accepted True)"
    },
    {
     "need": "ingress gone",
-    "cmd": "k get ing -n web",
+    "cmd": "k get ingress -n web",
     "see": "No resources found"
    }
   ],
   "memorise": [
-   "k get ing web-ing -n web -o yaml   # host, secretName, path, service, port",
+   "k get ingress web-ing -o yaml -n web  # host, secretName, path, service, port",
    "k get gatewayclass",
    "docs: 'gateway api' → copy Gateway example → listener HTTPS 443 + hostname + tls: mode Terminate, certificateRefs: - name <secret>",
    "docs: copy HTTPRoute example → parentRefs web-gw, hostnames, path, backendRefs",
-   "k apply -f gw.yaml -f route.yaml; k delete ing web-ing -n web"
+   "k apply -f gw.yaml -f route.yaml; k delete ingress web-ing -n web"
   ],
   "minutes": 8
  },
@@ -1346,7 +1346,7 @@
    }
   ],
   "memorise": [
-   "k get pods -n prod --show-labels",
+   "k get pods --show-labels -n prod",
    "docs: 'network policies' → copy example → delete '- Egress', the 7 lines ipBlock…project: myproject, the 7 lines egress:…end",
    "name: db-policy; namespace: prod; podSelector app: db; from podSelector app: api; ports TCP 80",
    "k apply -f np.yaml"
@@ -1386,7 +1386,7 @@
   "verify": [
    {
     "need": "policy shape",
-    "cmd": "k describe netpol default-deny -n prod",
+    "cmd": "k describe networkpolicy default-deny -n prod",
     "see": "Ingress: none allowed; Egress: to port 53/UDP, 53/TCP"
    },
    {
@@ -1404,7 +1404,7 @@
    "docs: 'network policies' → 'Default deny all ingress and all egress traffic' example",
    "name: default-deny; namespace: prod; podSelector: {}; policyTypes: [Ingress, Egress]",
    "egress: - ports: - protocol: UDP port: 53 / - protocol: TCP port: 53",
-   "k apply -f deny.yaml; k describe netpol default-deny -n prod"
+   "k apply -f deny.yaml; k describe networkpolicy default-deny -n prod"
   ],
   "minutes": 4
  },
@@ -1417,36 +1417,36 @@
    },
    {
     "q": "make sure the running pods use the new configuration",
-    "means": "k rollout restart deploy nginx-static — nginx reads its config only at start"
+    "means": "k rollout restart deployment/nginx-static — nginx reads its config only at start"
    }
   ],
   "traps": [
    {
     "dont": "Editing the ConfigMap and stopping there",
-    "do": "`k rollout restart deploy nginx-static -n nginx-static`, because running pods keep the old config until they restart"
+    "do": "`k rollout restart deployment/nginx-static -n nginx-static`, because running pods keep the old config until they restart"
    },
    {
     "dont": "`ssl_protocols TLSv1.3` without the semicolon",
     "do": "`ssl_protocols TLSv1.3;`, because nginx needs the `;` or it fails to start"
    },
    {
-    "dont": "`k edit deploy nginx-static -n nginx-static`",
-    "do": "`k edit cm nginx-config -n nginx-static`, because the TLS setting lives in the ConfigMap"
+    "dont": "`k edit deployment/nginx-static -n nginx-static`",
+    "do": "`k edit configmap/nginx-config -n nginx-static`, because the TLS setting lives in the ConfigMap"
    },
    {
-    "dont": "`k delete cm nginx-config`, then `k apply -f /root/cm-backup.yaml`",
+    "dont": "`k delete configmap nginx-config`, then `k apply -f /root/cm-backup.yaml`",
     "do": "`k replace --force -f /root/cm-backup.yaml`, because apply fails on the old resourceVersion saved in the backup"
    }
   ],
   "verify": [
    {
     "need": "CM has only TLSv1.3",
-    "cmd": "k get cm nginx-config -n nginx-static -o yaml | grep ssl_protocols",
+    "cmd": "k get configmap nginx-config -o yaml -n nginx-static | grep ssl_protocols",
     "see": "ssl_protocols TLSv1.3;"
    },
    {
     "need": "pods restarted",
-    "cmd": "k rollout status deploy nginx-static -n nginx-static",
+    "cmd": "k rollout status deployment/nginx-static -n nginx-static",
     "see": "successfully rolled out"
    },
    {
@@ -1456,10 +1456,10 @@
    }
   ],
   "memorise": [
-   "k get cm nginx-config -n nginx-static -o yaml > /root/cm-backup.yaml",
-   "k edit cm nginx-config -n nginx-static   # ssl_protocols TLSv1.3;",
-   "k rollout restart deploy nginx-static -n nginx-static",
-   "k rollout status deploy nginx-static -n nginx-static"
+   "k get configmap nginx-config -o yaml -n nginx-static > /root/cm-backup.yaml",
+   "k edit configmap/nginx-config -n nginx-static  # ssl_protocols TLSv1.3;",
+   "k rollout restart deployment/nginx-static -n nginx-static",
+   "k rollout status deployment/nginx-static -n nginx-static"
   ],
   "minutes": 3
  },
@@ -1476,7 +1476,7 @@
    },
    {
     "q": "Make sure CoreDNS uses the new configuration",
-    "means": "k rollout restart deploy coredns -n kube-system"
+    "means": "k rollout restart deployment/coredns -n kube-system"
    }
   ],
   "traps": [
@@ -1489,8 +1489,8 @@
     "do": "`rewrite name api.example.com backend-svc.web.svc.cluster.local`, because CoreDNS needs the full name to find the service"
    },
    {
-    "dont": "`k edit cm coredns -n kube-system` without a backup",
-    "do": "`k get cm coredns -n kube-system -o yaml > /root/coredns-backup.yaml` first, because a broken edit can stop all DNS"
+    "dont": "`k edit configmap/coredns -n kube-system` without a backup",
+    "do": "`k get configmap coredns -o yaml -n kube-system > /root/coredns-backup.yaml` first, because a broken edit can stop all DNS"
    },
    {
     "dont": "`k apply -f /root/coredns-backup.yaml` to restore",
@@ -1500,7 +1500,7 @@
   "verify": [
    {
     "need": "CoreDNS healthy",
-    "cmd": "k get pods -n kube-system -l k8s-app=kube-dns",
+    "cmd": "k get pods -l k8s-app=kube-dns -n kube-system",
     "see": "Running, fresh AGE"
    },
    {
@@ -1510,9 +1510,9 @@
    }
   ],
   "memorise": [
-   "k get cm coredns -n kube-system -o yaml > /root/coredns-backup.yaml",
-   "k edit cm coredns -n kube-system   # under ready: rewrite name api.example.com backend-svc.web.svc.cluster.local",
-   "k rollout restart deploy coredns -n kube-system",
+   "k get configmap coredns -o yaml -n kube-system > /root/coredns-backup.yaml",
+   "k edit configmap/coredns -n kube-system  # under ready: rewrite name api.example.com backend-svc.web.svc.cluster.local",
+   "k rollout restart deployment/coredns -n kube-system",
    "k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup api.example.com"
   ],
   "minutes": 5
@@ -1543,7 +1543,7 @@
     "do": "`k run t --image=busybox:1.36 ...`, because the task asks for that exact image"
    },
    {
-    "dont": "`k run t -n web ...`",
+    "dont": "`k run t ... -n web`",
     "do": "Run the pod in default (no `-n`), because the task asks for the lookup from namespace default"
    }
   ],
@@ -1555,7 +1555,7 @@
    },
    {
     "need": "right IP",
-    "cmd": "k get svc backend-svc -n web",
+    "cmd": "k get service backend-svc -n web",
     "see": "same CLUSTER-IP"
    }
   ],
@@ -1608,12 +1608,12 @@
    },
    {
     "need": "sidecar reads the log",
-    "cmd": "k logs deploy/app -c log-shipper -n work",
+    "cmd": "k logs deployment/app -c log-shipper -n work",
     "see": "app log lines"
    }
   ],
   "memorise": [
-   "k get deploy app -n work -o yaml > app.yaml",
+   "k get deployment app -o yaml -n work > app.yaml",
    "vim app.yaml   # volumes: - name: logs emptyDir: {}; main: volumeMounts logs → /var/log",
    "initContainers: - name: log-shipper image: busybox:1.36 restartPolicy: Always command: [sh,-c,'tail -f /var/log/app.log'] volumeMounts logs → /var/log",
    "k apply -f app.yaml; k get pods -n work"
@@ -1629,7 +1629,7 @@
    },
    {
     "q": "target average CPU utilization `70`%",
-    "means": "--cpu-percent=70"
+    "means": "--cpu=70%"
    },
    {
     "q": "scale-down stabilization window to `30` seconds",
@@ -1646,7 +1646,7 @@
     "do": "Put `behavior:` directly under `spec:`, because it is its own field of the HPA spec"
    },
    {
-    "dont": "`k autoscale deploy web --min=2 --max=5 --cpu-percent=70`",
+    "dont": "`k autoscale deployment web --min=2 --max=5 --cpu=70%`",
     "do": "Add `-n shop`, because deployment web lives in namespace shop"
    }
   ],
@@ -1658,13 +1658,13 @@
    },
    {
     "need": "window 30 s",
-    "cmd": "k get hpa web -n shop -o yaml | grep -A2 scaleDown",
+    "cmd": "k get hpa web -o yaml -n shop | grep -A2 scaleDown",
     "see": "stabilizationWindowSeconds: 30"
    }
   ],
   "memorise": [
-   "k autoscale deploy web --min=2 --max=5 --cpu-percent=70 -n shop",
-   "k edit hpa web -n shop   # spec: behavior: scaleDown: stabilizationWindowSeconds: 30",
+   "k autoscale deployment web --min=2 --max=5 --cpu=70% -n shop",
+   "k edit hpa/web -n shop   # spec: behavior: scaleDown: stabilizationWindowSeconds: 30",
    "k get hpa -n shop"
   ],
   "minutes": 4
@@ -1674,16 +1674,16 @@
   "clues": [
    {
     "q": "exactly ONE LESS than the highest existing user-defined PriorityClass",
-    "means": "k get pc; ignore system-* classes; value = highest − 1"
+    "means": "k get priorityclass; ignore system-* classes; value = highest − 1"
    },
    {
     "q": "to use this PriorityClass",
-    "means": "k edit deploy: priorityClassName: high-priority in the pod spec"
+    "means": "k edit deployment: priorityClassName: high-priority in the pod spec"
    }
   ],
   "traps": [
    {
-    "dont": "Using the value of `system-cluster-critical` from `k get pc`",
+    "dont": "Using the value of `system-cluster-critical` from `k get priorityclass`",
     "do": "Take the highest non-system value minus 1, because system-* classes are built in, not user-defined"
    },
    {
@@ -1692,26 +1692,26 @@
    },
    {
     "dont": "`globalDefault: true` on high-priority",
-    "do": "`k create pc high-priority --value=<highest-1>` only, because globalDefault would affect every new pod (not asked)"
+    "do": "`k create priorityclass high-priority --value=<highest-1>` only, because globalDefault would affect every new pod (not asked)"
    }
   ],
   "verify": [
    {
     "need": "value correct",
-    "cmd": "k get pc",
+    "cmd": "k get priorityclass",
     "see": "high-priority = highest user value − 1"
    },
    {
     "need": "pods use it",
-    "cmd": "k get pods -n shop -o custom-columns=NAME:.metadata.name,CLASS:.spec.priorityClassName",
+    "cmd": "k get pods -o custom-columns=NAME:.metadata.name,CLASS:.spec.priorityClassName -n shop",
     "see": "high-priority on new pods"
    }
   ],
   "memorise": [
-   "k get pc",
-   "k create pc high-priority --value=<highest-1>",
-   "k edit deploy web -n shop   # priorityClassName: high-priority (above containers:)",
-   "k get pods -n shop -o custom-columns=NAME:.metadata.name,CLASS:.spec.priorityClassName"
+   "k get priorityclass",
+   "k create priorityclass high-priority --value=<highest-1>",
+   "k edit deployment/web -n shop  # priorityClassName: high-priority (above containers:)",
+   "k get pods -o custom-columns=NAME:.metadata.name,CLASS:.spec.priorityClassName -n shop"
   ],
   "minutes": 3
  },
@@ -1738,31 +1738,31 @@
    },
    {
     "dont": "Calculating while web's 3 pods still hold requests",
-    "do": "`k scale deploy web --replicas=0 -n shop` first, because web's old requests would count as used"
+    "do": "`k scale deployment/web --replicas=0 -n shop` first, because web's old requests would count as used"
    },
    {
-    "dont": "`k set resources deploy web -n shop --limits=...`",
-    "do": "`k set resources deploy web -n shop --requests=cpu=<X>m,memory=<Y>Mi`, because the task asks for requests"
+    "dont": "`k set resources deployment/web --limits=... -n shop`",
+    "do": "`k set resources deployment/web --requests=cpu=<X>m,memory=<Y>Mi -n shop`, because the task asks for requests"
    }
   ],
   "verify": [
    {
     "need": "requests set",
-    "cmd": "k get deploy web -n shop -o jsonpath='{..resources}'",
+    "cmd": "k get deployment web -o jsonpath='{..resources}' -n shop",
     "see": "requests cpu/memory"
    },
    {
     "need": "all Running",
-    "cmd": "k get pods -n shop -o wide",
+    "cmd": "k get pods -o wide -n shop",
     "see": "3 pods Running on node01"
    }
   ],
   "memorise": [
-   "k scale deploy web --replicas=0 -n shop",
+   "k scale deployment/web --replicas=0 -n shop",
    "k describe node node01 | grep -A7 'Allocatable:'",
    "k describe node node01 | grep -A6 'Allocated resources:'",
-   "k set resources deploy web -n shop --requests=cpu=<X>m,memory=<Y>Mi   # (free × 0.9) ÷ 3",
-   "k scale deploy web --replicas=3 -n shop; k get pods -n shop"
+   "k set resources deployment/web --requests=cpu=<X>m,memory=<Y>Mi -n shop  # (free × 0.9) ÷ 3",
+   "k scale deployment/web --replicas=3 -n shop; k get pods -n shop"
   ],
   "minutes": 6
  },
@@ -1771,7 +1771,7 @@
   "clues": [
    {
     "q": "with the key `LOG_LEVEL` and value `debug`",
-    "means": "k create cm app-cfg --from-literal=LOG_LEVEL=debug"
+    "means": "k create configmap app-cfg --from-literal=LOG_LEVEL=debug"
    },
    {
     "q": "All keys of the ConfigMap must be available as environment variables",
@@ -1792,7 +1792,7 @@
     "do": "`secret: secretName: db-sec`, because secret volumes use `secretName`, not `name`"
    },
    {
-    "dont": "`k create cm app-cfg --from-literal=LOG_LEVEL=debug` without `-n app`",
+    "dont": "`k create configmap app-cfg --from-literal=LOG_LEVEL=debug` without `-n app`",
     "do": "Add `-n app` to the cm, secret and pod, because a pod can only use ConfigMaps and Secrets from its own namespace"
    }
   ],
@@ -1809,9 +1809,9 @@
    }
   ],
   "memorise": [
-   "k create cm app-cfg --from-literal=LOG_LEVEL=debug -n app",
+   "k create configmap app-cfg --from-literal=LOG_LEVEL=debug -n app",
    "k create secret generic db-sec --from-literal=password=s3cret -n app",
-   "k run api --image=nginx:1.27 -n app --dry-run=client -o yaml > pod.yaml",
+   "k run api --image=nginx:1.27 --dry-run=client -o yaml -n app > pod.yaml",
    "vim pod.yaml   # envFrom: - configMapRef: name: app-cfg; volumeMounts /etc/db; volumes: secret: secretName: db-sec",
    "k apply -f pod.yaml"
   ],
@@ -1822,7 +1822,7 @@
   "clues": [
    {
     "q": "Taint node `node01` with `env=prod:NoSchedule`",
-    "means": "k taint node node01 env=prod:NoSchedule"
+    "means": "k taint nodes node01 env=prod:NoSchedule"
    },
    {
     "q": "tolerates the taint",
@@ -1860,8 +1860,8 @@
    }
   ],
   "memorise": [
-   "k taint node node01 env=prod:NoSchedule",
-   "k label node node01 env=prod",
+   "k taint nodes node01 env=prod:NoSchedule",
+   "k label nodes node01 env=prod",
    "k run x --image=nginx:1.27 --dry-run=client -o yaml > x.yaml",
    "vim x.yaml   # spec: nodeSelector: env: prod; tolerations: - key: env operator: Equal value: prod effect: NoSchedule",
    "k apply -f x.yaml; k get pod x -o wide"
@@ -1873,11 +1873,11 @@
   "clues": [
    {
     "q": "wait until the rollout is complete",
-    "means": "k rollout status deploy/web -n shop"
+    "means": "k rollout status deployment/web -n shop"
    },
    {
     "q": "roll the deployment back to the previous revision",
-    "means": "k rollout undo deploy/web -n shop"
+    "means": "k rollout undo deployment/web -n shop"
    },
    {
     "q": "Write the image that is in use after the rollback",
@@ -1886,22 +1886,22 @@
   ],
   "traps": [
    {
-    "dont": "`k set image deploy/web web=nginx:1.28 -n shop`",
-    "do": "`k set image deploy/web nginx=nginx:1.28 -n shop`, because left of `=` is the container name; check it with `-o wide`"
+    "dont": "`k set image deployment/web web=nginx:1.28 -n shop`",
+    "do": "`k set image deployment/web nginx=nginx:1.28 -n shop`, because left of `=` is the container name; check it with `-o wide`"
    },
    {
     "dont": "`echo nginx:1.28 > /root/image.txt`",
-    "do": "Read the image with `k get deploy web -n shop -o jsonpath=...` after `k rollout undo`, because rollback restored the old image"
+    "do": "Read the image with `k get deployment web -o jsonpath=... -n shop` after `k rollout undo`, because rollback restored the old image"
    },
    {
-    "dont": "`k rollout undo deploy/web` without `-n shop`",
+    "dont": "`k rollout undo deployment/web` without `-n shop`",
     "do": "Add `-n shop` to every command, because deployment web lives in namespace shop"
    }
   ],
   "verify": [
    {
     "need": "rolled back",
-    "cmd": "k rollout history deploy/web -n shop",
+    "cmd": "k rollout history deployment/web -n shop",
     "see": "revisions 2 and 3; revision 1 is gone (it became 3)"
    },
    {
@@ -1911,11 +1911,11 @@
    }
   ],
   "memorise": [
-   "k get deploy web -n shop -o wide   # container name",
-   "k set image deploy/web nginx=nginx:1.28 -n shop",
-   "k rollout status deploy/web -n shop",
-   "k rollout undo deploy/web -n shop",
-   "k get deploy web -n shop -o jsonpath='{.spec.template.spec.containers[0].image}' > /root/image.txt"
+   "k get deployment web -o wide -n shop  # container name",
+   "k set image deployment/web nginx=nginx:1.28 -n shop",
+   "k rollout status deployment/web -n shop",
+   "k rollout undo deployment/web -n shop",
+   "k get deployment web -o jsonpath='{.spec.template.spec.containers[0].image}' -n shop > /root/image.txt"
   ],
   "minutes": 3
  },
@@ -1966,7 +1966,7 @@
    "pv.yaml: name pv-data, 1Gi, RWO, storageClassName manual, hostPath /mnt/data (no namespace)",
    "pvc.yaml: name pvc-data, namespace storage, 500Mi, RWO, manual",
    "pod.yaml: web-store, namespace storage, nginx:1.27, claimName pvc-data, mountPath /usr/share/nginx/html",
-   "k get pvc -n storage; k get pod -n storage"
+   "k get pvc -n storage; k get pods -n storage"
   ],
   "minutes": 8
  },
@@ -1989,10 +1989,10 @@
   "traps": [
    {
     "dont": "Leaving the old class marked `(default)`",
-    "do": "`k patch sc <old> -p '{\"metadata\":{\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"false\"}}}'`, because only one class may be default"
+    "do": "`k patch storageclass <old> -p '{\"metadata\":{\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"false\"}}}'`, because only one class may be default"
    },
    {
-    "dont": "`k delete sc <old>`",
+    "dont": "`k delete storageclass <old>`",
     "do": "Patch the old class's annotation to \"false\" instead, because the task forbids deleting anything"
    },
    {
@@ -2003,21 +2003,21 @@
   "verify": [
    {
     "need": "fast exists correctly",
-    "cmd": "k get sc fast",
+    "cmd": "k get storageclass fast",
     "see": "rancher.io/local-path WaitForFirstConsumer"
    },
    {
     "need": "only fast default",
-    "cmd": "k get sc",
+    "cmd": "k get storageclass",
     "see": "(default) only next to fast"
    }
   ],
   "memorise": [
-   "k get sc   # note current (default)",
+   "k get storageclass  # note current (default)",
    "docs: 'storage classes' → copy example; annotations: storageclass.kubernetes.io/is-default-class: \"true\"",
    "name: fast; provisioner: rancher.io/local-path; volumeBindingMode: WaitForFirstConsumer",
    "k apply -f sc.yaml",
-   "k patch sc <old> -p '{\"metadata\":{\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"false\"}}}'"
+   "k patch storageclass <old> -p '{\"metadata\":{\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"false\"}}}'"
   ],
   "minutes": 5
  },
@@ -2145,36 +2145,36 @@
   ],
   "traps": [
    {
-    "dont": "`k -n shop label pods ...` or editing deployment cart",
-    "do": "Fix the Service selector with `k -n shop patch svc cart ...`. The task forbids changing the Deployment."
+    "dont": "`k label pods ... -n shop` or editing deployment cart",
+    "do": "Fix the Service selector with `k patch service cart ... -n shop`. The task forbids changing the Deployment."
    },
    {
-    "dont": "`k -n shop patch svc cart ...` when the selector key is wrong",
-    "do": "Run `k -n shop edit svc cart` and fix the key. A merge patch adds a second key. That second key must also match."
+    "dont": "`k patch service cart ... -n shop` when the selector key is wrong",
+    "do": "Run `k edit service/cart -n shop` and fix the key. A merge patch adds a second key. That second key must also match."
    },
    {
-    "dont": "`k get svc cart` without `-n shop`",
+    "dont": "`k get service cart` without `-n shop`",
     "do": "Add `-n shop` to every command, because the Service and pods live in namespace shop"
    }
   ],
   "verify": [
    {
     "need": "endpoints present",
-    "cmd": "k -n shop get endpointslices -l kubernetes.io/service-name=cart",
+    "cmd": "k get endpointslices -l kubernetes.io/service-name=cart -n shop",
     "see": "pod IPs listed"
    },
    {
     "need": "traffic flows",
-    "cmd": "k -n shop run tmp --rm -it --restart=Never --image=busybox:1.36 -- wget -qO- -T3 cart",
+    "cmd": "k run tmp --rm -it --restart=Never --image=busybox:1.36 -n shop -- wget -qO- -T3 cart",
     "see": "HTML response"
    }
   ],
   "memorise": [
    "ssh cka01002",
-   "k -n shop get pods --show-labels",
-   "k -n shop get svc cart -o wide   # SELECTOR",
-   "k -n shop patch svc cart -p '{\"spec\":{\"selector\":{\"app\":\"cart\"}}}'",
-   "k -n shop get endpointslices -l kubernetes.io/service-name=cart"
+   "k get pods --show-labels -n shop",
+   "k get service cart -o wide -n shop  # SELECTOR",
+   "k patch service cart -p '{\"spec\":{\"selector\":{\"app\":\"cart\"}}}' -n shop",
+   "k get endpointslices -l kubernetes.io/service-name=cart -n shop"
   ],
   "minutes": 4
  },
@@ -2196,11 +2196,11 @@
   ],
   "traps": [
    {
-    "dont": "`k -n batch scale deploy reporter --replicas=1`",
-    "do": "`k -n batch set resources deploy reporter --requests=memory=128Mi`, because the task says keep replicas unchanged"
+    "dont": "`k scale deployment/reporter --replicas=1 -n batch`",
+    "do": "`k set resources deployment/reporter --requests=memory=128Mi -n batch`, because the task says keep replicas unchanged"
    },
    {
-    "dont": "`k -n batch set resources deploy reporter --limits=memory=128Mi`",
+    "dont": "`k set resources deployment/reporter --limits=memory=128Mi -n batch`",
     "do": "Use `--requests=memory=128Mi`, because the scheduler uses requests to find room for the pods"
    },
    {
@@ -2211,21 +2211,21 @@
   "verify": [
    {
     "need": "all Running",
-    "cmd": "k -n batch get pods",
+    "cmd": "k get pods -n batch",
     "see": "all replicas Running"
    },
    {
     "need": "request 128Mi",
-    "cmd": "k -n batch get deploy reporter -o jsonpath='{.spec.template.spec.containers[0].resources}'",
+    "cmd": "k get deployment reporter -o jsonpath='{.spec.template.spec.containers[0].resources}' -n batch",
     "see": "\"memory\":\"128Mi\""
    }
   ],
   "memorise": [
    "ssh cka01003",
-   "k -n batch get pods",
-   "k -n batch describe pod -l app=reporter | grep -A3 Events",
-   "k -n batch set resources deploy reporter --requests=memory=128Mi",
-   "k -n batch get pods"
+   "k get pods -n batch",
+   "k describe pods -l app=reporter -n batch | grep -A3 Events",
+   "k set resources deployment/reporter --requests=memory=128Mi -n batch",
+   "k get pods -n batch"
   ],
   "minutes": 3
  },
@@ -2255,27 +2255,27 @@
     "do": "Keep the probe and fix only its port. Removing it changes the behaviour the checker may test."
    },
    {
-    "dont": "`k -n web edit pod <pod>`",
-    "do": "`k -n web edit deploy api`, because the deployment recreates pods from its own template"
+    "dont": "`k edit pod/<pod> -n web`",
+    "do": "`k edit deployment/api -n web`, because the deployment recreates pods from its own template"
    }
   ],
   "verify": [
    {
     "need": "no more restarts",
-    "cmd": "k -n web get pods",
+    "cmd": "k get pods -n web",
     "see": "new pods Running, RESTARTS 0"
    },
    {
     "need": "probe on 80",
-    "cmd": "k -n web get deploy api -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.httpGet.port}'",
+    "cmd": "k get deployment api -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.httpGet.port}' -n web",
     "see": "80"
    }
   ],
   "memorise": [
    "ssh cka01004",
-   "k -n web describe pod -l app=api | grep -i -A2 liveness",
-   "k -n web edit deploy api   # livenessProbe: httpGet: port: 8080 → 80; Esc :wq",
-   "k -n web rollout status deploy api; k -n web get pods   # new pod RESTARTS 0"
+   "k describe pods -l app=api -n web | grep -i -A2 liveness",
+   "k edit deployment/api -n web  # livenessProbe: httpGet: port: 8080 → 80; Esc :wq",
+   "k rollout status deployment/api -n web; k get pods -n web   # new pod RESTARTS 0"
   ],
   "minutes": 4
  },
@@ -2297,8 +2297,8 @@
     "do": "Run `ssh cka01005` first, because the file must exist on that exam host"
    },
    {
-    "dont": "`k -n ops logs legacy-app | grep -i ERROR`",
-    "do": "Run `k -n ops logs legacy-app | grep ERROR > /opt/course/5/errors.txt`. Do not add -i: it also matches lowercase 'error'."
+    "dont": "`k logs legacy-app -n ops | grep -i ERROR`",
+    "do": "Run `k logs legacy-app -n ops | grep ERROR > /opt/course/5/errors.txt`. Do not add -i: it also matches lowercase 'error'."
    },
    {
     "dont": "Redirect into /opt/course/5/errors.txt before the folder exists",
@@ -2320,7 +2320,7 @@
   "memorise": [
    "ssh cka01005",
    "mkdir -p /opt/course/5",
-   "k -n ops logs legacy-app | grep ERROR > /opt/course/5/errors.txt",
+   "k logs legacy-app -n ops | grep ERROR > /opt/course/5/errors.txt",
    "grep -vc ERROR /opt/course/5/errors.txt"
   ],
   "minutes": 2
@@ -2352,7 +2352,7 @@
    },
    {
     "dont": "Install into namespace argocd without checking it exists",
-    "do": "Check `k get ns argocd`; if missing, add `--create-namespace`, so Helm creates it"
+    "do": "Check `k get namespace argocd`; if missing, add `--create-namespace`, so Helm creates it"
    }
   ],
   "verify": [
@@ -2368,7 +2368,7 @@
    },
    {
     "need": "pods up",
-    "cmd": "k -n argocd get pods",
+    "cmd": "k get pods -n argocd",
     "see": "Running (may take 2–3 min; Pending for lack of resources is OK in the playground)"
    }
   ],
@@ -2514,11 +2514,11 @@
    },
    {
     "dont": "`k create rolebinding reporter-binding ...` without `-n finance`",
-    "do": "`k -n finance create rolebinding reporter-binding ...`, otherwise it lands in namespace default"
+    "do": "`k create rolebinding reporter-binding ... -n finance`, otherwise it lands in namespace default"
    },
    {
     "dont": "`k create clusterrole pod-reader ...`",
-    "do": "Run `k -n finance create role pod-reader --verb=get,list,watch --resource=pods`. The task asks for a namespaced Role."
+    "do": "Run `k create role pod-reader --verb=get,list,watch --resource=pods -n finance`. The task asks for a namespaced Role."
    },
    {
     "dont": "`--verb=get, list, watch`",
@@ -2528,26 +2528,26 @@
   "verify": [
    {
     "need": "allowed verbs",
-    "cmd": "k -n finance auth can-i list pods --as=system:serviceaccount:finance:reporter",
+    "cmd": "k auth can-i list pods --as=system:serviceaccount:finance:reporter -n finance",
     "see": "yes"
    },
    {
     "need": "only those",
-    "cmd": "k -n finance auth can-i delete pods --as=system:serviceaccount:finance:reporter",
+    "cmd": "k auth can-i delete pods --as=system:serviceaccount:finance:reporter -n finance",
     "see": "no"
    },
    {
     "need": "no other resources",
-    "cmd": "k -n finance auth can-i list secrets --as=system:serviceaccount:finance:reporter",
+    "cmd": "k auth can-i list secrets --as=system:serviceaccount:finance:reporter -n finance",
     "see": "no"
    }
   ],
   "memorise": [
    "ssh cka01009",
-   "k -n finance create sa reporter",
-   "k -n finance create role pod-reader --verb=get,list,watch --resource=pods",
-   "k -n finance create rolebinding reporter-binding --role=pod-reader --serviceaccount=finance:reporter",
-   "k -n finance auth can-i watch pods --as=system:serviceaccount:finance:reporter"
+   "k create serviceaccount reporter -n finance",
+   "k create role pod-reader --verb=get,list,watch --resource=pods -n finance",
+   "k create rolebinding reporter-binding --role=pod-reader --serviceaccount=finance:reporter -n finance",
+   "k auth can-i watch pods --as=system:serviceaccount:finance:reporter -n finance"
   ],
   "minutes": 3
  },
@@ -2570,7 +2570,7 @@
   "traps": [
    {
     "dont": "A Service selector that does not match the Pod labels",
-    "do": "Check `k -n front get pods --show-labels`. Use `app: front-end`. Otherwise the Service has no endpoints."
+    "do": "Check `k get pods --show-labels -n front`. Use `app: front-end`. Otherwise the Service has no endpoints."
    },
    {
     "dont": "Leave `nodePort: 30080` out of the Service",
@@ -2584,20 +2584,20 @@
   "verify": [
    {
     "need": "service shape",
-    "cmd": "k -n front get svc front-end-svc",
+    "cmd": "k get service front-end-svc -n front",
     "see": "NodePort 80:30080/TCP"
    },
    {
     "need": "reaches pods",
-    "cmd": "k -n front get endpointslices -l kubernetes.io/service-name=front-end-svc",
+    "cmd": "k get endpointslices -l kubernetes.io/service-name=front-end-svc -n front",
     "see": "pod IPs, port 80"
    }
   ],
   "memorise": [
    "ssh cka01010",
-   "k -n front patch deploy front-end --type=json -p='[{\"op\":\"add\",\"path\":\"/spec/template/spec/containers/0/ports\",\"value\":[{\"name\":\"http\",\"containerPort\":80,\"protocol\":\"TCP\"}]}]'",
+   "k patch deployment front-end --type=json -p='[{\"op\":\"add\",\"path\":\"/spec/template/spec/containers/0/ports\",\"value\":[{\"name\":\"http\",\"containerPort\":80,\"protocol\":\"TCP\"}]}]' -n front",
    "cat <<'EOF' | k apply -f -   # Service: type NodePort, selector app: front-end, ports: name http, port 80, targetPort http, nodePort 30080",
-   "k -n front get endpointslices -l kubernetes.io/service-name=front-end-svc"
+   "k get endpointslices -l kubernetes.io/service-name=front-end-svc -n front"
   ],
   "minutes": 5
  },
@@ -2618,7 +2618,7 @@
    },
    {
     "q": "Delete the Ingress web when done",
-    "means": "k -n web-app delete ingress web"
+    "means": "k delete ingress web -n web-app"
    }
   ],
   "traps": [
@@ -2638,26 +2638,26 @@
   "verify": [
    {
     "need": "gateway + route",
-    "cmd": "k -n web-app get gateway,httproute",
+    "cmd": "k get gateway,httproute -n web-app",
     "see": "web-gateway, web-route"
    },
    {
     "need": "listener correct",
-    "cmd": "k -n web-app get gateway web-gateway -o jsonpath='{.spec.listeners}'",
+    "cmd": "k get gateway web-gateway -o jsonpath='{.spec.listeners}' -n web-app",
     "see": "HTTPS 443 gateway.web.example web-tls"
    },
    {
     "need": "ingress gone",
-    "cmd": "k -n web-app get ingress",
+    "cmd": "k get ingress -n web-app",
     "see": "No resources found"
    }
   ],
   "memorise": [
    "ssh cka01011",
-   "k -n web-app get ingress web -o yaml | grep -A12 '^spec'",
+   "k get ingress web -o yaml -n web-app | grep -A12 '^spec'",
    "vim gw.yaml   # Gateway: gatewayClassName nginx; listener https/HTTPS/443/hostname gateway.web.example; tls: mode Terminate, certificateRefs Secret web-tls",
    "vim route.yaml   # HTTPRoute: parentRefs web-gateway; hostnames gateway.web.example; PathPrefix /; backendRefs web 80",
-   "k apply -f gw.yaml -f route.yaml; k -n web-app delete ingress web"
+   "k apply -f gw.yaml -f route.yaml; k delete ingress web -n web-app"
   ],
   "minutes": 9
  },
@@ -2694,12 +2694,12 @@
   "verify": [
    {
     "need": "traffic works",
-    "cmd": "k -n frontend exec deploy/frontend -- wget -qO- -T2 backend.backend | head -4",
+    "cmd": "k exec deployment/frontend -n frontend -- wget -qO- -T2 backend.backend | head -4",
     "see": "HTML response"
    },
    {
     "need": "existing policies intact",
-    "cmd": "k -n backend get networkpolicy",
+    "cmd": "k get networkpolicy -n backend",
     "see": "default-deny + allow-frontend"
    }
   ],
@@ -2707,7 +2707,7 @@
    "ssh cka01012",
    "cat /root/netpol/*.yaml   # narrow namespace+pod selector AND port 80",
    "k apply -f /root/netpol/policy-2.yaml",
-   "k -n frontend exec deploy/frontend -- wget -qO- -T2 backend.backend"
+   "k exec deployment/frontend -n frontend -- wget -qO- -T2 backend.backend"
   ],
   "minutes": 5
  },
@@ -2716,7 +2716,7 @@
   "clues": [
    {
     "q": "exactly one less than the highest existing user-defined PriorityClass value",
-    "means": "k get pc; skip system-*; highest − 1"
+    "means": "k get priorityclass; skip system-*; highest − 1"
    },
    {
     "q": "Patch the existing Deployment busybox-logger",
@@ -2724,13 +2724,13 @@
    },
    {
     "q": "Ensure the Deployment rolls out successfully",
-    "means": "k rollout status deploy busybox-logger"
+    "means": "k rollout status deployment/busybox-logger -n priority"
    }
   ],
   "traps": [
    {
     "dont": "Use a system-* value as the highest",
-    "do": "Read `k get pc`, ignore system-* rows, then `k create pc urgent --value=<highest-1>`"
+    "do": "Read `k get priorityclass`, ignore system-* rows, then `k create priorityclass urgent --value=<highest-1>`"
    },
    {
     "dont": "Put `priorityClassName` directly under the Deployment `spec`",
@@ -2738,27 +2738,27 @@
    },
    {
     "dont": "Stop right after the patch",
-    "do": "`k -n priority rollout status deploy busybox-logger`, because new Pods may stay Pending"
+    "do": "`k rollout status deployment/busybox-logger -n priority`, because new Pods may stay Pending"
    }
   ],
   "verify": [
    {
     "need": "class value",
-    "cmd": "k get pc urgent",
+    "cmd": "k get priorityclass urgent",
     "see": "highest − 1 (e.g. 4999)"
    },
    {
     "need": "deploy uses it",
-    "cmd": "k -n priority get deploy busybox-logger -o jsonpath='{.spec.template.spec.priorityClassName}'",
+    "cmd": "k get deployment busybox-logger -o jsonpath='{.spec.template.spec.priorityClassName}' -n priority",
     "see": "urgent"
    }
   ],
   "memorise": [
    "ssh cka01013",
-   "k get pc",
-   "k create pc urgent --value=<highest-1>",
-   "k -n priority patch deploy busybox-logger -p '{\"spec\":{\"template\":{\"spec\":{\"priorityClassName\":\"urgent\"}}}}'",
-   "k -n priority rollout status deploy busybox-logger"
+   "k get priorityclass",
+   "k create priorityclass urgent --value=<highest-1>",
+   "k patch deployment busybox-logger -p '{\"spec\":{\"template\":{\"spec\":{\"priorityClassName\":\"urgent\"}}}}' -n priority",
+   "k rollout status deployment/busybox-logger -n priority"
   ],
   "minutes": 4
  },
@@ -2767,7 +2767,7 @@
   "clues": [
    {
     "q": "target 50% CPU utilisation per Pod",
-    "means": "--cpu-percent=50 (averageUtilization: 50)"
+    "means": "--cpu=50% (averageUtilization: 50)"
    },
    {
     "q": "minimum of 1 and a maximum of 4 replicas",
@@ -2789,18 +2789,18 @@
    },
    {
     "dont": "`k apply -f hpa.yaml` with no namespace set",
-    "do": "Set `namespace: autoscale` in metadata, or use `k -n autoscale apply -f hpa.yaml`. Otherwise it lands in default."
+    "do": "Set `namespace: autoscale` in metadata, or use `k apply -f hpa.yaml -n autoscale`. Otherwise it lands in default."
    }
   ],
   "verify": [
    {
     "need": "HPA values",
-    "cmd": "k -n autoscale get hpa apache-server",
+    "cmd": "k get hpa apache-server -n autoscale",
     "see": "cpu …/50%, 1, 4"
    },
    {
     "need": "window",
-    "cmd": "k -n autoscale get hpa apache-server -o jsonpath='{.spec.behavior.scaleDown}'",
+    "cmd": "k get hpa apache-server -o jsonpath='{.spec.behavior.scaleDown}' -n autoscale",
     "see": "stabilizationWindowSeconds 30"
    }
   ],
@@ -2808,7 +2808,7 @@
    "ssh cka01014",
    "vim hpa.yaml   # autoscaling/v2 HPA: scaleTargetRef Deployment apache-server; minReplicas 1; maxReplicas 4; cpu averageUtilization 50",
    "# in hpa.yaml under spec:\nspec:\n  behavior:\n    scaleDown:\n      stabilizationWindowSeconds: 30",
-   "k apply -f hpa.yaml; k -n autoscale get hpa apache-server"
+   "k apply -f hpa.yaml; k get hpa apache-server -n autoscale"
   ],
   "minutes": 4
  },
@@ -2831,10 +2831,10 @@
   "traps": [
    {
     "dont": "Make local-fast default and leave local-path default too",
-    "do": "Patch every old default to `is-default-class: \"false\"`, so `k get sc` shows only local-fast (default)"
+    "do": "Patch every old default to `is-default-class: \"false\"`, so `k get storageclass` shows only local-fast (default)"
    },
    {
-    "dont": "`k delete sc local-path` and recreate it",
+    "dont": "`k delete storageclass local-path` and recreate it",
     "do": "Only patch its annotation, because deleting is not needed and could disturb existing PVCs"
    },
    {
@@ -2845,21 +2845,21 @@
   "verify": [
    {
     "need": "SC fields",
-    "cmd": "k get sc local-fast",
+    "cmd": "k get storageclass local-fast",
     "see": "rancher.io/local-path WaitForFirstConsumer"
    },
    {
     "need": "only default",
-    "cmd": "k get sc",
+    "cmd": "k get storageclass",
     "see": "(default) only on local-fast"
    }
   ],
   "memorise": [
    "ssh cka01015",
-   "k get sc   # note every (default)",
-   "k patch sc local-path -p '{\"metadata\":{\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"false\"}}}'   # repeat for each old default",
+   "k get storageclass  # note every (default)",
+   "k patch storageclass local-path -p '{\"metadata\":{\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"false\"}}}'  # repeat for each old default",
    "docs: 'storage classes' → name local-fast; annotation storageclass.kubernetes.io/is-default-class: \"true\"; provisioner rancher.io/local-path; volumeBindingMode: WaitForFirstConsumer → k apply",
-   "k get sc   # only local-fast (default)"
+   "k get storageclass  # only local-fast (default)"
   ],
   "minutes": 5
  },
@@ -2876,7 +2876,7 @@
    },
    {
     "q": "Ensure the Pod is Running",
-    "means": "k -n mariadb get pods → 1/1 Running"
+    "means": "k get pods -n mariadb → 1/1 Running"
    }
   ],
   "traps": [
@@ -2896,12 +2896,12 @@
   "verify": [
    {
     "need": "PVC bound",
-    "cmd": "k -n mariadb get pvc mariadb",
+    "cmd": "k get pvc mariadb -n mariadb",
     "see": "Bound mariadb-pv"
    },
    {
     "need": "pod running",
-    "cmd": "k -n mariadb get pods",
+    "cmd": "k get pods -n mariadb",
     "see": "1/1 Running"
    }
   ],
@@ -2910,7 +2910,7 @@
    "k get pv mariadb-pv   # Released? → k patch pv mariadb-pv -p '{\"spec\":{\"claimRef\":null}}'",
    "PVC YAML: name mariadb, ns mariadb, RWO, 250Mi, storageClassName: \"\", volumeName: mariadb-pv → k apply",
    "sed -i 's/claimName: \"\"/claimName: mariadb/' /root/mariadb-deploy.yaml   # replace text in the file",
-   "k apply -f /root/mariadb-deploy.yaml; k -n mariadb get pods"
+   "k apply -f /root/mariadb-deploy.yaml; k get pods -n mariadb"
   ],
   "minutes": 6
  },
@@ -2985,14 +2985,14 @@
   "traps": [
    {
     "dont": "Trust empty `crictl logs` output",
-    "do": "Run `k -n kube-system describe pod -l component=kube-scheduler`. A binary that never started writes no logs."
+    "do": "Run `k describe pods -l component=kube-scheduler -n kube-system`. A binary that never started writes no logs."
    },
    {
     "dont": "`k delete pod stuck` and recreate it",
     "do": "Fix the scheduler instead. The Pod is fine. Nothing is assigning it to a node."
    },
    {
-    "dont": "`k -n kube-system edit pod kube-scheduler-controlplane`",
+    "dont": "`k edit pod/kube-scheduler-controlplane -n kube-system`",
     "do": "`vim /etc/kubernetes/manifests/kube-scheduler.yaml` (fix kube-schedulerr), because the mirror pod is rebuilt from this file"
    },
    {
@@ -3003,7 +3003,7 @@
   "verify": [
    {
     "need": "scheduler running",
-    "cmd": "k -n kube-system get pods | grep scheduler",
+    "cmd": "k get pods -n kube-system | grep scheduler",
     "see": "1/1 Running"
    },
    {
@@ -3015,8 +3015,8 @@
   "memorise": [
    "ssh cka02002",
    "k get pod stuck -o wide   # NODE <none>",
-   "k -n kube-system get pods | grep scheduler",
-   "k -n kube-system describe pod -l component=kube-scheduler | grep -iE 'reason|message'",
+   "k get pods -n kube-system | grep scheduler",
+   "k describe pods -l component=kube-scheduler -n kube-system | grep -iE 'reason|message'",
    "sudo -i; vim /etc/kubernetes/manifests/kube-scheduler.yaml   # kube-schedulerr → kube-scheduler; exit"
   ],
   "minutes": 5
@@ -3030,7 +3030,7 @@
    },
    {
     "q": "from Pod dns-test in namespace lookup",
-    "means": "Test with k -n lookup exec dns-test -- nslookup"
+    "means": "Test with k exec dns-test -n lookup -- nslookup"
    },
    {
     "q": "Save the output of that nslookup to /root/dns.txt",
@@ -3040,15 +3040,15 @@
   "traps": [
    {
     "dont": "Save the nslookup to /root/dns.txt before fixing DNS",
-    "do": "Fix CoreDNS first. Then run `k -n lookup exec dns-test -- nslookup kubernetes.default > /root/dns.txt`. Now the file shows success."
+    "do": "Fix CoreDNS first. Then run `k exec dns-test -n lookup -- nslookup kubernetes.default > /root/dns.txt`. Now the file shows success."
    },
    {
     "dont": "`k run tmp --image=busybox -- nslookup kubernetes.default`",
-    "do": "`k -n lookup exec dns-test -- nslookup kubernetes.default`, because the task names Pod dns-test"
+    "do": "`k exec dns-test -n lookup -- nslookup kubernetes.default`, because the task names Pod dns-test"
    },
    {
-    "dont": "`k -n kube-system rollout restart deploy coredns` at 0/0",
-    "do": "`k -n kube-system scale deploy coredns --replicas=2`, because restarting zero replicas still gives zero Pods"
+    "dont": "`k rollout restart deployment/coredns -n kube-system` at 0/0",
+    "do": "`k scale deployment/coredns --replicas=2 -n kube-system`, because restarting zero replicas still gives zero Pods"
    },
    {
     "dont": "Treat NXDOMAIN lines in the output as failure",
@@ -3056,13 +3056,13 @@
    },
    {
     "dont": "Stop looking when CoreDNS replicas look fine",
-    "do": "Check `k -n kube-system get cm coredns`. Check the kube-dns Service endpoints too. The Corefile or Service may be broken."
+    "do": "Check `k get configmap coredns -n kube-system`. Check the kube-dns Service endpoints too. The Corefile or Service may be broken."
    }
   ],
   "verify": [
    {
     "need": "CoreDNS up",
-    "cmd": "k -n kube-system get deploy coredns",
+    "cmd": "k get deployment coredns -n kube-system",
     "see": "2/2"
    },
    {
@@ -3073,10 +3073,10 @@
   ],
   "memorise": [
    "ssh cka02003",
-   "k -n kube-system get deploy coredns   # 0/0",
-   "k -n kube-system scale deploy coredns --replicas=2",
-   "k -n kube-system rollout status deploy coredns",
-   "k -n lookup exec dns-test -- nslookup kubernetes.default > /root/dns.txt"
+   "k get deployment coredns -n kube-system  # 0/0",
+   "k scale deployment/coredns --replicas=2 -n kube-system",
+   "k rollout status deployment/coredns -n kube-system",
+   "k exec dns-test -n lookup -- nslookup kubernetes.default > /root/dns.txt"
   ],
   "minutes": 3
  },
@@ -3098,16 +3098,16 @@
   ],
   "traps": [
    {
-    "dont": "`k -n data edit deploy analytics` to change nodeSelector",
-    "do": "`k label node node01 disktype=ssd --overwrite`, because changing the Deployment is forbidden"
+    "dont": "`k edit deployment/analytics -n data` to change nodeSelector",
+    "do": "`k label nodes node01 disktype=ssd --overwrite`, because changing the Deployment is forbidden"
    },
    {
     "dont": "Type the label by hand, e.g. `disk-type=SSD`",
-    "do": "Copy key and value from `k -n data get deploy analytics -o jsonpath='{.spec.template.spec.nodeSelector}'`. Then they match exactly."
+    "do": "Copy key and value from `k get deployment analytics -o jsonpath='{.spec.template.spec.nodeSelector}' -n data`. Then they match exactly."
    },
    {
-    "dont": "`k label node controlplane disktype=ssd`",
-    "do": "`k label node node01 disktype=ssd --overwrite`, because the Pods must run on node01"
+    "dont": "`k label nodes controlplane disktype=ssd`",
+    "do": "`k label nodes node01 disktype=ssd --overwrite`, because the Pods must run on node01"
    }
   ],
   "verify": [
@@ -3118,16 +3118,16 @@
    },
    {
     "need": "pods running on node01",
-    "cmd": "k -n data get pods -o wide",
+    "cmd": "k get pods -o wide -n data",
     "see": "Running, NODE node01"
    }
   ],
   "memorise": [
    "ssh cka02004",
-   "k -n data describe pod -l app=analytics | grep -A3 Events",
-   "k -n data get deploy analytics -o jsonpath='{.spec.template.spec.nodeSelector}'",
-   "k label node node01 disktype=ssd --overwrite",
-   "k -n data get pods -o wide"
+   "k describe pods -l app=analytics -n data | grep -A3 Events",
+   "k get deployment analytics -o jsonpath='{.spec.template.spec.nodeSelector}' -n data",
+   "k label nodes node01 disktype=ssd --overwrite",
+   "k get pods -o wide -n data"
   ],
   "minutes": 3
  },
@@ -3140,7 +3140,7 @@
    },
    {
     "q": "ConfigMap named inventory-config with key ready and value yes",
-    "means": "k create cm inventory-config --from-literal=ready=yes -n stock"
+    "means": "k create configmap inventory-config --from-literal=ready=yes -n stock"
    },
    {
     "q": "Do not modify the Deployment",
@@ -3157,28 +3157,28 @@
     "do": "`--from-literal=ready=yes`, because keys and values are case-sensitive"
    },
    {
-    "dont": "`k create cm inventory-config --from-literal=ready=yes`",
-    "do": "Run `k -n stock create cm inventory-config --from-literal=ready=yes`. Pods only read ConfigMaps in their own namespace."
+    "dont": "`k create configmap inventory-config --from-literal=ready=yes`",
+    "do": "Run `k create configmap inventory-config --from-literal=ready=yes -n stock`. Pods only read ConfigMaps in their own namespace."
    }
   ],
   "verify": [
    {
     "need": "CM exists",
-    "cmd": "k -n stock get cm inventory-config -o yaml",
+    "cmd": "k get configmap inventory-config -o yaml -n stock",
     "see": "ready: \"yes\""
    },
    {
     "need": "deployment ready",
-    "cmd": "k -n stock get deploy inventory",
+    "cmd": "k get deployment inventory -n stock",
     "see": "READY n/n"
    }
   ],
   "memorise": [
    "ssh cka02005",
-   "k -n stock get pods   # Init:0/1",
-   "k -n stock describe pod -l app=inventory | tail -5",
-   "k -n stock create cm inventory-config --from-literal=ready=yes",
-   "k -n stock rollout status deploy inventory --timeout=180s   # re-run if it times out"
+   "k get pods -n stock   # Init:0/1",
+   "k describe pods -l app=inventory -n stock | tail -5",
+   "k create configmap inventory-config --from-literal=ready=yes -n stock",
+   "k rollout status deployment/inventory --timeout=180s -n stock  # re-run if it times out"
   ],
   "minutes": 3
  },
@@ -3205,7 +3205,7 @@
    },
    {
     "dont": "Create custom-resources.yaml without checking its `cidr:`",
-    "do": "Compare `cidr:` with podSubnet from `k -n kube-system get cm kubeadm-config -o yaml`. Fix it with sed if different."
+    "do": "Compare `cidr:` with podSubnet from `k get configmap kubeadm-config -o yaml -n kube-system`. Fix it with sed if different."
    },
    {
     "dont": "Create custom-resources.yaml right after the operator",
@@ -3226,7 +3226,7 @@
   ],
   "memorise": [
    "ssh cka02006",
-   "k -n kube-system get cm kubeadm-config -o yaml | grep podSubnet   # or: ps aux | grep -o 'cluster-cidr=[0-9][^ ]*'",
+   "k get configmap kubeadm-config -o yaml -n kube-system | grep podSubnet   # or: ps aux | grep -o 'cluster-cidr=[0-9][^ ]*'",
    "k create -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.2/manifests/tigera-operator.yaml",
    "k wait --for=condition=Established crd/installations.operator.tigera.io --timeout=60s",
    "curl -fsSLO https://raw.githubusercontent.com/projectcalico/calico/v3.29.2/manifests/custom-resources.yaml; sed -i 's#cidr: 192.168.0.0/16#cidr: 10.244.0.0/16#' custom-resources.yaml   # use YOUR podSubnet",
@@ -3275,7 +3275,7 @@
   "verify": [
    {
     "need": "snapshot valid",
-    "cmd": "ETCDCTL_API=3 etcdctl --write-out=table snapshot status /opt/backup/etcd-snap.db",
+    "cmd": "etcdutl --write-out=table snapshot status /opt/backup/etcd-snap.db",
     "see": "table with HASH/REVISION/KEYS"
    },
    {
@@ -3288,7 +3288,7 @@
    "ssh cka02007; sudo -i",
    "export ETCDCTL_API=3",
    "etcdctl --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key snapshot save /opt/backup/etcd-snap.db",
-   "etcdctl --write-out=table snapshot status /opt/backup/etcd-snap.db   # deprecation warning is OK"
+   "etcdutl --write-out=table snapshot status /opt/backup/etcd-snap.db   # etcd 3.6 removed it from etcdctl"
   ],
   "minutes": 4
  },
@@ -3323,7 +3323,7 @@
    },
    {
     "dont": "Apply the overlay before namespace shop-prod exists",
-    "do": "`k create ns shop-prod` first, because `namespace:` in kustomization.yaml does not create it"
+    "do": "`k create namespace shop-prod` first, because `namespace:` in kustomization.yaml does not create it"
    }
   ],
   "verify": [
@@ -3334,7 +3334,7 @@
    },
    {
     "need": "applied",
-    "cmd": "k -n shop-prod get deploy prod-shop",
+    "cmd": "k get deployment prod-shop -n shop-prod",
     "see": "3/3"
    }
   ],
@@ -3342,8 +3342,8 @@
    "ssh cka02008",
    "mkdir -p /root/shop-kustomize/overlays/prod",
    "# /root/shop-kustomize/overlays/prod/kustomization.yaml:\nresources:\n- ../../base\nnamespace: shop-prod\nnamePrefix: prod-\nreplicas:\n- name: shop\n  count: 3",
-   "k create ns shop-prod --dry-run=client -o yaml | k apply -f -",
-   "k apply -k /root/shop-kustomize/overlays/prod; k -n shop-prod get deploy prod-shop"
+   "k create namespace shop-prod --dry-run=client -o yaml | k apply -f -",
+   "k apply -k /root/shop-kustomize/overlays/prod; k get deployment prod-shop -n shop-prod"
   ],
   "minutes": 5
  },
@@ -3425,30 +3425,30 @@
    },
    {
     "dont": "`--rule=\"example.org/echo*=echo:80\"`",
-    "do": "Use `echo:8080`, the Service port shown by `k -n echo-sound get svc echo`"
+    "do": "Use `echo:8080`, the Service port shown by `k get service echo -n echo-sound`"
    },
    {
     "dont": "`k create ingress echo ...` without a namespace",
-    "do": "`k -n echo-sound create ingress echo --class=nginx ...`, otherwise it lands in default"
+    "do": "`k create ingress echo --class=nginx ... -n echo-sound`, otherwise it lands in default"
    }
   ],
   "verify": [
    {
     "need": "rule",
-    "cmd": "k -n echo-sound describe ingress echo | grep -A3 Rules",
+    "cmd": "k describe ingress echo -n echo-sound | grep -A3 Rules",
     "see": "example.org /echo echo:8080"
    },
    {
     "need": "Prefix",
-    "cmd": "k -n echo-sound get ingress echo -o jsonpath='{.spec.rules[0].http.paths[0].pathType}'",
+    "cmd": "k get ingress echo -o jsonpath='{.spec.rules[0].http.paths[0].pathType}' -n echo-sound",
     "see": "Prefix"
    }
   ],
   "memorise": [
    "ssh cka02010",
-   "k -n echo-sound get svc echo",
-   "k -n echo-sound create ingress echo --class=nginx --rule=\"example.org/echo*=echo:8080\"",
-   "k -n echo-sound describe ingress echo"
+   "k get service echo -n echo-sound",
+   "k create ingress echo --class=nginx --rule=\"example.org/echo*=echo:8080\" -n echo-sound",
+   "k describe ingress echo -n echo-sound"
   ],
   "minutes": 3
  },
@@ -3465,17 +3465,17 @@
    },
    {
     "q": "Make sure the running Pods use the new configuration",
-    "means": "k rollout restart deploy nginx-static"
+    "means": "k rollout restart deployment/nginx-static"
    }
   ],
   "traps": [
    {
-    "dont": "`k -n nginx-static patch cm nginx-config -p '{\"immutable\":true}'` before editing",
+    "dont": "`k patch configmap nginx-config -p '{\"immutable\":true}' -n nginx-static` before editing",
     "do": "Edit to `ssl_protocols TLSv1.3;` first. Then make it immutable. An immutable ConfigMap cannot be edited."
    },
    {
     "dont": "Edit the ConfigMap and stop there",
-    "do": "Run `k -n nginx-static rollout restart deploy nginx-static`. Running Pods keep the old config until restarted."
+    "do": "Run `k rollout restart deployment/nginx-static -n nginx-static`. Running Pods keep the old config until restarted."
    },
    {
     "dont": "`ssl_protocols TLSv1.3` (no semicolon)",
@@ -3485,12 +3485,12 @@
   "verify": [
    {
     "need": "only TLSv1.3",
-    "cmd": "k -n nginx-static get cm nginx-config -o yaml | grep ssl_protocols",
+    "cmd": "k get configmap nginx-config -o yaml -n nginx-static | grep ssl_protocols",
     "see": "ssl_protocols TLSv1.3;"
    },
    {
     "need": "immutable",
-    "cmd": "k -n nginx-static get cm nginx-config -o jsonpath='{.immutable}'",
+    "cmd": "k get configmap nginx-config -o jsonpath='{.immutable}' -n nginx-static",
     "see": "true"
    },
    {
@@ -3501,10 +3501,10 @@
   ],
   "memorise": [
    "ssh cka02011",
-   "IP=$(k -n nginx-static get svc nginx-static -o jsonpath='{.spec.clusterIP}'); curl -sk --tls-max 1.2 https://$IP",
-   "k -n nginx-static edit cm nginx-config   # ssl_protocols TLSv1.3;",
-   "k -n nginx-static patch cm nginx-config -p '{\"immutable\":true}'",
-   "k -n nginx-static rollout restart deploy nginx-static; k -n nginx-static rollout status deploy nginx-static",
+   "IP=$(k get service nginx-static -o jsonpath='{.spec.clusterIP}' -n nginx-static); curl -sk --tls-max 1.2 https://$IP",
+   "k edit configmap/nginx-config -n nginx-static  # ssl_protocols TLSv1.3;",
+   "k patch configmap nginx-config -p '{\"immutable\":true}' -n nginx-static",
+   "k rollout restart deployment/nginx-static -n nginx-static; k rollout status deployment/nginx-static -n nginx-static",
    "curl -sk --tls-max 1.2 https://$IP || echo refused"
   ],
   "minutes": 5
@@ -3542,12 +3542,12 @@
   "verify": [
    {
     "need": "api allowed",
-    "cmd": "k -n api exec api -- wget -qO- -T2 db.db | head -2",
+    "cmd": "k exec api -n api -- wget -qO- -T2 db.db | head -2",
     "see": "HTML"
    },
    {
     "need": "others denied",
-    "cmd": "k -n api exec web -- wget -qO- -T2 db.db",
+    "cmd": "k exec web -n api -- wget -qO- -T2 db.db",
     "see": "download timed out"
    }
   ],
@@ -3556,7 +3556,7 @@
    "docs: 'network policies' → copy example → keep Ingress only",
    "podSelector app: db; from: - namespaceSelector: matchLabels kubernetes.io/metadata.name: api   (no dash) podSelector: matchLabels role: api",
    "ports: - protocol: TCP port: 80",
-   "cat <<'EOF' > /root/np.yaml (or vim) → k apply -f /root/np.yaml; k -n db describe networkpolicy db-allow-api"
+   "cat <<'EOF' > /root/np.yaml (or vim) → k apply -f /root/np.yaml; k describe networkpolicy db-allow-api -n db"
   ],
   "minutes": 6
  },
@@ -3597,25 +3597,25 @@
   "verify": [
    {
     "need": "2/2 running",
-    "cmd": "k -n logging get pods",
+    "cmd": "k get pods -n logging",
     "see": "2/2 Running"
    },
    {
     "need": "native sidecar",
-    "cmd": "k -n logging get deploy order-app -o jsonpath='{.spec.template.spec.initContainers[0].restartPolicy}'",
+    "cmd": "k get deployment order-app -o jsonpath='{.spec.template.spec.initContainers[0].restartPolicy}' -n logging",
     "see": "Always"
    },
    {
     "need": "ships logs",
-    "cmd": "k -n logging logs deploy/order-app -c log-shipper --tail=3",
+    "cmd": "k logs deployment/order-app -c log-shipper --tail=3 -n logging",
     "see": "order … lines"
    }
   ],
   "memorise": [
    "ssh cka02013",
-   "k -n logging get deploy order-app -o yaml > /root/order-app.yaml   # backup",
-   "k -n logging edit deploy order-app   # add:\n    spec:\n      initContainers:\n      - name: log-shipper\n        image: busybox:1.36\n        restartPolicy: Always\n        command: [sh, -c, \"tail -n+1 -F /var/log/order.log\"]\n        volumeMounts:\n        - {name: logs, mountPath: /var/log}\n      containers:\n      - name: app\n        ...existing lines stay...\n        volumeMounts:\n        - {name: logs, mountPath: /var/log}\n      volumes:\n      - {name: logs, emptyDir: {}}",
-   "k -n logging get pods   # 2/2 Running"
+   "k get deployment order-app -o yaml -n logging > /root/order-app.yaml   # backup",
+   "k edit deployment/order-app -n logging  # add:\n    spec:\n      initContainers:\n      - name: log-shipper\n        image: busybox:1.36\n        restartPolicy: Always\n        command: [sh, -c, \"tail -n+1 -F /var/log/order.log\"]\n        volumeMounts:\n        - {name: logs, mountPath: /var/log}\n      containers:\n      - name: app\n        ...existing lines stay...\n        volumeMounts:\n        - {name: logs, mountPath: /var/log}\n      volumes:\n      - {name: logs, emptyDir: {}}",
+   "k get pods -n logging   # 2/2 Running"
   ],
   "minutes": 9
  },
@@ -3638,7 +3638,7 @@
   "traps": [
    {
     "dont": "Set requests only on the wordpress container",
-    "do": "Also run `k -n wp set resources deploy wordpress -c init --requests=...`. A bigger init request still blocks scheduling."
+    "do": "Also run `k set resources deployment/wordpress -c init --requests=... -n wp`. A bigger init request still blocks scheduling."
    },
    {
     "dont": "Use the Capacity numbers from `k describe node node01`",
@@ -3656,22 +3656,22 @@
   "verify": [
    {
     "need": "same requests on both",
-    "cmd": "k -n wp get deploy wordpress -o jsonpath='{.spec.template.spec.initContainers[0].resources}{.spec.template.spec.containers[0].resources}'",
+    "cmd": "k get deployment wordpress -o jsonpath='{.spec.template.spec.initContainers[0].resources}{.spec.template.spec.containers[0].resources}' -n wp",
     "see": "identical cpu/memory"
    },
    {
     "need": "all running",
-    "cmd": "k -n wp get pods -o wide",
+    "cmd": "k get pods -o wide -n wp",
     "see": "3 Running on node01"
    }
   ],
   "memorise": [
-   "ssh cka02014; k -n wp scale deploy wordpress --replicas=0",
+   "ssh cka02014; k scale deployment/wordpress --replicas=0 -n wp",
    "k describe node node01 | grep -A7 Allocatable; k describe node node01 | grep -A6 'Allocated resources'   # Requests column",
    "echo $(( <memKi> / 1024 ))   # Mi;  echo $(( (<alloc> - <requested>) * 90 / 100 / 3 ))   # cpu in m, memory in Mi",
-   "k -n wp set resources deploy wordpress -c init --requests=cpu=<X>m,memory=<Y>Mi",
-   "k -n wp set resources deploy wordpress -c wordpress --requests=cpu=<X>m,memory=<Y>Mi",
-   "k -n wp scale deploy wordpress --replicas=3; k -n wp get pods -o wide"
+   "k set resources deployment/wordpress -c init --requests=cpu=<X>m,memory=<Y>Mi -n wp",
+   "k set resources deployment/wordpress -c wordpress --requests=cpu=<X>m,memory=<Y>Mi -n wp",
+   "k scale deployment/wordpress --replicas=3 -n wp; k get pods -o wide -n wp"
   ],
   "minutes": 8
  },
@@ -3693,12 +3693,12 @@
   ],
   "traps": [
    {
-    "dont": "`k -n storage-fix edit pvc logs-pvc` to change storageClassName",
+    "dont": "`k edit pvc/logs-pvc -n storage-fix` to change storageClassName",
     "do": "Delete and recreate logs-pvc with `storageClassName: local-path`. That field cannot change on an existing PVC."
    },
    {
-    "dont": "`k -n storage-fix delete pod log-writer` before saving it",
-    "do": "First run `k -n storage-fix get pod log-writer -o yaml > /root/log-writer.yaml`. Then you can recreate it."
+    "dont": "`k delete pod log-writer -n storage-fix` before saving it",
+    "do": "First run `k get pod log-writer -o yaml -n storage-fix > /root/log-writer.yaml`. Then you can recreate it."
    },
    {
     "dont": "`k apply -f /root/log-writer.yaml` with resourceVersion still inside",
@@ -3712,22 +3712,22 @@
   "verify": [
    {
     "need": "PVC bound",
-    "cmd": "k -n storage-fix get pvc logs-pvc",
+    "cmd": "k get pvc logs-pvc -n storage-fix",
     "see": "Bound local-path"
    },
    {
     "need": "pod running",
-    "cmd": "k -n storage-fix get pod log-writer",
+    "cmd": "k get pod log-writer -n storage-fix",
     "see": "1/1 Running"
    }
   ],
   "memorise": [
    "ssh cka02015",
-   "k -n storage-fix describe pvc logs-pvc | tail -3",
-   "k -n storage-fix get pod log-writer -o yaml > /root/log-writer.yaml",
-   "k -n storage-fix delete pod log-writer; k -n storage-fix delete pvc logs-pvc",
+   "k describe pvc logs-pvc -n storage-fix | tail -3",
+   "k get pod log-writer -o yaml -n storage-fix > /root/log-writer.yaml",
+   "k delete pod log-writer -n storage-fix; k delete pvc logs-pvc -n storage-fix",
    "cat <<'EOF' > /root/logs-pvc.yaml (or vim): logs-pvc, RWO, 200Mi, storageClassName: local-path → k apply -f /root/logs-pvc.yaml",
-   "sed -i '/^  resourceVersion:/d; /^  uid:/d' /root/log-writer.yaml; k apply -f /root/log-writer.yaml; k -n storage-fix get pvc,pod"
+   "sed -i '/^  resourceVersion:/d; /^  uid:/d' /root/log-writer.yaml; k apply -f /root/log-writer.yaml; k get pvc,pods -n storage-fix"
   ],
   "minutes": 6
  },
@@ -3764,12 +3764,12 @@
   "verify": [
    {
     "need": "PV/PVC bound",
-    "cmd": "k -n app-store get pvc app-pvc",
+    "cmd": "k get pvc app-pvc -n app-store",
     "see": "Bound app-pv"
    },
    {
     "need": "pod writes",
-    "cmd": "k -n app-store exec app-writer -- sh -c 'echo hi > /data/t && cat /data/t'",
+    "cmd": "k exec app-writer -n app-store -- sh -c 'echo hi > /data/t && cat /data/t'",
     "see": "hi"
    }
   ],
@@ -3778,7 +3778,7 @@
    "docs: 'configure persistent volume storage' → PV, PVC, Pod boxes",
    "PV app-pv 1Gi RWO manual hostPath /srv/app-data; PVC app-pvc ns app-store 500Mi manual",
    "Pod app-writer busybox:1.36 command [sleep, \"3600\"], claimName app-pvc, mountPath /data",
-   "cat <<'EOF' > /root/all.yaml (PV --- PVC --- Pod) → k apply -f /root/all.yaml; k -n app-store get pvc,pod"
+   "cat <<'EOF' > /root/all.yaml (PV --- PVC --- Pod) → k apply -f /root/all.yaml; k get pvc,pods -n app-store"
   ],
   "minutes": 6
  },
@@ -3820,7 +3820,7 @@
    },
    {
     "need": "control plane healthy",
-    "cmd": "k -n kube-system get pods",
+    "cmd": "k get pods -n kube-system",
     "see": "kube-apiserver 1/1 Running"
    }
   ],
@@ -3851,7 +3851,7 @@
     "do": "Fix kube-controller-manager. No new Pods are created at all. A scheduler problem leaves Pending Pods instead."
    },
    {
-    "dont": "`k -n cm-test scale deploy scale-test --replicas=3` again",
+    "dont": "`k scale deployment/scale-test --replicas=3 -n cm-test` again",
     "do": "Fix the controller-manager manifest, because scaling again changes nothing while the controller is down"
    },
    {
@@ -3862,22 +3862,22 @@
   "verify": [
    {
     "need": "controller-manager running",
-    "cmd": "k -n kube-system get pods | grep controller-manager",
+    "cmd": "k get pods -n kube-system | grep controller-manager",
     "see": "1/1 Running"
    },
    {
     "need": "deployment scaled",
-    "cmd": "k -n cm-test get deploy scale-test",
+    "cmd": "k get deployment scale-test -n cm-test",
     "see": "3/3"
    }
   ],
   "memorise": [
    "ssh cka03002; sudo -i",
-   "k -n kube-system get pods | grep controller-manager",
-   "k -n kube-system logs kube-controller-manager-controlplane | tail -3",
+   "k get pods -n kube-system | grep controller-manager",
+   "k logs kube-controller-manager-controlplane -n kube-system | tail -3",
    "grep kubeconfig /etc/kubernetes/manifests/kube-controller-manager.yaml; ls /etc/kubernetes/*.conf",
    "sed -i 's#controller-manager.cfg#controller-manager.conf#' /etc/kubernetes/manifests/kube-controller-manager.yaml   # or vim",
-   "k -n cm-test get deploy scale-test   # 3/3 after ~1 min"
+   "k get deployment scale-test -n cm-test  # 3/3 after ~1 min"
   ],
   "minutes": 5
  },
@@ -3969,21 +3969,21 @@
   "verify": [
    {
     "need": "name works",
-    "cmd": "k -n secure exec client -- wget -qO- -T3 backend | head -2",
+    "cmd": "k exec client -n secure -- wget -qO- -T3 backend | head -2",
     "see": "HTML"
    },
    {
     "need": "old policies intact",
-    "cmd": "k -n secure get networkpolicy",
+    "cmd": "k get networkpolicy -n secure",
     "see": "old ones + allow-dns"
    }
   ],
   "memorise": [
    "ssh cka03004",
-   "k -n kube-system get pods -l k8s-app=kube-dns --show-labels",
+   "k get pods -l k8s-app=kube-dns --show-labels -n kube-system",
    "docs: 'network policies' → name allow-dns, ns secure, podSelector: {}, policyTypes [Egress]",
    "egress: - to: - namespaceSelector: matchLabels kubernetes.io/metadata.name: kube-system  podSelector: matchLabels k8s-app: kube-dns; ports UDP 53, TCP 53",
-   "cat <<'EOF' > /root/dns.yaml (or vim) → k apply -f /root/dns.yaml; k -n secure exec client -- wget -qO- -T3 backend"
+   "cat <<'EOF' > /root/dns.yaml (or vim) → k apply -f /root/dns.yaml; k exec client -n secure -- wget -qO- -T3 backend"
   ],
   "minutes": 5
  },
@@ -4001,7 +4001,7 @@
   ],
   "traps": [
    {
-    "dont": "Run `k -n release rollout undo deploy checkout` twice",
+    "dont": "Run `k rollout undo deployment/checkout -n release` twice",
     "do": "Run it once, because a second undo jumps back to the broken revision"
    },
    {
@@ -4009,14 +4009,14 @@
     "do": "Undo, then wait for `rollout status`. Then save the image with jsonpath. The file then shows the working image."
    },
    {
-    "dont": "`k rollout undo deploy checkout` with no namespace",
-    "do": "`k -n release rollout undo deploy checkout`, because the Deployment lives in namespace release"
+    "dont": "`k rollout undo deployment/checkout` with no namespace",
+    "do": "`k rollout undo deployment/checkout -n release`, because the Deployment lives in namespace release"
    }
   ],
   "verify": [
    {
     "need": "available",
-    "cmd": "k -n release get deploy checkout",
+    "cmd": "k get deployment checkout -n release",
     "see": "READY n/n"
    },
    {
@@ -4027,10 +4027,10 @@
   ],
   "memorise": [
    "ssh cka03005",
-   "k -n release rollout history deploy checkout",
-   "k -n release rollout undo deploy checkout",
-   "k -n release rollout status deploy checkout",
-   "k -n release get deploy checkout -o jsonpath='{.spec.template.spec.containers[0].image}' > /root/checkout-image.txt"
+   "k rollout history deployment/checkout -n release",
+   "k rollout undo deployment/checkout -n release",
+   "k rollout status deployment/checkout -n release",
+   "k get deployment checkout -o jsonpath='{.spec.template.spec.containers[0].image}' -n release > /root/checkout-image.txt"
   ],
   "minutes": 3
  },
@@ -4098,7 +4098,7 @@
    },
    {
     "q": "deploy them with kubectl (not helm install)",
-    "means": "k create ns gitops; k apply -n gitops -f /root/argocd-template.yaml"
+    "means": "k create namespace gitops; k apply -f /root/argocd-template.yaml -n gitops"
    }
   ],
   "traps": [
@@ -4111,8 +4111,8 @@
     "do": "`helm template argo argocd/argo-cd ...`, because the release name prefixes resources, e.g. argo-argocd-server"
    },
    {
-    "dont": "`k apply -n gitops -f ...` before the namespace exists",
-    "do": "`k create ns gitops` first, because apply does not create namespaces"
+    "dont": "`k apply -f ... -n gitops` before the namespace exists",
+    "do": "`k create namespace gitops` first, because apply does not create namespaces"
    }
   ],
   "verify": [
@@ -4123,12 +4123,12 @@
    },
    {
     "need": "NodePort",
-    "cmd": "k -n gitops get svc argo-argocd-server",
+    "cmd": "k get service argo-argocd-server -n gitops",
     "see": "TYPE NodePort"
    },
    {
     "need": "running",
-    "cmd": "k -n gitops get pods",
+    "cmd": "k get pods -n gitops",
     "see": "pods Running after 2-4 min (slow/Pending = playground limit)"
    }
   ],
@@ -4138,7 +4138,7 @@
    "helm show values argocd/argo-cd --version 7.7.3 > /root/argocd-values.yaml; grep -n -A3 \"^crds:\" /root/argocd-values.yaml",
    "sed -n '/^server:/,/^[a-z]/p' /root/argocd-values.yaml | grep -n -A8 '^  service:'",
    "helm template argo argocd/argo-cd --version 7.7.3 --namespace gitops --set crds.install=false --set server.service.type=NodePort > /root/argocd-template.yaml",
-   "k create ns gitops; k apply -n gitops -f /root/argocd-template.yaml; k -n gitops get svc argo-argocd-server"
+   "k create namespace gitops; k apply -f /root/argocd-template.yaml -n gitops; k get service argo-argocd-server -n gitops"
   ],
   "minutes": 7
  },
@@ -4286,12 +4286,12 @@
   "verify": [
    {
     "need": "rules stored",
-    "cmd": "k -n shop-gw describe httproute shop-route | grep -A20 Rules",
+    "cmd": "k describe httproute shop-route -n shop-gw | grep -A20 Rules",
     "see": "header rule + weighted rule (no Accepted status here: no gateway controller in the playground)"
    },
    {
     "need": "attached",
-    "cmd": "k -n shop-gw get httproute shop-route -o yaml",
+    "cmd": "k get httproute shop-route -o yaml -n shop-gw",
     "see": "parentRefs shop-gw"
    }
   ],
@@ -4337,12 +4337,12 @@
   "verify": [
    {
     "need": "gateway allowed",
-    "cmd": "k -n edge exec gateway -- wget -qO- -T2 api.payments | head -2",
+    "cmd": "k exec gateway -n edge -- wget -qO- -T2 api.payments | head -2",
     "see": "HTML"
    },
    {
     "need": "others blocked",
-    "cmd": "k -n edge exec intruder -- wget -qO- -T2 api.payments",
+    "cmd": "k exec intruder -n edge -- wget -qO- -T2 api.payments",
     "see": "download timed out"
    }
   ],
@@ -4350,7 +4350,7 @@
    "ssh cka03011",
    "for f in /root/netpols-ex/*.yaml; do echo \"== $f\"; cat $f; done   # look for ONE '-' before namespaceSelector, podSelector without '-', ports 80",
    "k apply -f /root/netpols-ex/b.yaml",
-   "k -n payments get networkpolicy"
+   "k get networkpolicy -n payments"
   ],
   "minutes": 5
  },
@@ -4372,11 +4372,11 @@
   ],
   "traps": [
    {
-    "dont": "`k -n dns-lab run dnsq --rm -it ... > /root/svc-dns.txt`",
+    "dont": "`k run dnsq --rm -it ... -n dns-lab > /root/svc-dns.txt`",
     "do": "Use `--rm -i`, not `-it`, because a TTY adds junk characters to the redirected file"
    },
    {
-    "dont": "`k -n dns-lab expose deploy catalog --name=catalog-headless --port=80`",
+    "dont": "`k expose deployment catalog --name=catalog-headless --port=80 -n dns-lab`",
     "do": "Add `--cluster-ip=None`, because headless means the Service has no ClusterIP"
    },
    {
@@ -4387,7 +4387,7 @@
   "verify": [
    {
     "need": "services",
-    "cmd": "k -n dns-lab get svc",
+    "cmd": "k get services -n dns-lab",
     "see": "catalog-svc 8080/TCP with IP; catalog-headless CLUSTER-IP None"
    },
    {
@@ -4398,10 +4398,10 @@
   ],
   "memorise": [
    "ssh cka03012",
-   "k -n dns-lab rollout status deploy catalog",
-   "k -n dns-lab expose deploy catalog --name=catalog-svc --port=8080 --target-port=80",
-   "k -n dns-lab expose deploy catalog --name=catalog-headless --port=80 --cluster-ip=None",
-   "k -n dns-lab run dnsq --rm -i --restart=Never --image=busybox:1.36 -- nslookup catalog-svc.dns-lab.svc.cluster.local > /root/svc-dns.txt",
+   "k rollout status deployment/catalog -n dns-lab",
+   "k expose deployment catalog --name=catalog-svc --port=8080 --target-port=80 -n dns-lab",
+   "k expose deployment catalog --name=catalog-headless --port=80 --cluster-ip=None -n dns-lab",
+   "k run dnsq --rm -i --restart=Never --image=busybox:1.36 -n dns-lab -- nslookup catalog-svc.dns-lab.svc.cluster.local > /root/svc-dns.txt",
    "(same with catalog-headless… > /root/headless-dns.txt)"
   ],
   "minutes": 5
@@ -4411,7 +4411,7 @@
   "clues": [
    {
     "q": "60% average CPU utilisation AND 70% average memory utilisation",
-    "means": "Two Resource metrics: cpu 60, memory 70 (k autoscale only does CPU → use YAML)"
+    "means": "Two Resource metrics: cpu 60, memory 70 (k autoscale --cpu/--memory cannot set behavior → use YAML)"
    },
    {
     "q": "scale up by at most 2 Pods per 60 seconds",
@@ -4428,7 +4428,7 @@
     "do": "`{type: Pods, value: 2, periodSeconds: 60}`, because the task says 2 Pods, not 2 percent"
    },
    {
-    "dont": "`k autoscale deploy worker ...`",
+    "dont": "`k autoscale deployment worker ...`",
     "do": "Write autoscaling/v2 YAML with cpu 60 and memory 70. `k autoscale` cannot set the behavior rules."
    },
    {
@@ -4439,12 +4439,12 @@
   "verify": [
    {
     "need": "targets + limits",
-    "cmd": "k -n metrics-app get hpa worker-hpa",
+    "cmd": "k get hpa worker-hpa -n metrics-app",
     "see": "cpu <unknown>/60%, memory <unknown>/70% (numbers if metrics-server runs), 2, 6"
    },
    {
     "need": "behavior",
-    "cmd": "k -n metrics-app get hpa worker-hpa -o yaml | grep -A12 behavior",
+    "cmd": "k get hpa worker-hpa -o yaml -n metrics-app | grep -A12 behavior",
     "see": "Pods 2 / 60s; stabilizationWindowSeconds 120"
    }
   ],
@@ -4453,7 +4453,7 @@
    "docs: 'horizontal pod autoscale walkthrough' / k explain hpa.spec.behavior",
    "autoscaling/v2; scaleTargetRef Deployment worker; min 2 max 6; metrics cpu 60 + memory 70 (type Utilization)",
    "behavior: scaleUp: policies: - {type: Pods, value: 2, periodSeconds: 60}; scaleDown: stabilizationWindowSeconds: 120",
-   "cat <<'EOF' > /root/hpa.yaml (or vim) → k apply -f /root/hpa.yaml; k -n metrics-app get hpa"
+   "cat <<'EOF' > /root/hpa.yaml (or vim) → k apply -f /root/hpa.yaml; k get hpa -n metrics-app"
   ],
   "minutes": 7
  },
@@ -4462,7 +4462,7 @@
   "clues": [
    {
     "q": "value exactly one less than the highest existing user-defined PriorityClass",
-    "means": "k get pc, skip system-*, highest − 1"
+    "means": "k get priorityclass, skip system-*, highest − 1"
    },
    {
     "q": "preemptionPolicy PreemptLowerPriority, not the global default",
@@ -4480,7 +4480,7 @@
    },
    {
     "dont": "`value: 1999999999` from a system-* class",
-    "do": "`k get pc --sort-by=.value`, take the highest non-system value minus 1"
+    "do": "`k get priorityclass --sort-by=.value`, take the highest non-system value minus 1"
    },
    {
     "dont": "`globalDefault: true`",
@@ -4488,27 +4488,27 @@
    },
    {
     "dont": "Check Pod priority right after the patch",
-    "do": "First run `k -n prio rollout status deploy payments-api`. Old Pods keep the old priority until replaced."
+    "do": "First run `k rollout status deployment/payments-api -n prio`. Old Pods keep the old priority until replaced."
    }
   ],
   "verify": [
    {
     "need": "class fields",
-    "cmd": "k get pc critical-jobs -o yaml | grep -E 'value|preemption|globalDefault'",
+    "cmd": "k get priorityclass critical-jobs -o yaml | grep -E 'value|preemption|globalDefault'",
     "see": "value highest-1, PreemptLowerPriority, false"
    },
    {
     "need": "pods use it",
-    "cmd": "k -n prio get pods -o custom-columns=NAME:.metadata.name,PRIO:.spec.priority,CLASS:.spec.priorityClassName",
+    "cmd": "k get pods -o custom-columns=NAME:.metadata.name,PRIO:.spec.priority,CLASS:.spec.priorityClassName -n prio",
     "see": "new value, critical-jobs"
    }
   ],
   "memorise": [
    "ssh cka03014",
-   "k get pc --sort-by=.value",
+   "k get priorityclass --sort-by=.value",
    "cat <<'EOF' > /root/pc.yaml: scheduling.k8s.io/v1 PriorityClass critical-jobs; value: <highest-1>; globalDefault: false; preemptionPolicy: PreemptLowerPriority; description: \"critical batch\" → k apply -f /root/pc.yaml",
-   "k -n prio patch deploy payments-api -p '{\"spec\":{\"template\":{\"spec\":{\"priorityClassName\":\"critical-jobs\"}}}}'",
-   "k -n prio rollout status deploy payments-api"
+   "k patch deployment payments-api -p '{\"spec\":{\"template\":{\"spec\":{\"priorityClassName\":\"critical-jobs\"}}}}' -n prio",
+   "k rollout status deployment/payments-api -n prio"
   ],
   "minutes": 6
  },
@@ -4545,12 +4545,12 @@
   "verify": [
    {
     "need": "SC correct",
-    "cmd": "k get sc retain-local",
+    "cmd": "k get storageclass retain-local",
     "see": "Retain WaitForFirstConsumer true, not (default)"
    },
    {
     "need": "STS + PVCs",
-    "cmd": "k -n cache get pods,pvc",
+    "cmd": "k get pods,pvc -n cache",
     "see": "cache-0, cache-1 Running; data-cache-0/1 Bound"
    }
   ],
@@ -4559,7 +4559,7 @@
    "docs: 'storage classes' → name retain-local, provisioner rancher.io/local-path, reclaimPolicy: Retain, volumeBindingMode: WaitForFirstConsumer, allowVolumeExpansion: true",
    "docs: 'statefulset' example → Service clusterIP: None name cache + StatefulSet cache, ns cache, replicas 2, redis:7-alpine",
    "volumeClaimTemplates: name data, storageClassName retain-local, 100Mi; mountPath /data",
-   "cat <<'EOF' > /root/sc.yaml and /root/sts.yaml (or vim) → k apply -f /root/sc.yaml -f /root/sts.yaml; k -n cache get pods,pvc"
+   "cat <<'EOF' > /root/sc.yaml and /root/sts.yaml (or vim) → k apply -f /root/sc.yaml -f /root/sts.yaml; k get pods,pvc -n cache"
   ],
   "minutes": 6
  },
@@ -4601,7 +4601,7 @@
    },
    {
     "need": "pod running",
-    "cmd": "k -n postgres get pods",
+    "cmd": "k get pods -n postgres",
     "see": "1/1 Running"
    }
   ],
@@ -4610,7 +4610,7 @@
    "k patch pv pg-data-pv --type=json -p='[{\"op\":\"remove\",\"path\":\"/spec/claimRef\"}]'",
    "k get pv pg-data-pv   # Available",
    "cat <<'EOF' > /root/pvc.yaml: pg-data, ns postgres, RWO, manual, 1Gi → k apply -f /root/pvc.yaml",
-   "k apply -f /root/pg-deploy.yaml; k -n postgres get pvc,pods"
+   "k apply -f /root/pg-deploy.yaml; k get pvc,pods -n postgres"
   ],
   "minutes": 5
  }

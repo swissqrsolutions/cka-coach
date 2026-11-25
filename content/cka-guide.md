@@ -123,13 +123,15 @@ Then **3C** facts to know by heart, **3D** habits, and **3E** how to recognise a
 
 **★ = the core.** Learn the ★ lines first. They solve most of the exam. The lines without ★ are here so you can find them when a question needs them.
 
-**Every kubectl command has the same shape:**
+**Every kubectl command has one of two shapes, exactly as the official docs write their examples:**
 ```
-k   VERB   TYPE   NAME   -n NAMESPACE
+k   VERB   TYPE NAME   -n NAMESPACE     # get, describe, delete, label, annotate, patch, expose, autoscale, taint
+k   VERB   TYPE/NAME   -n NAMESPACE     # edit, set image|env|resources|selector, rollout ..., scale, logs/exec on a non-pod
 ```
-"**get** the **pod** called **api** in namespace **app**" → `k get pod api -n app`
+"**get** the **deployment** called **api** in namespace **app**" → `k get deployment api -n app`
+"**change the image** of the **deployment** called **api**" → `k set image deployment/api nginx=nginx:1.27 -n app`
 
-Short type names: `po` `deploy` `svc` `ns` `no`(node) `cm` `sa` `pv` `pvc` `sc` `netpol` `ing` `hpa` `pc` `ds` `crd` `ep`(endpoints)
+Type names as the docs spell them: `pod` `deployment` `service` `node` `namespace` `configmap` `secret` `serviceaccount` `ingress` `networkpolicy` `storageclass` `priorityclass` `daemonset` `endpoints`. Short names only where the docs use them too: `pv` `pvc` `hpa` `rs` `crd`. A list (no name) is plural: `k get pods`, `k get nodes`, `k get services`, `k get deployments`. Nodes in `label` and `taint`: `k label nodes NODE ...`, `k taint nodes NODE ...`. `-n NS` always goes last (before `--`, `|` or `>`).
 
 ---
 
@@ -138,17 +140,17 @@ Short type names: `po` `deploy` `svc` `ns` `no`(node) `cm` `sa` `pv` `pvc` `sc` 
 ## LOOK. Always start here.
 
 ```
-★ k get po -n NS                                  # status
-★ k get po -n NS -o wide --show-labels            # + node, IP, labels
-★ k describe po NAME -n NS                        # WHY? Read "Events" at the bottom
-★ k logs NAME -n NS --previous                    # what the crashed container printed
-★ k get ep SVC -n NS                              # does the Service have pods behind it?
+★ k get pods -n NS                                # status
+★ k get pods -o wide --show-labels -n NS          # + node, IP, labels
+★ k describe pod NAME -n NS                       # WHY? Read "Events" at the bottom
+★ k logs NAME --previous -n NS                    # what the crashed container printed
+★ k get endpoints SVC -n NS                       # does the Service have pods behind it?
   k logs NAME -c CONTAINER -n NS                  # one container of several
-  k get po -A                                     # all namespaces
+  k get pods -A                                   # all namespaces
   k get all -n NS                                 # pods + services + deployments at once
-  k get TYPE NAME -n NS -o yaml                   # the full object
-  k get ev -n NS --sort-by=.lastTimestamp         # events, newest last
-  k top po -A --sort-by=cpu        /  k top nodes # usage
+  k get TYPE NAME -o yaml -n NS                   # the full object
+  k get events --sort-by=.lastTimestamp -n NS     # events, newest last
+  k top pod -A --sort-by=cpu        /  k top node # usage
   k explain pod.spec.tolerations                  # the manual for any field
   k api-resources | grep -i WORD                  # short name + "has a namespace?"
 ```
@@ -157,43 +159,43 @@ Short type names: `po` `deploy` `svc` `ns` `no`(node) `cm` `sa` `pv` `pvc` `sc` 
 ## MAKE
 
 ```
-★ k create ns NAME
-★ k create deploy NAME --image=IMAGE --replicas=3 -n NS
+★ k create namespace NAME
+★ k create deployment NAME --image=IMAGE --replicas=3 -n NS
 ★ k run POD --image=IMAGE -n NS                                     # add:  -- sleep 3600   for a command
-★ k expose deploy NAME --name=SVC --port=80 --target-port=80 -n NS  # add:  --type=NodePort  if asked
-★ k create cm NAME --from-literal=KEY=VALUE -n NS
+★ k expose deployment NAME --name=SVC --port=80 --target-port=80 -n NS  # add:  --type=NodePort  if asked
+★ k create configmap NAME --from-literal=KEY=VALUE -n NS
 ★ k create secret generic NAME --from-literal=KEY=VALUE -n NS
-★ k create sa NAME -n NS
+★ k create serviceaccount NAME -n NS
 ★ k create role NAME --verb=get,list --resource=pods -n NS
 ★ k create rolebinding NAME --role=ROLE --serviceaccount=NS:SA -n NS
   k create clusterrole NAME --verb=get,list --resource=nodes
   k create clusterrolebinding NAME --clusterrole=CR --serviceaccount=NS:SA
   k create rolebinding NAME --clusterrole=CR --user=USER -n NS      # a ClusterRole, limited to one namespace
   k create ingress NAME --class=CLASS --rule="HOST/*=SVC:PORT" -n NS        # with TLS:  ...=SVC:PORT,tls=SECRET
-  k create pc NAME --value=1000                                     # PriorityClass
-  k autoscale deploy NAME --min=2 --max=5 --cpu-percent=70 -n NS    # HPA
+  k create priorityclass NAME --value=1000                          # PriorityClass
+  k autoscale deployment NAME --min=2 --max=5 --cpu=70% -n NS       # HPA
   k create secret tls NAME --cert=FILE.crt --key=FILE.key -n NS
-★ k run POD --image=IMAGE -n NS --dry-run=client -o yaml > pod.yaml # write the YAML, create nothing
-  k create deploy D --image=IMAGE --dry-run=client -o yaml > d.yaml
+★ k run POD --image=IMAGE --dry-run=client -o yaml -n NS > pod.yaml # write the YAML, create nothing
+  k create deployment D --image=IMAGE --dry-run=client -o yaml > d.yaml
 ```
 
 ## CHANGE
 
 ```
-★ k edit deploy NAME -n NS                          # change ANYTHING. Opens vim. Save = applied.
-★ k set image deploy/NAME CONTAINER=IMAGE -n NS
-★ k set resources deploy NAME --requests=cpu=100m,memory=128Mi -n NS        # add --limits=... if asked
-★ k scale deploy NAME --replicas=3 -n NS
-★ k rollout undo deploy/NAME -n NS                  # back one version.  --to-revision=N for a specific one
-★ k rollout restart deploy/NAME -n NS               # new pods (after a ConfigMap change)
-  k rollout status deploy/NAME -n NS                # wait until finished
-  k rollout history deploy/NAME -n NS
-  k set selector svc NAME app=VALUE -n NS           # fix a Service that finds no pods
-  k set env deploy/NAME --from=configmap/CM -n NS
+★ k edit deployment/NAME -n NS                      # change ANYTHING. Opens vim. Save = applied.
+★ k set image deployment/NAME CONTAINER=IMAGE -n NS
+★ k set resources deployment/NAME --requests=cpu=100m,memory=128Mi -n NS    # add --limits=... if asked
+★ k scale deployment/NAME --replicas=3 -n NS
+★ k rollout undo deployment/NAME -n NS              # back one version.  --to-revision=N for a specific one
+★ k rollout restart deployment/NAME -n NS           # new pods (after a ConfigMap change)
+  k rollout status deployment/NAME -n NS            # wait until finished
+  k rollout history deployment/NAME -n NS
+  k set selector service/NAME app=VALUE -n NS       # fix a Service that finds no pods
+  k set env deployment/NAME --from=configmap/CM -n NS
 ★ k apply -f file.yaml                              # create or update from your file
   k apply -k FOLDER                                 # a kustomize folder.  Preview: k kustomize FOLDER
-  k label node NODE key=value                       # remove:  k label node NODE key-
-  k taint node NODE key=value:NoSchedule            # remove:  same line + "-" at the very end
+  k label nodes NODE key=value                      # remove:  k label nodes NODE key-
+  k taint nodes NODE key=value:NoSchedule           # remove:  same line + "-" at the very end
   k cordon NODE  /  k uncordon NODE
   k drain NODE --ignore-daemonsets --delete-emptydir-data
 ```
@@ -203,7 +205,7 @@ If you forget a `set` command, `k edit` always works.
 
 ```
 ★ k delete TYPE NAME -n NS
-  k delete po NAME -n NS --force --grace-period=0   # do not wait 30 seconds
+  k delete pod NAME --force --grace-period=0 -n NS  # do not wait 30 seconds
   k delete -f file.yaml
   k replace --force -f file.yaml                    # delete + create in one step (for fields that cannot be edited)
 ```
@@ -212,7 +214,7 @@ If you forget a `set` command, `k edit` always works.
 
 ```
 ★ k exec POD -n NS -- wget -qO- -T 3 SVC                            # capital O, not zero
-★ k auth can-i VERB TYPE -n NS --as=system:serviceaccount:NS:SA
+★ k auth can-i VERB TYPE --as=system:serviceaccount:NS:SA -n NS
   k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup SVC.NS.svc.cluster.local
   k exec POD -n NS -- env | grep KEY        /  k exec POD -n NS -- ls /path
   curl -s -m 3 NODE:NODEPORT
@@ -288,7 +290,7 @@ If you forget a `set` command, `k edit` always works.
 
 ```
   k create -f TIGERA-OPERATOR-URL                   # Calico = supports NetworkPolicy. Flannel does NOT.
-  k -n kube-system get pod -l component=kube-controller-manager -o yaml | grep cluster-cidr
+  k get pods -l component=kube-controller-manager -o yaml -n kube-system | grep cluster-cidr
   curl -LO CUSTOM-RESOURCES-URL ; vim custom-resources.yaml         # cidr: <that range>
   k apply -f custom-resources.yaml
 ```
@@ -385,7 +387,7 @@ Take the default mark off the OLD class. **Search:** `change default storage cla
 ```
 k patch storageclass OLD-NAME -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
 ```
-Check: `k get sc` → `(default)` next to one name only.
+Check: `k get storageclass` → `(default)` next to one name only.
 
 ## ★ NetworkPolicy: allow A to reach B
 **Search:** `network policies` → **Page:** "Network Policies" → "The NetworkPolicy resource". Delete `- Egress`, the `ipBlock` and `namespaceSelector` blocks, and everything from `egress:` down.
@@ -410,7 +412,7 @@ spec:
     - protocol: TCP
       port: 80                   # <- WHICH port
 ```
-Find the labels first: `k get po -n NS --show-labels`.
+Find the labels first: `k get pods --show-labels -n NS`.
 Source in ANOTHER namespace → ONE dash, two selectors (one dash = AND, two dashes = OR):
 ```
   - from:
@@ -446,7 +448,7 @@ Deny ingress only → keep just `- Ingress` and no `egress:` block.
 
 ## ★ Gateway + HTTPRoute (replaces an Ingress)
 **Search:** `gateway api` → **Page:** "Gateway API" → examples under "Gateway" and "HTTPRoute".
-Read the values from the old Ingress first: `k get ing NAME -n NS -o yaml` (host, TLS secret, path, service, port) and `k get gatewayclass`.
+Read the values from the old Ingress first: `k get ingress NAME -o yaml -n NS` (host, TLS secret, path, service, port) and `k get gatewayclass`.
 ```
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
@@ -488,7 +490,7 @@ Check: `k get gateway,httproute -n NS`. Delete the Ingress only after both exist
 
 ## ★ Sidecar in an existing Deployment
 **Search:** `sidecar containers` → **Page:** "Sidecar Containers" → "Example application".
-`k get deploy NAME -n NS -o yaml > d.yaml`, edit, `k apply -f d.yaml`. Add 3 pieces under `spec.template.spec`:
+`k get deployment NAME -o yaml -n NS > d.yaml`, edit, `k apply -f d.yaml`. Add 3 pieces under `spec.template.spec`:
 ```
     spec:
       volumes:                                   # piece 1: the shared folder (pod level)
@@ -509,7 +511,7 @@ Check: `k get gateway,httproute -n NS`. Delete the Ingress only after both exist
         - name: logs
           mountPath: /var/log
 ```
-Check: `k get po -n NS` → `2/2`. `k logs deploy/NAME -c log-shipper -n NS`.
+Check: `k get pods -n NS` → `2/2`. `k logs deployment/NAME -c log-shipper -n NS`.
 
 ## ★ Toleration + nodeSelector (pod level)
 **Search:** `taints tolerations` → **Page:** "Taints and Tolerations" → the `tolerations:` block.
@@ -563,7 +565,7 @@ spec:
 
 ## DaemonSet and static pod (tricks, no docs needed)
 ```
-k create deploy agent --image=nginx:1.27 --dry-run=client -o yaml > ds.yaml
+k create deployment agent --image=nginx:1.27 --dry-run=client -o yaml > ds.yaml
 vim ds.yaml        # kind: Deployment -> DaemonSet.  Delete the lines "replicas: 1" and "strategy: {}"
 k apply -f ds.yaml
 
@@ -574,13 +576,13 @@ exit               # the kubelet starts every file in that folder. To remove the
 
 ## Text you edit inside a ConfigMap
 ```
-k edit cm coredns -n kube-system             # inside ".:53 {" add:   rewrite name OLD.NAME SVC.NS.svc.cluster.local
-k rollout restart deploy coredns -n kube-system
+k edit configmap/coredns -n kube-system      # inside ".:53 {" add:   rewrite name OLD.NAME SVC.NS.svc.cluster.local
+k rollout restart deployment/coredns -n kube-system
 
-k edit cm nginx-config -n NS                 # ssl_protocols TLSv1.2 TLSv1.3;   ->   ssl_protocols TLSv1.3;
-k rollout restart deploy NAME -n NS
+k edit configmap/nginx-config -n NS          # ssl_protocols TLSv1.2 TLSv1.3;   ->   ssl_protocols TLSv1.3;
+k rollout restart deployment/NAME -n NS
 ```
-Backup first: `k get cm NAME -n NS -o yaml > /root/backup.yaml`
+Backup first: `k get configmap NAME -o yaml -n NS > /root/backup.yaml`
 
 ---
 
@@ -597,21 +599,21 @@ Backup first: `k get cm NAME -n NS -o yaml > /root/backup.yaml`
 |---|---|
 | `SVC.NS.svc.cluster.local` | full DNS name of a Service |
 | `system:serviceaccount:NS:SA` | full name of a ServiceAccount, for `--as=` |
-| `run=NAME` / `app=NAME` | label of a pod from `k run` / from `k create deploy` |
+| `run=NAME` / `app=NAME` | label of a pod from `k run` / from `k create deployment` |
 | `k8s-app=kube-dns` | label of the CoreDNS pods |
 | `100m` | a tenth of a CPU. `100` without `m` = one hundred CPUs |
 | `Bound` / `Available` / `Released` | PVC connected / PV free / PV still remembers an old PVC (`k edit pv`, delete `claimRef:`) |
 
 | Status | First command |
 |---|---|
-| `ImagePullBackOff` | `k describe po` → `k set image` |
-| `CrashLoopBackOff` | `k logs --previous` → `k describe po` → `k edit deploy` |
-| `Pending` with Events | `k describe po` → fix what Events names |
-| `Pending`, Events empty | `k get po -n kube-system` → fix the scheduler's file |
+| `ImagePullBackOff` | `k describe pods` → `k set image` |
+| `CrashLoopBackOff` | `k logs --previous` → `k describe pods` → `k edit deployment` |
+| `Pending` with Events | `k describe pods` → fix what Events names |
+| `Pending`, Events empty | `k get pods -n kube-system` → fix the scheduler's file |
 | Node `NotReady` | `ssh` → `systemctl status kubelet` → `journalctl -u kubelet` |
-| Service no answer | `k get ep`: `<none>` → `k set selector`. IP there → `k edit svc` (targetPort) |
-| Service fine, timeout | `k get netpol` → add an allow policy |
-| names do not resolve | `k get po -n kube-system -l k8s-app=kube-dns` |
+| Service no answer | `k get endpoints`: `<none>` → `k set selector`. IP there → `k edit service` (targetPort) |
+| Service fine, timeout | `k get networkpolicy` → add an allow policy |
+| names do not resolve | `k get pods -l k8s-app=kube-dns -n kube-system` |
 
 **vim:** `i` type · `Esc` stop · `:wq` save · `:q!` quit · `dd` delete line · `u` undo · `/word` search · `o` new line below · `O` new line above · `G` end of file · `:set paste` before pasting YAML.
 YAML: spaces only, two per level, never Tab.
@@ -631,16 +633,16 @@ YAML: spaces only, two per level, never Tab.
 
 **Daily warm-up (5 minutes, from memory):**
 ```
-k create ns drill
-k create deploy web --image=nginx:1.27 --replicas=2 -n drill
-k get po -n drill -o wide --show-labels
-k expose deploy web --name=web-svc --port=80 --target-port=80 -n drill
-k get ep web-svc -n drill
-k set image deploy/web nginx=nginx:1.28 -n drill
-k rollout undo deploy/web -n drill
-k scale deploy web --replicas=3 -n drill
-k describe po -n drill | grep -A5 Events
-k delete ns drill
+k create namespace drill
+k create deployment web --image=nginx:1.27 --replicas=2 -n drill
+k get pods -o wide --show-labels -n drill
+k expose deployment web --name=web-svc --port=80 --target-port=80 -n drill
+k get endpoints web-svc -n drill
+k set image deployment/web nginx=nginx:1.28 -n drill
+k rollout undo deployment/web -n drill
+k scale deployment/web --replicas=3 -n drill
+k describe pods -n drill | grep -A5 Events
+k delete namespace drill
 ```
 
 ---
@@ -654,17 +656,17 @@ The first command is the same every time. Run it before you think further.
 
 | Trigger words in the question | Pattern | First command | Q |
 |---|---|---|---|
-| "ImagePullBackOff", "ErrImagePull", "not Running" | wrong image name or tag | `k describe po <pod> -n NS` (Events) | 1 |
-| "keeps restarting", "CrashLoopBackOff" | the container command fails | `k logs <pod> -n NS --previous` | 2 |
-| "Pending", a CPU or memory number | the request does not fit any node | `k describe po <pod> -n NS` (Events: `Insufficient cpu`) | 3 |
-| "Pending", "other pods are fine" | the scheduler is down | `k get po -n kube-system` | 9 |
+| "ImagePullBackOff", "ErrImagePull", "not Running" | wrong image name or tag | `k describe pod <pod> -n NS` (Events) | 1 |
+| "keeps restarting", "CrashLoopBackOff" | the container command fails | `k logs <pod> --previous -n NS` | 2 |
+| "Pending", a CPU or memory number | the request does not fit any node | `k describe pod <pod> -n NS` (Events: `Insufficient cpu`) | 3 |
+| "Pending", "other pods are fine" | the scheduler is down | `k get pods -n kube-system` | 9 |
 | "NotReady", "survive a reboot" | kubelet stopped and disabled | `ssh node01` → `systemctl status kubelet` | 4 |
 | "NotReady", no reboot words | kubelet config is wrong | `ssh node01` → `journalctl -u kubelet -n 30` | 5 |
 | "kubectl commands fail", "after a configuration change" | API server manifest is broken | `crictl ps -a` (on the control plane) | 8 |
-| "cannot reach service", nothing about ports | Service selector is wrong | `k get ep SVC -n NS` → `<none>` | 6 |
-| "cannot reach service", "listens on port 80" | Service targetPort is wrong | `k get ep SVC -n NS` → IP shown, wrong port | 7 |
-| "cannot reach", "NetworkPolicy", "ONLY pod X" | a deny policy, no allow policy | `k get netpol -n NS` | 10 |
-| "cannot resolve", "by IP still works" | CoreDNS is down | `k get po -n kube-system -l k8s-app=kube-dns` | 11 |
+| "cannot reach service", nothing about ports | Service selector is wrong | `k get endpoints SVC -n NS` → `<none>` | 6 |
+| "cannot reach service", "listens on port 80" | Service targetPort is wrong | `k get endpoints SVC -n NS` → IP shown, wrong port | 7 |
+| "cannot reach", "NetworkPolicy", "ONLY pod X" | a deny policy, no allow policy | `k get networkpolicy -n NS` | 10 |
+| "cannot resolve", "by IP still works" | CoreDNS is down | `k get pods -l k8s-app=kube-dns -n kube-system` | 11 |
 
 **Write something to a file**
 
@@ -673,13 +675,13 @@ The first command is the same every time. Run it before you think further.
 | "logs … to the file", "uses the most CPU" | logs and usage | `k logs api -n app > /opt/api.log` | 12 |
 | "list of all … CRDs", "documentation of the field" | read the API | `k get crd` | 18 |
 | "temporary pod", "look up the DNS name" | DNS across namespaces | `k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup SVC.NS` | 30 |
-| "roll back", "write the image … to" | rollout history | `k rollout undo deploy/web -n shop` | 37 |
+| "roll back", "write the image … to" | rollout history | `k rollout undo deployment/web -n shop` | 37 |
 
 **Permissions, packages, cluster admin**
 
 | Trigger words in the question | Pattern | First command | Q |
 |---|---|---|---|
-| "ServiceAccount", "Role", "RoleBinding", one namespace | namespaced RBAC | `k create sa NAME -n NS` | 13 |
+| "ServiceAccount", "Role", "RoleBinding", one namespace | namespaced RBAC | `k create serviceaccount NAME -n NS` | 13 |
 | "nodes", "ClusterRole", "ClusterRoleBinding" | cluster-wide RBAC | `k create clusterrole NAME --verb=get,list --resource=nodes` | 14 |
 | "Helm", "template", "CRDs must NOT" | helm template with a value | `helm show values REPO/CHART --version V` | 15 |
 | "Helm", "release", "upgrade", "roll back", "revision" | helm lifecycle | `helm repo add NAME URL` | 16 |
@@ -693,48 +695,48 @@ The first command is the same every time. Run it before you think further.
 
 | Trigger words in the question | Pattern | First command | Q |
 |---|---|---|---|
-| "NodePort", "node port 30080" | expose, then set nodePort | `k edit deploy np -n web` (containerPort) | 23 |
+| "NodePort", "node port 30080" | expose, then set nodePort | `k edit deployment/np -n web` (containerPort) | 23 |
 | "Ingress", "host", "path … Prefix" | one imperative line | `k get ingressclass` | 24 |
-| "Gateway", "HTTPRoute", "migrate", "Ingress" | rebuild the Ingress as Gateway | `k get ing web-ing -n web -o yaml` | 25 |
-| "accept … ONLY from pods with label", "port" | allow policy | `k get po -n NS --show-labels` | 26 |
+| "Gateway", "HTTPRoute", "migrate", "Ingress" | rebuild the Ingress as Gateway | `k get ingress web-ing -o yaml -n web` | 25 |
+| "accept … ONLY from pods with label", "port" | allow policy | `k get pods --show-labels -n NS` | 26 |
 | "blocks all incoming and all outgoing", "DNS … must still work" | default deny + DNS egress | docs "Network Policies" | 27 |
 
 **Configuration**
 
 | Trigger words in the question | Pattern | First command | Q |
 |---|---|---|---|
-| "TLSv1.3", "ConfigMap", "running pods use the new configuration" | edit cm, restart | `k get cm nginx-config -n nginx-static -o yaml` | 28 |
-| "resolves to the service", "cluster DNS" | CoreDNS rewrite | `k get cm coredns -n kube-system -o yaml` | 29 |
-| "environment variables", "mounted as files", "Secret" | cm + secret in a pod | `k create cm app-cfg --from-literal=LOG_LEVEL=debug -n app` | 35 |
+| "TLSv1.3", "ConfigMap", "running pods use the new configuration" | edit cm, restart | `k get configmap nginx-config -o yaml -n nginx-static` | 28 |
+| "resolves to the service", "cluster DNS" | CoreDNS rewrite | `k get configmap coredns -o yaml -n kube-system` | 29 |
+| "environment variables", "mounted as files", "Secret" | cm + secret in a pod | `k create configmap app-cfg --from-literal=LOG_LEVEL=debug -n app` | 35 |
 
 **Workloads and scheduling**
 
 | Trigger words in the question | Pattern | First command | Q |
 |---|---|---|---|
-| "sidecar", "shared volume", "tail -f" | add a container | `k get deploy app -n work -o yaml > app.yaml` | 31 |
-| "HorizontalPodAutoscaler", "stabilization window" | autoscale, then edit behavior | `k autoscale deploy web --min=2 --max=5 --cpu-percent=70 -n shop` | 32 |
-| "PriorityClass", "one less than the highest" | look up, then create | `k get pc` | 33 |
+| "sidecar", "shared volume", "tail -f" | add a container | `k get deployment app -o yaml -n work > app.yaml` | 31 |
+| "HorizontalPodAutoscaler", "stabilization window" | autoscale, then edit behavior | `k autoscale deployment web --min=2 --max=5 --cpu=70% -n shop` | 32 |
+| "PriorityClass", "one less than the highest" | look up, then create | `k get priorityclass` | 33 |
 | "share … equally", "headroom", "requests" | resources from node numbers | `k describe node node01` (Allocatable) | 34 |
-| "Taint", "tolerates", "scheduled on node01" | taint + label + toleration | `k taint node node01 env=prod:NoSchedule` | 36 |
-| "update … to image", "roll back to the previous revision" | rollout | `k set image deploy/web nginx=nginx:1.28 -n shop` | 37 |
+| "Taint", "tolerates", "scheduled on node01" | taint + label + toleration | `k taint nodes node01 env=prod:NoSchedule` | 36 |
+| "update … to image", "roll back to the previous revision" | rollout | `k set image deployment/web nginx=nginx:1.28 -n shop` | 37 |
 
 **Storage**
 
 | Trigger words in the question | Pattern | First command | Q |
 |---|---|---|---|
 | "PersistentVolume", "hostPath", "mounts the claim" | build PV → PVC → pod | docs "Configure a Pod to Use a PersistentVolume for Storage" | 38 |
-| "StorageClass", "default", "WaitForFirstConsumer" | new default class | `k get sc` | 39 |
+| "StorageClass", "default", "WaitForFirstConsumer" | new default class | `k get storageclass` | 39 |
 | "deleted by accident", "PersistentVolume still exists", "bind to the existing" | PVC that matches the old PV | `k get pv` | 40 |
 
 **Questions that look the same. One command tells them apart:**
 
 | You read | Run | Result → question |
 |---|---|---|
-| "cannot reach service" | `k get ep SVC -n NS` | `<none>` → Q6 · IP shown → Q7 · IP shown and a NetworkPolicy exists → Q10 |
-| "Pending" | `k describe po <pod> -n NS` | Events say `Insufficient` → Q3 · Events empty → Q9 |
+| "cannot reach service" | `k get endpoints SVC -n NS` | `<none>` → Q6 · IP shown → Q7 · IP shown and a NetworkPolicy exists → Q10 |
+| "Pending" | `k describe pod <pod> -n NS` | Events say `Insufficient` → Q3 · Events empty → Q9 |
 | "NotReady" | `systemctl status kubelet` (on the node) | `inactive (dead)` → Q4 · `activating (auto-restart)` → Q5 |
 
-> Check: `k get ep` still works on v1.35, with a warning. Endpoints is deprecated since v1.33. The newer command is `k get endpointslices -n NS -l kubernetes.io/service-name=SVC`.
+> Check: `k get endpoints` still works on v1.35, with a warning. Endpoints is deprecated since v1.33. The newer command is `k get endpointslices -l kubernetes.io/service-name=SVC -n NS`.
 
 
 ---
@@ -806,9 +808,9 @@ Target 2 min. Skip at 5.
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete ns app --ignore-not-found
-k create ns app
-k create deploy api --image=nginx:doesnotexist -n app
+k delete namespace app --ignore-not-found
+k create namespace app
+k create deployment api --image=nginx:doesnotexist -n app
 sleep 20
 clear
 k get pods -n app
@@ -851,7 +853,7 @@ Warning  Failed  ...  Failed to pull image "nginx:doesnotexist": ... not found  
 **Why:** `k set image` needs the container name, not the deployment name.
 
 ```
-k get deploy api -n app -o wide
+k get deployment api -o wide -n app
 ```
 You see:
 ```
@@ -867,7 +869,7 @@ api    0/1     1            0           1m    nginx        nginx:doesnotexist   
 **Why:** fix the deployment. It makes a new pod.
 
 ```
-k set image deploy/api nginx=nginx:1.27 -n app
+k set image deployment/api nginx=nginx:1.27 -n app
 ```
 You see:
 ```
@@ -882,7 +884,7 @@ deployment.apps/api image updated
 **Why:** prove the new pod is up.
 
 ```
-k rollout status deploy/api -n app
+k rollout status deployment/api -n app
 ```
 You see:
 ```
@@ -945,9 +947,9 @@ Target 3 min. Skip at 6.
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete ns app --ignore-not-found
-k create ns app
-k create deploy api --image=busybox:1.36 -n app -- sh -c "exit 1"
+k delete namespace app --ignore-not-found
+k create namespace app
+k create deployment api --image=busybox:1.36 -n app -- sh -c "exit 1"
 sleep 30
 clear
 k get pods -n app
@@ -975,7 +977,7 @@ api-5d9c7b6f4-x2x9k   0/1   CrashLoopBackOff   3 (20s ago)   70s   <-- RESTARTS
 **Why:** an app often prints its error just before it dies.
 
 ```
-k logs <pod-name> -n app --previous
+k logs <pod-name> --previous -n app
 ```
 You see:
 ```
@@ -1012,7 +1014,7 @@ You see:
 **Why:** fix the deployment. It makes a new pod.
 
 ```
-k edit deploy api -n app
+k edit deployment/api -n app
 ```
 In vim, type `/exit 1`, Enter. Press `C`, type `sleep 3600`, `Esc`, `:wq`.
 
@@ -1035,7 +1037,7 @@ deployment.apps/api edited
 **Why:** prove the new pod stays up.
 
 ```
-k rollout status deploy/api -n app
+k rollout status deployment/api -n app
 k get pods -n app
 ```
 You see:
@@ -1060,9 +1062,9 @@ api-7f9b8c6d5-k4m2p   1/1   Running   0   25s   <-- RESTARTS 0
 | You see | Cause | Fix |
 |---|---|---|
 | `previous terminated container ... not found` | no restart yet | wait 20 s, try again |
-| vim reopens with `# Error:` lines | the edit broke the YAML indentation | fix it, or `:q!` and run `k patch deploy api -n app --type=json -p='[{"op":"replace","path":"/spec/template/spec/containers/0/command","value":["sh","-c","sleep 3600"]}]'` |
-| `Forbidden: pod updates may not change fields...` | you ran `k edit pod` | `k edit deploy api -n app` |
-| describe says `Reason: OOMKilled` | memory limit too small | `k set resources deploy api -n app --limits=memory=<value>` |
+| vim reopens with `# Error:` lines | the edit broke the YAML indentation | fix it, or `:q!` and run `k patch deployment api --type=json -p='[{"op":"replace","path":"/spec/template/spec/containers/0/command","value":["sh","-c","sleep 3600"]}]' -n app` |
+| `Forbidden: pod updates may not change fields...` | you ran `k edit pod` | `k edit deployment/api -n app` |
+| describe says `Reason: OOMKilled` | memory limit too small | `k set resources deployment/api --limits=memory=<value> -n app` |
 | `No resources found` | forgot `-n app` | add `-n app` |
 
 ---
@@ -1100,11 +1102,11 @@ Target 3 min. Skip at 6.
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete ns app --ignore-not-found
-k create ns app
-k create deploy api --image=nginx:1.27 -n app
-k rollout status deploy/api -n app --timeout=120s
-k set resources deploy api -n app --requests=cpu=100
+k delete namespace app --ignore-not-found
+k create namespace app
+k create deployment api --image=nginx:1.27 -n app
+k rollout status deployment/api --timeout=120s -n app
+k set resources deployment/api --requests=cpu=100 -n app
 sleep 5
 clear
 k get pods -n app
@@ -1148,7 +1150,7 @@ Warning  FailedScheduling  ...  0/2 nodes are available: ... Insufficient cpu ..
 **Why:** the deployment holds the request. That is what you fix.
 
 ```
-k get deploy api -n app -o yaml | grep -A 1 requests
+k get deployment api -o yaml -n app | grep -A 1 requests
 ```
 You see:
 ```
@@ -1164,7 +1166,7 @@ You see:
 **Why:** fix the deployment. It makes a new pod.
 
 ```
-k set resources deploy api -n app --requests=cpu=100m
+k set resources deployment/api --requests=cpu=100m -n app
 ```
 You see:
 ```
@@ -1179,7 +1181,7 @@ deployment.apps/api resource requirements updated
 **Why:** prove the new pod is up.
 
 ```
-k rollout status deploy/api -n app
+k rollout status deployment/api -n app
 ```
 You see:
 ```
@@ -1205,7 +1207,7 @@ deployment "api" successfully rolled out
 | a new pod is Pending after you deleted one | the deployment re-creates it | fix the deployment, not the pod |
 | `must be less than or equal to cpu limit` | you set `--limits`, not `--requests` | use `--requests=cpu=100m` |
 | Events: `had untolerated taint` on every node | a taint blocks the pod | question 36 |
-| Events: `didn't match Pod's node affinity/selector` | the pod wants a node label none has | fix `nodeSelector:` in `k edit deploy api -n app` |
+| Events: `didn't match Pod's node affinity/selector` | the pod wants a node label none has | fix `nodeSelector:` in `k edit deployment/api -n app` |
 
 ---
 
@@ -1580,13 +1582,13 @@ Target 2 min. Skip at 5.
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete ns web --ignore-not-found
-k create ns web
-k create deploy backend --image=nginx:1.27 -n web
-k create svc clusterip backend-svc --tcp=80:80 -n web
+k delete namespace web --ignore-not-found
+k create namespace web
+k create deployment backend --image=nginx:1.27 -n web
+k create service clusterip backend-svc --tcp=80:80 -n web
 k run client --image=busybox:1.36 -n web -- sleep 3600
-k rollout status deploy/backend -n web --timeout=120s
-k wait --for=condition=Ready pod/client -n web --timeout=120s
+k rollout status deployment/backend --timeout=120s -n web
+k wait --for=condition=Ready pod/client --timeout=120s -n web
 clear
 k get endpoints backend-svc -n web
 ```
@@ -1598,7 +1600,7 @@ k get endpoints backend-svc -n web
 **Why:** a Service sends traffic to its endpoints, the pods it found.
 
 ```
-k get ep backend-svc -n web
+k get endpoints backend-svc -n web
 ```
 You see:
 ```
@@ -1614,7 +1616,7 @@ backend-svc   <none>
 **Why:** the selector is the label the Service looks for.
 
 ```
-k get svc backend-svc -n web -o wide
+k get service backend-svc -o wide -n web
 ```
 You see:
 ```
@@ -1629,7 +1631,7 @@ backend-svc   ClusterIP   10.96.x.x   <none>   80/TCP   1m   app=backend-svc   <
 **Why:** compare the real label with the selector.
 
 ```
-k get po -n web --show-labels
+k get pods --show-labels -n web
 ```
 You see:
 ```
@@ -1644,7 +1646,7 @@ backend-...   1/1   Running   app=backend,pod-template-hash=...
 **Why:** fix the Service, not the pods.
 
 ```
-k set selector svc backend-svc app=backend -n web
+k set selector service/backend-svc app=backend -n web
 ```
 You see:
 ```
@@ -1681,7 +1683,7 @@ You see:
 | You see | Cause | Fix |
 |---|---|---|
 | still `<none>` after the fix | typo, or pods not Ready (`0/1`) | compare with `--show-labels`; fix the pods |
-| still `<none>` after `k edit svc` | you changed `metadata.labels`, not `spec.selector` | use `k set selector` |
+| still `<none>` after `k edit service` | you changed `metadata.labels`, not `spec.selector` | use `k set selector` |
 | endpoints show an IP, wget fails | wrong port | question 7 |
 | `No resources found` | forgot `-n web` | add `-n web` |
 
@@ -1720,13 +1722,13 @@ Target 2 min. Skip at 5.
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete ns web --ignore-not-found
-k create ns web
-k create deploy backend --image=nginx:1.27 -n web
-k expose deploy backend --name=backend-svc --port=80 --target-port=8080 -n web
+k delete namespace web --ignore-not-found
+k create namespace web
+k create deployment backend --image=nginx:1.27 -n web
+k expose deployment backend --name=backend-svc --port=80 --target-port=8080 -n web
 k run client --image=busybox:1.36 -n web -- sleep 3600
-k rollout status deploy/backend -n web --timeout=120s
-k wait --for=condition=Ready pod/client -n web --timeout=120s
+k rollout status deployment/backend --timeout=120s -n web
+k wait --for=condition=Ready pod/client --timeout=120s -n web
 clear
 k get endpoints backend-svc -n web
 ```
@@ -1738,7 +1740,7 @@ k get endpoints backend-svc -n web
 **Why:** endpoints show the pods AND the port the Service sends to.
 
 ```
-k get ep backend-svc -n web
+k get endpoints backend-svc -n web
 ```
 You see:
 ```
@@ -1770,7 +1772,7 @@ command terminated with exit code 1
 **Why:** a Service has two ports. Find the wrong one.
 
 ```
-k describe svc backend-svc -n web
+k describe service backend-svc -n web
 ```
 You see:
 ```
@@ -1787,7 +1789,7 @@ Endpoints:         192.168.1.5:8080
 **Why:** edit the Service in place. Do not recreate it.
 
 ```
-k edit svc backend-svc -n web
+k edit service/backend-svc -n web
 ```
 In vim: type `/8080`, Enter, `cw`, type `80`, Esc, `:wq`, Enter.
 
@@ -1829,7 +1831,7 @@ You see:
 | the question does not name the app's port | you must find it | `k describe pod <pod> -n web`, read `Port:` |
 | `Edit cancelled, no changes made.` | saved nothing, or quit with `:q!` | run `k edit` again |
 | still refused after the fix | you changed `containerPort` in the Deployment | undo it; fix the Service |
-| vim gets in the way | you want one command | `k patch svc backend-svc -n web -p '{"spec":{"ports":[{"port":80,"targetPort":80}]}}'` |
+| vim gets in the way | you want one command | `k patch service backend-svc -p '{"spec":{"ports":[{"port":80,"targetPort":80}]}}' -n web` |
 
 ---
 
@@ -2027,7 +2029,7 @@ Target 5 min. Skip at 9.
 if [ -f /root/scheduler.bak ]; then cp /root/scheduler.bak /etc/kubernetes/manifests/kube-scheduler.yaml; else cp /etc/kubernetes/manifests/kube-scheduler.yaml /root/scheduler.bak; fi
 sed -i 's/- kube-scheduler$/- kube-schedulerx/' /etc/kubernetes/manifests/kube-scheduler.yaml
 k delete pod test --ignore-not-found
-for i in $(seq 1 24); do k get pod kube-scheduler-controlplane -n kube-system --no-headers 2>/dev/null | grep -q '1/1' || break; sleep 5; done
+for i in $(seq 1 24); do k get pod kube-scheduler-controlplane --no-headers -n kube-system 2>/dev/null | grep -q '1/1' || break; sleep 5; done
 sleep 10
 k run test --image=nginx:1.27
 clear
@@ -2147,7 +2149,7 @@ test   1/1     Running   0          5m
 | You see | Cause | Fix |
 |---|---|---|
 | describe shows no Events for the scheduler | events expired | `crictl ps -a \| grep scheduler`, then `crictl inspect <id> \| grep -i -m3 message` |
-| your `k edit pod kube-scheduler-...` did nothing | that is the mirror pod | edit the file in `manifests/` |
+| your `k edit pod/kube-scheduler-...` did nothing | that is the mirror pod | edit the file in `manifests/` |
 | deleted scheduler pod comes back broken | the kubelet rebuilds it from the file | fix the file |
 | scheduler disappears after your edit | YAML broken (Tab or indent) | compare with `/root/kube-scheduler.yaml.orig`; spaces only |
 | scaled Deployment makes NO new pods | controller-manager is broken, not the scheduler | same method, `kube-controller-manager.yaml` |
@@ -2187,11 +2189,11 @@ Target 6 min. Skip at 10.
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete ns web --ignore-not-found
+k delete namespace web --ignore-not-found
 rm -f np.yaml
-k create ns web
-k create deploy backend --image=nginx:1.27 -n web
-k expose deploy backend --name=backend-svc --port=80 -n web
+k create namespace web
+k create deployment backend --image=nginx:1.27 -n web
+k expose deployment backend --name=backend-svc --port=80 -n web
 k run client --image=busybox:1.36 -n web -- sleep 3600
 cat <<EOF | k apply -f -
 apiVersion: networking.k8s.io/v1
@@ -2204,8 +2206,8 @@ spec:
   policyTypes:
   - Ingress
 EOF
-k rollout status deploy/backend -n web --timeout=120s
-k wait --for=condition=Ready pod/client -n web --timeout=120s
+k rollout status deployment/backend --timeout=120s -n web
+k wait --for=condition=Ready pod/client --timeout=120s -n web
 clear
 k exec client -n web -- wget -qO- -T 3 backend-svc
 ```
@@ -2217,8 +2219,8 @@ k exec client -n web -- wget -qO- -T 3 backend-svc
 **Why:** a timeout, not "refused", usually means a policy drops the traffic.
 
 ```
-k get netpol -n web
-k describe netpol deny-all -n web
+k get networkpolicy -n web
+k describe networkpolicy deny-all -n web
 ```
 You see:
 ```
@@ -2236,7 +2238,7 @@ deny-all   <none>   2m   <-- <none> = ALL pods
 **Why:** the new policy needs the backend label and the client label.
 
 ```
-k get po -n web --show-labels
+k get pods --show-labels -n web
 ```
 You see:
 ```
@@ -2249,7 +2251,7 @@ client        1/1   Running   0   2m   run=client                          <-- m
 
 ### Step 3. Write the policy
 
-**Why:** there is no `k create netpol`. Copy the example from the docs page "Network Policies", section "The NetworkPolicy resource".
+**Why:** there is no `k create networkpolicy`. Copy the example from the docs page "Network Policies", section "The NetworkPolicy resource".
 
 ```
 vim np.yaml
@@ -2325,10 +2327,10 @@ You see:
 | You see | Cause | Fix |
 |---|---|---|
 | still a timeout | a label in the file does not match the real label | compare with `--show-labels`, fix `np.yaml`, apply again |
-| still a timeout, labels match | the policy landed in `default` | `k get netpol -A`; set `namespace: web`, apply; `k delete netpol allow-client -n default` |
+| still a timeout, labels match | the policy landed in `default` | `k get networkpolicy -A`; set `namespace: web`, apply; `k delete networkpolicy allow-client -n default` |
 | `error parsing np.yaml` or `unknown field` | indentation broke while deleting lines | compare the spaces with the finished file, line by line |
 | Part A's wget already prints the nginx page | the network plugin does not enforce policies | write and apply anyway; the exam cluster enforces them |
-| still a timeout, the Service maps 80 to another pod port | a policy matches the pod's port, not the Service port | the policy needs the pod's port: `k get ep backend-svc -n web` |
+| still a timeout, the Service maps 80 to another pod port | a policy matches the pod's port, not the Service port | the policy needs the pod's port: `k get endpoints backend-svc -n web` |
 
 ---
 
@@ -2365,14 +2367,14 @@ Target 4 min. Skip at 8.
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k set selector svc kube-dns k8s-app=kube-dns -n kube-system
-k scale deploy coredns -n kube-system --replicas=2
-k rollout status deploy/coredns -n kube-system --timeout=120s
+k set selector service/kube-dns k8s-app=kube-dns -n kube-system
+k scale deployment/coredns --replicas=2 -n kube-system
+k rollout status deployment/coredns --timeout=120s -n kube-system
 k delete pod t --ignore-not-found
-k scale deploy coredns -n kube-system --replicas=0
-k wait --for=delete pod -l k8s-app=kube-dns -n kube-system --timeout=120s || true
+k scale deployment/coredns --replicas=0 -n kube-system
+k wait --for=delete pod -l k8s-app=kube-dns --timeout=120s -n kube-system || true
 clear
-k get deploy coredns -n kube-system
+k get deployment coredns -n kube-system
 ```
 
 ---
@@ -2398,7 +2400,7 @@ You see:
 **Why:** DNS answers come from the CoreDNS pods.
 
 ```
-k get po -n kube-system -l k8s-app=kube-dns
+k get pods -l k8s-app=kube-dns -n kube-system
 ```
 You see:
 ```
@@ -2413,7 +2415,7 @@ No resources found in kube-system namespace.   <-- no DNS pods at all
 **Why:** the Deployment decides how many pods run.
 
 ```
-k get deploy coredns -n kube-system
+k get deployment coredns -n kube-system
 ```
 You see:
 ```
@@ -2428,8 +2430,8 @@ coredns   0/0   0   0   30m   <-- 0/0: scaled to zero
 **Why:** the question wants two replicas.
 
 ```
-k scale deploy coredns -n kube-system --replicas=2
-k rollout status deploy/coredns -n kube-system --timeout=120s
+k scale deployment/coredns --replicas=2 -n kube-system
+k rollout status deployment/coredns --timeout=120s -n kube-system
 ```
 You see:
 ```
@@ -2469,8 +2471,8 @@ Address:   10.96.0.1   <-- the answer
 | You see | Cause | Fix |
 |---|---|---|
 | `pods "t" already exists` | an old test pod was left behind | `k delete pod t`, test again |
-| CoreDNS pods in `CrashLoopBackOff` | a typo in the CoreDNS config | `k logs -n kube-system -l k8s-app=kube-dns`; fix with `k edit cm coredns -n kube-system`; `k rollout restart deploy coredns -n kube-system` |
-| pods `1/1 Running`, DNS still fails | the `kube-dns` Service lost its pods | `k get ep kube-dns -n kube-system`; if `<none>`: `k set selector svc kube-dns k8s-app=kube-dns -n kube-system` |
+| CoreDNS pods in `CrashLoopBackOff` | a typo in the CoreDNS config | `k logs -l k8s-app=kube-dns -n kube-system`; fix with `k edit configmap/coredns -n kube-system`; `k rollout restart deployment/coredns -n kube-system` |
+| pods `1/1 Running`, DNS still fails | the `kube-dns` Service lost its pods | `k get endpoints kube-dns -n kube-system`; if `<none>`: `k set selector service/kube-dns k8s-app=kube-dns -n kube-system` |
 | CoreDNS pods `Pending` | a scheduling problem | question 3 |
 | `ErrImagePull` on pod `t` | the test image could not be pulled | check the tag `busybox:1.36`, retry |
 
@@ -2510,18 +2512,18 @@ Target 2 min. Skip at 5.
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete ns app --ignore-not-found
+k delete namespace app --ignore-not-found
 rm -f /opt/api.log /opt/top.txt
-k create ns app
+k create namespace app
 k run api --image=nginx:1.27 -n app
 mkdir -p /opt
 k apply -f https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.8.0/components.yaml
-k get deploy metrics-server -n kube-system -o jsonpath='{.spec.template.spec.containers[0].args}' | grep -q kubelet-insecure-tls || k patch deploy metrics-server -n kube-system --type=json -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
-k -n kube-system rollout status deploy metrics-server --timeout=180s
-k wait --for=condition=Ready pod/api -n app --timeout=120s
-for i in $(seq 1 24); do k top nodes >/dev/null 2>&1 && break; sleep 5; done
+k get deployment metrics-server -o jsonpath='{.spec.template.spec.containers[0].args}' -n kube-system | grep -q kubelet-insecure-tls || k patch deployment metrics-server --type=json -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]' -n kube-system
+k rollout status deployment/metrics-server --timeout=180s -n kube-system
+k wait --for=condition=Ready pod/api --timeout=120s -n app
+for i in $(seq 1 24); do k top node >/dev/null 2>&1 && break; sleep 5; done
 clear
-k top nodes
+k top node
 ```
 
 ---
@@ -2548,7 +2550,7 @@ You see:
 **Why:** `k top` shows live usage. Sorting puts the top pod first.
 
 ```
-k top pods -A --sort-by=cpu
+k top pod -A --sort-by=cpu
 ```
 You see:
 ```
@@ -2666,10 +2668,10 @@ Target 3 min. Skip at 6.
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete ns dev --ignore-not-found
-k create ns dev
+k delete namespace dev --ignore-not-found
+k create namespace dev
 clear
-k auth can-i create deployments -n dev --as=system:serviceaccount:dev:deploy-bot
+k auth can-i create deployments --as=system:serviceaccount:dev:deploy-bot -n dev
 ```
 
 ---
@@ -2679,7 +2681,7 @@ k auth can-i create deployments -n dev --as=system:serviceaccount:dev:deploy-bot
 **Why:** the SA is the identity that gets the permissions.
 
 ```
-k create sa deploy-bot -n dev
+k create serviceaccount deploy-bot -n dev
 ```
 You see:
 ```
@@ -2728,7 +2730,7 @@ rolebinding.rbac.authorization.k8s.io/deploy-bot-binding created
 **Why:** Kubernetes gives no error for a typo in a name.
 
 ```
-k get rolebinding deploy-bot-binding -n dev -o wide
+k get rolebinding deploy-bot-binding -o wide -n dev
 ```
 You see:
 ```
@@ -2743,8 +2745,8 @@ deploy-bot-binding   Role/deploy-manager   ...   dev/deploy-bot   <-- Role and S
 **Why:** ask the API as the SA. One allowed verb, one not allowed.
 
 ```
-k auth can-i create deployments -n dev --as=system:serviceaccount:dev:deploy-bot
-k auth can-i delete deployments -n dev --as=system:serviceaccount:dev:deploy-bot
+k auth can-i create deployments --as=system:serviceaccount:dev:deploy-bot -n dev
+k auth can-i delete deployments --as=system:serviceaccount:dev:deploy-bot -n dev
 ```
 You see:
 ```
@@ -2811,8 +2813,8 @@ Target 3 min. Skip at 6.
 ```
 k delete clusterrolebinding node-viewer-binding --ignore-not-found
 k delete clusterrole node-reader --ignore-not-found
-k delete ns ops --ignore-not-found
-k create ns ops
+k delete namespace ops --ignore-not-found
+k create namespace ops
 clear
 k auth can-i list nodes --as=system:serviceaccount:ops:node-viewer
 ```
@@ -2839,7 +2841,7 @@ nodes   no   v1   false   Node   <-- NAMESPACED = false
 **Why:** the SA still lives in a namespace.
 
 ```
-k create sa node-viewer -n ops
+k create serviceaccount node-viewer -n ops
 ```
 You see:
 ```
@@ -3098,7 +3100,7 @@ Target 5 min. Skip at 10.
 
 ```
 helm uninstall web -n demo 2>/dev/null || true
-k delete ns demo --ignore-not-found
+k delete namespace demo --ignore-not-found
 k delete ingressclass nginx --ignore-not-found
 k delete validatingwebhookconfiguration web-ingress-nginx-admission --ignore-not-found
 k delete clusterrolebinding web-ingress-nginx web-ingress-nginx-admission --ignore-not-found
@@ -3154,7 +3156,7 @@ defaultBackend:
 
 ```
 helm install web ingress-nginx/ingress-nginx -n demo --create-namespace --set controller.replicaCount=2
-k get deploy -n demo
+k get deployments -n demo
 ```
 You see:
 ```
@@ -3207,7 +3209,7 @@ Rollback was a success! Happy Helming!   <-- done
 
 ```
 helm list -n demo
-k get deploy -n demo
+k get deployments -n demo
 ```
 You see:
 ```
@@ -3233,7 +3235,7 @@ web-ingress-nginx-controller   2/2   2   2   ...   <-- back to 2
 | `helm list` shows nothing | `-n demo` missing; Helm needs it too | `helm list -A` |
 | `cannot re-use a name that is still in use` | the release already exists | use `helm upgrade`, or uninstall first |
 | replicas did not change | wrong setting name | repeat step 2 |
-| `k get svc -n demo` EXTERNAL-IP `<pending>` | no cloud LoadBalancer in a lab | normal, ignore it |
+| `k get services -n demo` EXTERNAL-IP `<pending>` | no cloud LoadBalancer in a lab | normal, ignore it |
 | repo add or install fails | ingress-nginx was retired in March 2026 | practise with repo `https://stefanprodan.github.io/podinfo`, chart `podinfo/podinfo`, setting `replicaCount` |
 
 ---
@@ -3271,11 +3273,11 @@ Target 3 min. Skip at 6.
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete ns kust --ignore-not-found
-k delete deploy kweb -n default --ignore-not-found
+k delete namespace kust --ignore-not-found
+k delete deployment kweb --ignore-not-found -n default
 rm -rf /root/kust
 mkdir -p /root/kust
-k create deploy kweb --image=nginx:1.27 --dry-run=client -o yaml > /root/kust/deploy.yaml
+k create deployment kweb --image=nginx:1.27 --dry-run=client -o yaml > /root/kust/deploy.yaml
 cat > /root/kust/kustomization.yaml <<EOF
 resources:
 - deploy.yaml
@@ -3284,7 +3286,7 @@ replicas:
 - name: kweb
   count: 2
 EOF
-k create ns kust
+k create namespace kust
 clear
 cat /root/kust/kustomization.yaml
 ```
@@ -3375,7 +3377,7 @@ deployment.apps/kweb created
 **Why:** prove 3 pods run in the plan's namespace.
 
 ```
-k get deploy kweb -n kust
+k get deployment kweb -n kust
 ```
 You see:
 ```
@@ -3398,9 +3400,9 @@ kweb   3/3     3            3           20s   <-- 3/3
 
 | You see | Cause | Fix |
 |---|---|---|
-| `deployment.apps/kweb created` plus an error with `kind not set` | you used `-f` on the folder | `k delete deploy kweb -n default`, then `k apply -k /root/kust` |
+| `deployment.apps/kweb created` plus an error with `kind not set` | you used `-f` on the folder | `k delete deployment kweb -n default`, then `k apply -k /root/kust` |
 | `No resources found` | wrong namespace | read `namespace:` in the plan; use `-n kust` |
-| `namespaces "kust" not found` | Kustomize does not create the namespace | `k create ns kust`, apply again |
+| `namespaces "kust" not found` | Kustomize does not create the namespace | `k create namespace kust`, apply again |
 | the question wants a new image tag | different block | add `images:` / `- name: nginx` / `  newTag: "1.28"` |
 
 ---
@@ -3784,7 +3786,7 @@ deployment.apps/tigera-operator created   <-- last line
 **Why:** Calico must give pods IPs from the same range as the cluster.
 
 ```
-k -n kube-system get pod -l component=kube-controller-manager -o yaml | grep cluster-cidr
+k get pods -l component=kube-controller-manager -o yaml -n kube-system | grep cluster-cidr
 ```
 You see:
 ```
@@ -3856,7 +3858,7 @@ controlplane    Ready    control-plane   ...   <-- Ready now
 | You see | Cause | Fix |
 |---|---|---|
 | `no matches for kind "Installation"` | the operator is still registering its types | wait 20 s, apply again |
-| Step 2 prints nothing | kubeadm ran without a pod range | `k -n kube-system get cm kubeadm-config -o yaml \| grep -i podSubnet`; still empty: keep `192.168.0.0/16` |
+| Step 2 prints nothing | kubeadm ran without a pod range | `k get configmap kubeadm-config -o yaml -n kube-system \| grep -i podSubnet`; still empty: keep `192.168.0.0/16` |
 | calico Running, other pods stay `ContainerCreating` | `cidr:` is not the cluster's range | fix the file, apply again |
 | the question does NOT mention NetworkPolicy | either CNI is fine | Flannel is one command: `k apply -f <flannel URL>` |
 
@@ -4252,7 +4254,7 @@ etcd-controlplane   1/1   Running   ...   <-- etcd is back
 | save hangs or `context deadline exceeded` | wrong certificate path or endpoint | compare with Step 1 |
 | kubectl still dead after 2 minutes | typo in `etcd.yaml` | `crictl ps -a \| grep etcd`, `crictl logs <id>`; or `cp /root/etcd.yaml.bak /etc/kubernetes/manifests/etcd.yaml` |
 | restore says the data dir exists | the folder is already there | `rm -rf` it, or pick a new name |
-| `etcdutl: command not found` (playground) | not installed there | read the version: `k -n kube-system get pod etcd-controlplane -o jsonpath='{..image}'` (e.g. `3.6.5-0`); `curl -sLo /tmp/etcd.tgz https://github.com/etcd-io/etcd/releases/download/v3.6.5/etcd-v3.6.5-linux-amd64.tar.gz`; `tar xzf /tmp/etcd.tgz -C /tmp`; run `/tmp/etcd-v3.6.5-linux-amd64/etcdutl` |
+| `etcdutl: command not found` (playground) | not installed there | read the version: `k get pod etcd-controlplane -o jsonpath='{..image}' -n kube-system` (e.g. `3.6.5-0`); `curl -sLo /tmp/etcd.tgz https://github.com/etcd-io/etcd/releases/download/v3.6.5/etcd-v3.6.5-linux-amd64.tar.gz`; `tar xzf /tmp/etcd.tgz -C /tmp`; run `/tmp/etcd-v3.6.5-linux-amd64/etcdutl` |
 
 ---
 
@@ -4312,12 +4314,12 @@ Target 4 min. Skip at 7.
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete ns web --ignore-not-found
-k create ns web
-k create deploy np --image=nginx:1.27 -n web
-k rollout status deploy/np -n web --timeout=120s
+k delete namespace web --ignore-not-found
+k create namespace web
+k create deployment np --image=nginx:1.27 -n web
+k rollout status deployment/np --timeout=120s -n web
 clear
-k get deploy,svc -n web
+k get deployments,services -n web
 ```
 
 ---
@@ -4327,7 +4329,7 @@ k get deploy,svc -n web
 **Why:** `containerPort` tells Kubernetes which port the container listens on.
 
 ```
-k edit deploy np -n web
+k edit deployment/np -n web
 ```
 Type `/image:` and Enter. Add the three marked lines under `name: nginx`:
 ```
@@ -4353,7 +4355,7 @@ deployment.apps/np edited
 **Why:** `k expose` copies the Deployment's labels into the selector.
 
 ```
-k expose deploy np --name=np-svc --port=80 --target-port=80 --type=NodePort -n web
+k expose deployment np --name=np-svc --port=80 --target-port=80 --type=NodePort -n web
 ```
 You see:
 ```
@@ -4368,7 +4370,7 @@ service/np-svc exposed
 **Why:** there is no flag for it; patch the Service.
 
 ```
-k patch svc np-svc -n web -p '{"spec":{"ports":[{"port":80,"nodePort":30080}]}}'
+k patch service np-svc -p '{"spec":{"ports":[{"port":80,"nodePort":30080}]}}' -n web
 ```
 You see:
 ```
@@ -4383,7 +4385,7 @@ service/np-svc patched
 **Why:** no endpoints means no traffic, whatever the ports say.
 
 ```
-k get endpointslices -n web -l kubernetes.io/service-name=np-svc
+k get endpointslices -l kubernetes.io/service-name=np-svc -n web
 ```
 You see:
 ```
@@ -4398,7 +4400,7 @@ np-svc-...   IPv4   80   192.168.x.x   1m   <-- a pod IP
 **Why:** prove the node port answers.
 
 ```
-k get svc np-svc -n web
+k get service np-svc -n web
 curl -s -m 3 node01:30080 | grep title
 ```
 You see:
@@ -4422,8 +4424,8 @@ np-svc   NodePort   10.x.x.x   <none>   80:30080/TCP   2m   <-- port:nodePort
 | You see | Cause | Fix |
 |---|---|---|
 | vim reopens with an error at the top | wrong indentation, or a Tab | spaces only; `ports:` lines up with `name:` |
-| the Service is called `np` | forgot `--name=np-svc` | `k delete svc np -n web`, run step 2 again |
-| `provided port is already allocated` | another Service uses 30080 | `k get svc -A`, find 30080; ask, never delete it |
+| the Service is called `np` | forgot `--name=np-svc` | `k delete service np -n web`, run step 2 again |
+| `provided port is already allocated` | another Service uses 30080 | `k get services -A`, find 30080; ask, never delete it |
 | `provided port is not in the valid range` | node port outside 30000 to 32767 | use the number from the question |
 | curl fails, endpoints are fine | `node01` does not resolve | `k get nodes -o wide`, curl the INTERNAL-IP |
 
@@ -4462,10 +4464,10 @@ Target 3 min. Skip at 6.
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete ns web --ignore-not-found
-k create ns web
-k create deploy backend --image=nginx:1.27 -n web
-k expose deploy backend --name=backend-svc --port=80 -n web
+k delete namespace web --ignore-not-found
+k create namespace web
+k create deployment backend --image=nginx:1.27 -n web
+k expose deployment backend --name=backend-svc --port=80 -n web
 cat <<EOF | k apply -f -
 apiVersion: networking.k8s.io/v1
 kind: IngressClass
@@ -4474,9 +4476,9 @@ metadata:
 spec:
   controller: k8s.io/ingress-nginx
 EOF
-k rollout status deploy/backend -n web --timeout=120s
+k rollout status deployment/backend --timeout=120s -n web
 clear
-k get ingressclass,svc,ing -n web
+k get ingressclass,services,ingress -n web
 ```
 
 ---
@@ -4501,7 +4503,7 @@ nginx   k8s.io/ingress-nginx   <none>   1m   <-- NAME
 **Why:** the rule needs the Service port, not the pod port.
 
 ```
-k get svc backend-svc -n web
+k get service backend-svc -n web
 ```
 You see:
 ```
@@ -4532,7 +4534,7 @@ ingress.networking.k8s.io/web-ing created
 **Why:** one line shows class and host.
 
 ```
-k get ing web-ing -n web
+k get ingress web-ing -n web
 ```
 You see:
 ```
@@ -4547,7 +4549,7 @@ web-ing   nginx   shop.example.com   80   10s   <-- CLASS, HOSTS
 **Why:** prove the backend resolves to a real pod.
 
 ```
-k describe ing web-ing -n web
+k describe ingress web-ing -n web
 ```
 You see:
 ```
@@ -4571,7 +4573,7 @@ Ingress Class:    nginx
 
 | You see | Cause | Fix |
 |---|---|---|
-| `<error: services "..." not found>` | Service name typo | `k delete ing web-ing -n web`, create again |
+| `<error: services "..." not found>` | Service name typo | `k delete ingress web-ing -n web`, create again |
 | empty brackets `()`, no pod IP | wrong Service port, or pods not Ready | check PORT(S) in step 2; delete and create again |
 | `Ingress Class: <none>` | forgot `--class` | delete and create again |
 | the question asks for TLS with secret `web-tls` | add it to the rule | `--rule="shop.example.com/*=backend-svc:80,tls=web-tls"` |
@@ -4617,11 +4619,11 @@ Target 8 min. Skip at 12.
 ```
 k get crd gateways.gateway.networking.k8s.io >/dev/null 2>&1 || k apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
 k wait --for=condition=Established crd/gateways.gateway.networking.k8s.io crd/httproutes.gateway.networking.k8s.io --timeout=60s
-k delete ns web --ignore-not-found
+k delete namespace web --ignore-not-found
 rm -f gw.yaml route.yaml
-k create ns web
-k create deploy backend --image=nginx:1.27 -n web
-k expose deploy backend --name=backend-svc --port=80 -n web
+k create namespace web
+k create deployment backend --image=nginx:1.27 -n web
+k expose deployment backend --name=backend-svc --port=80 -n web
 openssl req -x509 -nodes -newkey rsa:2048 -days 30 -subj "/CN=shop.example.com" -keyout /tmp/t.key -out /tmp/t.crt 2>/dev/null
 k create secret tls web-tls --cert=/tmp/t.crt --key=/tmp/t.key -n web
 cat <<EOF | k apply -f -
@@ -4633,9 +4635,9 @@ spec:
   controllerName: gateway.nginx.org/nginx-gateway-controller
 EOF
 k create ingress web-ing --class=nginx --rule="shop.example.com/*=backend-svc:80,tls=web-tls" -n web
-k rollout status deploy/backend -n web --timeout=120s
+k rollout status deployment/backend --timeout=120s -n web
 clear
-k get ing,gatewayclass -n web
+k get ingress,gatewayclass -n web
 ```
 (No gateway controller here: no `Accepted`/`Programmed`, no traffic. Check the objects and values only.)
 
@@ -4646,7 +4648,7 @@ k get ing,gatewayclass -n web
 **Why:** the question gives no values. They are in the Ingress.
 
 ```
-k describe ing web-ing -n web
+k describe ingress web-ing -n web
 k get gatewayclass
 ```
 You see:
@@ -4762,7 +4764,7 @@ httproute.gateway.networking.k8s.io/web-route   ["shop.example.com"]   ...
 **Why:** the question says so, as the last job.
 
 ```
-k delete ing web-ing -n web
+k delete ingress web-ing -n web
 ```
 You see:
 ```
@@ -4776,8 +4778,8 @@ ingress.networking.k8s.io "web-ing" deleted ...
 **Why:** prove the Ingress is gone and the route has the values.
 
 ```
-k get ing -n web
-k get httproute web-route -n web -o yaml | grep -E "name: web-gw|value: /|backend-svc|port: 80"
+k get ingress -n web
+k get httproute web-route -o yaml -n web | grep -E "name: web-gw|value: /|backend-svc|port: 80"
 ```
 You see:
 ```
@@ -4839,16 +4841,16 @@ Target 6 min. Skip at 10.
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete ns prod --ignore-not-found
+k delete namespace prod --ignore-not-found
 rm -f np.yaml
-k create ns prod
-k run db --image=nginx:1.27 -n prod --labels=app=db
-k run api --image=busybox:1.36 -n prod --labels=app=api -- sleep 3600
-k run other --image=busybox:1.36 -n prod --labels=app=other -- sleep 3600
+k create namespace prod
+k run db --image=nginx:1.27 --labels=app=db -n prod
+k run api --image=busybox:1.36 --labels=app=api -n prod -- sleep 3600
+k run other --image=busybox:1.36 --labels=app=other -n prod -- sleep 3600
 k expose pod db --name=db-svc --port=80 -n prod
-k wait --for=condition=Ready pod/db pod/api pod/other -n prod --timeout=120s
+k wait --for=condition=Ready pod/db pod/api pod/other --timeout=120s -n prod
 clear
-k get po,netpol -n prod
+k get pods,networkpolicy -n prod
 ```
 (nginx on port 80 plays the database.)
 
@@ -4859,7 +4861,7 @@ k get po,netpol -n prod
 **Why:** the policy matches labels, so they must be exact.
 
 ```
-k get po -n prod --show-labels
+k get pods --show-labels -n prod
 ```
 You see:
 ```
@@ -4873,7 +4875,7 @@ other   1/1   Running   0   1m   app=other   <-- must be blocked
 
 ### Step 2. Write the policy
 
-**Why:** there is no `k create netpol`. Copy the example from the docs page "Network Policies", section "The NetworkPolicy resource".
+**Why:** there is no `k create networkpolicy`. Copy the example from the docs page "Network Policies", section "The NetworkPolicy resource".
 
 ```
 vim np.yaml
@@ -4926,7 +4928,7 @@ networkpolicy.networking.k8s.io/db-policy created
 **Why:** describe shows what the cluster understood.
 
 ```
-k describe netpol db-policy -n prod
+k describe networkpolicy db-policy -n prod
 ```
 You see:
 ```
@@ -4968,7 +4970,7 @@ wget: download timed out   <-- other is blocked
 
 | You see | Cause | Fix |
 |---|---|---|
-| `other` still gets the page | the network plugin does not enforce policies | check with `k describe netpol`; the exam cluster enforces them |
+| `other` still gets the page | the network plugin does not enforce policies | check with `k describe networkpolicy`; the exam cluster enforces them |
 | `api` also times out | wrong label in `from`, or `ports:` under the wrong item | compare with the finished file and `--show-labels` |
 | `did not find expected key` | indentation broke while deleting lines | `- podSelector:` starts 4 spaces in, under `- from:` |
 | `api` lives in another namespace | `from` needs a namespace too | add `namespaceSelector` with `kubernetes.io/metadata.name: <ns>` under the SAME `-` |
@@ -5009,14 +5011,14 @@ Target 4 min. Skip at 8.
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete ns prod --ignore-not-found
+k delete namespace prod --ignore-not-found
 rm -f deny.yaml
-k create ns prod
+k create namespace prod
 k run app --image=busybox:1.36 -n prod -- sleep 3600
-k run web --image=nginx:1.27 -n prod --port=80 --expose
-k wait --for=condition=Ready pod/app pod/web -n prod --timeout=120s
+k run web --image=nginx:1.27 --port=80 --expose -n prod
+k wait --for=condition=Ready pod/app pod/web --timeout=120s -n prod
 clear
-k get netpol -n prod
+k get networkpolicy -n prod
 ```
 
 ---
@@ -5038,7 +5040,7 @@ You see:
 
 ### Step 2. Write the policy
 
-**Why:** there is no `k create netpol`. Copy from the docs page "Network Policies", section "Default policies", box "Default deny all ingress and all egress traffic".
+**Why:** there is no `k create networkpolicy`. Copy from the docs page "Network Policies", section "Default policies", box "Default deny all ingress and all egress traffic".
 
 ```
 vim deny.yaml
@@ -5089,7 +5091,7 @@ networkpolicy.networking.k8s.io/default-deny created
 **Why:** describe shows what the policy really allows.
 
 ```
-k describe netpol default-deny -n prod
+k describe networkpolicy default-deny -n prod
 ```
 You see:
 ```
@@ -5138,7 +5140,7 @@ command terminated with exit code 1
 |---|---|---|
 | the Verify `wget` still prints the nginx page | the network plugin does not enforce policies | trust the describe output; the exam cluster enforces them |
 | `nslookup` times out too | the egress block is missing or mis-indented | `egress:` starts in the same column as `policyTypes:`; apply again |
-| `k get netpol -n prod` shows nothing | the policy landed in `default` | add `namespace: prod`, apply; `k delete netpol default-deny -n default` |
+| `k get networkpolicy -n prod` shows nothing | the policy landed in `default` | add `namespace: prod`, apply; `k delete networkpolicy default-deny -n default` |
 | `error parsing deny.yaml` | tabs or broken spaces from the paste | use `:set paste`, retype the spaces |
 
 ---
@@ -5176,9 +5178,9 @@ Target 4 min. Skip at 8.
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete ns nginx-static --ignore-not-found
+k delete namespace nginx-static --ignore-not-found
 rm -f /root/cm-backup.yaml
-k create ns nginx-static
+k create namespace nginx-static
 openssl req -x509 -nodes -newkey rsa:2048 -days 30 -subj "/CN=nginx-static" -keyout /tmp/tls.key -out /tmp/tls.crt 2>/dev/null
 k create secret tls nginx-tls --cert=/tmp/tls.crt --key=/tmp/tls.key -n nginx-static
 cat <<'EOF' > /tmp/nginx.conf
@@ -5193,7 +5195,7 @@ http {
   }
 }
 EOF
-k create cm nginx-config -n nginx-static --from-file=nginx.conf=/tmp/nginx.conf
+k create configmap nginx-config --from-file=nginx.conf=/tmp/nginx.conf -n nginx-static
 cat <<EOF | k apply -f -
 apiVersion: apps/v1
 kind: Deployment
@@ -5229,10 +5231,10 @@ spec:
         secret:
           secretName: nginx-tls
 EOF
-k expose deploy nginx-static --port=443 -n nginx-static
-k rollout status deploy/nginx-static -n nginx-static --timeout=120s
+k expose deployment nginx-static --port=443 -n nginx-static
+k rollout status deployment/nginx-static --timeout=120s -n nginx-static
 clear
-k get cm nginx-config -n nginx-static -o yaml | grep ssl_protocols
+k get configmap nginx-config -o yaml -n nginx-static | grep ssl_protocols
 ```
 
 ---
@@ -5242,7 +5244,7 @@ k get cm nginx-config -n nginx-static -o yaml | grep ssl_protocols
 **Why:** one wrong character breaks nginx. A backup lets you start over.
 
 ```
-k get cm nginx-config -n nginx-static -o yaml > /root/cm-backup.yaml
+k get configmap nginx-config -o yaml -n nginx-static > /root/cm-backup.yaml
 grep ssl_protocols /root/cm-backup.yaml
 ```
 You see:
@@ -5258,7 +5260,7 @@ You see:
 **Why:** the mount decides whether the pods ever see a change.
 
 ```
-k get deploy nginx-static -n nginx-static -o yaml | grep subPath
+k get deployment nginx-static -o yaml -n nginx-static | grep subPath
 ```
 You see:
 ```
@@ -5273,7 +5275,7 @@ You see:
 **Why:** the setting lives inside the ConfigMap's `nginx.conf` text.
 
 ```
-k edit cm nginx-config -n nginx-static
+k edit configmap/nginx-config -n nginx-static
 ```
 In vim: type `/ssl_protocols`, Enter. Then type `:s/TLSv1.2 //`, Enter. Save with `:wq`.
 
@@ -5291,8 +5293,8 @@ configmap/nginx-config edited
 **Why:** nginx reads its config only when it starts.
 
 ```
-k rollout restart deploy nginx-static -n nginx-static
-k rollout status deploy nginx-static -n nginx-static
+k rollout restart deployment/nginx-static -n nginx-static
+k rollout status deployment/nginx-static -n nginx-static
 ```
 You see:
 ```
@@ -5307,7 +5309,7 @@ deployment "nginx-static" successfully rolled out   <-- new pod, new config
 **Why:** prove the server refuses TLSv1.2 and accepts TLSv1.3.
 
 ```
-IP=$(k get svc nginx-static -n nginx-static -o jsonpath='{.spec.clusterIP}')
+IP=$(k get service nginx-static -o jsonpath='{.spec.clusterIP}' -n nginx-static)
 openssl s_client -connect $IP:443 -tls1_2 </dev/null 2>&1 | grep -E 'alert|New,'
 openssl s_client -connect $IP:443 -tls1_3 </dev/null 2>&1 | grep -E 'alert|New,'
 ```
@@ -5334,8 +5336,8 @@ New, TLSv1.3, Cipher is ...            <-- TLSv1.3 works
 | You see | Cause | Fix |
 |---|---|---|
 | the edit is refused: `field is immutable` | the ConfigMap has `immutable: true` | fix the line in `vim /root/cm-backup.yaml`; `k replace --force -f /root/cm-backup.yaml`; then Step 4 |
-| new pod in `CrashLoopBackOff` | nginx syntax broken, often a missing `;` | `k logs -n nginx-static -l app=nginx-static` names the line; fix the ConfigMap, restart again |
-| `rollout status` waits forever | the new pod cannot start | `k get po -n nginx-static`, then `k describe` the new pod |
+| new pod in `CrashLoopBackOff` | nginx syntax broken, often a missing `;` | `k logs -l app=nginx-static -n nginx-static` names the line; fix the ConfigMap, restart again |
+| `rollout status` waits forever | the new pod cannot start | `k get pods -n nginx-static`, then `k describe` the new pod |
 
 ---
 
@@ -5372,20 +5374,20 @@ Target 5 min. Skip at 10.
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete ns web --ignore-not-found
+k delete namespace web --ignore-not-found
 k delete pod t --ignore-not-found
 [ -f /root/coredns-backup.yaml ] && k replace --force -f /root/coredns-backup.yaml
-k get cm coredns -n kube-system -o yaml | sed '/rewrite name api.example.com/d' | k replace -f -
+k get configmap coredns -o yaml -n kube-system | sed '/rewrite name api.example.com/d' | k replace -f -
 rm -f /root/coredns-backup.yaml
-k scale deploy coredns -n kube-system --replicas=2
-k rollout restart deploy coredns -n kube-system
-k rollout status deploy coredns -n kube-system --timeout=120s
-k create ns web
-k create deploy backend --image=nginx:1.27 -n web
-k expose deploy backend --name=backend-svc --port=80 -n web
-k rollout status deploy/backend -n web --timeout=120s
+k scale deployment/coredns --replicas=2 -n kube-system
+k rollout restart deployment/coredns -n kube-system
+k rollout status deployment/coredns --timeout=120s -n kube-system
+k create namespace web
+k create deployment backend --image=nginx:1.27 -n web
+k expose deployment backend --name=backend-svc --port=80 -n web
+k rollout status deployment/backend --timeout=120s -n web
 clear
-k get cm coredns -n kube-system -o jsonpath='{.data.Corefile}'
+k get configmap coredns -o jsonpath='{.data.Corefile}' -n kube-system
 ```
 
 ---
@@ -5395,7 +5397,7 @@ k get cm coredns -n kube-system -o jsonpath='{.data.Corefile}'
 **Why:** one typo breaks DNS for the whole cluster. The backup is your way back.
 
 ```
-k get cm coredns -n kube-system -o yaml > /root/coredns-backup.yaml
+k get configmap coredns -o yaml -n kube-system > /root/coredns-backup.yaml
 ls /root/coredns-backup.yaml
 ```
 You see:
@@ -5411,7 +5413,7 @@ You see:
 **Why:** you need it to judge the test at the end.
 
 ```
-k get svc backend-svc -n web
+k get service backend-svc -n web
 ```
 You see:
 ```
@@ -5426,7 +5428,7 @@ backend-svc   ClusterIP   10.x.x.x   <none>   80/TCP   1m   <-- note this CLUSTE
 **Why:** the Corefile lives in ConfigMap `coredns`. The docs page "Customizing DNS Service" shows it.
 
 ```
-k edit cm coredns -n kube-system
+k edit configmap/coredns -n kube-system
 ```
 Put the cursor on `ready`. Press `o`. Type the marked line, same indent as `ready`:
 ```
@@ -5455,8 +5457,8 @@ configmap/coredns edited
 **Why:** new pods load the new Corefile at once.
 
 ```
-k rollout restart deploy coredns -n kube-system
-k rollout status deploy coredns -n kube-system
+k rollout restart deployment/coredns -n kube-system
+k rollout status deployment/coredns -n kube-system
 ```
 You see:
 ```
@@ -5496,7 +5498,7 @@ Address: 10.x.x.x   <-- same as the CLUSTER-IP from Step 2
 | You see | Cause | Fix |
 |---|---|---|
 | CoreDNS pods in `CrashLoopBackOff` | a typo in the Corefile | `k replace --force -f /root/coredns-backup.yaml`; restart CoreDNS; do Step 3 again |
-| `NXDOMAIN` for `api.example.com` | the line is outside `.:53 { }`, or a typo in the target | `k edit cm coredns -n kube-system`, check the line, restart |
+| `NXDOMAIN` for `api.example.com` | the line is outside `.:53 { }`, or a typo in the target | `k edit configmap/coredns -n kube-system`, check the line, restart |
 | the question wants a whole domain sent to another DNS server | that needs a new block, not `rewrite` | docs "Customizing DNS Service": `example.org:53 { forward . 10.0.0.53 }` |
 | `pods "t" already exists` | an old test pod was left behind | `k delete pod t`, test again |
 
@@ -5535,15 +5537,15 @@ Target 2 min. Skip at 5.
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete ns web --ignore-not-found
+k delete namespace web --ignore-not-found
 k delete pod t --ignore-not-found
 rm -f /root/dns.txt
-k create ns web
-k create deploy backend --image=nginx:1.27 -n web
-k expose deploy backend --name=backend-svc --port=80 -n web
-k rollout status deploy/backend -n web --timeout=120s
+k create namespace web
+k create deployment backend --image=nginx:1.27 -n web
+k expose deployment backend --name=backend-svc --port=80 -n web
+k rollout status deployment/backend --timeout=120s -n web
 clear
-k get svc -n web
+k get services -n web
 ```
 
 ---
@@ -5553,7 +5555,7 @@ k get svc -n web
 **Why:** a short name only works from the same namespace.
 
 ```
-k get svc -A | grep backend-svc
+k get services -A | grep backend-svc
 ```
 You see:
 ```
@@ -5605,7 +5607,7 @@ Address: 10.x.x.x   <-- the answer
 **Why:** prove the file's IP is the Service's IP.
 
 ```
-k get svc backend-svc -n web -o jsonpath='{.spec.clusterIP}{"\n"}'
+k get service backend-svc -o jsonpath='{.spec.clusterIP}{"\n"}' -n web
 ```
 You see:
 ```
@@ -5698,13 +5700,13 @@ Target 8 min. Skip at 12.
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete ns work --ignore-not-found
+k delete namespace work --ignore-not-found
 rm -f app.yaml app-backup.yaml
-k create ns work
-k create deploy app --image=busybox:1.36 -n work -- sh -c "while true; do date >> /var/log/app.log; sleep 2; done"
-k rollout status deploy/app -n work --timeout=120s
+k create namespace work
+k create deployment app --image=busybox:1.36 -n work -- sh -c "while true; do date >> /var/log/app.log; sleep 2; done"
+k rollout status deployment/app --timeout=120s -n work
 clear
-k get po -n work
+k get pods -n work
 ```
 
 ---
@@ -5714,7 +5716,7 @@ k get po -n work
 **Why:** a long edit is safer in a file, with a backup.
 
 ```
-k get deploy app -n work -o yaml > app.yaml
+k get deployment app -o yaml -n work > app.yaml
 cp app.yaml app-backup.yaml
 grep -A8 "containers:" app.yaml
 ```
@@ -5800,8 +5802,8 @@ deployment.apps/app configured
 **Why:** the change makes a new pod.
 
 ```
-k rollout status deploy app -n work
-k get po -n work
+k rollout status deployment/app -n work
+k get pods -n work
 ```
 You see:
 ```
@@ -5816,7 +5818,7 @@ app-...   2/2   Running   0   20s   <-- main + sidecar
 **Why:** prove the sidecar reads the main container's file.
 
 ```
-k logs deploy/app -c log-shipper -n work --tail=3
+k logs deployment/app -c log-shipper --tail=3 -n work
 ```
 You see:
 ```
@@ -5879,15 +5881,15 @@ Target 4 min. Skip at 8.
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete ns shop --ignore-not-found
-k create ns shop
-k create deploy web --image=nginx:1.27 -n shop
-k set resources deploy web -n shop --requests=cpu=100m
+k delete namespace shop --ignore-not-found
+k create namespace shop
+k create deployment web --image=nginx:1.27 -n shop
+k set resources deployment/web --requests=cpu=100m -n shop
 k apply -f https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.8.0/components.yaml
-k get deploy metrics-server -n kube-system -o jsonpath='{.spec.template.spec.containers[0].args}' | grep -q kubelet-insecure-tls || k patch deploy metrics-server -n kube-system --type=json -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
-k -n kube-system rollout status deploy metrics-server --timeout=180s
-k rollout status deploy/web -n shop --timeout=120s
-for i in $(seq 1 24); do k top nodes >/dev/null 2>&1 && break; sleep 5; done
+k get deployment metrics-server -o jsonpath='{.spec.template.spec.containers[0].args}' -n kube-system | grep -q kubelet-insecure-tls || k patch deployment metrics-server --type=json -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]' -n kube-system
+k rollout status deployment/metrics-server --timeout=180s -n kube-system
+k rollout status deployment/web --timeout=120s -n shop
+for i in $(seq 1 24); do k top node >/dev/null 2>&1 && break; sleep 5; done
 clear
 k get hpa -n shop
 ```
@@ -5899,7 +5901,7 @@ k get hpa -n shop
 **Why:** 70% means 70% of the CPU request. No request, no percentage.
 
 ```
-k get deploy web -n shop -o jsonpath='{.spec.template.spec.containers[0].resources}'
+k get deployment web -o jsonpath='{.spec.template.spec.containers[0].resources}' -n shop
 ```
 You see:
 ```
@@ -5914,14 +5916,14 @@ You see:
 **Why:** one command sets min, max and the CPU target.
 
 ```
-k autoscale deploy web --min=2 --max=5 --cpu-percent=70 -n shop
+k autoscale deployment web --min=2 --max=5 --cpu=70% -n shop
 ```
 You see:
 ```
 horizontalpodautoscaler.autoscaling/web autoscaled
 ```
 **Means:** the HPA is named after the Deployment: `web`.
-**Don't:** worry about a "deprecated" warning. It still works.
+**Don't:** use `--cpu-percent=70`. It is deprecated since v1.34; `--cpu=70%` is the current flag.
 
 ---
 
@@ -5930,7 +5932,7 @@ horizontalpodautoscaler.autoscaling/web autoscaled
 **Why:** `k autoscale` has no flag for it. Docs page: "Horizontal Pod Autoscaling", heading "Stabilization window".
 
 ```
-k edit hpa web -n shop
+k edit hpa/web -n shop
 ```
 The `spec:` part, finished. Only `# <-- CHANGE` lines are new:
 ```
@@ -5980,7 +5982,7 @@ web   Deployment/web   cpu: 0%/70%   2   5   2   1m   <-- min 2, max 5, target 7
 **Why:** prove the window is saved.
 
 ```
-k get hpa web -n shop -o jsonpath='{.spec.behavior.scaleDown.stabilizationWindowSeconds}'
+k get hpa web -o jsonpath='{.spec.behavior.scaleDown.stabilizationWindowSeconds}' -n shop
 ```
 You see:
 ```
@@ -6001,8 +6003,8 @@ You see:
 
 | You see | Cause | Fix |
 |---|---|---|
-| `AlreadyExists` | an HPA `web` exists | fix it with `k edit hpa web -n shop` |
-| `<unknown>` after 2 min; `k top pods -n shop` fails | metrics-server missing or starting | run Part A again; the exam has it |
+| `AlreadyExists` | an HPA `web` exists | fix it with `k edit hpa/web -n shop` |
+| `<unknown>` after 2 min; `k top pod -n shop` fails | metrics-server missing or starting | run Part A again; the exam has it |
 | vim reopens, error comment on top | a Tab or wrong indent | fix the 3 lines, `:wq` again |
 | the question wants another HPA name | named after the Deployment | add `--name=<name>` in Step 2 |
 
@@ -6042,15 +6044,15 @@ Target 3 min. Skip at 6.
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete ns shop --ignore-not-found
-k delete pc high-priority mid-prio low-prio --ignore-not-found
-k create ns shop
-k create deploy web --image=nginx:1.27 -n shop
-k create pc mid-prio --value=1000
-k create pc low-prio --value=100
-k rollout status deploy/web -n shop --timeout=120s
+k delete namespace shop --ignore-not-found
+k delete priorityclass high-priority mid-prio low-prio --ignore-not-found
+k create namespace shop
+k create deployment web --image=nginx:1.27 -n shop
+k create priorityclass mid-prio --value=1000
+k create priorityclass low-prio --value=100
+k rollout status deployment/web --timeout=120s -n shop
 clear
-k get pc
+k get priorityclass
 ```
 
 ---
@@ -6060,7 +6062,7 @@ k get pc
 **Why:** the new value depends on it. Classes have no namespace.
 
 ```
-k get pc
+k get priorityclass
 ```
 You see:
 ```
@@ -6079,7 +6081,7 @@ system-node-critical      2000001000   false   5h   ...   <-- ignore
 **Why:** the Deployment can only name a class that exists.
 
 ```
-k create pc high-priority --value=999
+k create priorityclass high-priority --value=999
 ```
 You see:
 ```
@@ -6093,7 +6095,7 @@ priorityclass.scheduling.k8s.io/high-priority created
 **Why:** the class goes in the pod template. Docs page: "Pod Priority and Preemption".
 
 ```
-k edit deploy web -n shop
+k edit deployment/web -n shop
 ```
 The pod template's `spec:`, finished. Only the `# <-- CHANGE` line is new:
 ```
@@ -6118,7 +6120,7 @@ deployment.apps/web edited
 **Why:** priority is set at pod creation; pods are replaced.
 
 ```
-k rollout status deploy web -n shop
+k rollout status deployment/web -n shop
 ```
 You see:
 ```
@@ -6132,7 +6134,7 @@ deployment "web" successfully rolled out
 **Why:** prove the pods carry the class.
 
 ```
-k get po -n shop -o custom-columns=NAME:.metadata.name,CLASS:.spec.priorityClassName,PRIO:.spec.priority
+k get pods -o custom-columns=NAME:.metadata.name,CLASS:.spec.priorityClassName,PRIO:.spec.priority -n shop
 ```
 You see:
 ```
@@ -6155,8 +6157,8 @@ web-...   high-priority   999   <-- class and value
 
 | You see | Cause | Fix |
 |---|---|---|
-| value `1999999999` | counted a `system-` class | `k delete pc high-priority`, create again |
-| no new pods; `k describe rs -n shop`: `no PriorityClass with name ...` | typo in the name | fix it in `k edit deploy web -n shop` |
+| value `1999999999` | counted a `system-` class | `k delete priorityclass high-priority`, create again |
+| no new pods; `k describe rs -n shop`: `no PriorityClass with name ...` | typo in the name | fix it in `k edit deployment/web -n shop` |
 | the value cannot be changed | it is immutable | delete and create again |
 | other pods got evicted | higher priority pushes out lower | expected |
 
@@ -6195,8 +6197,8 @@ Target 6 min. Skip at 10.
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete ns shop --ignore-not-found
-k create ns shop
+k delete namespace shop --ignore-not-found
+k create namespace shop
 cat <<EOF | k apply -f -
 apiVersion: apps/v1
 kind: Deployment
@@ -6219,9 +6221,9 @@ spec:
       - name: nginx
         image: nginx:1.27
 EOF
-k rollout status deploy/web -n shop --timeout=120s
+k rollout status deployment/web --timeout=120s -n shop
 clear
-k get po -n shop -o wide
+k get pods -o wide -n shop
 ```
 
 ---
@@ -6231,7 +6233,7 @@ k get po -n shop -o wide
 **Why:** then the node shows only OTHER pods' requests.
 
 ```
-k scale deploy web --replicas=0 -n shop
+k scale deployment/web --replicas=0 -n shop
 ```
 You see:
 ```
@@ -6290,8 +6292,8 @@ You see:
 **Why:** the requests apply to every new pod.
 
 ```
-k set resources deploy web -n shop --requests=cpu=225m,memory=480Mi
-k scale deploy web --replicas=3 -n shop
+k set resources deployment/web --requests=cpu=225m,memory=480Mi -n shop
+k scale deployment/web --replicas=3 -n shop
 ```
 You see:
 ```
@@ -6306,7 +6308,7 @@ deployment.apps/web scaled
 **Why:** prove all 3 fit, near 90%.
 
 ```
-k get po -n shop -o wide
+k get pods -o wide -n shop
 k describe node node01 | grep -A6 "Allocated resources:"
 ```
 You see:
@@ -6373,11 +6375,11 @@ Target 6 min. Skip at 10.
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete ns app --ignore-not-found
+k delete namespace app --ignore-not-found
 rm -f pod.yaml
-k create ns app
+k create namespace app
 clear
-k get cm,secret -n app
+k get configmaps,secrets -n app
 ```
 
 ---
@@ -6387,7 +6389,7 @@ k get cm,secret -n app
 **Why:** both have a one-line create command. No YAML needed.
 
 ```
-k create cm app-cfg --from-literal=LOG_LEVEL=debug -n app
+k create configmap app-cfg --from-literal=LOG_LEVEL=debug -n app
 k create secret generic db-sec --from-literal=password=s3cret -n app
 ```
 You see:
@@ -6404,7 +6406,7 @@ secret/db-sec created
 **Why:** `--dry-run=client -o yaml` prints the YAML and creates nothing.
 
 ```
-k run api --image=nginx:1.27 -n app --dry-run=client -o yaml > pod.yaml
+k run api --image=nginx:1.27 --dry-run=client -o yaml -n app > pod.yaml
 cat pod.yaml
 ```
 You see:
@@ -6552,8 +6554,8 @@ Target 5 min. Skip at 8.
 ```
 k delete pod x --ignore-not-found
 rm -f x.yaml
-k taint node node01 env=prod:NoSchedule- || true
-k label node node01 env-
+k taint nodes node01 env=prod:NoSchedule- || true
+k label nodes node01 env-
 clear
 k describe node node01 | grep -i taints
 ```
@@ -6565,8 +6567,8 @@ k describe node node01 | grep -i taints
 **Why:** the taint keeps pods away; the label lets a pod pick this node.
 
 ```
-k taint node node01 env=prod:NoSchedule
-k label node node01 env=prod
+k taint nodes node01 env=prod:NoSchedule
+k label nodes node01 env=prod
 ```
 You see:
 ```
@@ -6687,7 +6689,7 @@ x   1/1   Running   0   15s   192.168.x.x   node01   ...   <-- NODE = node01
 | You see | Cause | Fix |
 |---|---|---|
 | `Pending`, Events: `had untolerated taint {env: prod}` | key, value or effect differ from the taint | `k delete pod x`, fix `x.yaml`, apply again |
-| `Pending`, Events: `didn't match Pod's node affinity/selector` | the node label is missing or different | `k label node node01 env=prod` |
+| `Pending`, Events: `didn't match Pod's node affinity/selector` | the node label is missing or different | `k label nodes node01 env=prod` |
 | `already has env taint(s) with same effect(s)` | the taint is already there | nothing to do; check with Step 2 |
 | `'env' already has a value` | the label is already there | add `--overwrite` only if the value is wrong |
 | `unknown field "spec.containers[0].tolerations"` | the blocks are indented under the container | move them to the column of `containers:` |
@@ -6730,13 +6732,13 @@ Target 3 min. Skip at 6.
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete ns shop --ignore-not-found
+k delete namespace shop --ignore-not-found
 rm -f /root/image.txt
-k create ns shop
-k create deploy web --image=nginx:1.27 --replicas=3 -n shop
-k rollout status deploy/web -n shop --timeout=120s
+k create namespace shop
+k create deployment web --image=nginx:1.27 --replicas=3 -n shop
+k rollout status deployment/web --timeout=120s -n shop
 clear
-k get deploy web -n shop -o wide
+k get deployment web -o wide -n shop
 ```
 
 ---
@@ -6746,7 +6748,7 @@ k get deploy web -n shop -o wide
 **Why:** `set image` needs the container name, not the deployment name.
 
 ```
-k get deploy web -n shop -o wide
+k get deployment web -o wide -n shop
 ```
 You see:
 ```
@@ -6762,8 +6764,8 @@ web    3/3     3            3           1m    nginx        nginx:1.27   app=web 
 **Why:** `rollout status` waits until all new pods are ready.
 
 ```
-k set image deploy/web nginx=nginx:1.28 -n shop
-k rollout status deploy/web -n shop
+k set image deployment/web nginx=nginx:1.28 -n shop
+k rollout status deployment/web -n shop
 ```
 You see:
 ```
@@ -6781,9 +6783,9 @@ deployment "web" successfully rolled out   <-- done
 **Why:** `undo` goes back to the previous revision.
 
 ```
-k rollout history deploy/web -n shop
-k rollout undo deploy/web -n shop
-k rollout status deploy/web -n shop
+k rollout history deployment/web -n shop
+k rollout undo deployment/web -n shop
+k rollout status deployment/web -n shop
 ```
 You see:
 ```
@@ -6802,7 +6804,7 @@ deployment "web" successfully rolled out
 **Why:** jsonpath prints one field and nothing else.
 
 ```
-k get deploy web -n shop -o jsonpath='{.spec.template.spec.containers[0].image}' > /root/image.txt
+k get deployment web -o jsonpath='{.spec.template.spec.containers[0].image}' -n shop > /root/image.txt
 cat /root/image.txt
 ```
 You see:
@@ -6818,7 +6820,7 @@ nginx:1.27   <-- your prompt may follow on the same line
 **Why:** prove all pods run the old image again.
 
 ```
-k get deploy web -n shop -o wide
+k get deployment web -o wide -n shop
 ```
 You see:
 ```
@@ -6842,7 +6844,7 @@ web    3/3     3            3           3m    nginx        nginx:1.27   app=web 
 | `rollout status` never finishes | the new image does not exist (typo) | `Ctrl+C`, check the tag, `k set image` again |
 | `unable to find container named "web"` | deployment name left of `=` | use the CONTAINERS column from Step 1 |
 | `/root/image.txt` is empty | a typo in the jsonpath | run it without `> /root/image.txt` first |
-| the question wants revision 1 exactly | more than one step back | `k rollout undo deploy/web -n shop --to-revision=1` |
+| the question wants revision 1 exactly | more than one step back | `k rollout undo deployment/web --to-revision=1 -n shop` |
 
 ---
 
@@ -6903,10 +6905,10 @@ Target 8 min. Skip at 12.
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete ns storage --ignore-not-found
+k delete namespace storage --ignore-not-found
 k delete pv pv-data --ignore-not-found
 rm -f pv.yaml pvc.yaml pod.yaml
-k create ns storage
+k create namespace storage
 clear
 k get pv,pvc -n storage
 ```
@@ -7089,7 +7091,7 @@ Make `fast`, move the "default" mark to it, and take the mark off the old defaul
 - **Look first:** which class is the default now.
 - **Expect:** `local-path (default)`.
 - **Fix:** create `fast` with the mark "true"; patch the old one to "false".
-- **Prove:** `k get sc` shows `(default)` next to `fast` only.
+- **Prove:** `k get storageclass` shows `(default)` next to `fast` only.
 
 ### Time budget
 
@@ -7100,11 +7102,11 @@ Target 5 min. Skip at 8.
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete sc fast standard --ignore-not-found
+k delete storageclass fast standard --ignore-not-found
 rm -f sc.yaml
-k patch sc local-path -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+k patch storageclass local-path -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
 clear
-k get sc
+k get storageclass
 ```
 
 ---
@@ -7114,7 +7116,7 @@ k get sc
 **Why:** you must take the mark off this class later.
 
 ```
-k get sc
+k get storageclass
 ```
 You see:
 ```
@@ -7127,7 +7129,7 @@ local-path (default)   rancher.io/local-path   ...   <-- write this name down
 
 ### Step 2. Write the StorageClass
 
-**Why:** there is no `k create sc`. Copy the example under "StorageClass objects" on the docs page "Storage Classes".
+**Why:** there is no `k create storageclass`. Copy the example under "StorageClass objects" on the docs page "Storage Classes".
 
 ```
 vim sc.yaml
@@ -7156,7 +7158,7 @@ Vim tip: type `:set paste` before you press `i` and paste. Save with `:wq`.
 
 ```
 k apply -f sc.yaml
-k get sc
+k get storageclass
 ```
 You see:
 ```
@@ -7189,7 +7191,7 @@ storageclass.storage.k8s.io/local-path patched
 **Why:** prove `fast` is the only default.
 
 ```
-k get sc
+k get storageclass
 ```
 You see:
 ```
@@ -7212,11 +7214,11 @@ local-path       rancher.io/local-path   ...
 
 | You see | Cause | Fix |
 |---|---|---|
-| re-apply fails with `Forbidden` after a typo | `provisioner` and `volumeBindingMode` cannot change after creation | `k delete sc fast`, fix `sc.yaml`, apply again |
+| re-apply fails with `Forbidden` after a typo | `provisioner` and `volumeBindingMode` cannot change after creation | `k delete storageclass fast`, fix `sc.yaml`, apply again |
 | `cannot unmarshal bool ... of type string` | `is-default-class: true` without quotes | write `"true"` |
 | a test PVC stays `Pending` | normal with `WaitForFirstConsumer`: it waits for a pod | do not "fix" it |
 | no `(default)` at all | you patched `fast` instead of the old class | patch `fast` back to `"true"` |
-| you finished and want the playground as it was | `fast` is still the default | `k delete sc fast standard --ignore-not-found`, then `k patch sc local-path -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'` |
+| you finished and want the playground as it was | `fast` is still the default | `k delete storageclass fast standard --ignore-not-found`, then `k patch storageclass local-path -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'` |
 
 ---
 
@@ -7256,10 +7258,10 @@ Target 7 min. Skip at 10.
 ### PART A. Build the exam (Killercoda only)
 
 ```
-k delete ns mariadb --ignore-not-found
+k delete namespace mariadb --ignore-not-found
 k delete pv mariadb-pv --ignore-not-found
 rm -f pvc.yaml
-k create ns mariadb
+k create namespace mariadb
 cat <<EOF | k apply -f -
 apiVersion: v1
 kind: PersistentVolume
@@ -7440,7 +7442,7 @@ mariadb-pv   250Mi   RWO   Retain   Bound   mariadb/mariadb   ...   <-- old disk
 
 - **StatefulSet:** like a Deployment, but pods get fixed names (`db-0`, `db-1`). Each gets its own disk.
 - **HA control plane:** several control plane nodes behind a load balancer.
-- **Pod Security:** `k label ns secure pod-security.kubernetes.io/enforce=restricted`
+- **Pod Security:** `k label namespace secure pod-security.kubernetes.io/enforce=restricted`
 - **kubectl debug:** `k debug node/node01 -it --image=busybox:1.36` gives a shell on a node.
 - **Quota:** `k create quota q --hard=pods=10,requests.cpu=2 -n NS`
 - **Certificates:** `kubeadm certs check-expiration`, `kubeadm certs renew all`
