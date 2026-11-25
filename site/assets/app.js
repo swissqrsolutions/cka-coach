@@ -277,7 +277,7 @@
   // all commands of the solution in one box, to learn by heart
   const kwBox = q => (q.kw || []).length ? `<h2>Keywords → what to remember</h2><div class="card kwbox">${q.kw.map(k => `<div class="kw"><p><b>If the question says “${esc(k.word)}”:</b> ${esc(k.hint)}</p>${codeBlock(k.cmds)}</div>`).join('')}<p class="small">Same keyword in a new question → same commands.</p></div>` : '';
   const mugBox = q => q.cmds ? `<h2>Commands to learn by heart</h2><div class="card mugbox">${codeBlock(q.cmds)}<p class="small">Type them from memory, in this order, until you can do it without looking.</p></div>${kwBox(q)}` : kwBox(q);
-  const merkBox = q => (q.kw || []).length ? `<h2>Merken</h2><div class="card kwbox">${q.kw.map(k => `<div class="kw"><p><b>If the question says “${esc(k.word)}”:</b> ${esc(k.hint)}</p>${codeBlock(k.cmds)}</div>`).join('')}<p class="small">Same keyword in a new question → same commands.</p></div>` : '';
+  const merkBox = q => (q.kw || []).length ? `<h2>Remember</h2><div class="card kwbox">${q.kw.map(k => `<div class="kw"><p><b>If the question says “${esc(k.word)}”:</b> ${esc(k.hint)}</p>${codeBlock(k.cmds)}</div>`).join('')}<p class="small">Same keyword in a new question → same commands.</p></div>` : '';
   function compactBody(q, mode = 'learn') {
     const st = q.story || {};
     const plan = (q.coach || {}).plan;
