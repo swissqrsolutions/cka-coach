@@ -185,6 +185,17 @@ const vdir = path.join(ROOT, 'content', 'videos');
 if (fs.existsSync(vdir)) for (const f of fs.readdirSync(vdir)) { const x = questions.find(q => q.n === +f.replace('.json', '')); if (x) { const raw = fs.readFileSync(path.join(vdir, f), 'utf8'); x.video = JSON.parse(raw); x.video.ver = crypto.createHash('sha1').update(raw).digest('hex').slice(0, 8); } }
 const coachFile = path.join(ROOT, 'content', 'coach.json');
 if (fs.existsSync(coachFile)) { const C = JSON.parse(fs.readFileSync(coachFile, 'utf8')); for (const x of questions) if (C[x.n]) x.coach = C[x.n]; }
+// ---- "commands to learn by heart": every command of the solution in order (+ YAML you must type), one box per question
+for (const x of questions) {
+  const out = [];
+  for (const s of x.steps || []) for (const f of s.flow || []) {
+    if (f.skip) continue;
+    if (f.k === 'cmd' && out[out.length - 1] !== f.t) out.push(f.t);
+    if (f.k === 'yaml') out.push('# file content:\n' + f.t.replace(/\s+$/, ''));
+  }
+  x.cmds = out.join('\n');
+}
+
 const data = { sources: data_sources, built: new Date().toISOString(), topics: topics.map(t => ({ name: t.name, weight: t.weight, intro: html(t.intro) })), refs: refs.map(r => ({ title: r.title, html: html(r.body) })), questions, mocks };
 fs.writeFileSync(path.join(ROOT, 'site', 'data.json'), JSON.stringify(data));
 

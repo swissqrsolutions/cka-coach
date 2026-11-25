@@ -269,6 +269,8 @@
   const MODES = [['learn', '1 Learn'], ['practise', '2 Practice'], ['exam', '3 Exam']];
   const NEXT = { learn: 'practise', practise: 'exam', exam: 'exam' };
   const MODEHINT = { learn: 'Round 1: follow every step.', practise: 'Round 2: type it yourself.', exam: 'Round 3: no help, beat the time.' };
+  // all commands of the solution in one box, to learn by heart
+  const mugBox = q => q.cmds ? `<h2>Commands to learn by heart</h2><div class="card mugbox">${codeBlock(q.cmds)}<p class="small">Type them from memory, in this order, until you can do it without looking.</p></div>` : '';
   function compactBody(q, mode = 'learn') {
     const st = q.story || {};
     const all = q.steps.map((s, i) => ({ s, i, v: /^Verify/.test(s.title) }));
@@ -292,13 +294,13 @@
       return `${question(false)}${build}
         <div class="card qtimer"><div><div class="label">Your time</div><span id="qt">0:00</span></div><div class="row"><button class="btn" id="qtStart">${t ? 'Restart' : 'Start'}</button><button class="btn good" id="qtDone">Done</button></div>
           <p class="small">Paste Part A, then Start. Solve it without the app. Over ${q.target} min puts it on your weak list.</p></div>
-        ${done ? `${thinkCard}<h2>The solution</h2>${stepsAll}${help}` : examNote}`;
+        ${done ? `${thinkCard}<h2>The solution</h2>${stepsAll}${help}${mugBox(q)}` : examNote}`;
     }
     if (mode === 'practise') return `${question(true)}${thinkCard}${build}
       <h2>Solve it yourself</h2>
       <details class="step"><summary>Show steps</summary><div class="body">${stepsOnly}</div></details>
-      ${verify}${examNote}${help}`;
-    return `${question(true)}${thinkCard}${build}<h2>Solve it</h2>${stepsAll}${examNote}${help}`;
+      ${verify}${examNote}${help}${mugBox(q)}`;
+    return `${question(true)}${thinkCard}${build}<h2>Solve it</h2>${stepsAll}${examNote}${help}${mugBox(q)}`;
   }
 
   // the whole answer in baby steps: one command, what you see, why
@@ -345,7 +347,7 @@
       <div class="card">${q.setup ? `<a class="btn block" href="${KILLERCODA}" target="_blank" rel="noopener">Open Killercoda</a>${codeBlock(q.setup)}<p class="small">Paste this first. In the real exam it is already set up. Then try to solve it before you look below.</p>` : `${/no setup needed/i.test(plain(q.meaning||'')) ? '<a class="btn block" href="'+KILLERCODA+'" target="_blank" rel="noopener">Open Killercoda</a><p class="small">No setup needed: it works as is on Killercoda. Try it before you look below.</p>' : '<p class="small">This one cannot be set up in a playground. Read the steps; practise it in killer.sh.</p>'}`}</div>
       ${tried ? `<details class="step solution"><summary>Try first, then show the solution</summary><div class="body">${solveBlock}</div></details>` : `<h2>Solution, step by step</h2>${solveBlock}`}
       ${q.wrong ? `<h2>If something goes wrong</h2><div class="card btable">${q.wrong}</div>` : ''}
-      ${memorise}`;
+      ${memorise || mugBox(q)}`;
   }
 
   function practice(n) {

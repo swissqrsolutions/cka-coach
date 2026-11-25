@@ -902,13 +902,13 @@ deployment "api" successfully rolled out
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |`|u|n|a|b|l|e| |t|o| |f|i|n|d| |c|o|n|t|a|i|n|e|r| |n|a|m|e|d| |"|a|p|i|"|`| ||| |d|e|p|l|o|y|m|e|n|t| |n|a|m|e| |l|e|f|t| |o|f| |`|=|`| ||| |u|s|e| |t|h|e| |c|o|n|t|a|i|n|e|r| |n|a|m|e| |(|`|n|g|i|n|x|`|)| |||
-||| |s|t|i|l|l| |`|I|m|a|g|e|P|u|l|l|B|a|c|k|O|f|f|`| ||| |t|y|p|o| |i|n| |t|h|e| |n|e|w| |i|m|a|g|e| ||| |r|u|n| |`|d|e|s|c|r|i|b|e|`| |a|g|a|i|n|,| |f|i|x| |t|h|e| |t|y|p|o| |||
-||| |E|v|e|n|t|s| |s|a|y| |`|p|u|l|l| |a|c|c|e|s|s| |d|e|n|i|e|d|`| |o|r| |`|r|e|p|o|s|i|t|o|r|y| |d|o|e|s| |n|o|t| |e|x|i|s|t|`| ||| |t|h|e| |i|m|a|g|e| |N|A|M|E| |i|s| |w|r|o|n|g|,| |n|o|t| |t|h|e| |t|a|g| ||| |f|i|x| |t|h|e| |n|a|m|e|,| |e|.|g|.| |`|n|g|n|i|x|`| |t|o| |`|n|g|i|n|x|`| |||
-||| |f|i|x|e|d| |p|o|d|,| |n|e|w| |p|o|d| |b|r|e|a|k|s| |a|g|a|i|n| ||| |y|o|u| |r|a|n| |`|k| |e|d|i|t| |p|o|d|`| ||| |f|i|x| |t|h|e| |d|e|p|l|o|y|m|e|n|t| |w|i|t|h| |`|k| |s|e|t| |i|m|a|g|e|`| |||
-||| |o|l|d| |p|o|d| |s|h|o|w|s| |t|h|e| |e|r|r|o|r| |a| |f|e|w| |s|e|c|o|n|d|s| ||| |i|t| |i|s| |b|e|i|n|g| |r|e|p|l|a|c|e|d| ||| |w|a|i|t|,| |r|u|n| |`|k| |g|e|t| |p|o|d|s| |-|n| |a|p|p|`| |a|g|a|i|n| |||
+| You see | Cause | Fix |
+|---|---|---|
+| `unable to find container named "api"` | deployment name left of `=` | use the container name (`nginx`) |
+| still `ImagePullBackOff` | typo in the new image | run `describe` again, fix the typo |
+| Events say `pull access denied` or `repository does not exist` | the image NAME is wrong, not the tag | fix the name, e.g. `ngnix` to `nginx` |
+| fixed pod, new pod breaks again | you ran `k edit pod` | fix the deployment with `k set image` |
+| old pod shows the error a few seconds | it is being replaced | wait, run `k get pods -n app` again |
 
 ---
 
@@ -1057,13 +1057,13 @@ api-7f9b8c6d5-k4m2p   1/1   Running   0   25s   <-- RESTARTS 0
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |`|p|r|e|v|i|o|u|s| |t|e|r|m|i|n|a|t|e|d| |c|o|n|t|a|i|n|e|r| |.|.|.| |n|o|t| |f|o|u|n|d|`| ||| |n|o| |r|e|s|t|a|r|t| |y|e|t| ||| |w|a|i|t| |2|0| |s|,| |t|r|y| |a|g|a|i|n| |||
-||| |v|i|m| |r|e|o|p|e|n|s| |w|i|t|h| |`|#| |E|r|r|o|r|:|`| |l|i|n|e|s| ||| |t|h|e| |e|d|i|t| |b|r|o|k|e| |t|h|e| |Y|A|M|L| |i|n|d|e|n|t|a|t|i|o|n| ||| |f|i|x| |i|t|,| |o|r| |`|:|q|!|`| |a|n|d| |r|u|n| |`|k| |p|a|t|c|h| |d|e|p|l|o|y| |a|p|i| |-|n| |a|p|p| |-|-|t|y|p|e|=|j|s|o|n| |-|p|=|'|[|{|"|o|p|"|:|"|r|e|p|l|a|c|e|"|,|"|p|a|t|h|"|:|"|/|s|p|e|c|/|t|e|m|p|l|a|t|e|/|s|p|e|c|/|c|o|n|t|a|i|n|e|r|s|/|0|/|c|o|m|m|a|n|d|"|,|"|v|a|l|u|e|"|:|[|"|s|h|"|,|"|-|c|"|,|"|s|l|e|e|p| |3|6|0|0|"|]|}|]|'|`| |||
-||| |`|F|o|r|b|i|d|d|e|n|:| |p|o|d| |u|p|d|a|t|e|s| |m|a|y| |n|o|t| |c|h|a|n|g|e| |f|i|e|l|d|s|.|.|.|`| ||| |y|o|u| |r|a|n| |`|k| |e|d|i|t| |p|o|d|`| ||| |`|k| |e|d|i|t| |d|e|p|l|o|y| |a|p|i| |-|n| |a|p|p|`| |||
-||| |d|e|s|c|r|i|b|e| |s|a|y|s| |`|R|e|a|s|o|n|:| |O|O|M|K|i|l|l|e|d|`| ||| |m|e|m|o|r|y| |l|i|m|i|t| |t|o|o| |s|m|a|l|l| ||| |`|k| |s|e|t| |r|e|s|o|u|r|c|e|s| |d|e|p|l|o|y| |a|p|i| |-|n| |a|p|p| |-|-|l|i|m|i|t|s|=|m|e|m|o|r|y|=|<|v|a|l|u|e|>|`| |||
-||| |`|N|o| |r|e|s|o|u|r|c|e|s| |f|o|u|n|d|`| ||| |f|o|r|g|o|t| |`|-|n| |a|p|p|`| ||| |a|d|d| |`|-|n| |a|p|p|`| |||
+| You see | Cause | Fix |
+|---|---|---|
+| `previous terminated container ... not found` | no restart yet | wait 20 s, try again |
+| vim reopens with `# Error:` lines | the edit broke the YAML indentation | fix it, or `:q!` and run `k patch deploy api -n app --type=json -p='[{"op":"replace","path":"/spec/template/spec/containers/0/command","value":["sh","-c","sleep 3600"]}]'` |
+| `Forbidden: pod updates may not change fields...` | you ran `k edit pod` | `k edit deploy api -n app` |
+| describe says `Reason: OOMKilled` | memory limit too small | `k set resources deploy api -n app --limits=memory=<value>` |
+| `No resources found` | forgot `-n app` | add `-n app` |
 
 ---
 
@@ -1199,13 +1199,13 @@ deployment "api" successfully rolled out
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |n|o| |`|F|a|i|l|e|d|S|c|h|e|d|u|l|i|n|g|`| |i|n| |d|e|s|c|r|i|b|e| ||| |y|o|u| |d|e|s|c|r|i|b|e|d| |t|h|e| |R|u|n|n|i|n|g| |p|o|d| ||| |d|e|s|c|r|i|b|e| |t|h|e| |`|P|e|n|d|i|n|g|`| |o|n|e| |||
-||| |a| |n|e|w| |p|o|d| |i|s| |P|e|n|d|i|n|g| |a|f|t|e|r| |y|o|u| |d|e|l|e|t|e|d| |o|n|e| ||| |t|h|e| |d|e|p|l|o|y|m|e|n|t| |r|e|-|c|r|e|a|t|e|s| |i|t| ||| |f|i|x| |t|h|e| |d|e|p|l|o|y|m|e|n|t|,| |n|o|t| |t|h|e| |p|o|d| |||
-||| |`|m|u|s|t| |b|e| |l|e|s|s| |t|h|a|n| |o|r| |e|q|u|a|l| |t|o| |c|p|u| |l|i|m|i|t|`| ||| |y|o|u| |s|e|t| |`|-|-|l|i|m|i|t|s|`|,| |n|o|t| |`|-|-|r|e|q|u|e|s|t|s|`| ||| |u|s|e| |`|-|-|r|e|q|u|e|s|t|s|=|c|p|u|=|1|0|0|m|`| |||
-||| |E|v|e|n|t|s|:| |`|h|a|d| |u|n|t|o|l|e|r|a|t|e|d| |t|a|i|n|t|`| |o|n| |e|v|e|r|y| |n|o|d|e| ||| |a| |t|a|i|n|t| |b|l|o|c|k|s| |t|h|e| |p|o|d| ||| |q|u|e|s|t|i|o|n| |3|6| |||
-||| |E|v|e|n|t|s|:| |`|d|i|d|n|'|t| |m|a|t|c|h| |P|o|d|'|s| |n|o|d|e| |a|f|f|i|n|i|t|y|/|s|e|l|e|c|t|o|r|`| ||| |t|h|e| |p|o|d| |w|a|n|t|s| |a| |n|o|d|e| |l|a|b|e|l| |n|o|n|e| |h|a|s| ||| |f|i|x| |`|n|o|d|e|S|e|l|e|c|t|o|r|:|`| |i|n| |`|k| |e|d|i|t| |d|e|p|l|o|y| |a|p|i| |-|n| |a|p|p|`| |||
+| You see | Cause | Fix |
+|---|---|---|
+| no `FailedScheduling` in describe | you described the Running pod | describe the `Pending` one |
+| a new pod is Pending after you deleted one | the deployment re-creates it | fix the deployment, not the pod |
+| `must be less than or equal to cpu limit` | you set `--limits`, not `--requests` | use `--requests=cpu=100m` |
+| Events: `had untolerated taint` on every node | a taint blocks the pod | question 36 |
+| Events: `didn't match Pod's node affinity/selector` | the pod wants a node label none has | fix `nodeSelector:` in `k edit deploy api -n app` |
 
 ---
 
@@ -1356,13 +1356,13 @@ node/node01 condition met
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |`|T|h|e| |c|o|n|n|e|c|t|i|o|n| |t|o| |t|h|e| |s|e|r|v|e|r| |l|o|c|a|l|h|o|s|t|:|8|0|8|0| |w|a|s| |r|e|f|u|s|e|d|`| ||| |y|o|u| |r|a|n| |k|u|b|e|c|t|l| |o|n| |n|o|d|e|0|1| ||| |`|e|x|i|t|`|,| |r|u|n| |i|t| |a|g|a|i|n| |||
-||| |k|u|b|e|l|e|t| |a|l|r|e|a|d|y| |`|a|c|t|i|v|e| |(|r|u|n|n|i|n|g|)|`| |b|e|f|o|r|e| |t|h|e| |f|i|x| ||| |y|o|u| |a|r|e| |o|n| |t|h|e| |c|o|n|t|r|o|l| |p|l|a|n|e| ||| |`|e|x|i|t|`|,| |t|h|e|n| |`|s|s|h| |n|o|d|e|0|1|`| |||
-||| |`|A|c|t|i|v|e|:| |a|c|t|i|v|a|t|i|n|g| |(|a|u|t|o|-|r|e|s|t|a|r|t|)|`| |a|f|t|e|r| |s|t|a|r|t|i|n|g| ||| |t|h|e| |k|u|b|e|l|e|t| |i|s| |m|i|s|c|o|n|f|i|g|u|r|e|d| ||| |q|u|e|s|t|i|o|n| |5| |||
-||| |k|u|b|e|l|e|t| |`|a|c|t|i|v|e| |(|r|u|n|n|i|n|g|)|`|,| |n|o|d|e| |s|t|a|y|s| |N|o|t|R|e|a|d|y| ||| |t|h|e| |c|o|n|t|a|i|n|e|r| |r|u|n|t|i|m|e| |i|s| |s|t|o|p|p|e|d| ||| |o|n| |n|o|d|e|0|1|:| |`|s|y|s|t|e|m|c|t|l| |e|n|a|b|l|e| |-|-|n|o|w| |c|o|n|t|a|i|n|e|r|d|`| |||
-||| |`|t|i|m|e|d| |o|u|t| |w|a|i|t|i|n|g| |f|o|r| |t|h|e| |c|o|n|d|i|t|i|o|n|`| ||| |t|h|e| |k|u|b|e|l|e|t| |n|e|e|d|s| |m|o|r|e| |t|i|m|e|,| |o|r| |f|a|i|l|e|d| ||| |`|k| |g|e|t| |n|o|d|e|s|`| |a|g|a|i|n|;| |o|n| |n|o|d|e|0|1| |c|h|e|c|k| |`|s|y|s|t|e|m|c|t|l| |s|t|a|t|u|s| |k|u|b|e|l|e|t| |-|-|n|o|-|p|a|g|e|r|`| |||
+| You see | Cause | Fix |
+|---|---|---|
+| `The connection to the server localhost:8080 was refused` | you ran kubectl on node01 | `exit`, run it again |
+| kubelet already `active (running)` before the fix | you are on the control plane | `exit`, then `ssh node01` |
+| `Active: activating (auto-restart)` after starting | the kubelet is misconfigured | question 5 |
+| kubelet `active (running)`, node stays NotReady | the container runtime is stopped | on node01: `systemctl enable --now containerd` |
+| `timed out waiting for the condition` | the kubelet needs more time, or failed | `k get nodes` again; on node01 check `systemctl status kubelet --no-pager` |
 
 ---
 
@@ -1537,13 +1537,13 @@ node01         Ready    <none>          ...   v1.35.0   <-- Ready
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |`|W|a|r|n|i|n|g|:| |T|h|e| |u|n|i|t| |f|i|l|e| |.|.|.| |c|h|a|n|g|e|d| |o|n| |d|i|s|k|`| ||| |n|o| |`|d|a|e|m|o|n|-|r|e|l|o|a|d|`| ||| |`|s|y|s|t|e|m|c|t|l| |d|a|e|m|o|n|-|r|e|l|o|a|d|`|,| |t|h|e|n| |r|e|s|t|a|r|t| |||
-||| |`|i|n|a|c|t|i|v|e| |(|d|e|a|d|)|`| |i|n| |S|t|e|p| |1| ||| |k|u|b|e|l|e|t| |o|n|l|y| |s|t|o|p|p|e|d| ||| |q|u|e|s|t|i|o|n| |4|:| |`|s|y|s|t|e|m|c|t|l| |s|t|a|r|t| |k|u|b|e|l|e|t|`| |||
-||| |l|o|g| |s|a|y|s| |`|f|a|i|l|e|d| |t|o| |l|o|a|d| |k|u|b|e|l|e|t| |c|o|n|f|i|g| |f|i|l|e|`| ||| |b|a|d| |`|/|v|a|r|/|l|i|b|/|k|u|b|e|l|e|t|/|c|o|n|f|i|g|.|y|a|m|l|`| ||| |f|i|x| |t|h|a|t| |f|i|l|e|,| |r|e|s|t|a|r|t| |k|u|b|e|l|e|t| |||
-||| |`|l|o|c|a|l|h|o|s|t|:|8|0|8|0| |w|a|s| |r|e|f|u|s|e|d|`| ||| |y|o|u| |r|a|n| |`|k|`| |o|n| |n|o|d|e|0|1| ||| |`|e|x|i|t|`| |f|i|r|s|t| |||
-||| |l|i|n|e| |l|o|o|k|s| |w|r|o|n|g| |a|f|t|e|r| |`|6|x|`| ||| |c|u|r|s|o|r| |w|a|s| |e|l|s|e|w|h|e|r|e| ||| |p|r|e|s|s| |`|u|`| |t|o| |u|n|d|o| |||
+| You see | Cause | Fix |
+|---|---|---|
+| `Warning: The unit file ... changed on disk` | no `daemon-reload` | `systemctl daemon-reload`, then restart |
+| `inactive (dead)` in Step 1 | kubelet only stopped | question 4: `systemctl start kubelet` |
+| log says `failed to load kubelet config file` | bad `/var/lib/kubelet/config.yaml` | fix that file, restart kubelet |
+| `localhost:8080 was refused` | you ran `k` on node01 | `exit` first |
+| line looks wrong after `6x` | cursor was elsewhere | press `u` to undo |
 
 ---
 
@@ -1823,13 +1823,13 @@ You see:
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |`|w|g|e|t|:| |d|o|w|n|l|o|a|d| |t|i|m|e|d| |o|u|t|`| |i|n| |S|t|e|p| |2| ||| |y|o|u|r| |n|e|t|w|o|r|k| |p|l|u|g|-|i|n| |d|r|o|p|s| |i|n|s|t|e|a|d| |o|f| |r|e|f|u|s|e|s| ||| |s|a|m|e| |m|e|a|n|i|n|g|,| |g|o| |o|n| |||
-||| |t|h|e| |q|u|e|s|t|i|o|n| |d|o|e|s| |n|o|t| |n|a|m|e| |t|h|e| |a|p|p|'|s| |p|o|r|t| ||| |y|o|u| |m|u|s|t| |f|i|n|d| |i|t| ||| |`|k| |d|e|s|c|r|i|b|e| |p|o|d| |<|p|o|d|>| |-|n| |w|e|b|`|,| |r|e|a|d| |`|P|o|r|t|:|`| |||
-||| |`|E|d|i|t| |c|a|n|c|e|l|l|e|d|,| |n|o| |c|h|a|n|g|e|s| |m|a|d|e|.|`| ||| |s|a|v|e|d| |n|o|t|h|i|n|g|,| |o|r| |q|u|i|t| |w|i|t|h| |`|:|q|!|`| ||| |r|u|n| |`|k| |e|d|i|t|`| |a|g|a|i|n| |||
-||| |s|t|i|l|l| |r|e|f|u|s|e|d| |a|f|t|e|r| |t|h|e| |f|i|x| ||| |y|o|u| |c|h|a|n|g|e|d| |`|c|o|n|t|a|i|n|e|r|P|o|r|t|`| |i|n| |t|h|e| |D|e|p|l|o|y|m|e|n|t| ||| |u|n|d|o| |i|t|;| |f|i|x| |t|h|e| |S|e|r|v|i|c|e| |||
-||| |v|i|m| |g|e|t|s| |i|n| |t|h|e| |w|a|y| ||| |y|o|u| |w|a|n|t| |o|n|e| |c|o|m|m|a|n|d| ||| |`|k| |p|a|t|c|h| |s|v|c| |b|a|c|k|e|n|d|-|s|v|c| |-|n| |w|e|b| |-|p| |'|{|"|s|p|e|c|"|:|{|"|p|o|r|t|s|"|:|[|{|"|p|o|r|t|"|:|8|0|,|"|t|a|r|g|e|t|P|o|r|t|"|:|8|0|}|]|}|}|'|`| |||
+| You see | Cause | Fix |
+|---|---|---|
+| `wget: download timed out` in Step 2 | your network plug-in drops instead of refuses | same meaning, go on |
+| the question does not name the app's port | you must find it | `k describe pod <pod> -n web`, read `Port:` |
+| `Edit cancelled, no changes made.` | saved nothing, or quit with `:q!` | run `k edit` again |
+| still refused after the fix | you changed `containerPort` in the Deployment | undo it; fix the Service |
+| vim gets in the way | you want one command | `k patch svc backend-svc -n web -p '{"spec":{"ports":[{"port":80,"targetPort":80}]}}'` |
 
 ---
 
@@ -1981,13 +1981,13 @@ controlplane   Ready    control-plane   ...   v1.35.0   <-- kubectl answers
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |s|t|i|l|l| |`|6|4|4|3| |w|a|s| |r|e|f|u|s|e|d|`| |a|f|t|e|r| |2|0| |s| ||| |t|h|e| |k|u|b|e|l|e|t| |n|e|e|d|s| |t|i|m|e| ||| |w|a|i|t| |u|p| |t|o| |6|0| |s| |||
-||| |`|c|r|i|c|t|l| |p|s| |-|a|`| |s|h|o|w|s| |n|o| |a|p|i|s|e|r|v|e|r| |a|t| |a|l|l| ||| |Y|A|M|L| |m|i|s|t|a|k|e|,| |t|h|e| |k|u|b|e|l|e|t| |c|a|n|n|o|t| |r|e|a|d| |t|h|e| |f|i|l|e| ||| |`|j|o|u|r|n|a|l|c|t|l| |-|u| |k|u|b|e|l|e|t| |-|n| |3|0| |-|-|n|o|-|p|a|g|e|r| |||| |g|r|e|p| |a|p|i|s|e|r|v|e|r|`|;| |c|o|m|p|a|r|e| |w|i|t|h| |`|/|r|o|o|t|/|k|u|b|e|-|a|p|i|s|e|r|v|e|r|.|y|a|m|l|.|o|r|i|g|`| |||
-||| |l|o|g| |s|a|y|s| |`|o|p|e|n| |/|e|t|c|/|k|u|b|e|r|n|e|t|e|s|/|p|k|i|/|.|.|.|:| |n|o| |s|u|c|h| |f|i|l|e| |o|r| |d|i|r|e|c|t|o|r|y|`| ||| |w|r|o|n|g| |c|e|r|t|i|f|i|c|a|t|e| |p|a|t|h| ||| |`|l|s| |/|e|t|c|/|k|u|b|e|r|n|e|t|e|s|/|p|k|i|/|`|,| |f|i|x| |t|h|e| |p|a|t|h| |||
-||| |`|l|o|c|a|l|h|o|s|t|:|8|0|8|0| |w|a|s| |r|e|f|u|s|e|d|`| ||| |w|r|o|n|g| |m|a|c|h|i|n|e| ||| |`|s|s|h|`| |t|o| |t|h|e| |h|o|s|t| |t|h|e| |q|u|e|s|t|i|o|n| |n|a|m|e|s| |||
-||| |c|r|i|c|t|l| |s|a|y|s| |`|p|e|r|m|i|s|s|i|o|n| |d|e|n|i|e|d|`| ||| |y|o|u| |a|r|e| |n|o|t| |r|o|o|t| ||| |`|s|u|d|o| |-|i|`| |f|i|r|s|t| |||
+| You see | Cause | Fix |
+|---|---|---|
+| still `6443 was refused` after 20 s | the kubelet needs time | wait up to 60 s |
+| `crictl ps -a` shows no apiserver at all | YAML mistake, the kubelet cannot read the file | `journalctl -u kubelet -n 30 --no-pager \| grep apiserver`; compare with `/root/kube-apiserver.yaml.orig` |
+| log says `open /etc/kubernetes/pki/...: no such file or directory` | wrong certificate path | `ls /etc/kubernetes/pki/`, fix the path |
+| `localhost:8080 was refused` | wrong machine | `ssh` to the host the question names |
+| crictl says `permission denied` | you are not root | `sudo -i` first |
 
 ---
 
@@ -2144,13 +2144,13 @@ test   1/1     Running   0          5m
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |d|e|s|c|r|i|b|e| |s|h|o|w|s| |n|o| |E|v|e|n|t|s| |f|o|r| |t|h|e| |s|c|h|e|d|u|l|e|r| ||| |e|v|e|n|t|s| |e|x|p|i|r|e|d| ||| |`|c|r|i|c|t|l| |p|s| |-|a| |||| |g|r|e|p| |s|c|h|e|d|u|l|e|r|`|,| |t|h|e|n| |`|c|r|i|c|t|l| |i|n|s|p|e|c|t| |<|i|d|>| |||| |g|r|e|p| |-|i| |-|m|3| |m|e|s|s|a|g|e|`| |||
-||| |y|o|u|r| |`|k| |e|d|i|t| |p|o|d| |k|u|b|e|-|s|c|h|e|d|u|l|e|r|-|.|.|.|`| |d|i|d| |n|o|t|h|i|n|g| ||| |t|h|a|t| |i|s| |t|h|e| |m|i|r|r|o|r| |p|o|d| ||| |e|d|i|t| |t|h|e| |f|i|l|e| |i|n| |`|m|a|n|i|f|e|s|t|s|/|`| |||
-||| |d|e|l|e|t|e|d| |s|c|h|e|d|u|l|e|r| |p|o|d| |c|o|m|e|s| |b|a|c|k| |b|r|o|k|e|n| ||| |t|h|e| |k|u|b|e|l|e|t| |r|e|b|u|i|l|d|s| |i|t| |f|r|o|m| |t|h|e| |f|i|l|e| ||| |f|i|x| |t|h|e| |f|i|l|e| |||
-||| |s|c|h|e|d|u|l|e|r| |d|i|s|a|p|p|e|a|r|s| |a|f|t|e|r| |y|o|u|r| |e|d|i|t| ||| |Y|A|M|L| |b|r|o|k|e|n| |(|T|a|b| |o|r| |i|n|d|e|n|t|)| ||| |c|o|m|p|a|r|e| |w|i|t|h| |`|/|r|o|o|t|/|k|u|b|e|-|s|c|h|e|d|u|l|e|r|.|y|a|m|l|.|o|r|i|g|`|;| |s|p|a|c|e|s| |o|n|l|y| |||
-||| |s|c|a|l|e|d| |D|e|p|l|o|y|m|e|n|t| |m|a|k|e|s| |N|O| |n|e|w| |p|o|d|s| ||| |c|o|n|t|r|o|l|l|e|r|-|m|a|n|a|g|e|r| |i|s| |b|r|o|k|e|n|,| |n|o|t| |t|h|e| |s|c|h|e|d|u|l|e|r| ||| |s|a|m|e| |m|e|t|h|o|d|,| |`|k|u|b|e|-|c|o|n|t|r|o|l|l|e|r|-|m|a|n|a|g|e|r|.|y|a|m|l|`| |||
+| You see | Cause | Fix |
+|---|---|---|
+| describe shows no Events for the scheduler | events expired | `crictl ps -a \| grep scheduler`, then `crictl inspect <id> \| grep -i -m3 message` |
+| your `k edit pod kube-scheduler-...` did nothing | that is the mirror pod | edit the file in `manifests/` |
+| deleted scheduler pod comes back broken | the kubelet rebuilds it from the file | fix the file |
+| scheduler disappears after your edit | YAML broken (Tab or indent) | compare with `/root/kube-scheduler.yaml.orig`; spaces only |
+| scaled Deployment makes NO new pods | controller-manager is broken, not the scheduler | same method, `kube-controller-manager.yaml` |
 
 ---
 
@@ -2322,13 +2322,13 @@ You see:
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |s|t|i|l|l| |a| |t|i|m|e|o|u|t| ||| |a| |l|a|b|e|l| |i|n| |t|h|e| |f|i|l|e| |d|o|e|s| |n|o|t| |m|a|t|c|h| |t|h|e| |r|e|a|l| |l|a|b|e|l| ||| |c|o|m|p|a|r|e| |w|i|t|h| |`|-|-|s|h|o|w|-|l|a|b|e|l|s|`|,| |f|i|x| |`|n|p|.|y|a|m|l|`|,| |a|p|p|l|y| |a|g|a|i|n| |||
-||| |s|t|i|l|l| |a| |t|i|m|e|o|u|t|,| |l|a|b|e|l|s| |m|a|t|c|h| ||| |t|h|e| |p|o|l|i|c|y| |l|a|n|d|e|d| |i|n| |`|d|e|f|a|u|l|t|`| ||| |`|k| |g|e|t| |n|e|t|p|o|l| |-|A|`|;| |s|e|t| |`|n|a|m|e|s|p|a|c|e|:| |w|e|b|`|,| |a|p|p|l|y|;| |`|k| |d|e|l|e|t|e| |n|e|t|p|o|l| |a|l|l|o|w|-|c|l|i|e|n|t| |-|n| |d|e|f|a|u|l|t|`| |||
-||| |`|e|r|r|o|r| |p|a|r|s|i|n|g| |n|p|.|y|a|m|l|`| |o|r| |`|u|n|k|n|o|w|n| |f|i|e|l|d|`| ||| |i|n|d|e|n|t|a|t|i|o|n| |b|r|o|k|e| |w|h|i|l|e| |d|e|l|e|t|i|n|g| |l|i|n|e|s| ||| |c|o|m|p|a|r|e| |t|h|e| |s|p|a|c|e|s| |w|i|t|h| |t|h|e| |f|i|n|i|s|h|e|d| |f|i|l|e|,| |l|i|n|e| |b|y| |l|i|n|e| |||
-||| |P|a|r|t| |A|'|s| |w|g|e|t| |a|l|r|e|a|d|y| |p|r|i|n|t|s| |t|h|e| |n|g|i|n|x| |p|a|g|e| ||| |t|h|e| |n|e|t|w|o|r|k| |p|l|u|g|i|n| |d|o|e|s| |n|o|t| |e|n|f|o|r|c|e| |p|o|l|i|c|i|e|s| ||| |w|r|i|t|e| |a|n|d| |a|p|p|l|y| |a|n|y|w|a|y|;| |t|h|e| |e|x|a|m| |c|l|u|s|t|e|r| |e|n|f|o|r|c|e|s| |t|h|e|m| |||
-||| |s|t|i|l|l| |a| |t|i|m|e|o|u|t|,| |t|h|e| |S|e|r|v|i|c|e| |m|a|p|s| |8|0| |t|o| |a|n|o|t|h|e|r| |p|o|d| |p|o|r|t| ||| |a| |p|o|l|i|c|y| |m|a|t|c|h|e|s| |t|h|e| |p|o|d|'|s| |p|o|r|t|,| |n|o|t| |t|h|e| |S|e|r|v|i|c|e| |p|o|r|t| ||| |t|h|e| |p|o|l|i|c|y| |n|e|e|d|s| |t|h|e| |p|o|d|'|s| |p|o|r|t|:| |`|k| |g|e|t| |e|p| |b|a|c|k|e|n|d|-|s|v|c| |-|n| |w|e|b|`| |||
+| You see | Cause | Fix |
+|---|---|---|
+| still a timeout | a label in the file does not match the real label | compare with `--show-labels`, fix `np.yaml`, apply again |
+| still a timeout, labels match | the policy landed in `default` | `k get netpol -A`; set `namespace: web`, apply; `k delete netpol allow-client -n default` |
+| `error parsing np.yaml` or `unknown field` | indentation broke while deleting lines | compare the spaces with the finished file, line by line |
+| Part A's wget already prints the nginx page | the network plugin does not enforce policies | write and apply anyway; the exam cluster enforces them |
+| still a timeout, the Service maps 80 to another pod port | a policy matches the pod's port, not the Service port | the policy needs the pod's port: `k get ep backend-svc -n web` |
 
 ---
 
@@ -2466,13 +2466,13 @@ Address:   10.96.0.1   <-- the answer
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |`|p|o|d|s| |"|t|"| |a|l|r|e|a|d|y| |e|x|i|s|t|s|`| ||| |a|n| |o|l|d| |t|e|s|t| |p|o|d| |w|a|s| |l|e|f|t| |b|e|h|i|n|d| ||| |`|k| |d|e|l|e|t|e| |p|o|d| |t|`|,| |t|e|s|t| |a|g|a|i|n| |||
-||| |C|o|r|e|D|N|S| |p|o|d|s| |i|n| |`|C|r|a|s|h|L|o|o|p|B|a|c|k|O|f|f|`| ||| |a| |t|y|p|o| |i|n| |t|h|e| |C|o|r|e|D|N|S| |c|o|n|f|i|g| ||| |`|k| |l|o|g|s| |-|n| |k|u|b|e|-|s|y|s|t|e|m| |-|l| |k|8|s|-|a|p|p|=|k|u|b|e|-|d|n|s|`|;| |f|i|x| |w|i|t|h| |`|k| |e|d|i|t| |c|m| |c|o|r|e|d|n|s| |-|n| |k|u|b|e|-|s|y|s|t|e|m|`|;| |`|k| |r|o|l|l|o|u|t| |r|e|s|t|a|r|t| |d|e|p|l|o|y| |c|o|r|e|d|n|s| |-|n| |k|u|b|e|-|s|y|s|t|e|m|`| |||
-||| |p|o|d|s| |`|1|/|1| |R|u|n|n|i|n|g|`|,| |D|N|S| |s|t|i|l|l| |f|a|i|l|s| ||| |t|h|e| |`|k|u|b|e|-|d|n|s|`| |S|e|r|v|i|c|e| |l|o|s|t| |i|t|s| |p|o|d|s| ||| |`|k| |g|e|t| |e|p| |k|u|b|e|-|d|n|s| |-|n| |k|u|b|e|-|s|y|s|t|e|m|`|;| |i|f| |`|<|n|o|n|e|>|`|:| |`|k| |s|e|t| |s|e|l|e|c|t|o|r| |s|v|c| |k|u|b|e|-|d|n|s| |k|8|s|-|a|p|p|=|k|u|b|e|-|d|n|s| |-|n| |k|u|b|e|-|s|y|s|t|e|m|`| |||
-||| |C|o|r|e|D|N|S| |p|o|d|s| |`|P|e|n|d|i|n|g|`| ||| |a| |s|c|h|e|d|u|l|i|n|g| |p|r|o|b|l|e|m| ||| |q|u|e|s|t|i|o|n| |3| |||
-||| |`|E|r|r|I|m|a|g|e|P|u|l|l|`| |o|n| |p|o|d| |`|t|`| ||| |t|h|e| |t|e|s|t| |i|m|a|g|e| |c|o|u|l|d| |n|o|t| |b|e| |p|u|l|l|e|d| ||| |c|h|e|c|k| |t|h|e| |t|a|g| |`|b|u|s|y|b|o|x|:|1|.|3|6|`|,| |r|e|t|r|y| |||
+| You see | Cause | Fix |
+|---|---|---|
+| `pods "t" already exists` | an old test pod was left behind | `k delete pod t`, test again |
+| CoreDNS pods in `CrashLoopBackOff` | a typo in the CoreDNS config | `k logs -n kube-system -l k8s-app=kube-dns`; fix with `k edit cm coredns -n kube-system`; `k rollout restart deploy coredns -n kube-system` |
+| pods `1/1 Running`, DNS still fails | the `kube-dns` Service lost its pods | `k get ep kube-dns -n kube-system`; if `<none>`: `k set selector svc kube-dns k8s-app=kube-dns -n kube-system` |
+| CoreDNS pods `Pending` | a scheduling problem | question 3 |
+| `ErrImagePull` on pod `t` | the test image could not be pulled | check the tag `busybox:1.36`, retry |
 
 ---
 
@@ -2603,13 +2603,13 @@ kube-apiserver-controlplane
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |`|e|r|r|o|r|:| |M|e|t|r|i|c|s| |A|P|I| |n|o|t| |a|v|a|i|l|a|b|l|e|`| ||| |m|e|t|r|i|c|s|-|s|e|r|v|e|r| |m|i|s|s|i|n|g| |o|r| |s|t|i|l|l| |s|t|a|r|t|i|n|g| ||| |r|u|n| |P|a|r|t| |A| |a|g|a|i|n|,| |w|a|i|t| |6|0| |s|;| |t|h|e| |e|x|a|m| |h|a|s| |i|t| |||
-||| |`|N|o| |s|u|c|h| |f|i|l|e| |o|r| |d|i|r|e|c|t|o|r|y|`| |o|n| |`|>|`| ||| |t|h|e| |f|o|l|d|e|r| |d|o|e|s| |n|o|t| |e|x|i|s|t| ||| |`|m|k|d|i|r| |-|p| |/|o|p|t|`| |||
-||| |`|P|e|r|m|i|s|s|i|o|n| |d|e|n|i|e|d|`| |o|n| |`|>|`| ||| |y|o|u| |a|r|e| |n|o|t| |r|o|o|t|;| |`|/|o|p|t|`| |b|e|l|o|n|g|s| |t|o| |r|o|o|t| ||| |`|k| |l|o|g|s| |a|p|i| |-|n| |a|p|p| |||| |s|u|d|o| |t|e|e| |/|o|p|t|/|a|p|i|.|l|o|g| |>| |/|d|e|v|/|n|u|l|l|`| |||
-||| |`|D|e|f|a|u|l|t|e|d| |c|o|n|t|a|i|n|e|r| |"|x|"| |o|u|t| |o|f|:| |x|,| |y|`| ||| |t|h|e| |p|o|d| |h|a|s| |2| |c|o|n|t|a|i|n|e|r|s| ||| |i|f| |t|h|e| |q|u|e|s|t|i|o|n| |n|a|m|e|s| |o|n|e|:| |`|k| |l|o|g|s| |a|p|i| |-|c| |<|c|o|n|t|a|i|n|e|r|>| |-|n| |a|p|p| |>| |/|o|p|t|/|a|p|i|.|l|o|g|`| |||
-||| |t|h|e| |q|u|e|s|t|i|o|n| |w|a|n|t|s| |a| |c|r|a|s|h|e|d| |c|o|n|t|a|i|n|e|r|'|s| |l|o|g|s| ||| |c|u|r|r|e|n|t| |l|o|g|s| |a|r|e| |e|m|p|t|y| ||| |a|d|d| |`|-|-|p|r|e|v|i|o|u|s|`| |||
+| You see | Cause | Fix |
+|---|---|---|
+| `error: Metrics API not available` | metrics-server missing or still starting | run Part A again, wait 60 s; the exam has it |
+| `No such file or directory` on `>` | the folder does not exist | `mkdir -p /opt` |
+| `Permission denied` on `>` | you are not root; `/opt` belongs to root | `k logs api -n app \| sudo tee /opt/api.log > /dev/null` |
+| `Defaulted container "x" out of: x, y` | the pod has 2 containers | if the question names one: `k logs api -c <container> -n app > /opt/api.log` |
+| the question wants a crashed container's logs | current logs are empty | add `--previous` |
 
 ---
 
@@ -2766,13 +2766,13 @@ no    <-- not in the Role
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |V|e|r|i|f|y| |s|a|y|s| |`|n|o|`| |f|o|r| |c|r|e|a|t|e| ||| |a| |t|y|p|o| |i|n| |a| |n|a|m|e| |i|n| |t|h|e| |b|i|n|d|i|n|g| ||| |`|k| |d|e|s|c|r|i|b|e| |r|o|l|e|b|i|n|d|i|n|g| |d|e|p|l|o|y|-|b|o|t|-|b|i|n|d|i|n|g| |-|n| |d|e|v|`|;| |d|e|l|e|t|e| |i|t|,| |c|r|e|a|t|e| |i|t| |a|g|a|i|n| |||
-||| |`|e|r|r|o|r|:| |s|e|r|v|i|c|e|a|c|c|o|u|n|t| |m|u|s|t| |b|e| |<|n|a|m|e|s|p|a|c|e|>|:|<|n|a|m|e|>|`| ||| |`|d|e|v|:|`| |m|i|s|s|i|n|g| ||| |`|-|-|s|e|r|v|i|c|e|a|c|c|o|u|n|t|=|d|e|v|:|d|e|p|l|o|y|-|b|o|t|`| |||
-||| |`|t|h|e| |s|e|r|v|e|r| |d|o|e|s|n|'|t| |h|a|v|e| |a| |r|e|s|o|u|r|c|e| |t|y|p|e| |"|d|e|p|l|o|y|m|n|t|s|"|`| ||| |r|e|s|o|u|r|c|e| |m|i|s|s|p|e|l|l|e|d| ||| |u|s|e| |`|d|e|p|l|o|y|m|e|n|t|s|`| |||
-||| |`|.|.|.| |a|l|r|e|a|d|y| |e|x|i|s|t|s|`| ||| |y|o|u| |r|a|n| |t|h|e| |c|r|e|a|t|e| |t|w|i|c|e| ||| |f|i|n|e| |i|f| |c|o|r|r|e|c|t|;| |e|l|s|e| |`|k| |d|e|l|e|t|e|`| |i|t| |a|n|d| |c|r|e|a|t|e| |a|g|a|i|n| |||
-||| |t|h|e| |q|u|e|s|t|i|o|n| |n|a|m|e|s| |a| |U|S|E|R|,| |n|o|t| |a|n| |S|A| ||| |d|i|f|f|e|r|e|n|t| |f|l|a|g| ||| |b|i|n|d|i|n|g|:| |`|-|-|u|s|e|r|=|a|l|i|c|e|`|;| |t|e|s|t|:| |`|-|-|a|s|=|a|l|i|c|e|`| |||
+| You see | Cause | Fix |
+|---|---|---|
+| Verify says `no` for create | a typo in a name in the binding | `k describe rolebinding deploy-bot-binding -n dev`; delete it, create it again |
+| `error: serviceaccount must be <namespace>:<name>` | `dev:` missing | `--serviceaccount=dev:deploy-bot` |
+| `the server doesn't have a resource type "deploymnts"` | resource misspelled | use `deployments` |
+| `... already exists` | you ran the create twice | fine if correct; else `k delete` it and create again |
+| the question names a USER, not an SA | different flag | binding: `--user=alice`; test: `--as=alice` |
 
 ---
 
@@ -2907,12 +2907,12 @@ no    <-- not in the ClusterRole
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |V|e|r|i|f|y| |s|a|y|s| |`|n|o|`| |f|o|r| |l|i|s|t| ||| |y|o|u| |m|a|d|e| |a| |R|o|l|e| |+| |R|o|l|e|B|i|n|d|i|n|g| ||| |d|e|l|e|t|e| |t|h|e|m|;| |u|s|e| |t|h|e| |C|l|u|s|t|e|r| |v|e|r|s|i|o|n|s| |||
-||| |V|e|r|i|f|y| |s|a|y|s| |`|n|o|`|,| |o|b|j|e|c|t|s| |l|o|o|k| |f|i|n|e| ||| |a| |t|y|p|o| |i|n| |t|h|e| |S|A| |o|r| |n|a|m|e|s|p|a|c|e| |i|n| |t|h|e| |b|i|n|d|i|n|g| ||| |`|k| |d|e|s|c|r|i|b|e| |c|l|u|s|t|e|r|r|o|l|e|b|i|n|d|i|n|g| |n|o|d|e|-|v|i|e|w|e|r|-|b|i|n|d|i|n|g|`|;| |d|e|l|e|t|e| |i|t|,| |c|r|e|a|t|e| |i|t| |a|g|a|i|n| |||
-||| |`|e|r|r|o|r|:| |s|e|r|v|i|c|e|a|c|c|o|u|n|t| |m|u|s|t| |b|e| |<|n|a|m|e|s|p|a|c|e|>|:|<|n|a|m|e|>|`| ||| |`|o|p|s|:|`| |m|i|s|s|i|n|g| ||| |`|-|-|s|e|r|v|i|c|e|a|c|c|o|u|n|t|=|o|p|s|:|n|o|d|e|-|v|i|e|w|e|r|`| |||
-||| |q|u|e|s|t|i|o|n| |s|a|y|s| |"|e|x|i|s|t|i|n|g| |C|l|u|s|t|e|r|R|o|l|e| |X|,| |o|n|l|y| |i|n| |n|a|m|e|s|p|a|c|e| |Y|"| ||| |t|h|a|t| |i|s| |a| |R|o|l|e|B|i|n|d|i|n|g| |t|o| |a| |C|l|u|s|t|e|r|R|o|l|e| ||| |`|k| |c|r|e|a|t|e| |r|o|l|e|b|i|n|d|i|n|g| |N|A|M|E| |-|-|c|l|u|s|t|e|r|r|o|l|e|=|X| |-|-|u|s|e|r|=|a|l|i|c|e| |-|n| |Y|`| |||
+| You see | Cause | Fix |
+|---|---|---|
+| Verify says `no` for list | you made a Role + RoleBinding | delete them; use the Cluster versions |
+| Verify says `no`, objects look fine | a typo in the SA or namespace in the binding | `k describe clusterrolebinding node-viewer-binding`; delete it, create it again |
+| `error: serviceaccount must be <namespace>:<name>` | `ops:` missing | `--serviceaccount=ops:node-viewer` |
+| question says "existing ClusterRole X, only in namespace Y" | that is a RoleBinding to a ClusterRole | `k create rolebinding NAME --clusterrole=X --user=alice -n Y` |
 
 ---
 
@@ -3051,13 +3051,13 @@ You see:
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |`|E|r|r|o|r|:| |r|e|p|o| |a|r|g|o|c|d| |n|o|t| |f|o|u|n|d|`| ||| |s|t|e|p| |1| |s|k|i|p|p|e|d|,| |o|r| |a| |t|y|p|o| |i|n| |t|h|e| |n|a|m|e| ||| |`|h|e|l|m| |r|e|p|o| |l|i|s|t|`| |||
-||| |t|h|e| |c|o|u|n|t| |i|s| |n|o|t| |`|0|`| ||| |w|r|o|n|g| |s|e|t|t|i|n|g| |n|a|m|e| |f|o|r| |t|h|i|s| |v|e|r|s|i|o|n| ||| |r|e|p|e|a|t| |s|t|e|p| |3|,| |c|o|p|y| |t|h|e| |e|x|a|c|t| |n|a|m|e| |||
-||| |y|o|u| |u|s|e|d| |`|-|-|s|k|i|p|-|c|r|d|s|`|,| |c|o|u|n|t| |n|o|t| |`|0|`| ||| |t|h|i|s| |c|h|a|r|t| |s|h|i|p|s| |C|R|D|s| |a|s| |n|o|r|m|a|l| |t|e|m|p|l|a|t|e|s| ||| |u|s|e| |`|-|-|s|e|t| |c|r|d|s|.|i|n|s|t|a|l|l|=|f|a|l|s|e|`| |||
-||| |`|N|o| |s|u|c|h| |f|i|l|e| |o|r| |d|i|r|e|c|t|o|r|y|`| ||| |t|h|e| |t|a|r|g|e|t| |f|o|l|d|e|r| |i|s| |m|i|s|s|i|n|g| ||| |`|m|k|d|i|r| |-|p| |<|f|o|l|d|e|r|>|`| |f|i|r|s|t| |||
-||| |y|o|u| |r|a|n| |`|h|e|l|m| |i|n|s|t|a|l|l|`| |b|y| |m|i|s|t|a|k|e| ||| |t|h|e| |c|h|a|r|t| |g|o|t| |i|n|s|t|a|l|l|e|d| ||| |`|h|e|l|m| |u|n|i|n|s|t|a|l|l| |m|y|-|a|r|g|o| |-|n| |a|r|g|o|c|d|`| |||
+| You see | Cause | Fix |
+|---|---|---|
+| `Error: repo argocd not found` | step 1 skipped, or a typo in the name | `helm repo list` |
+| the count is not `0` | wrong setting name for this version | repeat step 3, copy the exact name |
+| you used `--skip-crds`, count not `0` | this chart ships CRDs as normal templates | use `--set crds.install=false` |
+| `No such file or directory` | the target folder is missing | `mkdir -p <folder>` first |
+| you ran `helm install` by mistake | the chart got installed | `helm uninstall my-argo -n argocd` |
 
 ---
 
@@ -3228,13 +3228,13 @@ web-ingress-nginx-controller   2/2   2   2   ...   <-- back to 2
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |`|h|e|l|m| |l|i|s|t|`| |s|h|o|w|s| |n|o|t|h|i|n|g| ||| |`|-|n| |d|e|m|o|`| |m|i|s|s|i|n|g|;| |H|e|l|m| |n|e|e|d|s| |i|t| |t|o|o| ||| |`|h|e|l|m| |l|i|s|t| |-|A|`| |||
-||| |`|c|a|n|n|o|t| |r|e|-|u|s|e| |a| |n|a|m|e| |t|h|a|t| |i|s| |s|t|i|l|l| |i|n| |u|s|e|`| ||| |t|h|e| |r|e|l|e|a|s|e| |a|l|r|e|a|d|y| |e|x|i|s|t|s| ||| |u|s|e| |`|h|e|l|m| |u|p|g|r|a|d|e|`|,| |o|r| |u|n|i|n|s|t|a|l|l| |f|i|r|s|t| |||
-||| |r|e|p|l|i|c|a|s| |d|i|d| |n|o|t| |c|h|a|n|g|e| ||| |w|r|o|n|g| |s|e|t|t|i|n|g| |n|a|m|e| ||| |r|e|p|e|a|t| |s|t|e|p| |2| |||
-||| |`|k| |g|e|t| |s|v|c| |-|n| |d|e|m|o|`| |E|X|T|E|R|N|A|L|-|I|P| |`|<|p|e|n|d|i|n|g|>|`| ||| |n|o| |c|l|o|u|d| |L|o|a|d|B|a|l|a|n|c|e|r| |i|n| |a| |l|a|b| ||| |n|o|r|m|a|l|,| |i|g|n|o|r|e| |i|t| |||
-||| |r|e|p|o| |a|d|d| |o|r| |i|n|s|t|a|l|l| |f|a|i|l|s| ||| |i|n|g|r|e|s|s|-|n|g|i|n|x| |w|a|s| |r|e|t|i|r|e|d| |i|n| |M|a|r|c|h| |2|0|2|6| ||| |p|r|a|c|t|i|s|e| |w|i|t|h| |r|e|p|o| |`|h|t|t|p|s|:|/|/|s|t|e|f|a|n|p|r|o|d|a|n|.|g|i|t|h|u|b|.|i|o|/|p|o|d|i|n|f|o|`|,| |c|h|a|r|t| |`|p|o|d|i|n|f|o|/|p|o|d|i|n|f|o|`|,| |s|e|t|t|i|n|g| |`|r|e|p|l|i|c|a|C|o|u|n|t|`| |||
+| You see | Cause | Fix |
+|---|---|---|
+| `helm list` shows nothing | `-n demo` missing; Helm needs it too | `helm list -A` |
+| `cannot re-use a name that is still in use` | the release already exists | use `helm upgrade`, or uninstall first |
+| replicas did not change | wrong setting name | repeat step 2 |
+| `k get svc -n demo` EXTERNAL-IP `<pending>` | no cloud LoadBalancer in a lab | normal, ignore it |
+| repo add or install fails | ingress-nginx was retired in March 2026 | practise with repo `https://stefanprodan.github.io/podinfo`, chart `podinfo/podinfo`, setting `replicaCount` |
 
 ---
 
@@ -3396,12 +3396,12 @@ kweb   3/3     3            3           20s   <-- 3/3
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |`|d|e|p|l|o|y|m|e|n|t|.|a|p|p|s|/|k|w|e|b| |c|r|e|a|t|e|d|`| |p|l|u|s| |a|n| |e|r|r|o|r| |w|i|t|h| |`|k|i|n|d| |n|o|t| |s|e|t|`| ||| |y|o|u| |u|s|e|d| |`|-|f|`| |o|n| |t|h|e| |f|o|l|d|e|r| ||| |`|k| |d|e|l|e|t|e| |d|e|p|l|o|y| |k|w|e|b| |-|n| |d|e|f|a|u|l|t|`|,| |t|h|e|n| |`|k| |a|p|p|l|y| |-|k| |/|r|o|o|t|/|k|u|s|t|`| |||
-||| |`|N|o| |r|e|s|o|u|r|c|e|s| |f|o|u|n|d|`| ||| |w|r|o|n|g| |n|a|m|e|s|p|a|c|e| ||| |r|e|a|d| |`|n|a|m|e|s|p|a|c|e|:|`| |i|n| |t|h|e| |p|l|a|n|;| |u|s|e| |`|-|n| |k|u|s|t|`| |||
-||| |`|n|a|m|e|s|p|a|c|e|s| |"|k|u|s|t|"| |n|o|t| |f|o|u|n|d|`| ||| |K|u|s|t|o|m|i|z|e| |d|o|e|s| |n|o|t| |c|r|e|a|t|e| |t|h|e| |n|a|m|e|s|p|a|c|e| ||| |`|k| |c|r|e|a|t|e| |n|s| |k|u|s|t|`|,| |a|p|p|l|y| |a|g|a|i|n| |||
-||| |t|h|e| |q|u|e|s|t|i|o|n| |w|a|n|t|s| |a| |n|e|w| |i|m|a|g|e| |t|a|g| ||| |d|i|f|f|e|r|e|n|t| |b|l|o|c|k| ||| |a|d|d| |`|i|m|a|g|e|s|:|`| |/| |`|-| |n|a|m|e|:| |n|g|i|n|x|`| |/| |`| | |n|e|w|T|a|g|:| |"|1|.|2|8|"|`| |||
+| You see | Cause | Fix |
+|---|---|---|
+| `deployment.apps/kweb created` plus an error with `kind not set` | you used `-f` on the folder | `k delete deploy kweb -n default`, then `k apply -k /root/kust` |
+| `No resources found` | wrong namespace | read `namespace:` in the plan; use `-n kust` |
+| `namespaces "kust" not found` | Kustomize does not create the namespace | `k create ns kust`, apply again |
+| the question wants a new image tag | different block | add `images:` / `- name: nginx` / `  newTag: "1.28"` |
 
 ---
 
@@ -3544,12 +3544,12 @@ DESCRIPTION:
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |`|c|o|u|l|d|n|'|t| |f|i|n|d| |r|e|s|o|u|r|c|e| |f|o|r| |"|c|e|r|t|i|f|i|c|a|t|e|"|`| ||| |w|r|o|n|g| |k|i|n|d| |n|a|m|e| ||| |`|k| |a|p|i|-|r|e|s|o|u|r|c|e|s| |||| |g|r|e|p| |c|e|r|t|-|m|a|n|a|g|e|r|`|;| |u|s|e| |a| |n|a|m|e| |f|r|o|m| |t|h|e| |f|i|r|s|t| |c|o|l|u|m|n| |||
-||| |t|h|e| |q|u|e|s|t|i|o|n| |n|a|m|e|s| |a|n| |o|u|t|p|u|t| |f|o|r|m|a|t| |(|e|.|g|.| |`|-|o| |n|a|m|e|`|)| ||| |t|h|e| |g|r|a|d|e|r| |c|o|m|p|a|r|e|s| |t|h|a|t| |f|o|r|m|a|t| ||| |`|k| |g|e|t| |c|r|d| |-|o| |n|a|m|e| |||| |g|r|e|p| |c|e|r|t|-|m|a|n|a|g|e|r| |>| |/|r|o|o|t|/|c|r|d|s|.|t|x|t|`| |||
-||| |t|h|e| |q|u|e|s|t|i|o|n| |a|l|s|o| |a|s|k|s| |t|o| |C|R|E|A|T|E| |s|u|c|h| |a|n| |o|b|j|e|c|t| ||| |y|o|u| |n|e|e|d| |i|t|s| |f|i|e|l|d|s| ||| |`|k| |e|x|p|l|a|i|n| |c|e|r|t|i|f|i|c|a|t|e|.|s|p|e|c|`|;| |c|o|p|y| |`|a|p|i|V|e|r|s|i|o|n|`| |a|n|d| |`|k|i|n|d|`|;| |`|k| |a|p|p|l|y| |-|f|`| |||
-||| |n|o| |c|e|r|t|-|m|a|n|a|g|e|r| |p|o|d|s| |o|n| |K|i|l|l|e|r|c|o|d|a| ||| |P|a|r|t| |A| |i|n|s|t|a|l|l|s| |o|n|l|y| |t|h|e| |C|R|D|s| ||| |n|o|r|m|a|l|;| |t|h|i|s| |q|u|e|s|t|i|o|n| |n|e|e|d|s| |o|n|l|y| |t|h|e| |C|R|D|s| |||
+| You see | Cause | Fix |
+|---|---|---|
+| `couldn't find resource for "certificate"` | wrong kind name | `k api-resources \| grep cert-manager`; use a name from the first column |
+| the question names an output format (e.g. `-o name`) | the grader compares that format | `k get crd -o name \| grep cert-manager > /root/crds.txt` |
+| the question also asks to CREATE such an object | you need its fields | `k explain certificate.spec`; copy `apiVersion` and `kind`; `k apply -f` |
+| no cert-manager pods on Killercoda | Part A installs only the CRDs | normal; this question needs only the CRDs |
 
 ---
 
@@ -3705,14 +3705,14 @@ net.netfilter.nf_conntrack_max = 131072
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |K|i|l|l|e|r|c|o|d|a|:| |`|d|e|p|e|n|d|e|n|c|y| |p|r|o|b|l|e|m|s|`| |o|r| |`|C|a|n|n|o|t| |c|o|n|n|e|c|t| |t|o| |t|h|e| |D|o|c|k|e|r| |d|a|e|m|o|n|`| ||| |t|h|e| |p|l|a|y|g|r|o|u|n|d| |h|a|s| |n|o| |D|o|c|k|e|r| ||| |e|x|p|e|c|t|e|d|;| |g|o| |o|n| |t|o| |S|t|e|p| |3|;| |n|e|v|e|r| |i|n|s|t|a|l|l| |D|o|c|k|e|r| |t|h|e|r|e| |||
-||| |`|c|a|n|n|o|t| |s|t|a|t| |/|p|r|o|c|/|s|y|s|/|n|e|t|/|b|r|i|d|g|e|/|.|.|.|`| ||| |b|r|i|d|g|e| |m|o|d|u|l|e| |n|o|t| |l|o|a|d|e|d| ||| |`|m|o|d|p|r|o|b|e| |b|r|_|n|e|t|f|i|l|t|e|r|`|,| |t|h|e|n| |`|s|y|s|c|t|l| |-|-|s|y|s|t|e|m|`| |||
-||| |`|c|a|n|n|o|t| |s|t|a|t| |/|p|r|o|c|/|s|y|s|/|n|e|t|/|n|e|t|f|i|l|t|e|r|/|.|.|.|`| ||| |c|o|n|n|t|r|a|c|k| |m|o|d|u|l|e| |n|o|t| |l|o|a|d|e|d| ||| |`|m|o|d|p|r|o|b|e| |n|f|_|c|o|n|n|t|r|a|c|k|`|,| |t|h|e|n| |`|s|y|s|c|t|l| |-|-|s|y|s|t|e|m|`| |||
-||| |`|r|e|q|u|i|r|e|s| |s|u|p|e|r|u|s|e|r| |p|r|i|v|i|l|e|g|e|`| ||| |y|o|u| |a|r|e| |n|o|t| |r|o|o|t| ||| |`|s|u|d|o| |-|i|`|,| |t|h|e|n| |r|e|p|e|a|t| |t|h|e| |s|t|e|p| |||
-||| |`|U|n|i|t| |c|r|i|-|d|o|c|k|e|r|.|s|e|r|v|i|c|e| |n|o|t| |f|o|u|n|d|`| ||| |p|a|c|k|a|g|e| |n|o|t| |i|n|s|t|a|l|l|e|d| ||| |r|e|p|e|a|t| |S|t|e|p| |1|;| |r|e|a|d| |i|t|s| |e|r|r|o|r|s| |||
-||| |K|i|l|l|e|r|c|o|d|a|:| |p|o|d|s| |s|t|o|p| |t|a|l|k|i|n|g| |a|f|t|e|r| |P|a|r|t| |A| ||| |P|a|r|t| |A| |s|e|t| |`|i|p|_|f|o|r|w|a|r|d|=|0|`| ||| |f|i|n|i|s|h| |S|t|e|p| |3| |(|`|s|y|s|c|t|l| |-|-|s|y|s|t|e|m|`|)| |||
+| You see | Cause | Fix |
+|---|---|---|
+| Killercoda: `dependency problems` or `Cannot connect to the Docker daemon` | the playground has no Docker | expected; go on to Step 3; never install Docker there |
+| `cannot stat /proc/sys/net/bridge/...` | bridge module not loaded | `modprobe br_netfilter`, then `sysctl --system` |
+| `cannot stat /proc/sys/net/netfilter/...` | conntrack module not loaded | `modprobe nf_conntrack`, then `sysctl --system` |
+| `requires superuser privilege` | you are not root | `sudo -i`, then repeat the step |
+| `Unit cri-docker.service not found` | package not installed | repeat Step 1; read its errors |
+| Killercoda: pods stop talking after Part A | Part A set `ip_forward=0` | finish Step 3 (`sysctl --system`) |
 
 ---
 
@@ -3853,12 +3853,12 @@ controlplane    Ready    control-plane   ...   <-- Ready now
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |`|n|o| |m|a|t|c|h|e|s| |f|o|r| |k|i|n|d| |"|I|n|s|t|a|l|l|a|t|i|o|n|"|`| ||| |t|h|e| |o|p|e|r|a|t|o|r| |i|s| |s|t|i|l|l| |r|e|g|i|s|t|e|r|i|n|g| |i|t|s| |t|y|p|e|s| ||| |w|a|i|t| |2|0| |s|,| |a|p|p|l|y| |a|g|a|i|n| |||
-||| |S|t|e|p| |2| |p|r|i|n|t|s| |n|o|t|h|i|n|g| ||| |k|u|b|e|a|d|m| |r|a|n| |w|i|t|h|o|u|t| |a| |p|o|d| |r|a|n|g|e| ||| |`|k| |-|n| |k|u|b|e|-|s|y|s|t|e|m| |g|e|t| |c|m| |k|u|b|e|a|d|m|-|c|o|n|f|i|g| |-|o| |y|a|m|l| |||| |g|r|e|p| |-|i| |p|o|d|S|u|b|n|e|t|`|;| |s|t|i|l|l| |e|m|p|t|y|:| |k|e|e|p| |`|1|9|2|.|1|6|8|.|0|.|0|/|1|6|`| |||
-||| |c|a|l|i|c|o| |R|u|n|n|i|n|g|,| |o|t|h|e|r| |p|o|d|s| |s|t|a|y| |`|C|o|n|t|a|i|n|e|r|C|r|e|a|t|i|n|g|`| ||| |`|c|i|d|r|:|`| |i|s| |n|o|t| |t|h|e| |c|l|u|s|t|e|r|'|s| |r|a|n|g|e| ||| |f|i|x| |t|h|e| |f|i|l|e|,| |a|p|p|l|y| |a|g|a|i|n| |||
-||| |t|h|e| |q|u|e|s|t|i|o|n| |d|o|e|s| |N|O|T| |m|e|n|t|i|o|n| |N|e|t|w|o|r|k|P|o|l|i|c|y| ||| |e|i|t|h|e|r| |C|N|I| |i|s| |f|i|n|e| ||| |F|l|a|n|n|e|l| |i|s| |o|n|e| |c|o|m|m|a|n|d|:| |`|k| |a|p|p|l|y| |-|f| |<|f|l|a|n|n|e|l| |U|R|L|>|`| |||
+| You see | Cause | Fix |
+|---|---|---|
+| `no matches for kind "Installation"` | the operator is still registering its types | wait 20 s, apply again |
+| Step 2 prints nothing | kubeadm ran without a pod range | `k -n kube-system get cm kubeadm-config -o yaml \| grep -i podSubnet`; still empty: keep `192.168.0.0/16` |
+| calico Running, other pods stay `ContainerCreating` | `cidr:` is not the cluster's range | fix the file, apply again |
+| the question does NOT mention NetworkPolicy | either CNI is fine | Flannel is one command: `k apply -f <flannel URL>` |
 
 ---
 
@@ -4066,13 +4066,13 @@ node01         Ready    <none>          ...   v1.35.2   <-- new, no SchedulingDi
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |`|V|e|r|s|i|o|n| |'|1|.|3|5|.|2|'| |n|o|t| |f|o|u|n|d|`| ||| |a|p|t| |n|e|e|d|s| |t|h|e| |f|u|l|l| |t|e|x|t| ||| |c|o|p|y| |i|t| |f|r|o|m| |`|a|p|t|-|c|a|c|h|e| |m|a|d|i|s|o|n| |k|u|b|e|a|d|m|`| |||
-||| |m|a|d|i|s|o|n| |d|o|e|s| |n|o|t| |l|i|s|t| |`|1|.|3|5|.|2|`| ||| |n|o| |`|a|p|t|-|g|e|t| |u|p|d|a|t|e|`|,| |o|r| |t|h|e| |s|o|u|r|c|e| |s|t|i|l|l| |s|a|y|s| |t|h|e| |o|l|d| |m|i|n|o|r| ||| |S|t|e|p| |1| |||
-||| |d|r|a|i|n| |r|e|f|u|s|e|s|:| |"|c|a|n|n|o|t| |d|e|l|e|t|e| |P|o|d|s| |w|i|t|h| |l|o|c|a|l| |s|t|o|r|a|g|e|"| ||| |m|i|s|s|i|n|g| |f|l|a|g| ||| |a|d|d| |`|-|-|d|e|l|e|t|e|-|e|m|p|t|y|d|i|r|-|d|a|t|a|`| |||
-||| |d|r|a|i|n| |r|e|f|u|s|e|s|:| |p|o|d|s| |"|n|o|t| |m|a|n|a|g|e|d| |b|y| |a| |c|o|n|t|r|o|l|l|e|r|"| ||| |a| |b|a|r|e| |p|o|d| |i|s| |o|n| |t|h|e| |n|o|d|e| ||| |a|d|d| |`|-|-|f|o|r|c|e|`| |||
-||| |`|l|o|c|a|l|h|o|s|t|:|8|0|8|0| |w|a|s| |r|e|f|u|s|e|d|`| ||| |y|o|u| |r|a|n| |`|k|`| |o|n| |n|o|d|e|0|1| ||| |`|e|x|i|t|`| |f|i|r|s|t| |||
+| You see | Cause | Fix |
+|---|---|---|
+| `Version '1.35.2' not found` | apt needs the full text | copy it from `apt-cache madison kubeadm` |
+| madison does not list `1.35.2` | no `apt-get update`, or the source still says the old minor | Step 1 |
+| drain refuses: "cannot delete Pods with local storage" | missing flag | add `--delete-emptydir-data` |
+| drain refuses: pods "not managed by a controller" | a bare pod is on the node | add `--force` |
+| `localhost:8080 was refused` | you ran `k` on node01 | `exit` first |
 
 ---
 
@@ -4247,12 +4247,12 @@ etcd-controlplane   1/1   Running   ...   <-- etcd is back
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |s|a|v|e| |h|a|n|g|s| |o|r| |`|c|o|n|t|e|x|t| |d|e|a|d|l|i|n|e| |e|x|c|e|e|d|e|d|`| ||| |w|r|o|n|g| |c|e|r|t|i|f|i|c|a|t|e| |p|a|t|h| |o|r| |e|n|d|p|o|i|n|t| ||| |c|o|m|p|a|r|e| |w|i|t|h| |S|t|e|p| |1| |||
-||| |k|u|b|e|c|t|l| |s|t|i|l|l| |d|e|a|d| |a|f|t|e|r| |2| |m|i|n|u|t|e|s| ||| |t|y|p|o| |i|n| |`|e|t|c|d|.|y|a|m|l|`| ||| |`|c|r|i|c|t|l| |p|s| |-|a| |||| |g|r|e|p| |e|t|c|d|`|,| |`|c|r|i|c|t|l| |l|o|g|s| |<|i|d|>|`|;| |o|r| |`|c|p| |/|r|o|o|t|/|e|t|c|d|.|y|a|m|l|.|b|a|k| |/|e|t|c|/|k|u|b|e|r|n|e|t|e|s|/|m|a|n|i|f|e|s|t|s|/|e|t|c|d|.|y|a|m|l|`| |||
-||| |r|e|s|t|o|r|e| |s|a|y|s| |t|h|e| |d|a|t|a| |d|i|r| |e|x|i|s|t|s| ||| |t|h|e| |f|o|l|d|e|r| |i|s| |a|l|r|e|a|d|y| |t|h|e|r|e| ||| |`|r|m| |-|r|f|`| |i|t|,| |o|r| |p|i|c|k| |a| |n|e|w| |n|a|m|e| |||
-||| |`|e|t|c|d|u|t|l|:| |c|o|m|m|a|n|d| |n|o|t| |f|o|u|n|d|`| |(|p|l|a|y|g|r|o|u|n|d|)| ||| |n|o|t| |i|n|s|t|a|l|l|e|d| |t|h|e|r|e| ||| |r|e|a|d| |t|h|e| |v|e|r|s|i|o|n|:| |`|k| |-|n| |k|u|b|e|-|s|y|s|t|e|m| |g|e|t| |p|o|d| |e|t|c|d|-|c|o|n|t|r|o|l|p|l|a|n|e| |-|o| |j|s|o|n|p|a|t|h|=|'|{|.|.|i|m|a|g|e|}|'|`| |(|e|.|g|.| |`|3|.|6|.|5|-|0|`|)|;| |`|c|u|r|l| |-|s|L|o| |/|t|m|p|/|e|t|c|d|.|t|g|z| |h|t|t|p|s|:|/|/|g|i|t|h|u|b|.|c|o|m|/|e|t|c|d|-|i|o|/|e|t|c|d|/|r|e|l|e|a|s|e|s|/|d|o|w|n|l|o|a|d|/|v|3|.|6|.|5|/|e|t|c|d|-|v|3|.|6|.|5|-|l|i|n|u|x|-|a|m|d|6|4|.|t|a|r|.|g|z|`|;| |`|t|a|r| |x|z|f| |/|t|m|p|/|e|t|c|d|.|t|g|z| |-|C| |/|t|m|p|`|;| |r|u|n| |`|/|t|m|p|/|e|t|c|d|-|v|3|.|6|.|5|-|l|i|n|u|x|-|a|m|d|6|4|/|e|t|c|d|u|t|l|`| |||
+| You see | Cause | Fix |
+|---|---|---|
+| save hangs or `context deadline exceeded` | wrong certificate path or endpoint | compare with Step 1 |
+| kubectl still dead after 2 minutes | typo in `etcd.yaml` | `crictl ps -a \| grep etcd`, `crictl logs <id>`; or `cp /root/etcd.yaml.bak /etc/kubernetes/manifests/etcd.yaml` |
+| restore says the data dir exists | the folder is already there | `rm -rf` it, or pick a new name |
+| `etcdutl: command not found` (playground) | not installed there | read the version: `k -n kube-system get pod etcd-controlplane -o jsonpath='{..image}'` (e.g. `3.6.5-0`); `curl -sLo /tmp/etcd.tgz https://github.com/etcd-io/etcd/releases/download/v3.6.5/etcd-v3.6.5-linux-amd64.tar.gz`; `tar xzf /tmp/etcd.tgz -C /tmp`; run `/tmp/etcd-v3.6.5-linux-amd64/etcdutl` |
 
 ---
 
@@ -4419,13 +4419,13 @@ np-svc   NodePort   10.x.x.x   <none>   80:30080/TCP   2m   <-- port:nodePort
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |v|i|m| |r|e|o|p|e|n|s| |w|i|t|h| |a|n| |e|r|r|o|r| |a|t| |t|h|e| |t|o|p| ||| |w|r|o|n|g| |i|n|d|e|n|t|a|t|i|o|n|,| |o|r| |a| |T|a|b| ||| |s|p|a|c|e|s| |o|n|l|y|;| |`|p|o|r|t|s|:|`| |l|i|n|e|s| |u|p| |w|i|t|h| |`|n|a|m|e|:|`| |||
-||| |t|h|e| |S|e|r|v|i|c|e| |i|s| |c|a|l|l|e|d| |`|n|p|`| ||| |f|o|r|g|o|t| |`|-|-|n|a|m|e|=|n|p|-|s|v|c|`| ||| |`|k| |d|e|l|e|t|e| |s|v|c| |n|p| |-|n| |w|e|b|`|,| |r|u|n| |s|t|e|p| |2| |a|g|a|i|n| |||
-||| |`|p|r|o|v|i|d|e|d| |p|o|r|t| |i|s| |a|l|r|e|a|d|y| |a|l|l|o|c|a|t|e|d|`| ||| |a|n|o|t|h|e|r| |S|e|r|v|i|c|e| |u|s|e|s| |3|0|0|8|0| ||| |`|k| |g|e|t| |s|v|c| |-|A|`|,| |f|i|n|d| |3|0|0|8|0|;| |a|s|k|,| |n|e|v|e|r| |d|e|l|e|t|e| |i|t| |||
-||| |`|p|r|o|v|i|d|e|d| |p|o|r|t| |i|s| |n|o|t| |i|n| |t|h|e| |v|a|l|i|d| |r|a|n|g|e|`| ||| |n|o|d|e| |p|o|r|t| |o|u|t|s|i|d|e| |3|0|0|0|0| |t|o| |3|2|7|6|7| ||| |u|s|e| |t|h|e| |n|u|m|b|e|r| |f|r|o|m| |t|h|e| |q|u|e|s|t|i|o|n| |||
-||| |c|u|r|l| |f|a|i|l|s|,| |e|n|d|p|o|i|n|t|s| |a|r|e| |f|i|n|e| ||| |`|n|o|d|e|0|1|`| |d|o|e|s| |n|o|t| |r|e|s|o|l|v|e| ||| |`|k| |g|e|t| |n|o|d|e|s| |-|o| |w|i|d|e|`|,| |c|u|r|l| |t|h|e| |I|N|T|E|R|N|A|L|-|I|P| |||
+| You see | Cause | Fix |
+|---|---|---|
+| vim reopens with an error at the top | wrong indentation, or a Tab | spaces only; `ports:` lines up with `name:` |
+| the Service is called `np` | forgot `--name=np-svc` | `k delete svc np -n web`, run step 2 again |
+| `provided port is already allocated` | another Service uses 30080 | `k get svc -A`, find 30080; ask, never delete it |
+| `provided port is not in the valid range` | node port outside 30000 to 32767 | use the number from the question |
+| curl fails, endpoints are fine | `node01` does not resolve | `k get nodes -o wide`, curl the INTERNAL-IP |
 
 ---
 
@@ -4569,13 +4569,13 @@ Ingress Class:    nginx
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |`|<|e|r|r|o|r|:| |s|e|r|v|i|c|e|s| |"|.|.|.|"| |n|o|t| |f|o|u|n|d|>|`| ||| |S|e|r|v|i|c|e| |n|a|m|e| |t|y|p|o| ||| |`|k| |d|e|l|e|t|e| |i|n|g| |w|e|b|-|i|n|g| |-|n| |w|e|b|`|,| |c|r|e|a|t|e| |a|g|a|i|n| |||
-||| |e|m|p|t|y| |b|r|a|c|k|e|t|s| |`|(|)|`|,| |n|o| |p|o|d| |I|P| ||| |w|r|o|n|g| |S|e|r|v|i|c|e| |p|o|r|t|,| |o|r| |p|o|d|s| |n|o|t| |R|e|a|d|y| ||| |c|h|e|c|k| |P|O|R|T|(|S|)| |i|n| |s|t|e|p| |2|;| |d|e|l|e|t|e| |a|n|d| |c|r|e|a|t|e| |a|g|a|i|n| |||
-||| |`|I|n|g|r|e|s|s| |C|l|a|s|s|:| |<|n|o|n|e|>|`| ||| |f|o|r|g|o|t| |`|-|-|c|l|a|s|s|`| ||| |d|e|l|e|t|e| |a|n|d| |c|r|e|a|t|e| |a|g|a|i|n| |||
-||| |t|h|e| |q|u|e|s|t|i|o|n| |a|s|k|s| |f|o|r| |T|L|S| |w|i|t|h| |s|e|c|r|e|t| |`|w|e|b|-|t|l|s|`| ||| |a|d|d| |i|t| |t|o| |t|h|e| |r|u|l|e| ||| |`|-|-|r|u|l|e|=|"|s|h|o|p|.|e|x|a|m|p|l|e|.|c|o|m|/|*|=|b|a|c|k|e|n|d|-|s|v|c|:|8|0|,|t|l|s|=|w|e|b|-|t|l|s|"|`| |||
-||| |t|h|e| |q|u|e|s|t|i|o|n| |a|s|k|s| |f|o|r| |a|n| |a|n|n|o|t|a|t|i|o|n| ||| |a|d|d| |a| |f|l|a|g| ||| |`|-|-|a|n|n|o|t|a|t|i|o|n| |n|g|i|n|x|.|i|n|g|r|e|s|s|.|k|u|b|e|r|n|e|t|e|s|.|i|o|/|r|e|w|r|i|t|e|-|t|a|r|g|e|t|=|/|`| |||
+| You see | Cause | Fix |
+|---|---|---|
+| `<error: services "..." not found>` | Service name typo | `k delete ing web-ing -n web`, create again |
+| empty brackets `()`, no pod IP | wrong Service port, or pods not Ready | check PORT(S) in step 2; delete and create again |
+| `Ingress Class: <none>` | forgot `--class` | delete and create again |
+| the question asks for TLS with secret `web-tls` | add it to the rule | `--rule="shop.example.com/*=backend-svc:80,tls=web-tls"` |
+| the question asks for an annotation | add a flag | `--annotation nginx.ingress.kubernetes.io/rewrite-target=/` |
 
 ---
 
@@ -4797,12 +4797,12 @@ then the four route lines. If the question gives a `curl`, run it.
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |`|n|o| |m|a|t|c|h|e|s| |f|o|r| |k|i|n|d| |"|G|a|t|e|w|a|y|"|`| ||| |w|r|o|n|g| |`|a|p|i|V|e|r|s|i|o|n|`|,| |o|r| |n|o| |C|R|D|s| ||| |`|g|a|t|e|w|a|y|.|n|e|t|w|o|r|k|i|n|g|.|k|8|s|.|i|o|/|v|1|`|;| |P|a|r|t| |A| |l|i|n|e| |1| |||
-||| |r|o|u|t|e| |n|o|t| |`|A|c|c|e|p|t|e|d|`|,| |c|u|r|l| |4|0|4| ||| |`|p|a|r|e|n|t|R|e|f|s|`| |n|a|m|e| |o|r| |h|o|s|t|n|a|m|e| |d|i|f|f|e|r|s| |f|r|o|m| |t|h|e| |G|a|t|e|w|a|y| ||| |m|a|k|e| |t|h|e|m| |i|d|e|n|t|i|c|a|l| |||
-||| |G|a|t|e|w|a|y| |l|i|s|t|e|n|e|r| |`|R|e|s|o|l|v|e|d|R|e|f|s|`| |`|F|a|l|s|e|`| ||| |w|r|o|n|g| |s|e|c|r|e|t| |n|a|m|e| |i|n| |`|c|e|r|t|i|f|i|c|a|t|e|R|e|f|s|`| ||| |u|s|e| |t|h|e| |s|e|c|r|e|t| |f|r|o|m| |s|t|e|p| |1| |||
-||| |t|h|e| |I|n|g|r|e|s|s| |h|a|d| |n|o| |T|L|S| ||| |p|l|a|i|n| |H|T|T|P| ||| |`|p|r|o|t|o|c|o|l|:| |H|T|T|P|`|,| |`|p|o|r|t|:| |8|0|`|,| |n|o| |`|t|l|s|:|`| |b|l|o|c|k| |||
+| You see | Cause | Fix |
+|---|---|---|
+| `no matches for kind "Gateway"` | wrong `apiVersion`, or no CRDs | `gateway.networking.k8s.io/v1`; Part A line 1 |
+| route not `Accepted`, curl 404 | `parentRefs` name or hostname differs from the Gateway | make them identical |
+| Gateway listener `ResolvedRefs` `False` | wrong secret name in `certificateRefs` | use the secret from step 1 |
+| the Ingress had no TLS | plain HTTP | `protocol: HTTP`, `port: 80`, no `tls:` block |
 
 ---
 
@@ -4966,13 +4966,13 @@ wget: download timed out   <-- other is blocked
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |`|o|t|h|e|r|`| |s|t|i|l|l| |g|e|t|s| |t|h|e| |p|a|g|e| ||| |t|h|e| |n|e|t|w|o|r|k| |p|l|u|g|i|n| |d|o|e|s| |n|o|t| |e|n|f|o|r|c|e| |p|o|l|i|c|i|e|s| ||| |c|h|e|c|k| |w|i|t|h| |`|k| |d|e|s|c|r|i|b|e| |n|e|t|p|o|l|`|;| |t|h|e| |e|x|a|m| |c|l|u|s|t|e|r| |e|n|f|o|r|c|e|s| |t|h|e|m| |||
-||| |`|a|p|i|`| |a|l|s|o| |t|i|m|e|s| |o|u|t| ||| |w|r|o|n|g| |l|a|b|e|l| |i|n| |`|f|r|o|m|`|,| |o|r| |`|p|o|r|t|s|:|`| |u|n|d|e|r| |t|h|e| |w|r|o|n|g| |i|t|e|m| ||| |c|o|m|p|a|r|e| |w|i|t|h| |t|h|e| |f|i|n|i|s|h|e|d| |f|i|l|e| |a|n|d| |`|-|-|s|h|o|w|-|l|a|b|e|l|s|`| |||
-||| |`|d|i|d| |n|o|t| |f|i|n|d| |e|x|p|e|c|t|e|d| |k|e|y|`| ||| |i|n|d|e|n|t|a|t|i|o|n| |b|r|o|k|e| |w|h|i|l|e| |d|e|l|e|t|i|n|g| |l|i|n|e|s| ||| |`|-| |p|o|d|S|e|l|e|c|t|o|r|:|`| |s|t|a|r|t|s| |4| |s|p|a|c|e|s| |i|n|,| |u|n|d|e|r| |`|-| |f|r|o|m|:|`| |||
-||| |`|a|p|i|`| |l|i|v|e|s| |i|n| |a|n|o|t|h|e|r| |n|a|m|e|s|p|a|c|e| ||| |`|f|r|o|m|`| |n|e|e|d|s| |a| |n|a|m|e|s|p|a|c|e| |t|o|o| ||| |a|d|d| |`|n|a|m|e|s|p|a|c|e|S|e|l|e|c|t|o|r|`| |w|i|t|h| |`|k|u|b|e|r|n|e|t|e|s|.|i|o|/|m|e|t|a|d|a|t|a|.|n|a|m|e|:| |<|n|s|>|`| |u|n|d|e|r| |t|h|e| |S|A|M|E| |`|-|`| |||
-||| |a|s|k|e|d| |t|o| |p|i|c|k| |t|h|e| |l|e|a|s|t| |p|e|r|m|i|s|s|i|v|e| |f|i|l|e| ||| |d|o| |n|o|t| |e|d|i|t| |f|i|l|e|s| ||| |a|p|p|l|y| |t|h|e| |o|n|e| |w|i|t|h| |e|x|a|c|t|l|y| |t|h|e|s|e| |l|a|b|e|l|s| |a|n|d| |t|h|e| |p|o|r|t| |||
+| You see | Cause | Fix |
+|---|---|---|
+| `other` still gets the page | the network plugin does not enforce policies | check with `k describe netpol`; the exam cluster enforces them |
+| `api` also times out | wrong label in `from`, or `ports:` under the wrong item | compare with the finished file and `--show-labels` |
+| `did not find expected key` | indentation broke while deleting lines | `- podSelector:` starts 4 spaces in, under `- from:` |
+| `api` lives in another namespace | `from` needs a namespace too | add `namespaceSelector` with `kubernetes.io/metadata.name: <ns>` under the SAME `-` |
+| asked to pick the least permissive file | do not edit files | apply the one with exactly these labels and the port |
 
 ---
 
@@ -5134,12 +5134,12 @@ command terminated with exit code 1
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |t|h|e| |V|e|r|i|f|y| |`|w|g|e|t|`| |s|t|i|l|l| |p|r|i|n|t|s| |t|h|e| |n|g|i|n|x| |p|a|g|e| ||| |t|h|e| |n|e|t|w|o|r|k| |p|l|u|g|i|n| |d|o|e|s| |n|o|t| |e|n|f|o|r|c|e| |p|o|l|i|c|i|e|s| ||| |t|r|u|s|t| |t|h|e| |d|e|s|c|r|i|b|e| |o|u|t|p|u|t|;| |t|h|e| |e|x|a|m| |c|l|u|s|t|e|r| |e|n|f|o|r|c|e|s| |t|h|e|m| |||
-||| |`|n|s|l|o|o|k|u|p|`| |t|i|m|e|s| |o|u|t| |t|o|o| ||| |t|h|e| |e|g|r|e|s|s| |b|l|o|c|k| |i|s| |m|i|s|s|i|n|g| |o|r| |m|i|s|-|i|n|d|e|n|t|e|d| ||| |`|e|g|r|e|s|s|:|`| |s|t|a|r|t|s| |i|n| |t|h|e| |s|a|m|e| |c|o|l|u|m|n| |a|s| |`|p|o|l|i|c|y|T|y|p|e|s|:|`|;| |a|p|p|l|y| |a|g|a|i|n| |||
-||| |`|k| |g|e|t| |n|e|t|p|o|l| |-|n| |p|r|o|d|`| |s|h|o|w|s| |n|o|t|h|i|n|g| ||| |t|h|e| |p|o|l|i|c|y| |l|a|n|d|e|d| |i|n| |`|d|e|f|a|u|l|t|`| ||| |a|d|d| |`|n|a|m|e|s|p|a|c|e|:| |p|r|o|d|`|,| |a|p|p|l|y|;| |`|k| |d|e|l|e|t|e| |n|e|t|p|o|l| |d|e|f|a|u|l|t|-|d|e|n|y| |-|n| |d|e|f|a|u|l|t|`| |||
-||| |`|e|r|r|o|r| |p|a|r|s|i|n|g| |d|e|n|y|.|y|a|m|l|`| ||| |t|a|b|s| |o|r| |b|r|o|k|e|n| |s|p|a|c|e|s| |f|r|o|m| |t|h|e| |p|a|s|t|e| ||| |u|s|e| |`|:|s|e|t| |p|a|s|t|e|`|,| |r|e|t|y|p|e| |t|h|e| |s|p|a|c|e|s| |||
+| You see | Cause | Fix |
+|---|---|---|
+| the Verify `wget` still prints the nginx page | the network plugin does not enforce policies | trust the describe output; the exam cluster enforces them |
+| `nslookup` times out too | the egress block is missing or mis-indented | `egress:` starts in the same column as `policyTypes:`; apply again |
+| `k get netpol -n prod` shows nothing | the policy landed in `default` | add `namespace: prod`, apply; `k delete netpol default-deny -n default` |
+| `error parsing deny.yaml` | tabs or broken spaces from the paste | use `:set paste`, retype the spaces |
 
 ---
 
@@ -5331,11 +5331,11 @@ New, TLSv1.3, Cipher is ...            <-- TLSv1.3 works
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |t|h|e| |e|d|i|t| |i|s| |r|e|f|u|s|e|d|:| |`|f|i|e|l|d| |i|s| |i|m|m|u|t|a|b|l|e|`| ||| |t|h|e| |C|o|n|f|i|g|M|a|p| |h|a|s| |`|i|m|m|u|t|a|b|l|e|:| |t|r|u|e|`| ||| |f|i|x| |t|h|e| |l|i|n|e| |i|n| |`|v|i|m| |/|r|o|o|t|/|c|m|-|b|a|c|k|u|p|.|y|a|m|l|`|;| |`|k| |r|e|p|l|a|c|e| |-|-|f|o|r|c|e| |-|f| |/|r|o|o|t|/|c|m|-|b|a|c|k|u|p|.|y|a|m|l|`|;| |t|h|e|n| |S|t|e|p| |4| |||
-||| |n|e|w| |p|o|d| |i|n| |`|C|r|a|s|h|L|o|o|p|B|a|c|k|O|f|f|`| ||| |n|g|i|n|x| |s|y|n|t|a|x| |b|r|o|k|e|n|,| |o|f|t|e|n| |a| |m|i|s|s|i|n|g| |`|;|`| ||| |`|k| |l|o|g|s| |-|n| |n|g|i|n|x|-|s|t|a|t|i|c| |-|l| |a|p|p|=|n|g|i|n|x|-|s|t|a|t|i|c|`| |n|a|m|e|s| |t|h|e| |l|i|n|e|;| |f|i|x| |t|h|e| |C|o|n|f|i|g|M|a|p|,| |r|e|s|t|a|r|t| |a|g|a|i|n| |||
-||| |`|r|o|l|l|o|u|t| |s|t|a|t|u|s|`| |w|a|i|t|s| |f|o|r|e|v|e|r| ||| |t|h|e| |n|e|w| |p|o|d| |c|a|n|n|o|t| |s|t|a|r|t| ||| |`|k| |g|e|t| |p|o| |-|n| |n|g|i|n|x|-|s|t|a|t|i|c|`|,| |t|h|e|n| |`|k| |d|e|s|c|r|i|b|e|`| |t|h|e| |n|e|w| |p|o|d| |||
+| You see | Cause | Fix |
+|---|---|---|
+| the edit is refused: `field is immutable` | the ConfigMap has `immutable: true` | fix the line in `vim /root/cm-backup.yaml`; `k replace --force -f /root/cm-backup.yaml`; then Step 4 |
+| new pod in `CrashLoopBackOff` | nginx syntax broken, often a missing `;` | `k logs -n nginx-static -l app=nginx-static` names the line; fix the ConfigMap, restart again |
+| `rollout status` waits forever | the new pod cannot start | `k get po -n nginx-static`, then `k describe` the new pod |
 
 ---
 
@@ -5493,12 +5493,12 @@ Address: 10.x.x.x   <-- same as the CLUSTER-IP from Step 2
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |C|o|r|e|D|N|S| |p|o|d|s| |i|n| |`|C|r|a|s|h|L|o|o|p|B|a|c|k|O|f|f|`| ||| |a| |t|y|p|o| |i|n| |t|h|e| |C|o|r|e|f|i|l|e| ||| |`|k| |r|e|p|l|a|c|e| |-|-|f|o|r|c|e| |-|f| |/|r|o|o|t|/|c|o|r|e|d|n|s|-|b|a|c|k|u|p|.|y|a|m|l|`|;| |r|e|s|t|a|r|t| |C|o|r|e|D|N|S|;| |d|o| |S|t|e|p| |3| |a|g|a|i|n| |||
-||| |`|N|X|D|O|M|A|I|N|`| |f|o|r| |`|a|p|i|.|e|x|a|m|p|l|e|.|c|o|m|`| ||| |t|h|e| |l|i|n|e| |i|s| |o|u|t|s|i|d|e| |`|.|:|5|3| |{| |}|`|,| |o|r| |a| |t|y|p|o| |i|n| |t|h|e| |t|a|r|g|e|t| ||| |`|k| |e|d|i|t| |c|m| |c|o|r|e|d|n|s| |-|n| |k|u|b|e|-|s|y|s|t|e|m|`|,| |c|h|e|c|k| |t|h|e| |l|i|n|e|,| |r|e|s|t|a|r|t| |||
-||| |t|h|e| |q|u|e|s|t|i|o|n| |w|a|n|t|s| |a| |w|h|o|l|e| |d|o|m|a|i|n| |s|e|n|t| |t|o| |a|n|o|t|h|e|r| |D|N|S| |s|e|r|v|e|r| ||| |t|h|a|t| |n|e|e|d|s| |a| |n|e|w| |b|l|o|c|k|,| |n|o|t| |`|r|e|w|r|i|t|e|`| ||| |d|o|c|s| |"|C|u|s|t|o|m|i|z|i|n|g| |D|N|S| |S|e|r|v|i|c|e|"|:| |`|e|x|a|m|p|l|e|.|o|r|g|:|5|3| |{| |f|o|r|w|a|r|d| |.| |1|0|.|0|.|0|.|5|3| |}|`| |||
-||| |`|p|o|d|s| |"|t|"| |a|l|r|e|a|d|y| |e|x|i|s|t|s|`| ||| |a|n| |o|l|d| |t|e|s|t| |p|o|d| |w|a|s| |l|e|f|t| |b|e|h|i|n|d| ||| |`|k| |d|e|l|e|t|e| |p|o|d| |t|`|,| |t|e|s|t| |a|g|a|i|n| |||
+| You see | Cause | Fix |
+|---|---|---|
+| CoreDNS pods in `CrashLoopBackOff` | a typo in the Corefile | `k replace --force -f /root/coredns-backup.yaml`; restart CoreDNS; do Step 3 again |
+| `NXDOMAIN` for `api.example.com` | the line is outside `.:53 { }`, or a typo in the target | `k edit cm coredns -n kube-system`, check the line, restart |
+| the question wants a whole domain sent to another DNS server | that needs a new block, not `rewrite` | docs "Customizing DNS Service": `example.org:53 { forward . 10.0.0.53 }` |
+| `pods "t" already exists` | an old test pod was left behind | `k delete pod t`, test again |
 
 ---
 
@@ -5624,13 +5624,13 @@ You see:
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |`|N|X|D|O|M|A|I|N|`| |/| |`|c|a|n|'|t| |f|i|n|d|`| ||| |a| |t|y|p|o|,| |o|r| |t|h|e| |w|r|o|n|g| |n|a|m|e|s|p|a|c|e| |i|n| |t|h|e| |n|a|m|e| ||| |r|e|b|u|i|l|d| |t|h|e| |n|a|m|e| |f|r|o|m| |S|t|e|p| |1| |||
-||| |`|p|o|d|s| |"|t|"| |a|l|r|e|a|d|y| |e|x|i|s|t|s|`| ||| |a|n| |o|l|d|e|r| |t|e|s|t| |p|o|d| |i|s| |s|t|i|l|l| |t|h|e|r|e| ||| |`|k| |d|e|l|e|t|e| |p|o|d| |t|`|,| |r|u|n| |i|t| |a|g|a|i|n| |||
-||| |t|h|e| |f|i|l|e| |a|l|s|o| |h|o|l|d|s| |`|p|o|d| |"|t|"| |d|e|l|e|t|e|d|`| ||| |t|h|a|t| |l|i|n|e| |c|o|m|e|s| |f|r|o|m| |k|u|b|e|c|t|l| ||| |u|s|u|a|l|l|y| |a|c|c|e|p|t|e|d|;| |o|r| |r|u|n| |w|i|t|h|o|u|t| |`|-|-|r|m|`|,| |t|h|e|n| |`|k| |l|o|g|s| |t| |>| |/|r|o|o|t|/|d|n|s|.|t|x|t|`|,| |`|k| |d|e|l|e|t|e| |p|o|d| |t|`| |||
-||| |`|*|*|*| |C|a|n|'|t| |f|i|n|d| |.|.|.|:| |N|o| |a|n|s|w|e|r|`| ||| |b|u|s|y|b|o|x| |a|l|s|o| |a|s|k|s| |f|o|r| |I|P|v|6|;| |t|h|e|r|e| |i|s| |n|o|n|e| ||| |n|o|r|m|a|l|,| |i|g|n|o|r|e| |i|t| |||
-||| |e|v|e|r|y| |n|a|m|e| |f|a|i|l|s| ||| |D|N|S| |i|t|s|e|l|f| |i|s| |b|r|o|k|e|n| ||| |q|u|e|s|t|i|o|n| |1|1| |||
+| You see | Cause | Fix |
+|---|---|---|
+| `NXDOMAIN` / `can't find` | a typo, or the wrong namespace in the name | rebuild the name from Step 1 |
+| `pods "t" already exists` | an older test pod is still there | `k delete pod t`, run it again |
+| the file also holds `pod "t" deleted` | that line comes from kubectl | usually accepted; or run without `--rm`, then `k logs t > /root/dns.txt`, `k delete pod t` |
+| `*** Can't find ...: No answer` | busybox also asks for IPv6; there is none | normal, ignore it |
+| every name fails | DNS itself is broken | question 11 |
 
 ---
 
@@ -5836,13 +5836,13 @@ Tue Nov 24 10:00:01 UTC 2026   <-- date lines; yours differ
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |`|e|r|r|o|r| |c|o|n|v|e|r|t|i|n|g| |Y|A|M|L|`| ||| |w|r|o|n|g| |i|n|d|e|n|t|a|t|i|o|n|,| |o|r| |a| |T|a|b| ||| |s|p|a|c|e|s| |o|n|l|y|;| |c|o|m|p|a|r|e| |w|i|t|h| |S|t|e|p| |2| |||
-||| |`|I|n|i|t|:|C|r|a|s|h|L|o|o|p|B|a|c|k|O|f|f|`| ||| |n|a|t|i|v|e| |s|i|d|e|c|a|r| |(|`|i|n|i|t|C|o|n|t|a|i|n|e|r|s|:|`| |+| |`|r|e|s|t|a|r|t|P|o|l|i|c|y|:| |A|l|w|a|y|s|`|)| |s|t|a|r|t|s| |f|i|r|s|t|;| |`|t|a|i|l| |-|f|`| |q|u|i|t|s|,| |n|o| |f|i|l|e| |y|e|t| ||| |m|o|v|e| |i|t| |u|n|d|e|r| |`|c|o|n|t|a|i|n|e|r|s|:|`|,| |a|f|t|e|r| |`|b|u|s|y|b|o|x|`| |||
-||| |s|i|d|e|c|a|r| |l|o|g|:| |`|t|a|i|l|:| |c|a|n|'|t| |o|p|e|n| |'|/|v|a|r|/|l|o|g|/|a|p|p|.|l|o|g|'|`| ||| |m|a|i|n| |c|o|n|t|a|i|n|e|r| |l|a|c|k|s| |t|h|e| |m|o|u|n|t|,| |o|r| |n|a|m|e|s| |d|i|f|f|e|r| ||| |`|n|a|m|e|:| |l|o|g|s|`| |i|n| |a|l|l| |3| |p|l|a|c|e|s| |||
-||| |R|E|S|T|A|R|T|S| |`|1|`| ||| |t|h|e| |s|i|d|e|c|a|r| |b|e|a|t| |t|h|e| |f|i|l|e| |b|y| |a| |m|o|m|e|n|t| ||| |n|o|t|h|i|n|g|;| |i|t| |r|e|s|t|a|r|t|e|d| |f|i|n|e| |||
-||| |t|h|e| |f|i|l|e| |i|s| |a| |m|e|s|s| ||| |m|a|n|y| |e|d|i|t|s| |w|e|n|t| |w|r|o|n|g| ||| |`|c|p| |a|p|p|-|b|a|c|k|u|p|.|y|a|m|l| |a|p|p|.|y|a|m|l|`|,| |r|e|d|o| |S|t|e|p| |2| |||
+| You see | Cause | Fix |
+|---|---|---|
+| `error converting YAML` | wrong indentation, or a Tab | spaces only; compare with Step 2 |
+| `Init:CrashLoopBackOff` | native sidecar (`initContainers:` + `restartPolicy: Always`) starts first; `tail -f` quits, no file yet | move it under `containers:`, after `busybox` |
+| sidecar log: `tail: can't open '/var/log/app.log'` | main container lacks the mount, or names differ | `name: logs` in all 3 places |
+| RESTARTS `1` | the sidecar beat the file by a moment | nothing; it restarted fine |
+| the file is a mess | many edits went wrong | `cp app-backup.yaml app.yaml`, redo Step 2 |
 
 ---
 
@@ -5999,12 +5999,12 @@ You see:
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |`|A|l|r|e|a|d|y|E|x|i|s|t|s|`| ||| |a|n| |H|P|A| |`|w|e|b|`| |e|x|i|s|t|s| ||| |f|i|x| |i|t| |w|i|t|h| |`|k| |e|d|i|t| |h|p|a| |w|e|b| |-|n| |s|h|o|p|`| |||
-||| |`|<|u|n|k|n|o|w|n|>|`| |a|f|t|e|r| |2| |m|i|n|;| |`|k| |t|o|p| |p|o|d|s| |-|n| |s|h|o|p|`| |f|a|i|l|s| ||| |m|e|t|r|i|c|s|-|s|e|r|v|e|r| |m|i|s|s|i|n|g| |o|r| |s|t|a|r|t|i|n|g| ||| |r|u|n| |P|a|r|t| |A| |a|g|a|i|n|;| |t|h|e| |e|x|a|m| |h|a|s| |i|t| |||
-||| |v|i|m| |r|e|o|p|e|n|s|,| |e|r|r|o|r| |c|o|m|m|e|n|t| |o|n| |t|o|p| ||| |a| |T|a|b| |o|r| |w|r|o|n|g| |i|n|d|e|n|t| ||| |f|i|x| |t|h|e| |3| |l|i|n|e|s|,| |`|:|w|q|`| |a|g|a|i|n| |||
-||| |t|h|e| |q|u|e|s|t|i|o|n| |w|a|n|t|s| |a|n|o|t|h|e|r| |H|P|A| |n|a|m|e| ||| |n|a|m|e|d| |a|f|t|e|r| |t|h|e| |D|e|p|l|o|y|m|e|n|t| ||| |a|d|d| |`|-|-|n|a|m|e|=|<|n|a|m|e|>|`| |i|n| |S|t|e|p| |2| |||
+| You see | Cause | Fix |
+|---|---|---|
+| `AlreadyExists` | an HPA `web` exists | fix it with `k edit hpa web -n shop` |
+| `<unknown>` after 2 min; `k top pods -n shop` fails | metrics-server missing or starting | run Part A again; the exam has it |
+| vim reopens, error comment on top | a Tab or wrong indent | fix the 3 lines, `:wq` again |
+| the question wants another HPA name | named after the Deployment | add `--name=<name>` in Step 2 |
 
 ---
 
@@ -6153,12 +6153,12 @@ web-...   high-priority   999   <-- class and value
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |v|a|l|u|e| |`|1|9|9|9|9|9|9|9|9|9|`| ||| |c|o|u|n|t|e|d| |a| |`|s|y|s|t|e|m|-|`| |c|l|a|s|s| ||| |`|k| |d|e|l|e|t|e| |p|c| |h|i|g|h|-|p|r|i|o|r|i|t|y|`|,| |c|r|e|a|t|e| |a|g|a|i|n| |||
-||| |n|o| |n|e|w| |p|o|d|s|;| |`|k| |d|e|s|c|r|i|b|e| |r|s| |-|n| |s|h|o|p|`|:| |`|n|o| |P|r|i|o|r|i|t|y|C|l|a|s|s| |w|i|t|h| |n|a|m|e| |.|.|.|`| ||| |t|y|p|o| |i|n| |t|h|e| |n|a|m|e| ||| |f|i|x| |i|t| |i|n| |`|k| |e|d|i|t| |d|e|p|l|o|y| |w|e|b| |-|n| |s|h|o|p|`| |||
-||| |t|h|e| |v|a|l|u|e| |c|a|n|n|o|t| |b|e| |c|h|a|n|g|e|d| ||| |i|t| |i|s| |i|m|m|u|t|a|b|l|e| ||| |d|e|l|e|t|e| |a|n|d| |c|r|e|a|t|e| |a|g|a|i|n| |||
-||| |o|t|h|e|r| |p|o|d|s| |g|o|t| |e|v|i|c|t|e|d| ||| |h|i|g|h|e|r| |p|r|i|o|r|i|t|y| |p|u|s|h|e|s| |o|u|t| |l|o|w|e|r| ||| |e|x|p|e|c|t|e|d| |||
+| You see | Cause | Fix |
+|---|---|---|
+| value `1999999999` | counted a `system-` class | `k delete pc high-priority`, create again |
+| no new pods; `k describe rs -n shop`: `no PriorityClass with name ...` | typo in the name | fix it in `k edit deploy web -n shop` |
+| the value cannot be changed | it is immutable | delete and create again |
+| other pods got evicted | higher priority pushes out lower | expected |
 
 ---
 
@@ -6329,11 +6329,11 @@ web-...   1/1   Running   0   20s   ...   node01   <-- 3 lines like this
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |o|n|e| |p|o|d| |`|P|e|n|d|i|n|g|`|,| |E|v|e|n|t|s|:| |`|I|n|s|u|f|f|i|c|i|e|n|t| |c|p|u|`| |(|o|r| |m|e|m|o|r|y|)| ||| |r|e|q|u|e|s|t|s| |s|l|i|g|h|t|l|y| |t|o|o| |b|i|g| ||| |l|o|w|e|r| |t|h|e|m| |1|0|%|,| |r|e|p|e|a|t| |S|t|e|p| |4| |||
-||| |2| |c|o|n|t|a|i|n|e|r|s| |p|e|r| |p|o|d| ||| |`|s|e|t| |r|e|s|o|u|r|c|e|s|`| |s|e|t|s| |E|V|E|R|Y| |c|o|n|t|a|i|n|e|r| ||| |d|i|v|i|d|e| |b|y| |6|,| |o|r| |n|a|m|e| |o|n|e| |c|o|n|t|a|i|n|e|r| |w|i|t|h| |`|-|c| |<|n|a|m|e|>|`| |||
-||| |t|h|e| |p|o|d| |h|a|s| |i|n|i|t| |c|o|n|t|a|i|n|e|r|s| ||| |t|h|e| |b|i|g|g|e|r| |o|f| |i|n|i|t| |o|r| |a|p|p| |r|e|q|u|e|s|t|s| |c|o|u|n|t|s| ||| |k|e|e|p| |i|n|i|t| |r|e|q|u|e|s|t|s| |a|t| |o|r| |b|e|l|o|w| |a|p|p| |r|e|q|u|e|s|t|s| |||
+| You see | Cause | Fix |
+|---|---|---|
+| one pod `Pending`, Events: `Insufficient cpu` (or memory) | requests slightly too big | lower them 10%, repeat Step 4 |
+| 2 containers per pod | `set resources` sets EVERY container | divide by 6, or name one container with `-c <name>` |
+| the pod has init containers | the bigger of init or app requests counts | keep init requests at or below app requests |
 
 ---
 
@@ -6505,13 +6505,13 @@ s3cret   <-- your prompt may follow on the same line
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |S|T|A|T|U|S| |`|C|r|e|a|t|e|C|o|n|t|a|i|n|e|r|C|o|n|f|i|g|E|r|r|o|r|`| ||| |t|h|e| |C|o|n|f|i|g|M|a|p| |n|a|m|e| |i|n| |`|e|n|v|F|r|o|m|`| |d|o|e|s| |n|o|t| |e|x|i|s|t| ||| |`|k| |d|e|s|c|r|i|b|e| |p|o|d| |a|p|i| |-|n| |a|p|p|`| |n|a|m|e|s| |i|t|;| |d|e|l|e|t|e| |t|h|e| |p|o|d|,| |f|i|x|,| |a|p|p|l|y| |a|g|a|i|n| |||
-||| |S|T|A|T|U|S| |s|t|a|y|s| |`|C|o|n|t|a|i|n|e|r|C|r|e|a|t|i|n|g|`| ||| |t|h|e| |S|e|c|r|e|t| |n|a|m|e| |i|n| |`|v|o|l|u|m|e|s|`| |d|o|e|s| |n|o|t| |e|x|i|s|t| ||| |r|e|a|d| |E|v|e|n|t|s| |i|n| |`|k| |d|e|s|c|r|i|b|e| |p|o|d| |a|p|i| |-|n| |a|p|p|`|;| |f|i|x| |`|s|e|c|r|e|t|N|a|m|e|:|`| |||
-||| |`|u|n|k|n|o|w|n| |f|i|e|l|d| |"|s|p|e|c|.|c|o|n|t|a|i|n|e|r|s|[|0|]|.|v|o|l|u|m|e|s|"|`| ||| |`|v|o|l|u|m|e|s|:|`| |i|s| |i|n|d|e|n|t|e|d| |u|n|d|e|r| |t|h|e| |c|o|n|t|a|i|n|e|r| ||| |m|o|v|e| |i|t| |t|o| |t|h|e| |c|o|l|u|m|n| |o|f| |`|c|o|n|t|a|i|n|e|r|s|:|`| |||
-||| |`|F|o|r|b|i|d|d|e|n|:| |p|o|d| |u|p|d|a|t|e|s| |m|a|y| |n|o|t| |c|h|a|n|g|e| |f|i|e|l|d|s| |o|t|h|e|r| |t|h|a|n| |.|.|.|`| ||| |a| |p|o|d|'|s| |e|n|v| |a|n|d| |v|o|l|u|m|e|s| |c|a|n|n|o|t| |c|h|a|n|g|e| ||| |`|k| |d|e|l|e|t|e| |p|o|d| |a|p|i| |-|n| |a|p|p|`|,| |t|h|e|n| |a|p|p|l|y| |a|g|a|i|n| |||
-||| |t|h|e| |q|u|e|s|t|i|o|n| |w|a|n|t|s| |O|N|E| |k|e|y| |o|n|l|y| ||| |d|i|f|f|e|r|e|n|t| |b|l|o|c|k| ||| |`|e|n|v|:|`| |w|i|t|h| |`|v|a|l|u|e|F|r|o|m|:|`| |/| |`|c|o|n|f|i|g|M|a|p|K|e|y|R|e|f|:|`| |(|s|a|m|e| |d|o|c|s| |p|a|g|e|)| |||
+| You see | Cause | Fix |
+|---|---|---|
+| STATUS `CreateContainerConfigError` | the ConfigMap name in `envFrom` does not exist | `k describe pod api -n app` names it; delete the pod, fix, apply again |
+| STATUS stays `ContainerCreating` | the Secret name in `volumes` does not exist | read Events in `k describe pod api -n app`; fix `secretName:` |
+| `unknown field "spec.containers[0].volumes"` | `volumes:` is indented under the container | move it to the column of `containers:` |
+| `Forbidden: pod updates may not change fields other than ...` | a pod's env and volumes cannot change | `k delete pod api -n app`, then apply again |
+| the question wants ONE key only | different block | `env:` with `valueFrom:` / `configMapKeyRef:` (same docs page) |
 
 ---
 
@@ -6684,13 +6684,13 @@ x   1/1   Running   0   15s   192.168.x.x   node01   ...   <-- NODE = node01
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |`|P|e|n|d|i|n|g|`|,| |E|v|e|n|t|s|:| |`|h|a|d| |u|n|t|o|l|e|r|a|t|e|d| |t|a|i|n|t| |{|e|n|v|:| |p|r|o|d|}|`| ||| |k|e|y|,| |v|a|l|u|e| |o|r| |e|f|f|e|c|t| |d|i|f|f|e|r| |f|r|o|m| |t|h|e| |t|a|i|n|t| ||| |`|k| |d|e|l|e|t|e| |p|o|d| |x|`|,| |f|i|x| |`|x|.|y|a|m|l|`|,| |a|p|p|l|y| |a|g|a|i|n| |||
-||| |`|P|e|n|d|i|n|g|`|,| |E|v|e|n|t|s|:| |`|d|i|d|n|'|t| |m|a|t|c|h| |P|o|d|'|s| |n|o|d|e| |a|f|f|i|n|i|t|y|/|s|e|l|e|c|t|o|r|`| ||| |t|h|e| |n|o|d|e| |l|a|b|e|l| |i|s| |m|i|s|s|i|n|g| |o|r| |d|i|f|f|e|r|e|n|t| ||| |`|k| |l|a|b|e|l| |n|o|d|e| |n|o|d|e|0|1| |e|n|v|=|p|r|o|d|`| |||
-||| |`|a|l|r|e|a|d|y| |h|a|s| |e|n|v| |t|a|i|n|t|(|s|)| |w|i|t|h| |s|a|m|e| |e|f|f|e|c|t|(|s|)|`| ||| |t|h|e| |t|a|i|n|t| |i|s| |a|l|r|e|a|d|y| |t|h|e|r|e| ||| |n|o|t|h|i|n|g| |t|o| |d|o|;| |c|h|e|c|k| |w|i|t|h| |S|t|e|p| |2| |||
-||| |`|'|e|n|v|'| |a|l|r|e|a|d|y| |h|a|s| |a| |v|a|l|u|e|`| ||| |t|h|e| |l|a|b|e|l| |i|s| |a|l|r|e|a|d|y| |t|h|e|r|e| ||| |a|d|d| |`|-|-|o|v|e|r|w|r|i|t|e|`| |o|n|l|y| |i|f| |t|h|e| |v|a|l|u|e| |i|s| |w|r|o|n|g| |||
-||| |`|u|n|k|n|o|w|n| |f|i|e|l|d| |"|s|p|e|c|.|c|o|n|t|a|i|n|e|r|s|[|0|]|.|t|o|l|e|r|a|t|i|o|n|s|"|`| ||| |t|h|e| |b|l|o|c|k|s| |a|r|e| |i|n|d|e|n|t|e|d| |u|n|d|e|r| |t|h|e| |c|o|n|t|a|i|n|e|r| ||| |m|o|v|e| |t|h|e|m| |t|o| |t|h|e| |c|o|l|u|m|n| |o|f| |`|c|o|n|t|a|i|n|e|r|s|:|`| |||
+| You see | Cause | Fix |
+|---|---|---|
+| `Pending`, Events: `had untolerated taint {env: prod}` | key, value or effect differ from the taint | `k delete pod x`, fix `x.yaml`, apply again |
+| `Pending`, Events: `didn't match Pod's node affinity/selector` | the node label is missing or different | `k label node node01 env=prod` |
+| `already has env taint(s) with same effect(s)` | the taint is already there | nothing to do; check with Step 2 |
+| `'env' already has a value` | the label is already there | add `--overwrite` only if the value is wrong |
+| `unknown field "spec.containers[0].tolerations"` | the blocks are indented under the container | move them to the column of `containers:` |
 
 ---
 
@@ -6837,12 +6837,12 @@ web    3/3     3            3           3m    nginx        nginx:1.27   app=web 
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |`|r|o|l|l|o|u|t| |s|t|a|t|u|s|`| |n|e|v|e|r| |f|i|n|i|s|h|e|s| ||| |t|h|e| |n|e|w| |i|m|a|g|e| |d|o|e|s| |n|o|t| |e|x|i|s|t| |(|t|y|p|o|)| ||| |`|C|t|r|l|+|C|`|,| |c|h|e|c|k| |t|h|e| |t|a|g|,| |`|k| |s|e|t| |i|m|a|g|e|`| |a|g|a|i|n| |||
-||| |`|u|n|a|b|l|e| |t|o| |f|i|n|d| |c|o|n|t|a|i|n|e|r| |n|a|m|e|d| |"|w|e|b|"|`| ||| |d|e|p|l|o|y|m|e|n|t| |n|a|m|e| |l|e|f|t| |o|f| |`|=|`| ||| |u|s|e| |t|h|e| |C|O|N|T|A|I|N|E|R|S| |c|o|l|u|m|n| |f|r|o|m| |S|t|e|p| |1| |||
-||| |`|/|r|o|o|t|/|i|m|a|g|e|.|t|x|t|`| |i|s| |e|m|p|t|y| ||| |a| |t|y|p|o| |i|n| |t|h|e| |j|s|o|n|p|a|t|h| ||| |r|u|n| |i|t| |w|i|t|h|o|u|t| |`|>| |/|r|o|o|t|/|i|m|a|g|e|.|t|x|t|`| |f|i|r|s|t| |||
-||| |t|h|e| |q|u|e|s|t|i|o|n| |w|a|n|t|s| |r|e|v|i|s|i|o|n| |1| |e|x|a|c|t|l|y| ||| |m|o|r|e| |t|h|a|n| |o|n|e| |s|t|e|p| |b|a|c|k| ||| |`|k| |r|o|l|l|o|u|t| |u|n|d|o| |d|e|p|l|o|y|/|w|e|b| |-|n| |s|h|o|p| |-|-|t|o|-|r|e|v|i|s|i|o|n|=|1|`| |||
+| You see | Cause | Fix |
+|---|---|---|
+| `rollout status` never finishes | the new image does not exist (typo) | `Ctrl+C`, check the tag, `k set image` again |
+| `unable to find container named "web"` | deployment name left of `=` | use the CONTAINERS column from Step 1 |
+| `/root/image.txt` is empty | a typo in the jsonpath | run it without `> /root/image.txt` first |
+| the question wants revision 1 exactly | more than one step back | `k rollout undo deploy/web -n shop --to-revision=1` |
 
 ---
 
@@ -7055,13 +7055,13 @@ pv-data   1Gi   RWO   Retain   Bound   storage/pvc-data   manual   ...   <-- dis
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |P|V|C| |`|P|e|n|d|i|n|g|`| ||| |c|l|a|s|s| |o|r| |a|c|c|e|s|s| |m|o|d|e| |d|i|f|f|e|r|,| |o|r| |t|h|e| |P|V|C| |a|s|k|s| |f|o|r| |m|o|r|e| |t|h|a|n| |1|G|i| ||| |`|k| |d|e|s|c|r|i|b|e| |p|v|c| |p|v|c|-|d|a|t|a| |-|n| |s|t|o|r|a|g|e|`|;| |d|e|l|e|t|e| |t|h|e| |P|V|C|,| |f|i|x| |`|p|v|c|.|y|a|m|l|`|,| |a|p|p|l|y| |a|g|a|i|n| |||
-||| |P|V|C| |`|P|e|n|d|i|n|g|`|,| |`|p|v|-|d|a|t|a|`| |s|t|i|l|l| |`|A|v|a|i|l|a|b|l|e|`|;| |l|a|t|e|r| |B|o|u|n|d| |t|o| |`|p|v|c|-|3|f|2|a|.|.|.|`| ||| |`|p|v|c|.|y|a|m|l|`| |l|o|s|t| |i|t|s| |`|s|t|o|r|a|g|e|C|l|a|s|s|N|a|m|e|`| |l|i|n|e|,| |s|o| |t|h|e| |d|e|f|a|u|l|t| |c|l|a|s|s| |m|a|d|e| |a| |n|e|w| |d|i|s|k| ||| |d|e|l|e|t|e| |t|h|e| |p|o|d| |a|n|d| |P|V|C|,| |a|d|d| |`|s|t|o|r|a|g|e|C|l|a|s|s|N|a|m|e|:| |m|a|n|u|a|l|`|,| |a|p|p|l|y| |b|o|t|h| |||
-||| |P|o|d| |`|P|e|n|d|i|n|g|`|,| |E|v|e|n|t|s|:| |`|p|e|r|s|i|s|t|e|n|t|v|o|l|u|m|e|c|l|a|i|m| |"|.|.|.|"| |n|o|t| |f|o|u|n|d|`| ||| |t|y|p|o| |i|n| |`|c|l|a|i|m|N|a|m|e|`|,| |o|r| |p|o|d| |i|n| |a|n|o|t|h|e|r| |n|a|m|e|s|p|a|c|e| ||| |`|k| |d|e|l|e|t|e| |p|o|d| |w|e|b|-|s|t|o|r|e| |-|n| |s|t|o|r|a|g|e|`|,| |f|i|x| |`|p|o|d|.|y|a|m|l|`|,| |a|p|p|l|y| |a|g|a|i|n| |||
-||| |`|m|a|n|u|a|l|`| |v|s| |`|M|a|n|u|a|l|`| ||| |c|l|a|s|s| |n|a|m|e|s| |a|r|e| |c|a|s|e|-|s|e|n|s|i|t|i|v|e| ||| |m|a|k|e| |t|h|e|m| |i|d|e|n|t|i|c|a|l| |||
-||| |r|e|-|a|p|p|l|y| |f|a|i|l|s| |w|i|t|h| |`|F|o|r|b|i|d|d|e|n|`| ||| |m|o|s|t| |P|V|C| |a|n|d| |p|o|d| |f|i|e|l|d|s| |c|a|n|n|o|t| |c|h|a|n|g|e| |a|f|t|e|r| |c|r|e|a|t|i|o|n| ||| |d|e|l|e|t|e| |t|h|e| |o|b|j|e|c|t|,| |f|i|x| |t|h|e| |f|i|l|e|,| |a|p|p|l|y| |a|g|a|i|n| |||
+| You see | Cause | Fix |
+|---|---|---|
+| PVC `Pending` | class or access mode differ, or the PVC asks for more than 1Gi | `k describe pvc pvc-data -n storage`; delete the PVC, fix `pvc.yaml`, apply again |
+| PVC `Pending`, `pv-data` still `Available`; later Bound to `pvc-3f2a...` | `pvc.yaml` lost its `storageClassName` line, so the default class made a new disk | delete the pod and PVC, add `storageClassName: manual`, apply both |
+| Pod `Pending`, Events: `persistentvolumeclaim "..." not found` | typo in `claimName`, or pod in another namespace | `k delete pod web-store -n storage`, fix `pod.yaml`, apply again |
+| `manual` vs `Manual` | class names are case-sensitive | make them identical |
+| re-apply fails with `Forbidden` | most PVC and pod fields cannot change after creation | delete the object, fix the file, apply again |
 
 ---
 
@@ -7210,13 +7210,13 @@ local-path       rancher.io/local-path   ...
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |r|e|-|a|p|p|l|y| |f|a|i|l|s| |w|i|t|h| |`|F|o|r|b|i|d|d|e|n|`| |a|f|t|e|r| |a| |t|y|p|o| ||| |`|p|r|o|v|i|s|i|o|n|e|r|`| |a|n|d| |`|v|o|l|u|m|e|B|i|n|d|i|n|g|M|o|d|e|`| |c|a|n|n|o|t| |c|h|a|n|g|e| |a|f|t|e|r| |c|r|e|a|t|i|o|n| ||| |`|k| |d|e|l|e|t|e| |s|c| |f|a|s|t|`|,| |f|i|x| |`|s|c|.|y|a|m|l|`|,| |a|p|p|l|y| |a|g|a|i|n| |||
-||| |`|c|a|n|n|o|t| |u|n|m|a|r|s|h|a|l| |b|o|o|l| |.|.|.| |o|f| |t|y|p|e| |s|t|r|i|n|g|`| ||| |`|i|s|-|d|e|f|a|u|l|t|-|c|l|a|s|s|:| |t|r|u|e|`| |w|i|t|h|o|u|t| |q|u|o|t|e|s| ||| |w|r|i|t|e| |`|"|t|r|u|e|"|`| |||
-||| |a| |t|e|s|t| |P|V|C| |s|t|a|y|s| |`|P|e|n|d|i|n|g|`| ||| |n|o|r|m|a|l| |w|i|t|h| |`|W|a|i|t|F|o|r|F|i|r|s|t|C|o|n|s|u|m|e|r|`|:| |i|t| |w|a|i|t|s| |f|o|r| |a| |p|o|d| ||| |d|o| |n|o|t| |"|f|i|x|"| |i|t| |||
-||| |n|o| |`|(|d|e|f|a|u|l|t|)|`| |a|t| |a|l|l| ||| |y|o|u| |p|a|t|c|h|e|d| |`|f|a|s|t|`| |i|n|s|t|e|a|d| |o|f| |t|h|e| |o|l|d| |c|l|a|s|s| ||| |p|a|t|c|h| |`|f|a|s|t|`| |b|a|c|k| |t|o| |`|"|t|r|u|e|"|`| |||
-||| |y|o|u| |f|i|n|i|s|h|e|d| |a|n|d| |w|a|n|t| |t|h|e| |p|l|a|y|g|r|o|u|n|d| |a|s| |i|t| |w|a|s| ||| |`|f|a|s|t|`| |i|s| |s|t|i|l|l| |t|h|e| |d|e|f|a|u|l|t| ||| |`|k| |d|e|l|e|t|e| |s|c| |f|a|s|t| |s|t|a|n|d|a|r|d| |-|-|i|g|n|o|r|e|-|n|o|t|-|f|o|u|n|d|`|,| |t|h|e|n| |`|k| |p|a|t|c|h| |s|c| |l|o|c|a|l|-|p|a|t|h| |-|p| |'|{|"|m|e|t|a|d|a|t|a|"|:|{|"|a|n|n|o|t|a|t|i|o|n|s|"|:|{|"|s|t|o|r|a|g|e|c|l|a|s|s|.|k|u|b|e|r|n|e|t|e|s|.|i|o|/|i|s|-|d|e|f|a|u|l|t|-|c|l|a|s|s|"|:|"|t|r|u|e|"|}|}|}|'|`| |||
+| You see | Cause | Fix |
+|---|---|---|
+| re-apply fails with `Forbidden` after a typo | `provisioner` and `volumeBindingMode` cannot change after creation | `k delete sc fast`, fix `sc.yaml`, apply again |
+| `cannot unmarshal bool ... of type string` | `is-default-class: true` without quotes | write `"true"` |
+| a test PVC stays `Pending` | normal with `WaitForFirstConsumer`: it waits for a pod | do not "fix" it |
+| no `(default)` at all | you patched `fast` instead of the old class | patch `fast` back to `"true"` |
+| you finished and want the playground as it was | `fast` is still the default | `k delete sc fast standard --ignore-not-found`, then `k patch sc local-path -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'` |
 
 ---
 
@@ -7426,13 +7426,13 @@ mariadb-pv   250Mi   RWO   Retain   Bound   mariadb/mariadb   ...   <-- old disk
 
 ### If something goes wrong
 
-||| |Y|o|u| |s|e|e| ||| |C|a|u|s|e| ||| |F|i|x| |||
-|||-|-|-|||-|-|-|||-|-|-|||
-||| |P|V| |S|T|A|T|U|S| |`|R|e|l|e|a|s|e|d|`|,| |n|o|t| |`|A|v|a|i|l|a|b|l|e|`| ||| |t|h|e| |P|V| |s|t|i|l|l| |r|e|m|e|m|b|e|r|s| |i|t|s| |d|e|l|e|t|e|d| |P|V|C| |(|`|c|l|a|i|m|R|e|f|`|)| ||| |`|k| |p|a|t|c|h| |p|v| |m|a|r|i|a|d|b|-|p|v| |-|p| |'|{|"|s|p|e|c|"|:|{|"|c|l|a|i|m|R|e|f|"|:|n|u|l|l|}|}|'|`|,| |t|h|e|n| |s|t|e|p| |2| |||
-||| |P|V|C| |`|P|e|n|d|i|n|g|`| ||| |c|l|a|s|s|,| |m|o|d|e| |o|r| |s|i|z|e| |d|o|e|s| |n|o|t| |m|a|t|c|h| |t|h|e| |P|V| ||| |`|k| |d|e|s|c|r|i|b|e| |p|v|c| |m|a|r|i|a|d|b| |-|n| |m|a|r|i|a|d|b|`|;| |d|e|l|e|t|e| |t|h|e| |P|V|C|,| |f|i|x| |`|p|v|c|.|y|a|m|l|`|,| |a|p|p|l|y| |a|g|a|i|n| |||
-||| |V|O|L|U|M|E| |i|s| |a| |l|o|n|g| |n|a|m|e| |l|i|k|e| |`|p|v|c|-|3|f|2|a|.|.|.|`| ||| |`|s|t|o|r|a|g|e|C|l|a|s|s|N|a|m|e|:| |"|"|`| |w|a|s| |m|i|s|s|i|n|g|;| |a| |n|e|w| |e|m|p|t|y| |d|i|s|k| |w|a|s| |m|a|d|e| ||| |d|e|l|e|t|e| |t|h|e| |P|V|C|,| |f|i|x| |t|h|e| |f|i|l|e|,| |a|p|p|l|y| |a|g|a|i|n| |||
-||| |t|h|e| |P|V|'|s| |S|T|O|R|A|G|E|C|L|A|S|S| |s|h|o|w|s| |a| |n|a|m|e|,| |e|.|g|.| |`|l|o|c|a|l|-|p|a|t|h|`| ||| |t|h|e| |e|x|a|m|'|s| |d|i|s|k| |h|a|s| |a| |c|l|a|s|s| ||| |u|s|e| |t|h|a|t| |e|x|a|c|t| |n|a|m|e| |i|n|s|t|e|a|d| |o|f| |`|"|"|`| |||
-||| |p|o|d| |`|P|e|n|d|i|n|g|`|,| |`|p|e|r|s|i|s|t|e|n|t|v|o|l|u|m|e|c|l|a|i|m| |"|.|.|.|"| |n|o|t| |f|o|u|n|d|`| ||| |t|y|p|o| |i|n| |`|c|l|a|i|m|N|a|m|e|`| ||| |f|i|x| |t|h|e| |f|i|l|e|,| |a|p|p|l|y| |a|g|a|i|n| |||
+| You see | Cause | Fix |
+|---|---|---|
+| PV STATUS `Released`, not `Available` | the PV still remembers its deleted PVC (`claimRef`) | `k patch pv mariadb-pv -p '{"spec":{"claimRef":null}}'`, then step 2 |
+| PVC `Pending` | class, mode or size does not match the PV | `k describe pvc mariadb -n mariadb`; delete the PVC, fix `pvc.yaml`, apply again |
+| VOLUME is a long name like `pvc-3f2a...` | `storageClassName: ""` was missing; a new empty disk was made | delete the PVC, fix the file, apply again |
+| the PV's STORAGECLASS shows a name, e.g. `local-path` | the exam's disk has a class | use that exact name instead of `""` |
+| pod `Pending`, `persistentvolumeclaim "..." not found` | typo in `claimName` | fix the file, apply again |
 
 ---
 
