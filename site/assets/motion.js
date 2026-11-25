@@ -2,6 +2,7 @@
 // One glossy board = one map of the cluster. Same boxes, same positions in the home film and every short.
 // No sound. Plays once, Replay button, no loop. prefers-reduced-motion → still frame + caption.
 import * as W from './wb/wb.js';
+import { homeFilm, HOME_H } from './home-film.js';
 
 const { INK } = W;
 const VW = 1080, VH = 1350, BW = 2400, BH = 3420;
@@ -66,7 +67,7 @@ function ghosts() {
 }
 
 // ───────── a film = timeline + camera + magnets + captions
-function makeFilm(script) {
+function makeFilm(script, bh = BH) {
   const tl = new W.Timeline();
   const pen = {
     K: new W.Pen('black', INK.black, { park: [VW + 260, VH + 160] }), Bl: new W.Pen('blue', INK.blue, { park: [VW + 300, VH - 200] }),
@@ -95,12 +96,12 @@ function makeFilm(script) {
     },
     blink: (strokes, t0, t1) => strokes.flat(9).forEach(s => { s.hide = t => t > t0 && t < t1 && ((t - t0) * 2.2) % 1 < .45; }),
     // a glossy magnet (the hero) slides along arrow shafts: legs [[arrow, t0, t1, reverse]]
-    magnet: (color, legs, o = {}) => mags.push({ color, legs: legs.map(([k, t0, t1, rev]) => ({ s: m['a_' + k].shaft, t0, t1, rev })), until: o.until ?? 1e9, size: o.size ?? 46 }),
+    magnet: (color, legs, o = {}) => mags.push({ color, legs: legs.map(([k, t0, t1, rev]) => ({ s: typeof k === 'string' ? m['a_' + k].shaft : k, t0, t1, rev })), until: o.until ?? 1e9, size: o.size ?? 46 }),
     caption: (t, s) => caps.push([t, s]),
   };
   const cam = script(a);
   tl.end();
-  const board = new W.Board(tl, { W: BW, H: BH, ghosts: ghosts() });
+  const board = new W.Board(tl, { W: BW, H: bh, ghosts: ghosts() });
   board.objs.push({ draw(ctx, t, c) { for (const e of tl.erasers) W.drawEraser(ctx, e, t, c); } });
   board.objs.push({ draw(ctx, t, c) { for (const g of mags) drawMag(ctx, g, t, c); } });
   board.objs.push({ draw(ctx, t, c) { for (const k in pen) { const p = pen[k]; ctx.save(); W.drawMarker(ctx, p, W.penPose(p, t, cam), c, t); ctx.restore(); } } });
@@ -121,57 +122,6 @@ function drawMag(ctx, g, t, c) {
   ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(sx, sy - up, r, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = Math.max(1.5, 5 * c.z); ctx.strokeRect(sx - r * .38, sy - up - r * .3, r * .76, r * .6);
   ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.beginPath(); ctx.ellipse(sx - r * .4, sy - up - r * .55, r * .3, r * .14, -.5, 0, Math.PI * 2); ctx.fill();
-}
-
-// ───────── home film: git push → running Pod → traffic (~63 s)
-function homeFilm(a) {
-  const { m, pen: { K, Bl, G, O }, draw } = a;
-  const C = [[0, 390, 520, 1.0]];
-  a.caption(0.2, '1. You push your Java code to GitHub.');
-  draw(K, m.gh, 0.4, 2.4);
-  a.magnet(INK.orange, [['gh_act', 2.6, 2.6]], { until: 7.3 });
-  a.caption(4.6, '2. GitHub Actions runs mvn package and builds a .jar file.');
-  C.push([4.4, 390, 520, 1.0], [6.2, 1100, 520, .9]);
-  draw(K, m.act, 5.6, 7.0); draw(Bl, m.a_gh_act, 7.0, 7.6);
-  a.magnet(INK.orange, [['gh_act', 7.3, 8.6]], { until: 12.6 });
-  a.caption(9.6, '3. docker build makes an image. docker push stores it in the registry.');
-  C.push([9.4, 1100, 520, .9], [11.2, 1800, 560, .85]);
-  draw(K, m.reg, 10.4, 11.9); draw(Bl, m.a_act_reg, 11.9, 12.5);
-  a.magnet(INK.blue, [['act_reg', 12.6, 13.9]], { until: 42.4 });
-  a.caption(14.8, '4. helm upgrade sends the YAML to the API server, once. Helm does not watch.');
-  C.push([14.6, 1800, 560, .85], [16.6, 1500, 1000, .6]);
-  draw(K, m.helm, 15.4, 16.8); draw(K, m.cp, 16.9, 17.8); draw(K, m.api, 17.8, 19.0); draw(Bl, m.a_helm_api, 19.0, 19.7);
-  a.magnet('#8a94a6', [['helm_api', 19.8, 21.0]], { until: 21.0, size: 36 });
-  a.caption(21.4, '5. The API server stores it in etcd.');
-  C.push([21.2, 1500, 1000, .6], [22.6, 1650, 1300, .68]);
-  draw(K, m.etcd, 21.8, 23.2); draw(Bl, m.a_api_etcd, 23.2, 23.7);
-  a.caption(25.2, '6. The controller manager turns the Deployment into a ReplicaSet, then into Pods.');
-  C.push([25, 1650, 1300, .68], [26.6, 900, 1300, .62]);
-  draw(K, m.cm, 25.6, 27.0); draw(Bl, m.a_cm_api, 27.0, 27.5);
-  draw(K, m.dep, 27.7, 28.6); draw(K, m.rs, 28.9, 29.5); draw(K, m.pchip, 29.8, 30.5);
-  a.caption(31.6, '7. The scheduler picks a node for the Pod: node01.');
-  C.push([31.4, 900, 1300, .62], [32.8, 1300, 1650, .62]);
-  draw(K, m.sched, 32.0, 33.4); draw(Bl, m.a_sched_api, 33.4, 33.9);
-  draw(Bl, a.text('Pod → node01', NOTE.sched), 34.1, 35.4);
-  a.caption(36.8, '8. The kubelet on node01 tells containerd to pull the image and start the container.');
-  C.push([36.6, 1300, 1650, .62], [38.4, 1200, 2250, .5]);
-  draw(K, m.node, 37.4, 38.3); draw(K, m.kubelet, 38.3, 39.4); draw(Bl, m.a_api_kubelet, 39.4, 40.0);
-  draw(K, m.cri, 40.0, 41.0); draw(Bl, m.a_kubelet_cri, 41.0, 41.3); draw(Bl, m.a_pull, 41.3, 42.3);
-  a.magnet(INK.blue, [['pull', 42.4, 44.2]], { until: 44.2 });
-  a.caption(45.2, '9. The Pod is Running. The kubelet reports this to the API server.');
-  C.push([45, 1200, 2250, .5], [46.4, 1700, 2350, .66]);
-  draw(K, m.pod, 45.6, 46.8); draw(Bl, m.a_cri_pod, 46.8, 47.2); draw(K, m.ctr, 47.2, 48.0);
-  draw(G, a.text('Running', NOTE.pod, { h: 62, align: 'center' }), 48.2, 49.0);
-  a.magnet(INK.green, [['api_kubelet', 49.2, 50.6, true]], { until: 50.6, size: 34 });
-  a.caption(51.6, '10. A Service and kube-proxy send user traffic to the Pod.');
-  C.push([51.4, 1700, 2350, .66], [52.8, 1250, 2900, .58]);
-  draw(K, m.proxy, 52.2, 53.4); draw(K, m.svc, 53.4, 54.5); draw(K, m.user, 54.5, 55.5);
-  draw(Bl, [m.a_user_svc, m.a_svc_proxy, m.a_proxy_pod], 55.5, 56.6);
-  a.magnet(INK.orange, [['user_svc', 56.8, 57.6], ['svc_proxy', 57.6, 58.4], ['proxy_pod', 58.4, 59.4]], { until: 59.6, size: 32 });
-  a.caption(60.2, 'From git push to a running Pod. Every question breaks one box on this map.');
-  C.push([60, 1250, 2900, .58], [62.6, 1200, 1710, .395]);
-  draw(K, m.you, 60.6, 62.0); draw(O, m.a_you_api, 62.0, 62.8);
-  return new W.Camera(C);
 }
 
 // ───────── shorts: the map is already on the board; red = broken, orange = your fix, green = fixed
@@ -231,7 +181,7 @@ async function build(host, kind) {
   host.classList.add('motion', kind === 'home' ? 'mhome' : 'mshort');
   host.innerHTML = `<div class="mwrap"><canvas width="${VW}" height="${VH}" aria-hidden="true"></canvas></div><p class="mcap" aria-live="polite"></p><div class="mbar"><button type="button" class="btn ghost mrep" hidden>↻ Replay</button></div>`;
   await font();
-  const F = makeFilm(kind === 'home' ? homeFilm : shortFilm(kind));
+  const F = kind === 'home' ? makeFilm(homeFilm, HOME_H) : makeFilm(shortFilm(kind));
   const cv = host.querySelector('canvas'), ctx = cv.getContext('2d'), cap = host.querySelector('.mcap'), rep = host.querySelector('.mrep');
   let raf = 0;
   const showCap = t => {

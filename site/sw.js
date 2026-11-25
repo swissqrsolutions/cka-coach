@@ -1,5 +1,5 @@
 // Offline: the whole app is a handful of files. Pages network-first, everything else cache-first.
-const CACHE = 'cka-v1';
+const CACHE = 'cka-v2';
 const CORE = ['./', 'index.html', 'manifest.webmanifest', 'assets/icon.svg', 'assets/icon-192.png', 'assets/latin.woff2'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {
@@ -8,7 +8,8 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const u = new URL(e.request.url);
   if (e.request.method !== 'GET' || u.origin !== location.origin) return;
-  const isPage = e.request.mode === 'navigate' || u.pathname.endsWith('/') || u.pathname.endsWith('.html');
+  // pages and unversioned files (no ?v=, e.g. module imports): network first, cache as offline fallback
+  const isPage = e.request.mode === 'navigate' || u.pathname.endsWith('/') || u.pathname.endsWith('.html') || (/\.(js|json)$/.test(u.pathname) && !u.searchParams.has('v'));
   if (isPage) {
     e.respondWith(fetch(e.request).then(r => { const c = r.clone(); caches.open(CACHE).then(x => x.put(e.request, c)); return r; })
       .catch(() => caches.match(e.request).then(r => r || caches.match('index.html'))));
