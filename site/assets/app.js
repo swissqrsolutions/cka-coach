@@ -94,7 +94,7 @@
     }).join('');
     const weak = Object.entries(store.get('weak', {})).filter(([n]) => Q(+n));
     const weakCard = weak.length ? `<h2>Weak list <span class="chip bad">over target time</span></h2><div class="card"><ul class="qlist">${weak.map(([n, w]) => `<li><a href="#/q/${n}"><span class="num">${n}</span><span>${esc(Q(+n).title)}</span><span class="st fail">${Math.floor(w.sec / 60)}:${String(w.sec % 60).padStart(2, '0')} / ${Q(+n).target}:00</span></a></li>`).join('')}</ul></div>` : '';
-    app.innerHTML = `${installCard()}${weakCard}<h1>Practice</h1><a class="btn ghost block" href="#/cheat">Cheat sheet (commands, YAML from docs, facts, warm-up)</a><a class="btn ghost block" href="#/basics">New here? The basics</a><p class="sub">40 questions · ${solo} solved alone. Open one, set it up in Killercoda, solve it.</p>${groups}`;
+    app.innerHTML = `${installCard()}${weakCard}<h1>Practice</h1><h2>Kubernetes in motion</h2><div data-motion="home"></div><a class="btn ghost block" href="#/cheat">Cheat sheet (commands, YAML from docs, facts, warm-up)</a><a class="btn ghost block" href="#/basics">New here? The basics</a><p class="sub">40 questions · ${solo} solved alone. Open one, set it up in Killercoda, solve it.</p>${groups}`;
     if ($('#installBtn')) $('#installBtn').onclick = async () => { installEvt.prompt(); await installEvt.userChoice; installEvt = null; render(); };
   }
   function cheatPage() {
@@ -318,6 +318,7 @@
     phSeen = plan ? new Set() : null; const stepsOnly = steps(all.filter(x => !x.v)); const verify = steps(all.filter(x => x.v));
     phSeen = null;
     const learnBox = plan ? merkBox(q) : mugBox(q);
+    const mot = `<div data-motion="${q.n}"></div>`; // filled by motion.js when this question has a short
     const thinkCard = plan ? `<section class="card think"><div class="label">Plan</div><p class="plan">${esc(plan).replace(/-/g, "&#8209;")}</p>${q.budget ? `<p class="budget">⏱ ${esc(q.budget)}</p>` : ''}</section>` : q.think ? `<section class="card think"><div class="label">Think (15 seconds)</div>${q.think}${q.budget ? `<p class="budget">⏱ ${esc(q.budget)}</p>` : ''}</section>` : '';
     const build = `<h2>Build it in Killercoda</h2>
       <div class="card">${q.setup ? `<a class="btn block" href="${KILLERCODA}" target="_blank" rel="noopener">Open Killercoda</a>${codeBlock(q.setup)}<p class="small">Exam: already set up. Run <code>ssh</code> first, <code>exit</code> last.</p>` : '<p class="small">Cannot be built in a playground. Practise in killer.sh.</p>'}</div>`;
@@ -335,13 +336,13 @@
       return `${question(false)}${build}
         <div class="card qtimer"><div><div class="label">Your time</div><span id="qt">0:00</span></div><div class="row"><button class="btn" id="qtStart">${t ? 'Restart' : 'Start'}</button><button class="btn good" id="qtDone">Done</button></div>
           <p class="small">Paste Part A, then Start. Solve it without the app. Over ${q.target} min puts it on your weak list.</p></div>
-        ${done ? `${thinkCard}<h2>The solution</h2>${stepsAll}${help}${learnBox}${askBox(q)}` : examNote}`;
+        ${done ? `${thinkCard}${mot}<h2>The solution</h2>${stepsAll}${help}${learnBox}${askBox(q)}` : examNote}`;
     }
-    if (mode === 'practise') return `${question(true)}${thinkCard}${build}
+    if (mode === 'practise') return `${question(true)}${thinkCard}${mot}${build}
       <h2>Solve it yourself</h2>
       <details class="step"><summary>Show steps</summary><div class="body">${stepsOnly}</div></details>
       ${verify}${examNote}${help}${learnBox}${askBox(q)}`;
-    return `${question(true)}${thinkCard}${build}<h2>Solve it</h2>${stepsAll}${examNote}${help}${learnBox}${askBox(q)}`;
+    return `${question(true)}${thinkCard}${mot}${build}<h2>Solve it</h2>${stepsAll}${examNote}${help}${learnBox}${askBox(q)}`;
   }
 
   // the whole answer in baby steps: one command, what you see, why

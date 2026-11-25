@@ -213,7 +213,7 @@ fs.writeFileSync(path.join(ROOT, 'site', 'data.json'), JSON.stringify(data));
 // ---- version stamps + offline file list
 const stamp = f => crypto.createHash('sha1').update(fs.readFileSync(path.join(ROOT, 'site', f))).digest('hex').slice(0, 8);
 let index = fs.readFileSync(path.join(ROOT, 'site', 'index.html'), 'utf8');
-index = index.replace(/(app\.js|style\.css|data\.json)\?v=[a-f0-9]*/g, (m, f) => `${f}?v=${stamp(f === 'data.json' ? 'data.json' : 'assets/' + f)}`);
+index = index.replace(/(app\.js|motion\.js|style\.css|data\.json)\?v=[a-f0-9]*/g, (m, f) => `${f}?v=${stamp(f === 'data.json' ? 'data.json' : 'assets/' + f)}`);
 fs.writeFileSync(path.join(ROOT, 'site', 'index.html'), index);
 console.log(`questions ${questions.length} · topics ${topics.length} · reference pages ${refs.length} · mocks ${mocks.map(m => m.length).join('/')}`);
 console.log('missing setup:', questions.filter(x => !x.setup).map(x => x.n).join(',') || 'none', '· missing question:', questions.filter(x => !x.question).map(x => x.n).join(',') || 'none');

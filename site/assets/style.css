@@ -419,3 +419,11 @@ details.reveal{margin-top:8px}details.reveal summary{cursor:pointer;font-weight:
 /* long inline paths/URLs in prose (question cards, explanations, notes) wrap instead of widening the page */
 .card p code, .card li code, .bwhy code, .ln code, .phnote code, .trap code, .clue code, .plain code, .means code{overflow-wrap:anywhere}
 .exam .q, .exam .q a{overflow-wrap:anywhere}
+
+/* ---------- motion diagrams (Whiteboard Explainer, canvas engine in assets/wb/) ---------- */
+.motion{margin:0 0 18px}
+.motion .mwrap{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:#f4f3ef;box-shadow:0 1px 2px rgba(20,30,50,.06)}
+.motion canvas{display:block;width:100%;height:auto;aspect-ratio:1080/1350}
+.mcap{margin:10px 2px 0;font-size:15px;line-height:1.45;min-height:4.4em;transition:opacity .3s}
+.mhome .mcap{min-height:3em}
+.mbar{display:flex;justify-content:flex-end}.mbar .mrep[hidden]{display:inline-flex;visibility:hidden}.mbar .mrep{min-height:40px;padding:0 14px;font-size:14px}
