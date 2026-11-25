@@ -842,7 +842,7 @@ k describe pod <pod-name> -n app
 ```
 You see:
 ```
-Warning  Failed  ...  Failed to pull image "nginx:doesnotexist": ... not found   <-- the cause
+Warning  Failed  ...  Failed to pull image "nginx:doesnotexist": ... not found   <-- cause
 ```
 **Means:** the tag `doesnotexist` does not exist.
 
@@ -898,7 +898,6 @@ deployment "api" successfully rolled out
 
 - **Tag** = the version after the colon: `nginx:1.27`.
 - **ImagePullBackOff** = the download failed. Kubernetes retries, slower each time.
-- **Container name** = the name inside the pod. Not the deployment name.
 
 ---
 
@@ -1126,7 +1125,7 @@ k get pods -n app
 You see:
 ```
 api-6d4cf56db6-7xk2p   1/1   Running   0   60s
-api-7b9c8d5f4-zq8mn    0/1   Pending   0   20s   <-- copy this name
+api-7b9c8d5f4-zq8mn    0/1   Pending   0   20s   <-- name
 ```
 **Means:** the old pod stays until the new one works.
 
@@ -1141,7 +1140,7 @@ k describe pod <pending-pod-name> -n app
 ```
 You see:
 ```
-Warning  FailedScheduling  ...  0/2 nodes are available: ... Insufficient cpu ...   <-- the cause
+Warning  FailedScheduling  ...  0/2 nodes are available: ... Insufficient cpu ...   <-- cause
 ```
 **Means:** no node has enough free CPU. Ignore the taint and `preemption:` parts.
 
@@ -1157,7 +1156,7 @@ k get deployment api -o yaml -n app | grep -A 1 requests
 You see:
 ```
           requests:
-            cpu: "100"   <-- 100 whole CPUs
+            cpu: "100"
 ```
 **Means:** `100` is 100 CPUs. The question wants `100m`.
 
@@ -1278,7 +1277,7 @@ k describe node node01
 ```
 You see:
 ```
-  Ready   Unknown   ...   NodeStatusUnknown   Kubelet stopped posting node status.   <-- the hint
+  Ready   Unknown   ...   NodeStatusUnknown   Kubelet stopped posting node status.   <-- hint
 ```
 **Means:** `Unknown`, not `False`. The kubelet stopped reporting.
 
@@ -1295,7 +1294,7 @@ systemctl status kubelet --no-pager
 You see:
 ```
      Loaded: loaded (/usr/lib/systemd/system/kubelet.service; disabled; ...)   <-- disabled
-     Active: inactive (dead) since ...                                         <-- stopped
+     Active: inactive (dead) since ...  <-- stopped
 ```
 **Means:** stopped now, and off after a reboot.
 **Don't:** type before you check the prompt says `node01`.
@@ -1314,8 +1313,8 @@ systemctl is-enabled kubelet
 You see:
 ```
 Created symlink ... → .../kubelet.service.
-active      <-- running now
-enabled     <-- survives a reboot
+active   <-- now
+enabled  <-- after reboot
 ```
 **Don't:** use `systemctl start` alone. It does not survive a reboot.
 
@@ -1330,7 +1329,7 @@ exit
 ```
 You see:
 ```
-root@controlplane:~#   <-- back
+root@controlplane:~#  <-- back
 ```
 **Means:** you are back where kubectl works.
 
@@ -1421,7 +1420,7 @@ systemctl status kubelet
 ```
 You see:
 ```
-     Active: activating (auto-restart) (Result: exit-code) since ...   <-- starts, fails, again
+     Active: activating (auto-restart) (Result: exit-code) since ...   <-- fails
     Process: ... ExecStart=/usr/local/bin/kubelet ... (code=exited, status=203/EXEC)
 ```
 **Means:** it cannot start. `203/EXEC` = the program file could not run.
@@ -1438,7 +1437,7 @@ journalctl -u kubelet -n 30 --no-pager
 ```
 You see:
 ```
-kubelet.service: Failed at step EXEC spawning /usr/local/bin/kubelet: No such file or directory   <-- the cause
+kubelet.service: Failed at step EXEC spawning /usr/local/bin/kubelet: No such file or directory   <-- cause
 ```
 **Means:** the service starts a path that does not exist.
 
@@ -1454,11 +1453,11 @@ systemctl cat kubelet
 ```
 You see:
 ```
-/usr/bin/kubelet                                                    <-- the real program
+/usr/bin/kubelet  <-- real
 ...
-# /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf         <-- the file to fix
+# /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf  <-- fix this file
 ExecStart=
-ExecStart=/usr/local/bin/kubelet $KUBELET_KUBECONFIG_ARGS ...       <-- wrong path
+ExecStart=/usr/local/bin/kubelet $KUBELET_KUBECONFIG_ARGS ...  <-- wrong
 ```
 **Means:** the drop-in overrides the base file. Fix the drop-in.
 **Don't:** touch the empty `ExecStart=`. It only clears the old value.
@@ -1534,8 +1533,6 @@ node01         Ready    <none>          ...   v1.35.0   <-- Ready
 ### Three words first
 
 - **Drop-in** = an extra file that overrides parts of a service file.
-- **journalctl** = shows a service's log: WHY it fails.
-- **daemon-reload** = tells systemd to read changed service files again.
 
 ---
 
@@ -1606,7 +1603,7 @@ k get endpoints backend-svc -n web
 ```
 You see:
 ```
-Warning: v1 Endpoints is deprecated in v1.33+; ...   <-- normal, ignore
+Warning: v1 Endpoints is deprecated in v1.33+; ...   <-- ignore
 backend-svc   <none>
 ```
 **Means:** no pods: wrong selector, or pods not Ready.
@@ -1744,10 +1741,12 @@ k get endpoints backend-svc -n web
 ```
 k get endpoints backend-svc -n web
 ```
+The pod IP is there, but with port `8080`.
+
 You see:
 ```
-Warning: v1 Endpoints is deprecated in v1.33+; ...   <-- normal, ignore
-backend-svc   192.168.1.5:8080   1m                   <-- IP is there, port 8080
+Warning: v1 Endpoints is deprecated in v1.33+; ...   <-- ignore
+backend-svc   192.168.1.5:8080   1m
 ```
 **Means:** the selector works. The port is wrong.
 
@@ -1762,7 +1761,7 @@ k exec client -n web -- wget -qO- -T 3 backend-svc
 ```
 You see:
 ```
-wget: can't connect to remote host (10.96.x.x): Connection refused   <-- nobody on 8080
+wget: can't connect to remote host (10.96.x.x): Connection refused   <-- cause
 command terminated with exit code 1
 ```
 **Means:** traffic reaches the pod, but no program answers there.
@@ -1776,10 +1775,12 @@ command terminated with exit code 1
 ```
 k describe service backend-svc -n web
 ```
+`Port` 80 is right: clients call 80. `TargetPort` 8080 is wrong: nginx listens on 80.
+
 You see:
 ```
-Port:              <unset>  80/TCP     <-- correct, clients call 80
-TargetPort:        8080/TCP            <-- wrong, nginx listens on 80
+Port:              <unset>  80/TCP
+TargetPort:        8080/TCP
 Endpoints:         192.168.1.5:8080
 ```
 **Means:** only `targetPort` must change.
@@ -1904,7 +1905,7 @@ crictl ps -a | grep kube-apiserver
 ```
 You see:
 ```
-3f2a1b9c8d7e6   ...   25 seconds ago   Exited   kube-apiserver   5   ...   <-- newest, copy the ID
+3f2a1b9c8d7e6   ...   25 seconds ago   Exited   kube-apiserver   5   ...   <-- copy ID
 ```
 **Means:** it starts and dies again and again.
 **Don't:** copy an old line (CREATED hours ago). It has no useful log.
@@ -1940,7 +1941,7 @@ In vim: type `/2380`, Enter, `cw`, type `2379`, Esc, `:wq`, Enter.
 
 You see:
 ```
-    - --etcd-servers=https://127.0.0.1:2379   <-- 2379 now
+    - --etcd-servers=https://127.0.0.1:2379  <-- fixed
 ```
 **Don't:** keep the backup in `manifests/`. It would run as a second API server.
 
@@ -1955,7 +1956,7 @@ crictl ps | grep kube-apiserver
 ```
 You see:
 ```
-...   Running   kube-apiserver   ...   <-- up again
+...   Running   kube-apiserver   ...  <-- up
 ```
 **Means:** no restart needed. It takes up to 60 seconds.
 
@@ -1970,7 +1971,7 @@ k get nodes
 ```
 You see:
 ```
-controlplane   Ready    control-plane   ...   v1.35.0   <-- kubectl answers
+controlplane   Ready    control-plane   ...   v1.35.0   <-- works
 ```
 
 ---
@@ -1978,7 +1979,6 @@ controlplane   Ready    control-plane   ...   v1.35.0   <-- kubectl answers
 ### Three words first
 
 - **Static pod** = a pod the kubelet starts from a file in `/etc/kubernetes/manifests/`.
-- **crictl** = lists containers and logs on the node. Works without the API server.
 - **etcd** = the cluster database. The API server reaches it on port 2379.
 
 ---
@@ -2047,12 +2047,14 @@ k get pod test
 ```
 k describe pod test
 ```
+Look at the last line: `Events` is empty.
+
 You see:
 ```
 Node:             <none>
 Status:           Pending
 ...
-Events:           <none>   <-- nobody tried to place it
+Events:           <none>
 ```
 **Means:** the scheduler never looked. With a reason in Events, it is question 3.
 
@@ -2082,7 +2084,7 @@ k describe pod kube-scheduler-controlplane -n kube-system
 ```
 You see:
 ```
-Warning  Failed  ...  exec: "kube-schedulerx": executable file not found in $PATH: unknown   <-- the cause
+Warning  Failed  ...  exec: "kube-schedulerx": executable file not found in $PATH: unknown   <-- cause
 ```
 **Means:** the program name in `command:` is misspelled.
 **Don't:** expect `k logs` to help. The program never started.
@@ -2103,7 +2105,7 @@ In vim: type `/schedulerx`, Enter, `$`, `x`, `:wq`, Enter.
 You see:
 ```
   - command:
-    - kube-scheduler   <-- no x
+    - kube-scheduler  <-- no x
 ```
 **Don't:** keep the backup in `manifests/`. It would run as a second scheduler.
 
@@ -2224,11 +2226,13 @@ k exec client -n web -- wget -qO- -T 3 backend-svc
 k get networkpolicy -n web
 k describe networkpolicy deny-all -n web
 ```
+In the list, `<none>` under POD-SELECTOR means ALL pods.
+
 You see:
 ```
-deny-all   <none>   2m   <-- <none> = ALL pods
+deny-all   <none>   2m
 ...
-    <none> (Selected pods are isolated for ingress connectivity)   <-- nothing allowed in
+    <none> (Selected pods are isolated for ingress connectivity)   <-- nothing in
 ```
 **Means:** `deny-all` selects every pod and lets nothing in.
 **Don't:** edit or delete `deny-all`. The question forbids it. Policies only add up.
@@ -2244,8 +2248,8 @@ k get pods --show-labels -n web
 ```
 You see:
 ```
-backend-...   1/1   Running   0   2m   app=backend,pod-template-hash=...   <-- protected
-client        1/1   Running   0   2m   run=client                          <-- may come in
+backend-...   1/1   Running   0   2m   app=backend,pod-template-hash=...   <-- protect
+client        1/1   Running   0   2m   run=client   <-- allow
 ```
 **Means:** protect `app=backend`. Let in `run=client`. Pods made with `k run` get `run=<name>`.
 
@@ -2258,27 +2262,27 @@ client        1/1   Running   0   2m   run=client                          <-- m
 ```
 vim np.yaml
 ```
-The finished file. Only the `# <-- CHANGE` lines differ from the docs:
+The finished file. Only the `# <--` lines differ from the docs:
 ```
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-client          # <-- CHANGE
-  namespace: web              # <-- CHANGE
+  name: allow-client  # <--
+  namespace: web  # <--
 spec:
   podSelector:
     matchLabels:
-      app: backend            # <-- CHANGE
+      app: backend  # <--
   policyTypes:
   - Ingress
   ingress:
   - from:
     - podSelector:
         matchLabels:
-          run: client         # <-- CHANGE
+          run: client  # <--
     ports:
     - protocol: TCP
-      port: 80                # <-- CHANGE
+      port: 80  # <--
 ```
 **Means:** from the docs copy, delete `- Egress`, the `ipBlock` and `namespaceSelector` blocks, and the whole `egress:` part.
 **Don't:** keep `- Egress`. With no egress rules it blocks all outgoing traffic.
@@ -2390,7 +2394,7 @@ k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup kubernetes.def
 ```
 You see:
 ```
-;; connection timed out; no servers could be reached   <-- DNS does not answer
+;; connection timed out; no servers could be reached   <-- no DNS
 ```
 **Means:** nobody answers on the DNS address.
 **Don't:** test a short name like `kubernetes`. busybox can print `NXDOMAIN` even when DNS works.
@@ -2406,7 +2410,7 @@ k get pods -l k8s-app=kube-dns -n kube-system
 ```
 You see:
 ```
-No resources found in kube-system namespace.   <-- no DNS pods at all
+No resources found in kube-system namespace.   <-- no pods
 ```
 **Means:** no pod, no answer. Now ask why there are none.
 
@@ -2421,7 +2425,7 @@ k get deployment coredns -n kube-system
 ```
 You see:
 ```
-coredns   0/0   0   0   30m   <-- 0/0: scaled to zero
+coredns   0/0   0   0   30m
 ```
 **Means:** nothing crashed. Someone asked for zero pods.
 
@@ -2438,7 +2442,7 @@ k rollout status deployment/coredns --timeout=120s -n kube-system
 You see:
 ```
 deployment.apps/coredns scaled
-deployment "coredns" successfully rolled out   <-- both pods ready
+deployment "coredns" successfully rolled out   <-- ready
 ```
 **Don't:** scale `kube-dns`. That is the Service and the label. The Deployment is `coredns`.
 
@@ -2454,7 +2458,7 @@ k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup kubernetes.def
 You see:
 ```
 Name:      kubernetes.default.svc.cluster.local
-Address:   10.96.0.1   <-- the answer
+Address:   10.96.0.1  <-- IP
 ```
 **Don't:** read the first `Address` line. That one is the DNS server itself.
 
@@ -2463,7 +2467,6 @@ Address:   10.96.0.1   <-- the answer
 ### Three words first
 
 - **CoreDNS** = the cluster's DNS program. Deployment `coredns` in `kube-system`.
-- **kube-dns** = the old name. Still the pod label `k8s-app=kube-dns` and the Service name.
 - **nslookup** = asks DNS for the IP of a name.
 
 ---

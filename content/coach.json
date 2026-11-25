@@ -43,11 +43,13 @@
   ],
   "memorise": [
    "k get pods -n app",
-   "k describe pod <pod> -n app   # Events: ImagePullBackOff, bad tag",
+   "k describe pod <pod> -n app   # Events: not found",
+   "k get deployment api -o wide -n app   # CONTAINERS",
    "k set image deployment/api nginx=nginx:1.27 -n app",
    "k rollout status deployment/api -n app"
   ],
-  "minutes": 2
+  "minutes": 2,
+  "plan": "ImagePullBackOff → describe (Events: not found) → get deployment -o wide (CONTAINERS) → set image nginx=nginx:1.27 → rollout status"
  },
  "2": {
   "pattern": "Pod CrashLoopBackOff → logs --previous → fix command in Deployment",
@@ -135,17 +137,19 @@
    },
    {
     "need": "request is 100m",
-    "cmd": "k get deployment api -o jsonpath='{..resources}' -n app",
-    "see": "\"requests\":{\"cpu\":\"100m\"}"
+    "cmd": "k get deployment api -o yaml -n app | grep -A 1 requests",
+    "see": "cpu: 100m"
    }
   ],
   "memorise": [
    "k get pods -n app",
-   "k describe pod <pod> -n app   # Insufficient cpu",
+   "k describe pod <pending-pod> -n app   # Insufficient cpu",
+   "k get deployment api -o yaml -n app | grep -A 1 requests",
    "k set resources deployment/api --requests=cpu=100m -n app",
-   "k get pods -n app"
+   "k rollout status deployment/api -n app"
   ],
-  "minutes": 2
+  "minutes": 2,
+  "plan": "Pending → describe the Pending pod (Insufficient cpu) → grep requests (cpu \"100\") → set resources --requests=cpu=100m → rollout status"
  },
  "4": {
   "pattern": "Node NotReady → ssh → kubelet stopped → enable --now",
@@ -190,13 +194,16 @@
    }
   ],
   "memorise": [
-   "k describe node node01   # Kubelet stopped posting status",
+   "k get nodes",
+   "k describe node node01   # Kubelet stopped posting node status.",
    "ssh node01",
-   "systemctl status kubelet",
+   "systemctl status kubelet --no-pager",
    "systemctl enable --now kubelet",
-   "exit; k get nodes"
+   "exit",
+   "k wait --for=condition=Ready node/node01 --timeout=60s"
   ],
-  "minutes": 2
+  "minutes": 2,
+  "plan": "NotReady → describe node (Kubelet stopped posting) → ssh node01, systemctl status (disabled, dead) → enable --now kubelet → exit, node Ready"
  },
  "5": {
   "pattern": "Node NotReady → kubelet fails → fix service file path",
@@ -241,9 +248,11 @@
    "journalctl -u kubelet -n 30 --no-pager",
    "which kubelet; systemctl cat kubelet",
    "vim /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf   # /usr/local/bin/kubelet → /usr/bin/kubelet",
-   "systemctl daemon-reload; systemctl restart kubelet"
+   "systemctl daemon-reload; systemctl restart kubelet",
+   "exit; k get nodes"
   ],
-  "minutes": 4
+  "minutes": 4,
+  "plan": "NotReady → ssh node01, status (203/EXEC) → journalctl (no such file) → fix path in 10-kubeadm.conf → daemon-reload, restart → node Ready"
  },
  "6": {
   "pattern": "Service unreachable → no endpoints → fix selector to match labels",
@@ -289,12 +298,13 @@
   ],
   "memorise": [
    "k get endpoints backend-svc -n web",
-   "k describe service backend-svc -n web  # Selector",
+   "k get service backend-svc -o wide -n web  # SELECTOR",
    "k get pods --show-labels -n web",
    "k set selector service/backend-svc app=backend -n web",
    "k exec client -n web -- wget -qO- -T 3 backend-svc"
   ],
-  "minutes": 3
+  "minutes": 3,
+  "plan": "Service unreachable → endpoints (<none>) → SELECTOR vs --show-labels → set selector app=backend → wget from client"
  },
  "7": {
   "pattern": "Service has endpoints but no answer → fix targetPort",
@@ -335,12 +345,14 @@
    }
   ],
   "memorise": [
-   "k get endpoints backend-svc -n web   # IP:wrongport",
+   "k get endpoints backend-svc -n web   # IP:8080",
    "k exec client -n web -- wget -qO- -T 3 backend-svc",
+   "k describe service backend-svc -n web   # TargetPort",
    "k edit service/backend-svc -n web  # targetPort: 80",
    "k exec client -n web -- wget -qO- -T 3 backend-svc"
   ],
-  "minutes": 2
+  "minutes": 2,
+  "plan": "Service unreachable → endpoints (IP:8080) → describe service (TargetPort 8080) → edit service, targetPort 80 → wget from client"
  },
  "8": {
   "pattern": "kubectl fails → crictl logs apiserver → fix static manifest",
@@ -381,12 +393,15 @@
    }
   ],
   "memorise": [
+   "k get nodes   # 6443 refused",
    "crictl ps -a | grep kube-apiserver",
    "crictl logs <id> 2>&1 | tail -20   # 127.0.0.1:2380",
+   "cp /etc/kubernetes/manifests/kube-apiserver.yaml /root/kube-apiserver.yaml.orig",
    "vim /etc/kubernetes/manifests/kube-apiserver.yaml   # --etcd-servers=https://127.0.0.1:2379",
    "k get nodes   # retry every 15 s"
   ],
-  "minutes": 5
+  "minutes": 5,
+  "plan": "kubectl refused (6443) → crictl ps -a (Exited, copy ID) → crictl logs (2380) → back up, fix manifest to 2379 → k get nodes"
  },
  "9": {
   "pattern": "New pods Pending, Node <none> → scheduler broken → fix manifest",
@@ -427,13 +442,16 @@
    }
   ],
   "memorise": [
-   "k describe pod test   # Node: <none>",
+   "k describe pod test   # Events: <none>",
    "k get pods -n kube-system",
    "k describe pod kube-scheduler-controlplane -n kube-system",
+   "cp /etc/kubernetes/manifests/kube-scheduler.yaml /root/kube-scheduler.yaml.orig",
    "vim /etc/kubernetes/manifests/kube-scheduler.yaml   # kube-schedulerx → kube-scheduler",
+   "k get pods -n kube-system | grep scheduler",
    "k get pod test"
   ],
-  "minutes": 4
+  "minutes": 4,
+  "plan": "Pod Pending (Events <none>) → scheduler pod CrashLoopBackOff → describe (kube-schedulerx) → back up, fix manifest → test Running"
  },
  "10": {
   "pattern": "Traffic times out → deny policy → add allow NetworkPolicy",
@@ -482,13 +500,15 @@
    }
   ],
   "memorise": [
+   "k describe networkpolicy deny-all -n web",
    "k get pods --show-labels -n web   # backend app=backend, client run=client",
-   "docs: 'network policies' → copy example → keep ingress only",
+   "docs: 'Network Policies' → 'The NetworkPolicy resource' → copy → delete Egress, ipBlock, namespaceSelector, egress:",
    "name: allow-client; podSelector app=backend; from podSelector run=client; ports TCP 80",
    "k apply -f np.yaml",
    "k exec client -n web -- wget -qO- -T 3 backend-svc"
   ],
-  "minutes": 6
+  "minutes": 6,
+  "plan": "wget times out → describe networkpolicy (deny-all = all pods) → --show-labels (app=backend, run=client) → np.yaml from docs, apply → wget works"
  },
  "11": {
   "pattern": "Names don't resolve, IPs work → CoreDNS down → scale it",
@@ -503,7 +523,7 @@
    },
    {
     "q": "Two CoreDNS replicas must be running",
-    "means": "Scale deploy coredns to exactly 2"
+    "means": "Scale deployment coredns to exactly 2"
    }
   ],
   "traps": [
@@ -540,9 +560,11 @@
    "k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup kubernetes.default.svc.cluster.local",
    "k get pods -l k8s-app=kube-dns -n kube-system",
    "k get deployment coredns -n kube-system  # 0/0",
-   "k scale deployment/coredns --replicas=2 -n kube-system"
+   "k scale deployment/coredns --replicas=2 -n kube-system",
+   "k rollout status deployment/coredns --timeout=120s -n kube-system"
   ],
-  "minutes": 3
+  "minutes": 3,
+  "plan": "nslookup times out → CoreDNS pods (none) → deployment coredns (0/0) → scale --replicas=2 → nslookup answers"
  },
  "12": {
   "pattern": "Write command output to a file (logs, top)",

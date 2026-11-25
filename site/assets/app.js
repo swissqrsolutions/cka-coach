@@ -297,8 +297,8 @@
     const build = `<h2>Build it in Killercoda</h2>
       <div class="card">${q.setup ? `<a class="btn block" href="${KILLERCODA}" target="_blank" rel="noopener">Open Killercoda</a>${codeBlock(q.setup)}<p class="small">Exam: already set up. Run <code>ssh</code> first, <code>exit</code> last.</p>` : '<p class="small">Cannot be built in a playground. Practise in killer.sh.</p>'}</div>`;
     const examNote = '';
-    const help = `<details class="step needhelp"><summary>Need help?</summary><div class="body">
-        ${st.broken ? `<p class="story">${esc(st.broken)}</p>` : ''}
+    const help = `<details class="step needhelp"><summary>Stuck?</summary><div class="body">
+        <p class="small">Open this only when the screen does not match the step, or a word is new.</p>
         ${q.wrong ? `<h3>If something goes wrong</h3><div class="btable">${q.wrong}</div>` : ''}
         ${q.words ? `<h3>New words</h3>${q.words}` : ''}
         <p class="small"><a href="#/basics">New here? The basics →</a></p>
