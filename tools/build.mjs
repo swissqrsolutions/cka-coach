@@ -14,7 +14,7 @@ const lines = md.split('\n');
 const renderer = new marked.Renderer();
 renderer.code = ({ text }) => `<div class="code"><button class="copy" type="button">Copy</button><pre><code>${text.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))}</code></pre></div>`;
 const ltSafe = s => String(s || '').split(/(`[^`]*`)/).map((p, i) => i % 2 ? p : p.replace(/<(?=[A-Za-z\/])/g, '&lt;')).join('');
-const pipeSafe = s => s.split('\n').map(l => l.trim().startsWith('|') ? l.replace(/`[^`]*`/g, c => c.replace(/\|/g, '\\|')) : l).join('\n');
+const pipeSafe = s => s.split('\n').map(l => l.trim().startsWith('|') ? l.replace(/`[^`]*`/g, c => c.replace(/(?<!\\)\|/g, '\\|')) : l).join('\n');
 const html = s => marked.parse(ltSafe(pipeSafe(s.trim())), { renderer });
 
 // ---- split top-level parts: everything before PART 4 is reference material

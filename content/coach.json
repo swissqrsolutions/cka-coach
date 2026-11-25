@@ -603,8 +603,8 @@
   "verify": [
    {
     "need": "logs saved",
-    "cmd": "cat /opt/api.log",
-    "see": "log lines"
+    "cmd": "head -3 /opt/api.log",
+    "see": "nginx log lines"
    },
    {
     "need": "top pod name saved",
@@ -618,7 +618,8 @@
    "echo <first-row-pod-name> > /opt/top.txt",
    "cat /opt/api.log /opt/top.txt"
   ],
-  "minutes": 2
+  "minutes": 2,
+  "plan": "Two files → logs api -n app > /opt/api.log → top pod -A --sort-by=cpu (first row) → echo name > /opt/top.txt → cat shows one name"
  },
  "13": {
   "pattern": "ServiceAccount + Role + RoleBinding, imperative, then auth can-i",
@@ -643,7 +644,7 @@
    },
    {
     "dont": "A typo like `--role=deploy-manger` in the rolebinding",
-    "do": "Check names with `k describe rolebinding deploy-bot-binding -n dev`, because a typo gives no error; only can-i says no"
+    "do": "Check names with `k get rolebinding deploy-bot-binding -o wide -n dev`, because a typo gives no error; only can-i says no"
    },
    {
     "dont": "`--verb=get, list, create`",
@@ -672,7 +673,8 @@
    "k create rolebinding deploy-bot-binding --role=deploy-manager --serviceaccount=dev:deploy-bot -n dev",
    "k auth can-i create deployments --as=system:serviceaccount:dev:deploy-bot -n dev"
   ],
-  "minutes": 3
+  "minutes": 3,
+  "plan": "SA + Role + RoleBinding → create serviceaccount → create role (get,list,create) → create rolebinding (dev:deploy-bot) → can-i create yes, delete no"
  },
  "14": {
   "pattern": "Cluster-wide permission → ClusterRole + ClusterRoleBinding",
@@ -722,7 +724,8 @@
    "k create clusterrolebinding node-viewer-binding --clusterrole=node-reader --serviceaccount=ops:node-viewer",
    "k auth can-i list nodes --as=system:serviceaccount:ops:node-viewer"
   ],
-  "minutes": 3
+  "minutes": 3,
+  "plan": "Nodes are cluster-wide → api-resources (NAMESPACED false) → SA in ops → create clusterrole → create clusterrolebinding (ops:node-viewer) → can-i list nodes yes"
  },
  "15": {
   "pattern": "helm template with a --set value into a file",
@@ -772,11 +775,12 @@
   ],
   "memorise": [
    "helm repo add argocd https://argoproj.github.io/argo-helm; helm repo update",
-   "helm show values argocd/argo-cd --version 7.7.3 | grep -i -A3 '^crds'",
+   "helm show values argocd/argo-cd --version 7.7.3 | grep -A3 \"^crds\"",
    "helm template my-argo argocd/argo-cd --version 7.7.3 --namespace argocd --set crds.install=false > /root/argo-helm.yaml",
-   "grep -c 'kind: CustomResourceDefinition' /root/argo-helm.yaml"
+   "grep -c \"kind: CustomResourceDefinition\" /root/argo-helm.yaml"
   ],
-  "minutes": 4
+  "minutes": 4,
+  "plan": "CRDs off, file only → repo add argocd + update → search --versions (7.7.3) → show values (crds.install) → template --set crds.install=false > file → CRD count 0"
  },
  "16": {
   "pattern": "helm install → upgrade → rollback a release",
@@ -804,7 +808,7 @@
     "do": "Add `-n demo` to upgrade, history and rollback, because Helm otherwise looks in default and says release not found"
    },
    {
-    "dont": "Expecting REVISION 1 in `helm history web -n demo` after rollback",
+    "dont": "Expecting REVISION 1 in `helm list -n demo` after rollback",
     "do": "Expect a new revision 3 with revision 1's settings, because Helm records every rollback as a new revision"
    },
    {
@@ -815,8 +819,8 @@
   "verify": [
    {
     "need": "rollback done",
-    "cmd": "helm history web -n demo",
-    "see": "rev 3 deployed, 'Rollback to 1'"
+    "cmd": "helm list -n demo",
+    "see": "REVISION 3, deployed"
    },
    {
     "need": "2 replicas again",
@@ -828,9 +832,10 @@
    "helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx; helm repo update",
    "helm install web ingress-nginx/ingress-nginx -n demo --create-namespace --set controller.replicaCount=2",
    "helm upgrade web ingress-nginx/ingress-nginx -n demo --set controller.replicaCount=3",
-   "helm rollback web 1 -n demo; helm history web -n demo"
+   "helm history web -n demo; helm rollback web 1 -n demo"
   ],
-  "minutes": 5
+  "minutes": 5,
+  "plan": "Install, change, undo → show values (controller.replicaCount) → install --set …=2 → upgrade --set …=3 → history + rollback web 1 → REVISION 3, controller 2/2"
  },
  "17": {
   "pattern": "Change kustomization.yaml, not the YAML file it lists; apply the folder with -k",
@@ -859,29 +864,30 @@
    },
    {
     "dont": "`k get deployments` in the default namespace",
-    "do": "`k get deployments -n kust`, because kustomization.yaml puts the deployment in namespace kust"
+    "do": "`k get deployment kweb -n kust`, because kustomization.yaml puts the deployment in namespace kust"
    }
   ],
   "verify": [
    {
     "need": "rendered output correct",
-    "cmd": "k kustomize /root/kust",
-    "see": "replicas: 3, namespace: kust"
+    "cmd": "k kustomize /root/kust | grep -E 'namespace|replicas'",
+    "see": "namespace: kust, replicas: 3"
    },
    {
     "need": "applied",
-    "cmd": "k get deployments -n kust",
+    "cmd": "k get deployment kweb -n kust",
     "see": "kweb 3/3"
    }
   ],
   "memorise": [
    "cat /root/kust/kustomization.yaml",
    "vim /root/kust/kustomization.yaml   # replicas: count: 2 → 3",
-   "k kustomize /root/kust",
+   "k kustomize /root/kust | grep -E 'namespace|replicas'",
    "k apply -k /root/kust",
-   "k get deployments -n kust"
+   "k get deployment kweb -n kust"
   ],
-  "minutes": 3
+  "minutes": 3,
+  "plan": "Change the plan, not deploy.yaml → cat kustomization.yaml (count: 2) → vim (count: 3) → kustomize preview → apply -k /root/kust → kweb 3/3 in kust"
  },
  "18": {
   "pattern": "List CRDs / explain a custom field into files",
@@ -912,13 +918,13 @@
   "verify": [
    {
     "need": "CRD list saved",
-    "cmd": "cat /root/crds.txt",
-    "see": "6 cert-manager.io lines"
+    "cmd": "wc -l /root/crds.txt",
+    "see": "6 /root/crds.txt"
    },
    {
     "need": "field docs saved",
-    "cmd": "cat /root/subject.txt",
-    "see": "KIND: Certificate, FIELD: subject"
+    "cmd": "head -2 /root/subject.txt",
+    "see": "GROUP: cert-manager.io, KIND: Certificate"
    }
   ],
   "memorise": [
@@ -926,7 +932,8 @@
    "k explain certificate.spec.subject > /root/subject.txt",
    "cat /root/crds.txt /root/subject.txt"
   ],
-  "minutes": 2
+  "minutes": 3,
+  "plan": "Two files → get crd | grep cert-manager (6 lines) > /root/crds.txt → explain certificate.spec.subject → same, no head, > /root/subject.txt → cat both"
  },
  "19": {
   "pattern": "Prepare node: install .deb, enable service, persistent sysctl",
@@ -960,9 +967,9 @@
   ],
   "verify": [
    {
-    "need": "service running + enabled",
-    "cmd": "systemctl is-active cri-docker; systemctl is-enabled cri-docker",
-    "see": "active / enabled"
+    "need": "service enabled + running",
+    "cmd": "systemctl is-enabled cri-docker; systemctl is-active cri-docker",
+    "see": "enabled / active"
    },
    {
     "need": "4 params set",
@@ -976,7 +983,8 @@
    "vim /etc/sysctl.d/k8s.conf   # paste the 4 lines",
    "sysctl --system"
   ],
-  "minutes": 4
+  "minutes": 4,
+  "plan": "Persist = a file → dpkg -i the .deb → systemctl enable --now cri-docker → 4 lines in /etc/sysctl.d/k8s.conf → sysctl --system → sysctl shows 1, 1, 1, 131072"
  },
  "20": {
   "pattern": "Install CNI from manifest; NetworkPolicy needed → Calico",
@@ -1011,18 +1019,13 @@
   "verify": [
    {
     "need": "CNI running",
-    "cmd": "k get pods -A | grep -i -E 'calico|tigera'",
+    "cmd": "k get pods -A | grep -i -E \"calico|tigera\"",
     "see": "all Running"
    },
    {
     "need": "pods can communicate",
     "cmd": "k get nodes",
     "see": "all nodes Ready"
-   },
-   {
-    "need": "pods get IPs and DNS runs",
-    "cmd": "k get pods -l k8s-app=kube-dns -n kube-system",
-    "see": "coredns pods Running (no longer Pending)"
    }
   ],
   "memorise": [
@@ -1031,7 +1034,8 @@
    "curl -LO <custom-resources URL>; vim custom-resources.yaml   # cidr: <cluster-cidr>",
    "k apply -f custom-resources.yaml; k get nodes"
   ],
-  "minutes": 6
+  "minutes": 7,
+  "plan": "NetworkPolicy → Calico → create -f tigera-operator → cluster-cidr (controller-manager) → custom-resources.yaml (cidr: 10.244.0.0/16) → apply → calico Running, nodes Ready"
  },
  "21": {
   "pattern": "kubeadm upgrade: drain → kubeadm → kubelet → uncordon, per node",
@@ -1096,7 +1100,8 @@
    "systemctl daemon-reload; systemctl restart kubelet",
    "exit   # back from node01; then k uncordon <node>"
   ],
-  "minutes": 12
+  "minutes": 12,
+  "plan": "Upgrade node by node → madison (1.35.2-1.1) → kubeadm + upgrade apply v1.35.2 → drain, kubelet + kubectl, restart kubelet, uncordon → node01 the same with upgrade node → both v1.35.2, Ready"
  },
  "22": {
   "pattern": "etcd snapshot save (with certs) + restore + repoint hostPath",
@@ -1156,7 +1161,8 @@
    "etcdutl snapshot restore /opt/etcd-backup.db --data-dir=/var/lib/etcd-restored",
    "vim /etc/kubernetes/manifests/etcd.yaml   # etcd-data hostPath path: /var/lib/etcd-restored"
   ],
-  "minutes": 8
+  "minutes": 8,
+  "plan": "etcd backup + restore → grep certs in etcd.yaml → etcdctl snapshot save (endpoint + 3 certs) → etcdutl snapshot restore (--data-dir) → etcd-data hostPath → etcd Running"
  },
  "23": {
   "pattern": "Add containerPort, expose as NodePort with fixed nodePort",
@@ -1171,17 +1177,17 @@
    },
    {
     "q": "using node port `30080`",
-    "means": "k expose can't set it: k edit service → nodePort: 30080"
+    "means": "k expose can't set it: k patch service np-svc → nodePort 30080"
    }
   ],
   "traps": [
    {
     "dont": "Lining up `ports:` with the dash of `- image:`",
-    "do": "Line `ports:` up with `imagePullPolicy:`, because it belongs inside the same container entry"
+    "do": "Line `ports:` up with `name:`, because it belongs inside the same container entry"
    },
    {
     "dont": "Keeping the random nodePort that `k expose` picked",
-    "do": "`k edit service/np-svc -n web` and set `nodePort: 30080`, because `k expose` cannot choose the node port"
+    "do": "`k patch service np-svc -p '{\"spec\":{\"ports\":[{\"port\":80,\"nodePort\":30080}]}}' -n web`, because `k expose` cannot choose the node port"
    },
    {
     "dont": "`k expose deployment np ...` without `-n web`",
@@ -1201,17 +1207,18 @@
    },
    {
     "need": "reachable",
-    "cmd": "curl -s -m 3 node01:30080 | head -5",
-    "see": "Welcome to nginx!"
+    "cmd": "curl -s -m 3 node01:30080 | grep title",
+    "see": "<title>Welcome to nginx!</title>"
    }
   ],
   "memorise": [
-   "k edit deployment/np -n web  # under image: ports: - containerPort: 80 / protocol: TCP",
+   "k edit deployment/np -n web  # under name: nginx: ports: - containerPort: 80 / protocol: TCP",
    "k expose deployment np --name=np-svc --port=80 --target-port=80 --type=NodePort -n web",
-   "k edit service/np-svc -n web  # nodePort: 30080",
+   "k patch service np-svc -p '{\"spec\":{\"ports\":[{\"port\":80,\"nodePort\":30080}]}}' -n web",
    "k get service np-svc -n web"
   ],
-  "minutes": 4
+  "minutes": 4,
+  "plan": "containerPort + NodePort → edit deployment (containerPort 80) → expose --type=NodePort → patch service (nodePort 30080) → 80:30080/TCP, curl answers"
  },
  "24": {
   "pattern": "Create Ingress imperatively: host/path → service:port",
@@ -1260,7 +1267,8 @@
    "k create ingress web-ing --class=nginx --rule=\"shop.example.com/*=backend-svc:80\" -n web",
    "k describe ingress web-ing -n web"
   ],
-  "minutes": 3
+  "minutes": 3,
+  "plan": "Ingress for host + path → get ingressclass (nginx) → get service (port 80) → create ingress (--class, --rule host/*=svc:80) → describe shows a pod IP"
  },
  "25": {
   "pattern": "Ingress → Gateway + HTTPRoute (copy host, TLS, rules)",
@@ -1324,7 +1332,8 @@
    "docs: copy HTTPRoute example → parentRefs web-gw, hostnames, path, backendRefs",
    "k apply -f gw.yaml -f route.yaml; k delete ingress web-ing -n web"
   ],
-  "minutes": 8
+  "minutes": 8,
+  "plan": "Ingress → Gateway API → describe ingress (host, secret, path, Service:port) → get gatewayclass → Gateway (HTTPS 443 + tls) → HTTPRoute (parentRefs web-gw) → delete ingress → route values, no Ingress"
  },
  "26": {
   "pattern": "NetworkPolicy: allow pod label A → pod label B on one port",
@@ -1359,8 +1368,8 @@
   "verify": [
    {
     "need": "api allowed",
-    "cmd": "k exec api -n prod -- wget -qO- -T 3 db-svc | head -3",
-    "see": "Welcome to nginx!"
+    "cmd": "k exec api -n prod -- wget -qO- -T 3 db-svc | grep title",
+    "see": "<title>Welcome to nginx!</title>"
    },
    {
     "need": "others blocked",
@@ -1374,7 +1383,8 @@
    "name: db-policy; namespace: prod; podSelector app: db; from podSelector app: api; ports TCP 80",
    "k apply -f np.yaml"
   ],
-  "minutes": 5
+  "minutes": 5,
+  "plan": "Only app=api may reach app=db → get pods --show-labels → docs example (delete Egress, ipBlock, namespaceSelector) → apply → describe → api gets the page, other times out"
  },
  "27": {
   "pattern": "Default deny both directions + egress exception for DNS",
@@ -1429,7 +1439,8 @@
    "egress: - ports: - protocol: UDP port: 53 / - protocol: TCP port: 53",
    "k apply -f deny.yaml; k describe networkpolicy default-deny -n prod"
   ],
-  "minutes": 4
+  "minutes": 4,
+  "plan": "Deny all but DNS → docs default deny all (podSelector: {}) → egress ports 53 UDP + TCP (no to:) → apply → describe → nslookup works, wget times out"
  },
  "28": {
   "pattern": "Edit ConfigMap → rollout restart so pods pick it up",
@@ -1474,8 +1485,8 @@
    },
    {
     "need": "TLS 1.2 refused",
-    "cmd": "curl -sSk --tls-max 1.2 https://<address>",
-    "see": "error (protocol version); --tlsv1.3 works"
+    "cmd": "openssl s_client -connect $IP:443 -tls1_2 </dev/null 2>&1 | grep -E 'alert|New,'",
+    "see": "alert protocol version; with -tls1_3: New, TLSv1.3"
    }
   ],
   "memorise": [
@@ -1484,7 +1495,8 @@
    "k rollout restart deployment/nginx-static -n nginx-static",
    "k rollout status deployment/nginx-static -n nginx-static"
   ],
-  "minutes": 3
+  "minutes": 3,
+  "plan": "Only TLSv1.3 → back up configmap → subPath (no live update) → edit configmap (remove TLSv1.2, keep ;) → rollout restart → TLSv1.2 alert, TLSv1.3 New"
  },
  "29": {
   "pattern": "CoreDNS Corefile edit (rewrite) → restart CoreDNS",
@@ -1538,7 +1550,8 @@
    "k rollout restart deployment/coredns -n kube-system",
    "k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup api.example.com"
   ],
-  "minutes": 5
+  "minutes": 5,
+  "plan": "Name → Service via CoreDNS → back up coredns ConfigMap → get service (CLUSTER-IP) → edit Corefile (rewrite under ready) → rollout restart coredns → nslookup gives the CLUSTER-IP"
  },
  "30": {
   "pattern": "Cross-namespace DNS lookup from temp pod → file",
@@ -1578,8 +1591,8 @@
    },
    {
     "need": "right IP",
-    "cmd": "k get service backend-svc -n web",
-    "see": "same CLUSTER-IP"
+    "cmd": "k get service backend-svc -o jsonpath='{.spec.clusterIP}{\"\\n\"}' -n web",
+    "see": "same IP as the Address under Name: in the file"
    }
   ],
   "memorise": [
@@ -1587,18 +1600,19 @@
    "k run t --image=busybox:1.36 --rm -i --restart=Never -- nslookup backend-svc.web.svc.cluster.local > /root/dns.txt",
    "cat /root/dns.txt"
   ],
-  "minutes": 2
+  "minutes": 2,
+  "plan": "Service in another namespace → get services -A (namespace, IP) → nslookup full name (backend-svc.web.svc.cluster.local) → run --rm -i > /root/dns.txt → same CLUSTER-IP"
  },
  "31": {
-  "pattern": "Add native sidecar (initContainer, restartPolicy Always) + shared emptyDir",
+  "pattern": "Add a sidecar container (under containers:, after the main one) + shared emptyDir",
   "clues": [
    {
     "q": "Add a sidecar container named `log-shipper`",
-    "means": "initContainers: entry with restartPolicy: Always (native sidecar)"
+    "means": "a second entry under containers:, after busybox"
    },
    {
     "q": "runs `tail -f /var/log/app.log`",
-    "means": "command: [\"sh\",\"-c\",\"tail -f /var/log/app.log\"]"
+    "means": "command: [\"tail\", \"-f\", \"/var/log/app.log\"]"
    },
    {
     "q": "Use a shared volume named `logs` mounted at `/var/log` in both containers",
@@ -1619,8 +1633,8 @@
     "do": "Put `volumes: - name: logs emptyDir: {}` at pod spec level, next to `containers:`, because volumes belong to the pod"
    },
    {
-    "dont": "log-shipper in `initContainers:` without `restartPolicy: Always`",
-    "do": "Add `restartPolicy: Always` to log-shipper, because without it the endless tail blocks the app from ever starting"
+    "dont": "log-shipper in `initContainers:` with `restartPolicy: Always` (native sidecar)",
+    "do": "Put log-shipper under `containers:`, after `busybox`, because a native sidecar starts first, finds no log file yet, and `tail -f` quits (`Init:CrashLoopBackOff`)"
    }
   ],
   "verify": [
@@ -1631,17 +1645,18 @@
    },
    {
     "need": "sidecar reads the log",
-    "cmd": "k logs deployment/app -c log-shipper -n work",
-    "see": "app log lines"
+    "cmd": "k logs deployment/app -c log-shipper --tail=3 -n work",
+    "see": "date lines"
    }
   ],
   "memorise": [
    "k get deployment app -o yaml -n work > app.yaml",
    "vim app.yaml   # volumes: - name: logs emptyDir: {}; main: volumeMounts logs → /var/log",
-   "initContainers: - name: log-shipper image: busybox:1.36 restartPolicy: Always command: [sh,-c,'tail -f /var/log/app.log'] volumeMounts logs → /var/log",
+   "containers: (after busybox) - name: log-shipper image: busybox:1.36 command: [\"tail\", \"-f\", \"/var/log/app.log\"] volumeMounts logs → /var/log",
    "k apply -f app.yaml; k get pods -n work"
   ],
-  "minutes": 8
+  "minutes": 8,
+  "plan": "Sidecar + shared log → get -o yaml > app.yaml → volumeMounts in busybox + log-shipper container + emptyDir volume → apply → 2/2 Running, sidecar logs dates"
  },
  "32": {
   "pattern": "HPA imperative, then edit behavior for stabilization window",

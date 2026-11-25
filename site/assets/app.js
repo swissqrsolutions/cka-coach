@@ -293,7 +293,7 @@
     phSeen = plan ? new Set() : null; const stepsOnly = steps(all.filter(x => !x.v)); const verify = steps(all.filter(x => x.v));
     phSeen = null;
     const learnBox = plan ? merkBox(q) : mugBox(q);
-    const thinkCard = plan ? `<section class="card think"><div class="label">Plan</div><p class="plan">${esc(plan)}</p>${q.budget ? `<p class="budget">⏱ ${esc(q.budget)}</p>` : ''}</section>` : q.think ? `<section class="card think"><div class="label">Think (15 seconds)</div>${q.think}${q.budget ? `<p class="budget">⏱ ${esc(q.budget)}</p>` : ''}</section>` : '';
+    const thinkCard = plan ? `<section class="card think"><div class="label">Plan</div><p class="plan">${esc(plan).replace(/-/g, "&#8209;")}</p>${q.budget ? `<p class="budget">⏱ ${esc(q.budget)}</p>` : ''}</section>` : q.think ? `<section class="card think"><div class="label">Think (15 seconds)</div>${q.think}${q.budget ? `<p class="budget">⏱ ${esc(q.budget)}</p>` : ''}</section>` : '';
     const build = `<h2>Build it in Killercoda</h2>
       <div class="card">${q.setup ? `<a class="btn block" href="${KILLERCODA}" target="_blank" rel="noopener">Open Killercoda</a>${codeBlock(q.setup)}<p class="small">Exam: already set up. Run <code>ssh</code> first, <code>exit</code> last.</p>` : '<p class="small">Cannot be built in a playground. Practise in killer.sh.</p>'}</div>`;
     const examNote = '';
@@ -355,7 +355,7 @@
       ${verify}`;
     const tried = !!(prog()[q.n] || {}).st;
     return `${BASICS}
-      ${plainWords ? `<h2>In plain words</h2><div class="card plain">${plainWords}</div>` : ''}
+      ${(q.coach || {}).plan ? `<section class="card think"><div class="label">Plan</div><p class="plan">${esc(q.coach.plan).replace(/-/g, "&#8209;")}</p>${q.target ? `<p class="budget">⏱ Target ${q.target} min.</p>` : ''}</section>` : plainWords ? `<h2>In plain words</h2><div class="card plain">${plainWords}</div>` : ''}
       ${q.words ? `<h2>Words you need</h2><div class="card plain">${q.words}</div>` : ''}
       ${q.coach ? coachTop(c) : ''}
       ${traps}
@@ -363,7 +363,7 @@
       <div class="card">${q.setup ? `<a class="btn block" href="${KILLERCODA}" target="_blank" rel="noopener">Open Killercoda</a>${codeBlock(q.setup)}<p class="small">Paste this first. In the real exam it is already set up. Then try to solve it before you look below.</p>` : `${/no setup needed/i.test(plain(q.meaning||'')) ? '<a class="btn block" href="'+KILLERCODA+'" target="_blank" rel="noopener">Open Killercoda</a><p class="small">No setup needed: it works as is on Killercoda. Try it before you look below.</p>' : '<p class="small">This one cannot be set up in a playground. Read the steps; practise it in killer.sh.</p>'}`}</div>
       ${tried ? `<details class="step solution"><summary>Try first, then show the solution</summary><div class="body">${solveBlock}</div></details>` : `<h2>Solution, step by step</h2>${solveBlock}`}
       ${q.wrong ? `<h2>If something goes wrong</h2><div class="card btable">${q.wrong}</div>` : ''}
-      ${memorise || mugBox(q)}`;
+      ${(q.coach || {}).plan ? merkBox(q) : (memorise || mugBox(q))}`;
   }
 
   function practice(n) {

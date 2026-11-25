@@ -1,6 +1,17 @@
 [
  {
   "keys": [
+   "k top",
+   "top pod",
+   "highest cpu",
+   "most cpu",
+   "uses the most"
+  ],
+  "hint": "Who uses the most → k top with --sort-by (needs metrics-server); write only what the question asks to the file",
+  "cmds": "k top pod -A --sort-by=cpu\nk top node\nk top pod --sort-by=memory -n <ns>"
+ },
+ {
+  "keys": [
    "imagepullbackoff",
    "errimagepull",
    "image name",
@@ -292,9 +303,7 @@
   "keys": [
    "resources",
    "requests",
-   "limits",
-   "memory",
-   "cpu"
+   "limits"
   ],
   "hint": "Requests/limits → set resources on the deployment, then check the pods schedule",
   "cmds": "k set resources deployment/<name> --requests=cpu=<c>,memory=<m> --limits=cpu=<c>,memory=<m> -n <ns>\nk describe node <node> | grep -A6 Allocated"

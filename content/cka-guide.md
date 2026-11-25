@@ -2541,9 +2541,11 @@ k top node
 k logs api -n app > /opt/api.log
 head -3 /opt/api.log
 ```
+The file holds nginx's start-up log lines.
+
 You see:
 ```
-/docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration   <-- log lines
+/docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
 ...
 ```
 **Means:** file 1 is done. The first command prints nothing; that is normal.
@@ -2560,7 +2562,7 @@ k top pod -A --sort-by=cpu
 You see:
 ```
 NAMESPACE     NAME                          CPU(cores)   MEMORY(bytes)
-kube-system   kube-apiserver-controlplane   45m          310Mi   <-- first row = the answer
+kube-system   kube-apiserver-controlplane   45m          310Mi   <-- top
 ...
 ```
 **Means:** the answer is the NAME in the first row. Yours may differ.
@@ -2576,9 +2578,11 @@ kube-system   kube-apiserver-controlplane   45m          310Mi   <-- first row =
 echo kube-apiserver-controlplane > /opt/top.txt
 cat /opt/top.txt
 ```
+The file holds one name, nothing else.
+
 You see:
 ```
-kube-apiserver-controlplane   <-- one name, nothing else
+kube-apiserver-controlplane
 ```
 **Don't:** retype the name. Copy it with the mouse from step 2.
 
@@ -2602,8 +2606,6 @@ kube-apiserver-controlplane
 
 ### Three words first
 
-- **`>`** = write a command's output into a file. Replaces the old content. `>>` adds instead.
-- **k top** = live CPU and memory of pods or nodes. Needs metrics-server.
 - **`45m`** = 45 millicores = 0.045 of one CPU.
 
 ---
@@ -2614,7 +2616,7 @@ kube-apiserver-controlplane
 |---|---|---|
 | `error: Metrics API not available` | metrics-server missing or still starting | run Part A again, wait 60 s; the exam has it |
 | `No such file or directory` on `>` | the folder does not exist | `mkdir -p /opt` |
-| `Permission denied` on `>` | you are not root; `/opt` belongs to root | `k logs api -n app \| sudo tee /opt/api.log > /dev/null` |
+| `Permission denied` on `>` | you are not root; `/opt` belongs to root | `k logs api -n app | sudo tee /opt/api.log > /dev/null` |
 | `Defaulted container "x" out of: x, y` | the pod has 2 containers | if the question names one: `k logs api -c <container> -n app > /opt/api.log` |
 | the question wants a crashed container's logs | current logs are empty | add `--previous` |
 
@@ -2708,7 +2710,7 @@ You see:
 ```
 role.rbac.authorization.k8s.io/deploy-manager created
 ...
-  deployments.apps  []   []   [get list create]   <-- resource + verbs
+  deployments.apps  []   []   [get list create]   <-- verbs
 ```
 **Means:** the Role is right. Kubernetes added the API group `apps` itself.
 **Don't:** put spaces after the commas in `--verb`.
@@ -2739,7 +2741,7 @@ k get rolebinding deploy-bot-binding -o wide -n dev
 ```
 You see:
 ```
-deploy-bot-binding   Role/deploy-manager   ...   dev/deploy-bot   <-- Role and SA
+deploy-bot-binding   Role/deploy-manager   ...   dev/deploy-bot   <-- names
 ```
 **Means:** the binding points to the right Role and SA.
 
@@ -2764,8 +2766,6 @@ no    <-- not in the Role
 
 ### Three words first
 
-- **ServiceAccount (SA)** = an identity for a program in the cluster.
-- **Role** = allowed verbs on resources, inside ONE namespace.
 - **RoleBinding** = gives a Role to an SA or user. The chain: SA ← RoleBinding → Role.
 - **`--as=system:serviceaccount:NS:SA`** = "pretend to be this SA" for the test.
 
@@ -2826,16 +2826,18 @@ k auth can-i list nodes --as=system:serviceaccount:ops:node-viewer
 
 ---
 
-### Step 1. Is `nodes` cluster-wide?
+### Step 1. Are nodes cluster-wide?
 
 **Why:** a Role cannot give access to cluster-wide resources.
 
 ```
 k api-resources | grep -w nodes
 ```
+The 4th column, NAMESPACED, is `false`.
+
 You see:
 ```
-nodes   no   v1   false   Node   <-- NAMESPACED = false
+nodes   no   v1   false   Node
 ```
 **Means:** cluster-wide. You need ClusterRole + ClusterRoleBinding.
 
@@ -2881,7 +2883,7 @@ k get clusterrolebinding node-viewer-binding -o wide
 You see:
 ```
 clusterrolebinding.rbac.authorization.k8s.io/node-viewer-binding created
-node-viewer-binding   ClusterRole/node-reader   ...   ops/node-viewer   <-- ClusterRole and SA
+node-viewer-binding   ClusterRole/node-reader   ...   ops/node-viewer   <-- names
 ```
 **Don't:** write `--role=`. A ClusterRoleBinding needs `--clusterrole=`.
 
@@ -2898,7 +2900,7 @@ k auth can-i delete nodes --as=system:serviceaccount:ops:node-viewer
 You see:
 ```
 yes   <-- allowed
-no    <-- not in the ClusterRole
+no    <-- not granted
 ```
 **Means:** no `-n` in the test. Nodes have no namespace.
 
@@ -2907,8 +2909,6 @@ no    <-- not in the ClusterRole
 ### Three words first
 
 - **Cluster-wide resource** = has no namespace: nodes, PersistentVolumes, namespaces, StorageClasses.
-- **ClusterRole** = a Role for the whole cluster. It can cover cluster-wide resources.
-- **ClusterRoleBinding** = gives a ClusterRole to an SA or user, in all namespaces.
 
 ---
 
@@ -2976,7 +2976,7 @@ helm repo update
 ```
 You see:
 ```
-"argocd" has been added to your repositories   <-- repo name argocd
+"argocd" has been added to your repositories   <-- name
 ...
 Update Complete. ⎈Happy Helming!⎈
 ```
@@ -2992,7 +2992,7 @@ helm search repo argocd/argo-cd --versions | grep 7.7.3
 ```
 You see:
 ```
-argocd/argo-cd   7.7.3   ...   A Helm chart for Argo CD, ...   <-- CHART VERSION
+argocd/argo-cd   7.7.3   ...   A Helm chart for Argo CD, ...   <-- version
 ```
 **Means:** the version exists. Use `argocd/argo-cd` = repo/chart.
 
@@ -3009,7 +3009,7 @@ You see:
 ```
 crds:
   # -- Install and upgrade CRDs
-  install: true   <-- crds.install
+  install: true  <-- this
 ...
 ```
 **Means:** `install` sits under `crds`. The setting is `crds.install`.
@@ -3024,9 +3024,11 @@ crds:
 helm template my-argo argocd/argo-cd --version 7.7.3 --namespace argocd --set crds.install=false > /root/argo-helm.yaml
 ls -l /root/argo-helm.yaml
 ```
+The size is a big number, not 0.
+
 You see:
 ```
--rw-r--r-- 1 root root ... /root/argo-helm.yaml   <-- size is a big number, not 0
+-rw-r--r-- 1 root root ... /root/argo-helm.yaml
 ```
 **Means:** `my-argo` is the release name. Any name works if the question gives none.
 **Don't:** run `helm install`. The question wants a file only.
@@ -3051,7 +3053,6 @@ You see:
 ### Three words first
 
 - **Chart** = a Helm package. It lives in a **repo** (a URL). Its **values** are its settings.
-- **helm template** = print the YAML a chart would create. Nothing is installed.
 - **CRD** = CustomResourceDefinition: teaches Kubernetes a new object type.
 
 ---
@@ -3145,11 +3146,11 @@ You see:
 ```
 controller:
 ...
-  replicaCount: 1   <-- controller.replicaCount
+  replicaCount: 1  <-- use
 ...
 defaultBackend:
 ...
-  replicaCount: 1   <-- not this one
+  replicaCount: 1  <-- skip
 ```
 **Means:** `^[a-z]` adds the top-level keys. So you see each parent.
 
@@ -3168,7 +3169,7 @@ You see:
 STATUS: deployed
 REVISION: 1
 ...
-web-ingress-nginx-controller   2/2   2   2   ...   <-- 2 replicas
+web-ingress-nginx-controller   2/2   2   2   ...   <-- READY
 ```
 **Means:** `--create-namespace` made `demo`. READY `0/2` at first is normal; wait.
 
@@ -3203,7 +3204,7 @@ You see:
 ```
 1   ...   superseded   ingress-nginx-...   ...   Install complete
 2   ...   deployed     ingress-nginx-...   ...   Upgrade complete
-Rollback was a success! Happy Helming!   <-- done
+Rollback was a success! Happy Helming!
 ```
 
 ---
@@ -3218,8 +3219,8 @@ k get deployments -n demo
 ```
 You see:
 ```
-web   demo   3   ...   deployed   ingress-nginx-...   <-- REVISION 3
-web-ingress-nginx-controller   2/2   2   2   ...   <-- back to 2
+web   demo   3   ...   deployed   ingress-nginx-...   <-- REVISION
+web-ingress-nginx-controller   2/2   2   2   ...   <-- READY
 ```
 **Don't:** expect revision 1. Rollback copies revision 1 into a new revision 3.
 
@@ -3229,7 +3230,6 @@ web-ingress-nginx-controller   2/2   2   2   ...   <-- back to 2
 
 - **Release** = one installed copy of a chart. It has a name and a namespace.
 - **Revision** = the version number of a release. Every install, upgrade or rollback adds 1.
-- **`--set key=value`** = change one chart setting. Dots go down the tree: `controller.replicaCount`.
 
 ---
 
@@ -3308,11 +3308,11 @@ cat /root/kust/kustomization.yaml
 You see:
 ```
 resources:
-- deploy.yaml        <-- the base, do not touch
-namespace: kust      <-- everything goes here
+- deploy.yaml   <-- base
+namespace: kust   <-- target
 replicas:
 - name: kweb
-  count: 2           <-- change this
+  count: 2   <-- change
 ```
 **Means:** "Take `deploy.yaml`, put it in `kust`, give `kweb` 2 replicas."
 
@@ -3356,7 +3356,7 @@ k kustomize /root/kust | grep -E 'namespace|replicas'
 You see:
 ```
   namespace: kust
-  replicas: 3   <-- the plan worked
+  replicas: 3   <-- worked
 ```
 **Means:** the plan is right. Now apply it.
 
@@ -3387,7 +3387,7 @@ k get deployment kweb -n kust
 You see:
 ```
 NAME   READY   UP-TO-DATE   AVAILABLE   AGE
-kweb   3/3     3            3           20s   <-- 3/3
+kweb   3/3     3            3           20s   <-- READY
 ```
 **Don't:** worry about `1/3` at first. Wait 20 seconds.
 
@@ -3396,8 +3396,6 @@ kweb   3/3     3            3           20s   <-- 3/3
 ### Three words first
 
 - **Kustomize** = changes YAML files without editing them. Built into kubectl.
-- **kustomization.yaml** = the plan: `resources:` lists the files, the rest lists changes.
-- **`-k <folder>`** = apply a folder that holds a `kustomization.yaml`.
 
 ---
 
@@ -3465,7 +3463,7 @@ k get crd | grep cert-manager
 You see:
 ```
 certificaterequests.cert-manager.io   2026-...
-certificates.cert-manager.io          2026-...   <-- one of 6 lines
+certificates.cert-manager.io          2026-...   <-- 1 of 6
 ...
 ```
 **Means:** 6 lines. That is the list the grader wants.
@@ -3482,7 +3480,7 @@ wc -l /root/crds.txt
 ```
 You see:
 ```
-6 /root/crds.txt   <-- 6 lines saved
+6 /root/crds.txt   <-- saved
 ```
 
 ---
@@ -3494,13 +3492,15 @@ You see:
 ```
 k explain certificate.spec.subject | head -5
 ```
+KIND must say `Certificate`, FIELD must say `subject`.
+
 You see:
 ```
 GROUP:      cert-manager.io
-KIND:       Certificate          <-- right kind
+KIND:       Certificate
 VERSION:    v1
 
-FIELD: subject <Object>          <-- right field
+FIELD: subject <Object>
 ```
 **Means:** the path is right. Now save the full text.
 
@@ -3545,7 +3545,6 @@ DESCRIPTION:
 
 - **CRD (CustomResourceDefinition)** = adds a NEW kind to Kubernetes, like `Certificate`.
 - **k explain** = prints the docs of a kind or one of its fields.
-- **`| grep word`** = keep only the lines that contain `word`.
 
 ---
 
@@ -3553,8 +3552,8 @@ DESCRIPTION:
 
 | You see | Cause | Fix |
 |---|---|---|
-| `couldn't find resource for "certificate"` | wrong kind name | `k api-resources \| grep cert-manager`; use a name from the first column |
-| the question names an output format (e.g. `-o name`) | the grader compares that format | `k get crd -o name \| grep cert-manager > /root/crds.txt` |
+| `couldn't find resource for "certificate"` | wrong kind name | `k api-resources | grep cert-manager`; use a name from the first column |
+| the question names an output format (e.g. `-o name`) | the grader compares that format | `k get crd -o name | grep cert-manager > /root/crds.txt` |
 | the question also asks to CREATE such an object | you need its fields | `k explain certificate.spec`; copy `apiVersion` and `kind`; `k apply -f` |
 | no cert-manager pods on Killercoda | Part A installs only the CRDs | normal; this question needs only the CRDs |
 
@@ -3620,7 +3619,7 @@ dpkg -i /root/cri-dockerd.deb
 ```
 You see:
 ```
-Setting up cri-dockerd ...   <-- installed
+Setting up cri-dockerd ...
 ```
 **Don't:** run `apt-get install -f` on Killercoda. It can break the cluster.
 
@@ -3660,9 +3659,11 @@ net.netfilter.nf_conntrack_max = 131072
 ```
 cat /etc/sysctl.d/k8s.conf
 ```
+The file shows the 4 lines from the question.
+
 You see:
 ```
-net.bridge.bridge-nf-call-iptables = 1   <-- 4 lines, as in the question
+net.bridge.bridge-nf-call-iptables = 1
 ...
 ```
 **Don't:** use only `sysctl -w`. It is lost at reboot.
@@ -3678,7 +3679,7 @@ sysctl --system
 ```
 You see:
 ```
-* Applying /etc/sysctl.d/k8s.conf ...   <-- your file
+* Applying /etc/sysctl.d/k8s.conf ...   <-- yours
 net.bridge.bridge-nf-call-iptables = 1
 ...
 ```
@@ -3705,7 +3706,6 @@ net.netfilter.nf_conntrack_max = 131072
 ### Three words first
 
 - **cri-dockerd** = an adapter so Kubernetes can use Docker to run containers.
-- **`.deb` file** = an Ubuntu installer package. `dpkg -i` installs it.
 - **sysctl** = a kernel setting, `name = value`.
 
 ---
@@ -3780,7 +3780,7 @@ k create -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.1/manif
 You see:
 ```
 ...
-deployment.apps/tigera-operator created   <-- last line
+deployment.apps/tigera-operator created   <-- last
 ```
 **Don't:** use `apply`. The file is too big: `metadata.annotations: Too long`.
 
@@ -3793,9 +3793,11 @@ deployment.apps/tigera-operator created   <-- last line
 ```
 k get pods -l component=kube-controller-manager -o yaml -n kube-system | grep cluster-cidr
 ```
+Write this range down.
+
 You see:
 ```
-    - --cluster-cidr=10.244.0.0/16   <-- write it down
+    - --cluster-cidr=10.244.0.0/16
 ```
 **Means:** pods get IPs from `10.244.0.0/16`. Yours may differ.
 
@@ -3812,9 +3814,11 @@ grep cidr custom-resources.yaml
 ```
 In vim: type `/cidr`, Enter, `w` `w`, `C`, type `10.244.0.0/16`, Esc, `:wq`, Enter.
 
+The file now holds your range.
+
 You see:
 ```
-      cidr: 10.244.0.0/16   <-- your range now
+      cidr: 10.244.0.0/16
 ```
 
 ---
@@ -3844,8 +3848,8 @@ k get nodes
 ```
 You see:
 ```
-calico-system   calico-node-...   1/1   Running   ...   <-- all Running
-controlplane    Ready    control-plane   ...   <-- Ready now
+calico-system   calico-node-...   1/1   Running   ...   <-- Running
+controlplane    Ready    control-plane   ...   <-- Ready
 ```
 
 ---
@@ -3854,7 +3858,6 @@ controlplane    Ready    control-plane   ...   <-- Ready now
 
 - **CNI** = the network plug-in. It gives every pod an IP. Without it, nodes stay `NotReady`.
 - **Flannel / Calico** = two CNIs. Only Calico enforces NetworkPolicy.
-- **Pod CIDR** = the IP range for pods, e.g. `10.244.0.0/16`.
 
 ---
 
@@ -3863,7 +3866,7 @@ controlplane    Ready    control-plane   ...   <-- Ready now
 | You see | Cause | Fix |
 |---|---|---|
 | `no matches for kind "Installation"` | the operator is still registering its types | wait 20 s, apply again |
-| Step 2 prints nothing | kubeadm ran without a pod range | `k get configmap kubeadm-config -o yaml -n kube-system \| grep -i podSubnet`; still empty: keep `192.168.0.0/16` |
+| Step 2 prints nothing | kubeadm ran without a pod range | `k get configmap kubeadm-config -o yaml -n kube-system | grep -i podSubnet`; still empty: keep `192.168.0.0/16` |
 | calico Running, other pods stay `ContainerCreating` | `cidr:` is not the cluster's range | fix the file, apply again |
 | the question does NOT mention NetworkPolicy | either CNI is fine | Flannel is one command: `k apply -f <flannel URL>` |
 
@@ -3922,10 +3925,12 @@ cat /etc/apt/sources.list.d/kubernetes.list
 apt-get update
 apt-cache madison kubeadm | head -3
 ```
+The source line must say `v1.35`. Copy the version text `1.35.2-1.1`.
+
 You see:
 ```
-deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.35/deb/ /   <-- v1.35
-   kubeadm | 1.35.2-1.1 | https://pkgs.k8s.io/core:/stable:/v1.35/deb  Packages   <-- copy this
+deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.35/deb/ /
+   kubeadm | 1.35.2-1.1 | https://pkgs.k8s.io/core:/stable:/v1.35/deb  Packages
 ```
 **Means:** kubeadm, kubelet and kubectl all use `1.35.2-1.1`.
 **Don't:** forget the source file on a minor upgrade. `v1.34` there? `vim` it to `v1.35`, then `apt-get update` again.
@@ -3950,7 +3955,7 @@ v1.35.2
 ...
 You can now apply the upgrade by executing the following command:
 
-	kubeadm upgrade apply v1.35.2   <-- the next command
+	kubeadm upgrade apply v1.35.2
 ```
 
 ---
@@ -4026,7 +4031,7 @@ exit
 ```
 You see:
 ```
-... The configuration for this node was successfully updated!   <-- after upgrade node
+... The configuration for this node was successfully updated!
 node/node01 drained
 kubectl set on hold.
 ```
@@ -4055,10 +4060,12 @@ node/node01 uncordoned
 ```
 k get nodes
 ```
+No node shows `SchedulingDisabled`.
+
 You see:
 ```
 controlplane   Ready    control-plane   ...   v1.35.2   <-- new
-node01         Ready    <none>          ...   v1.35.2   <-- new, no SchedulingDisabled
+node01         Ready    <none>          ...   v1.35.2   <-- new
 ```
 
 ---
@@ -4067,7 +4074,6 @@ node01         Ready    <none>          ...   v1.35.2   <-- new, no SchedulingDi
 
 - **drain** = moves the pods off a node and closes it. **uncordon** opens it again.
 - **apt-mark hold** = locks a package against updates. Unhold, install, hold again.
-- **`1.35.2-1.1`** = the apt package text for Kubernetes `1.35.2`.
 
 ---
 
@@ -4137,15 +4143,17 @@ The backup is safe. The restore changes the cluster: use a playground you can th
 which etcdctl etcdutl
 grep -E "trusted-ca-file|cert-file|key-file" /etc/kubernetes/manifests/etcd.yaml
 ```
+`cert-file` goes to `--cert`, `key-file` to `--key`, `trusted-ca-file` to `--cacert`.
+
 You see:
 ```
 .../etcdctl
 .../etcdutl
-    - --cert-file=/etc/kubernetes/pki/etcd/server.crt   <-- --cert
-    - --key-file=/etc/kubernetes/pki/etcd/server.key    <-- --key
+    - --cert-file=/etc/kubernetes/pki/etcd/server.crt
+    - --key-file=/etc/kubernetes/pki/etcd/server.key
     - --peer-cert-file=/etc/kubernetes/pki/etcd/peer.crt
     ...
-    - --trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt   <-- --cacert
+    - --trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt
 ```
 **Means:** use the three lines without `peer`.
 
@@ -4164,7 +4172,7 @@ etcdctl snapshot save /opt/etcd-backup.db \
 ```
 You see:
 ```
-Snapshot saved at /opt/etcd-backup.db   <-- backup done
+Snapshot saved at /opt/etcd-backup.db
 ```
 **Means:** backup-only question? You are finished.
 
@@ -4180,7 +4188,7 @@ ls /var/lib/etcd-restored
 ```
 You see:
 ```
-member   <-- the restored database
+member   <-- restored data
 ```
 **Don't:** use `etcdctl snapshot restore`. etcd 3.6 (Kubernetes v1.35) removed it.
 
@@ -4195,7 +4203,7 @@ cp /etc/kubernetes/manifests/etcd.yaml /root/etcd.yaml.bak
 vim /etc/kubernetes/manifests/etcd.yaml
 grep etcd-restored /etc/kubernetes/manifests/etcd.yaml
 ```
-In vim: press `G` to reach the end. Change the path in the `etcd-data` block:
+In vim: press `G` to reach the end. Only the `path:` of the `etcd-data` hostPath changes, to `/var/lib/etcd-restored`:
 ```
   volumes:
   - hostPath:
@@ -4203,13 +4211,15 @@ In vim: press `G` to reach the end. Change the path in the `etcd-data` block:
       type: DirectoryOrCreate
     name: etcd-certs
   - hostPath:
-      path: /var/lib/etcd-restored   # <-- CHANGE
+      path: /var/lib/etcd-restored
       type: DirectoryOrCreate
     name: etcd-data
 ```
+After saving, `grep` must find exactly 1 line.
+
 You see:
 ```
-      path: /var/lib/etcd-restored   <-- exactly 1 line
+      path: /var/lib/etcd-restored
 ```
 **Don't:** change `--data-dir` or `mountPath`. Inside the container it is still `/var/lib/etcd`.
 
@@ -4224,7 +4234,7 @@ crictl ps | grep etcd
 ```
 You see:
 ```
-...   Running   etcd   ...   <-- up again
+...   Running   etcd   ...
 ```
 **Means:** kubectl may not answer for up to 60 seconds. That is normal.
 
@@ -4239,7 +4249,7 @@ k get pods -n kube-system | grep etcd
 ```
 You see:
 ```
-etcd-controlplane   1/1   Running   ...   <-- etcd is back
+etcd-controlplane   1/1   Running   ...
 ```
 
 ---
@@ -4248,7 +4258,6 @@ etcd-controlplane   1/1   Running   ...   <-- etcd is back
 
 - **etcd** = the cluster database. Runs as a static pod from `etcd.yaml`.
 - **Snapshot** = a backup file of that database.
-- **etcdctl / etcdutl** = `etcdctl` talks to running etcd (save). `etcdutl` works on files (restore).
 
 ---
 
@@ -4336,15 +4345,15 @@ k get deployments,services -n web
 ```
 k edit deployment/np -n web
 ```
-Type `/image:` and Enter. Add the three marked lines under `name: nginx`:
+Type `/image:` and Enter. Add the last three lines, under `name: nginx`:
 ```
       containers:
       - image: nginx:1.27
         imagePullPolicy: IfNotPresent
         name: nginx
-        ports:                  # <-- CHANGE
-        - containerPort: 80     # <-- CHANGE
-          protocol: TCP         # <-- CHANGE
+        ports:
+        - containerPort: 80
+          protocol: TCP
 ```
 Save with `Esc`, `:wq`.
 You see:
@@ -4392,9 +4401,11 @@ service/np-svc patched
 ```
 k get endpointslices -l kubernetes.io/service-name=np-svc -n web
 ```
+ENDPOINTS must show a pod IP.
+
 You see:
 ```
-np-svc-...   IPv4   80   192.168.x.x   1m   <-- a pod IP
+np-svc-...   IPv4   80   192.168.x.x   1m
 ```
 **Means:** selector and target port are right.
 
@@ -4410,7 +4421,7 @@ curl -s -m 3 node01:30080 | grep title
 ```
 You see:
 ```
-np-svc   NodePort   10.x.x.x   <none>   80:30080/TCP   2m   <-- port:nodePort
+np-svc   NodePort   10.x.x.x   <none>   80:30080/TCP   2m
 <title>Welcome to nginx!</title>
 ```
 
@@ -4418,7 +4429,6 @@ np-svc   NodePort   10.x.x.x   <none>   80:30080/TCP   2m   <-- port:nodePort
 
 ### Three words first
 
-- **containerPort** = the port the container listens on, written in the pod template.
 - **NodePort Service** = a Service that also opens one port on every node (30000 to 32767).
 - **port / targetPort / nodePort** = the Service's port / the container's port / the port on every node.
 
@@ -4497,7 +4507,7 @@ k get ingressclass
 ```
 You see:
 ```
-nginx   k8s.io/ingress-nginx   <none>   1m   <-- NAME
+nginx   k8s.io/ingress-nginx   <none>   1m
 ```
 **Means:** the class is `nginx`.
 
@@ -4512,7 +4522,7 @@ k get service backend-svc -n web
 ```
 You see:
 ```
-backend-svc   ClusterIP   10.x.x.x   <none>   80/TCP   1m   <-- port 80
+backend-svc   ClusterIP   10.x.x.x   <none>   80/TCP   1m
 ```
 **Means:** `backend-svc:80` is a real target.
 
@@ -4543,7 +4553,7 @@ k get ingress web-ing -n web
 ```
 You see:
 ```
-web-ing   nginx   shop.example.com   80   10s   <-- CLASS, HOSTS
+web-ing   nginx   shop.example.com   80   10s
 ```
 **Means:** ADDRESS stays empty here. The playground has no ingress controller.
 
@@ -4556,12 +4566,14 @@ web-ing   nginx   shop.example.com   80   10s   <-- CLASS, HOSTS
 ```
 k describe ingress web-ing -n web
 ```
+The IP in brackets must be a pod IP.
+
 You see:
 ```
 Ingress Class:    nginx
 ...
   shop.example.com
-                    /   backend-svc:80 (192.168.x.x:80)   <-- a pod IP
+                    /   backend-svc:80 (192.168.x.x:80)
 ```
 
 ---
@@ -4656,14 +4668,16 @@ k get ingress,gatewayclass -n web
 k describe ingress web-ing -n web
 k get gatewayclass
 ```
+Under `TLS:`: secret and hostname. Under the host: path, Service, port. Last line: the class.
+
 You see:
 ```
 TLS:
-  web-tls terminates shop.example.com              <-- secret, hostname
+  web-tls terminates shop.example.com
 ...
   shop.example.com
-                    /   backend-svc:80 (192.168.x.x:80)   <-- path, Service, port
-nginx   gateway.nginx.org/nginx-gateway-controller   ...   <-- class
+                    /   backend-svc:80 (192.168.x.x:80)
+nginx   gateway.nginx.org/nginx-gateway-controller   ...
 ```
 **Means:** host `shop.example.com`, secret `web-tls`, path `/`, `backend-svc:80`, class `nginx`.
 
@@ -4676,24 +4690,24 @@ nginx   gateway.nginx.org/nginx-gateway-controller   ...   <-- class
 ```
 vim gw.yaml
 ```
-The finished file. Only the `# <-- CHANGE` lines differ from the docs:
+The finished file. Only `apiVersion`, `kind` and `allowedRoutes` stay as in the docs. Every other value is yours, and the `tls:` block is new:
 ```
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: web-gw                  # <-- CHANGE
-  namespace: web                # <-- CHANGE
+  name: web-gw
+  namespace: web
 spec:
-  gatewayClassName: nginx       # <-- CHANGE
+  gatewayClassName: nginx
   listeners:
-  - name: https                 # <-- CHANGE
-    protocol: HTTPS             # <-- CHANGE
-    port: 443                   # <-- CHANGE
-    hostname: "shop.example.com"   # <-- CHANGE
-    tls:                        # <-- CHANGE
-      mode: Terminate           # <-- CHANGE
-      certificateRefs:          # <-- CHANGE
-      - name: web-tls           # <-- CHANGE
+  - name: https
+    protocol: HTTPS
+    port: 443
+    hostname: "shop.example.com"
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: web-tls
     allowedRoutes:
       namespaces:
         from: Same
@@ -4716,26 +4730,26 @@ gateway.gateway.networking.k8s.io/web-gw created
 ```
 vim route.yaml
 ```
-The finished file:
+The finished file. Yours: `name`, `namespace`, the `parentRefs` name, the hostname, the path `value`, and the backend `name` and `port`:
 ```
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: web-route               # <-- CHANGE
-  namespace: web                # <-- CHANGE
+  name: web-route
+  namespace: web
 spec:
   parentRefs:
-  - name: web-gw                # <-- CHANGE
+  - name: web-gw
   hostnames:
-  - "shop.example.com"          # <-- CHANGE
+  - "shop.example.com"
   rules:
   - matches:
     - path:
         type: PathPrefix
-        value: /                # <-- CHANGE
+        value: /
     backendRefs:
-    - name: backend-svc         # <-- CHANGE
-      port: 80                  # <-- CHANGE
+    - name: backend-svc
+      port: 80
 ```
 ```
 k apply -f route.yaml
@@ -4798,7 +4812,6 @@ then the four route lines. If the question gives a `curl`, run it.
 
 - **Gateway** = the entry point: port, protocol, hostname, TLS. It names a **GatewayClass** (the controller).
 - **HTTPRoute** = which host and path go to which Service and port.
-- **parentRefs** = the Gateway this route attaches to.
 
 ---
 
@@ -4868,11 +4881,13 @@ k get pods,networkpolicy -n prod
 ```
 k get pods --show-labels -n prod
 ```
+`api` may come in, `db` is protected, `other` must be blocked.
+
 You see:
 ```
-api     1/1   Running   0   1m   app=api     <-- may come in
-db      1/1   Running   0   1m   app=db      <-- protected
-other   1/1   Running   0   1m   app=other   <-- must be blocked
+api     1/1   Running   0   1m   app=api
+db      1/1   Running   0   1m   app=db
+other   1/1   Running   0   1m   app=other
 ```
 **Means:** the labels match the question.
 
@@ -4885,27 +4900,27 @@ other   1/1   Running   0   1m   app=other   <-- must be blocked
 ```
 vim np.yaml
 ```
-The finished file. Only the `# <-- CHANGE` lines differ from the docs:
+The finished file. Yours: `name`, `namespace`, the two `app:` labels and the `port`:
 ```
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: db-policy           # <-- CHANGE
-  namespace: prod           # <-- CHANGE
+  name: db-policy
+  namespace: prod
 spec:
   podSelector:
     matchLabels:
-      app: db               # <-- CHANGE
+      app: db
   policyTypes:
   - Ingress
   ingress:
   - from:
     - podSelector:
         matchLabels:
-          app: api          # <-- CHANGE
+          app: api
     ports:
     - protocol: TCP
-      port: 80              # <-- CHANGE
+      port: 80
 ```
 **Means:** from the docs copy, delete `- Egress`, the `ipBlock` and `namespaceSelector` items, and the whole `egress:` part.
 **Don't:** keep `- Egress`. With no egress rules, db can send nothing out.
@@ -4958,7 +4973,7 @@ k exec other -n prod -- wget -qO- -T 3 db-svc
 You see:
 ```
 <title>Welcome to nginx!</title>
-wget: download timed out   <-- other is blocked
+wget: download timed out
 ```
 
 ---
@@ -5037,7 +5052,7 @@ k exec app -n prod -- wget -qO- -T 3 web
 ```
 You see:
 ```
-<title>Welcome to nginx!</title>   <-- open today
+<title>Welcome to nginx!</title>
 ```
 **Means:** nothing blocks traffic yet. Remember this line for the end.
 
@@ -5050,24 +5065,24 @@ You see:
 ```
 vim deny.yaml
 ```
-The finished file. Only the `# <-- CHANGE` lines differ from the docs:
+The finished file. Yours: `name`, `namespace` and the whole `egress:` part:
 ```
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: default-deny          # <-- CHANGE
-  namespace: prod             # <-- CHANGE
+  name: default-deny
+  namespace: prod
 spec:
   podSelector: {}
   policyTypes:
   - Ingress
   - Egress
-  egress:                     # <-- CHANGE
-  - ports:                    # <-- CHANGE
-    - protocol: UDP           # <-- CHANGE
-      port: 53                # <-- CHANGE
-    - protocol: TCP           # <-- CHANGE
-      port: 53                # <-- CHANGE
+  egress:
+  - ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
 ```
 **Means:** no `ingress:` part, so nothing comes in. Out, only port 53.
 **Don't:** add `to:` under `egress`. Without `to:`, port 53 is open to any DNS server.
@@ -5098,16 +5113,18 @@ networkpolicy.networking.k8s.io/default-deny created
 ```
 k describe networkpolicy default-deny -n prod
 ```
+Look for three things: `PodSelector: <none>` = all pods. Ingress `<none>` = nothing comes in. `Policy Types` = both directions.
+
 You see:
 ```
-  PodSelector:     <none> (Allowing the specific traffic to all pods in this namespace)   <-- all pods
+  PodSelector:     <none> (Allowing the specific traffic to all pods in this namespace)
   Allowing ingress traffic:
-    <none> (Selected pods are isolated for ingress connectivity)   <-- nothing in
+    <none> (Selected pods are isolated for ingress connectivity)
   Allowing egress traffic:
     To Port: 53/UDP
     To Port: 53/TCP
     To: <any> (traffic not restricted by destination)
-  Policy Types: Ingress, Egress   <-- both directions
+  Policy Types: Ingress, Egress
 ```
 **Means:** exactly what the question asks.
 
@@ -5121,11 +5138,13 @@ You see:
 k exec app -n prod -- nslookup web.prod.svc.cluster.local
 k exec app -n prod -- wget -qO- -T 3 web
 ```
+`nslookup` answers, so DNS works. `wget` times out, so other traffic is blocked.
+
 You see:
 ```
-Name:	web.prod.svc.cluster.local   <-- DNS still works
+Name:	web.prod.svc.cluster.local
 ...
-wget: download timed out   <-- traffic blocked
+wget: download timed out
 command terminated with exit code 1
 ```
 
@@ -5252,9 +5271,11 @@ k get configmap nginx-config -o yaml -n nginx-static | grep ssl_protocols
 k get configmap nginx-config -o yaml -n nginx-static > /root/cm-backup.yaml
 grep ssl_protocols /root/cm-backup.yaml
 ```
+This is the line to change: `TLSv1.2` must go.
+
 You see:
 ```
-    ssl_protocols TLSv1.2 TLSv1.3;   <-- TLSv1.2 must go
+    ssl_protocols TLSv1.2 TLSv1.3;
 ```
 **Means:** the backup holds the old line. Now change the real one.
 
@@ -5269,7 +5290,7 @@ k get deployment nginx-static -o yaml -n nginx-static | grep subPath
 ```
 You see:
 ```
-          subPath: nginx.conf   <-- copied once, at pod start
+          subPath: nginx.conf
 ```
 **Means:** a `subPath` file never updates. The pods need a restart.
 
@@ -5301,10 +5322,12 @@ configmap/nginx-config edited
 k rollout restart deployment/nginx-static -n nginx-static
 k rollout status deployment/nginx-static -n nginx-static
 ```
+The restart makes a new pod, and the new pod reads the new config.
+
 You see:
 ```
 deployment.apps/nginx-static restarted
-deployment "nginx-static" successfully rolled out   <-- new pod, new config
+deployment "nginx-static" successfully rolled out
 ```
 
 ---
@@ -5318,11 +5341,13 @@ IP=$(k get service nginx-static -o jsonpath='{.spec.clusterIP}' -n nginx-static)
 openssl s_client -connect $IP:443 -tls1_2 </dev/null 2>&1 | grep -E 'alert|New,'
 openssl s_client -connect $IP:443 -tls1_3 </dev/null 2>&1 | grep -E 'alert|New,'
 ```
+`alert protocol version` = TLSv1.2 refused. `New, TLSv1.3` = TLSv1.3 works.
+
 You see:
 ```
-...:tlsv1 alert protocol version:...   <-- TLSv1.2 refused
+...:tlsv1 alert protocol version:...
 New, (NONE), Cipher is (NONE)
-New, TLSv1.3, Cipher is ...            <-- TLSv1.3 works
+New, TLSv1.3, Cipher is ...
 ```
 **Don't:** test before Step 4. The old pod still accepts TLSv1.2.
 
@@ -5331,7 +5356,6 @@ New, TLSv1.3, Cipher is ...            <-- TLSv1.3 works
 ### Three words first
 
 - **ssl_protocols** = the nginx line that lists the TLS versions it accepts.
-- **subPath** = mounts one file from a ConfigMap. It never updates by itself.
 - **openssl s_client** = opens a TLS connection. `-tls1_2` forces version 1.2.
 
 ---
@@ -5420,9 +5444,11 @@ You see:
 ```
 k get service backend-svc -n web
 ```
+Note the CLUSTER-IP.
+
 You see:
 ```
-backend-svc   ClusterIP   10.x.x.x   <none>   80/TCP   1m   <-- note this CLUSTER-IP
+backend-svc   ClusterIP   10.x.x.x   <none>   80/TCP   1m
 ```
 **Means:** the full target name is `backend-svc.web.svc.cluster.local`.
 
@@ -5435,7 +5461,7 @@ backend-svc   ClusterIP   10.x.x.x   <none>   80/TCP   1m   <-- note this CLUSTE
 ```
 k edit configmap/coredns -n kube-system
 ```
-Put the cursor on `ready`. Press `o`. Type the marked line, same indent as `ready`:
+Put the cursor on `ready`. Press `o`. Add the `rewrite` line with that same indent:
 ```
   Corefile: |
     .:53 {
@@ -5444,7 +5470,7 @@ Put the cursor on `ready`. Press `o`. Type the marked line, same indent as `read
            lameduck 5s
         }
         ready
-        rewrite name api.example.com backend-svc.web.svc.cluster.local   # <-- CHANGE
+        rewrite name api.example.com backend-svc.web.svc.cluster.local
         kubernetes cluster.local in-addr.arpa ip6.arpa {
 ```
 Save with `Esc`, `:wq`.
@@ -5453,7 +5479,7 @@ You see:
 ```
 configmap/coredns edited
 ```
-**Don't:** type the `# <-- CHANGE` part. It is only a marker here.
+**Don't:** put the line outside `.:53 { }`. CoreDNS then ignores it or crashes.
 
 ---
 
@@ -5468,7 +5494,7 @@ k rollout status deployment/coredns -n kube-system
 You see:
 ```
 deployment.apps/coredns restarted
-deployment "coredns" successfully rolled out   <-- DNS is back up
+deployment "coredns" successfully rolled out
 ```
 **Means:** CoreDNS runs with your line.
 
@@ -5484,7 +5510,7 @@ k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup api.example.co
 You see:
 ```
 ...
-Address: 10.x.x.x   <-- same as the CLUSTER-IP from Step 2
+Address: 10.x.x.x  <-- Step 2
 ```
 **Don't:** read the first `Address` line. That one is the DNS server itself.
 
@@ -5562,11 +5588,13 @@ k get services -n web
 ```
 k get services -A | grep backend-svc
 ```
+The first column is the namespace. Note the CLUSTER-IP too.
+
 You see:
 ```
-web   backend-svc   ClusterIP   10.x.x.x   <none>   80/TCP   1m   <-- namespace web, note the IP
+web   backend-svc   ClusterIP   10.x.x.x   <none>   80/TCP   1m
 ```
-**Means:** from `default`, use `SERVICE.NAMESPACE.svc.cluster.local`: `backend-svc.web.svc.cluster.local`.
+**Means:** from `default`, add the namespace and `svc.cluster.local`: `backend-svc.web.svc.cluster.local`.
 
 ---
 
@@ -5580,7 +5608,7 @@ k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup backend-svc.we
 You see:
 ```
 Name:	backend-svc.web.svc.cluster.local
-Address: 10.x.x.x   <-- same IP as Step 1
+Address: 10.x.x.x  <-- Step 1
 ```
 **Means:** the name is right. Now save it.
 **Don't:** use only `backend-svc`. From `default` that name is not found.
@@ -5595,13 +5623,15 @@ Address: 10.x.x.x   <-- same IP as Step 1
 k run t --image=busybox:1.36 --rm -i --restart=Never -- nslookup backend-svc.web.svc.cluster.local > /root/dns.txt
 cat /root/dns.txt
 ```
+The first `Address` is the DNS server. The answer is the one under `Name:`.
+
 You see:
 ```
 Server:		10.96.0.10
-Address:	10.96.0.10:53   <-- the DNS server, not the answer
+Address:	10.96.0.10:53
 
 Name:	backend-svc.web.svc.cluster.local
-Address: 10.x.x.x   <-- the answer
+Address: 10.x.x.x  <-- answer
 ```
 **Don't:** use `-it` here. A terminal is not needed when the output goes into a file.
 
@@ -5616,16 +5646,15 @@ k get service backend-svc -o jsonpath='{.spec.clusterIP}{"\n"}' -n web
 ```
 You see:
 ```
-10.x.x.x   <-- same as the Address under Name: in the file
+10.x.x.x  <-- same as file
 ```
 
 ---
 
 ### Three words first
 
-- **FQDN** = the full name, `SERVICE.NAMESPACE.svc.cluster.local`. It works from every namespace.
+- **FQDN** = the full name: Service, namespace, then `svc.cluster.local`. It works from every namespace.
 - **`--rm -i`** = run once, pass the output back, then delete the pod.
-- **`>`** = shell: write the output into a file.
 
 ---
 
@@ -5734,7 +5763,7 @@ You see:
         - while true; do date >> /var/log/app.log; sleep 2; done
         image: busybox:1.36
         imagePullPolicy: IfNotPresent
-        name: busybox   <-- the main container
+        name: busybox  <-- main
         resources: {}
 ```
 **Means:** one container, no volume yet.
@@ -5748,7 +5777,7 @@ You see:
 ```
 vim app.yaml
 ```
-The pod template's `spec:`, finished. Only `# <-- CHANGE` lines are new:
+The pod template's `spec:`, finished. New: `volumeMounts` in `busybox`, the whole `log-shipper` container, and `volumes` at the end:
 ```
     spec:
       containers:
@@ -5762,23 +5791,23 @@ The pod template's `spec:`, finished. Only `# <-- CHANGE` lines are new:
         resources: {}
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
-        volumeMounts:                                  # <-- CHANGE
-        - name: logs                                   # <-- CHANGE
-          mountPath: /var/log                          # <-- CHANGE
-      - name: log-shipper                              # <-- CHANGE
-        image: busybox:1.36                            # <-- CHANGE
-        command: ["tail", "-f", "/var/log/app.log"]    # <-- CHANGE
-        volumeMounts:                                  # <-- CHANGE
-        - name: logs                                   # <-- CHANGE
-          mountPath: /var/log                          # <-- CHANGE
+        volumeMounts:
+        - name: logs
+          mountPath: /var/log
+      - name: log-shipper
+        image: busybox:1.36
+        command: ["tail", "-f", "/var/log/app.log"]
+        volumeMounts:
+        - name: logs
+          mountPath: /var/log
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       schedulerName: default-scheduler
       securityContext: {}
       terminationGracePeriodSeconds: 30
-      volumes:                                         # <-- CHANGE
-      - name: logs                                     # <-- CHANGE
-        emptyDir: {}                                   # <-- CHANGE
+      volumes:
+      - name: logs
+        emptyDir: {}
 ```
 **Means:** `volumes:` starts in the same column as `containers:`.
 **Don't:** put the sidecar above `busybox`. The log file must exist first.
@@ -5794,9 +5823,11 @@ Vim: `:set paste` before pasting. Save with `:wq`.
 ```
 k apply -f app.yaml
 ```
+The `Warning` line is harmless.
+
 You see:
 ```
-Warning: resource deployments/app is missing the kubectl.kubernetes.io/last-applied-configuration annotation ...   <-- harmless
+Warning: resource deployments/app is missing the kubectl.kubernetes.io/last-applied-configuration annotation ...
 deployment.apps/app configured
 ```
 
@@ -5810,10 +5841,12 @@ deployment.apps/app configured
 k rollout status deployment/app -n work
 k get pods -n work
 ```
+`2/2` = the main container and the sidecar.
+
 You see:
 ```
 deployment "app" successfully rolled out
-app-...   2/2   Running   0   20s   <-- main + sidecar
+app-...   2/2   Running   0   20s
 ```
 
 ---
@@ -5825,9 +5858,11 @@ app-...   2/2   Running   0   20s   <-- main + sidecar
 ```
 k logs deployment/app -c log-shipper --tail=3 -n work
 ```
+Date lines. Your dates differ.
+
 You see:
 ```
-Tue Nov 24 10:00:01 UTC 2026   <-- date lines; yours differ
+Tue Nov 24 10:00:01 UTC 2026
 ...
 ```
 

@@ -410,3 +410,9 @@ details.reveal{margin-top:8px}details.reveal summary{cursor:pointer;font-weight:
   .btable table[data-cards] td{overflow-x:auto}
   .btable table[data-cards] td code{white-space:nowrap}
 }
+
+/* exam question: long inline code (URLs) may wrap so the page never scrolls sideways */
+.exam .q code{overflow-wrap:anywhere}
+/* highlighted words keep dark text in dark mode too, including inline code inside them */
+.exam .q mark, .clue mark, .vexam mark, mark.ph{color:#152033}
+.exam .q mark code, .clue mark code{background:rgba(255,255,255,.55);color:#152033}
