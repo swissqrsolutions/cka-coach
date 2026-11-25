@@ -89,46 +89,75 @@ function timeline(voice) {
 
 export async function mountFilm(host) {
   host.classList.add('motion', 'mhome', 'm3d');
-  host.innerHTML = `<div class="mwrap"><canvas aria-hidden="true"></canvas><div class="mtags"></div><div class="mload">Loading Luigi's…</div><button type="button" class="msnd" hidden aria-label="Sound on or off">🔇 Tap for sound</button></div><p class="mcap" aria-live="polite"></p><div class="mbar"><button type="button" class="btn ghost mrep" hidden>↻ Replay</button></div>`;
-  const wrap = host.querySelector('.mwrap'), canvas = host.querySelector('canvas'), tags = host.querySelector('.mtags'), cap = host.querySelector('.mcap'), rep = host.querySelector('.mrep'), snd = host.querySelector('.msnd');
+  host.innerHTML = `<div class="mwrap"><canvas aria-hidden="true"></canvas><div class="mtags"></div><div class="mload">Loading Luigi's…</div>
+    <button type="button" class="mbig" aria-label="Play">▶</button>
+    <div class="mctl"><button type="button" class="mpp" aria-label="Play or pause">▶</button><input class="mseek" type="range" min="0" max="1000" value="0" aria-label="Position"><span class="mtime">0:00</span><button type="button" class="msnd" aria-label="Sound on or off">🔇</button><button type="button" class="mfs" aria-label="Full screen">⛶</button></div>
+    <p class="mcap mcap-in" aria-live="polite"></p></div>`;
+  const $ = s => host.querySelector(s);
+  const wrap = $('.mwrap'), canvas = $('canvas'), tags = $('.mtags'), cap = $('.mcap'), big = $('.mbig'), pp = $('.mpp'), bar = $('.mseek'), time = $('.mtime'), snd = $('.msnd'), fs = $('.mfs');
   const G = await load();
-  host.querySelector('.mload').remove();
+  $('.mload').remove();
   const TL = timeline(G._voice);
-  let S = null, raf = 0, playing = false, T = 0;
-  // sound: one mixed track (voice + music), muted until tapped
+  let S = null, raf = 0, playing = false, T = 0, last = 0;
+  const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  // sound: one mixed track (voice + music); off until tapped (browsers require a tap)
   let audio = null, muted = true;
-  if (G._voice?.file) {
-    audio = new Audio(new URL(G._voice.file, BASE).href); audio.preload = 'auto'; snd.hidden = false;
-    snd.onclick = () => { muted = !muted; snd.textContent = muted ? '🔇 Tap for sound' : '🔊'; if (muted) audio.pause(); else if (playing) { audio.currentTime = T; audio.play().catch(() => {}); } };
-  }
+  if (G._voice?.file) { audio = new Audio(new URL(G._voice.file, BASE).href); audio.preload = 'auto'; } else snd.hidden = true;
+  const syncAudio = () => { if (!audio) return; if (playing && !muted) { if (Math.abs(audio.currentTime - T) > .3) audio.currentTime = T; audio.play().catch(() => {}); } else audio.pause(); };
+  snd.onclick = () => { muted = !muted; snd.textContent = muted ? '🔇' : '🔊'; syncAudio(); };
+
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
   const camera = new THREE.PerspectiveCamera(40, 4 / 5, 0.1, 120);
-  const size = () => { const w = wrap.clientWidth || 358, h = Math.round(w * 5 / 4); renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); };
-  size(); addEventListener('resize', size);
+  // the picture keeps 4:5 and fits the box (normal or full screen)
+  const size = () => {
+    const full = host.classList.contains('mfull');
+    let w = wrap.clientWidth || 358, h = Math.round(w * 5 / 4);
+    if (full) { const W = innerWidth, H = innerHeight - 4; w = Math.min(W, H * 4 / 5); h = w * 5 / 4; }
+    canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+    renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+    if (S && !playing) frame(T, 0);
+  };
+  addEventListener('resize', size);
 
   const build = () => { S?.dispose(); S = makeScene(G, tags, TL); };
-  const frame = (t, dt) => { S.step(t, dt); shoot(camera, t, TL); renderer.render(S.scene, camera); S.tagsAt(camera, t, wrap); showCap(t); canvas.style.filter = S.filter(t); };
-  const showCap = t => { let c = null; for (const s of TL.list) if (t >= s.t && s.say) c = s; if (!c) return (cap.style.opacity = 0); if (cap.dataset.s !== c.id) { cap.dataset.s = c.id; cap.textContent = c.say; } cap.style.opacity = Math.min(1, (t - c.t) / .5); };
-  const seek = t => { cancelAnimationFrame(raf); playing = false; audio?.pause(); build(); const dt = 1 / 30; for (let x = 0; x < t; x += dt) S.step(Math.min(x + dt, t), dt); frame(t, 0); };
-  const play = () => {
-    cancelAnimationFrame(raf); build(); rep.hidden = true; playing = true; T = 0; let last = performance.now();
-    if (audio && !muted) { audio.currentTime = 0; audio.play().catch(() => {}); }
-    const tick = now => {
-      if (!host.isConnected) { audio?.pause(); return; }
-      const dt = Math.min(.05, (now - last) / 1000); last = now;
-      T = audio && !muted && !audio.paused ? audio.currentTime : T + dt;   // the sound leads when it plays
-      frame(Math.min(T, TL.end), dt);
-      if (T < TL.end) raf = requestAnimationFrame(tick); else { playing = false; rep.hidden = false; }
-    };
-    raf = requestAnimationFrame(tick);
+  const frame = (t, dt) => {
+    S.step(t, dt); shoot(camera, t, TL); renderer.render(S.scene, camera); S.tagsAt(camera, t, canvas); showCap(t); canvas.style.filter = S.filter(t);
+    if (!bar.dragging) bar.value = Math.round(t / TL.end * 1000); time.textContent = `${fmt(t)} / ${fmt(TL.end)}`;
   };
-  rep.onclick = play;
-  host._seek = seek; host._end = TL.end; host._scenes = TL.list.map(s => [s.id, +s.t.toFixed(1)]);
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return seek(TL.end);
-  seek(0);
+  const showCap = t => { let c = null; for (const s of TL.list) if (t >= s.t && s.say) c = s; if (!c) return (cap.style.opacity = 0); if (cap.dataset.s !== c.id) { cap.dataset.s = c.id; cap.textContent = c.say; } cap.style.opacity = Math.min(1, (t - c.t) / .5); };
+  // jump to any moment: rebuild and fast-forward the story to t
+  const seek = t => { T = clamp(t, 0, TL.end); build(); const dt = 1 / 30; for (let x = 0; x < T; x += dt) S.step(Math.min(x + dt, T), dt); frame(T, 0); syncAudio(); };
+  const setUI = () => { pp.textContent = playing ? '⏸' : '▶'; big.hidden = playing; host.classList.toggle('mplaying', playing); };
+  const tick = now => {
+    if (!playing) return;
+    if (!host.isConnected) { pause(); return; }
+    const dt = Math.min(.05, (now - last) / 1000); last = now;
+    T = audio && !muted && !audio.paused ? audio.currentTime : T + dt;   // the sound leads when it plays
+    frame(Math.min(T, TL.end), dt);
+    if (T < TL.end) raf = requestAnimationFrame(tick); else { playing = false; setUI(); syncAudio(); }
+  };
+  const play = () => { if (T >= TL.end - .05) seek(0); playing = true; last = performance.now(); setUI(); syncAudio(); cancelAnimationFrame(raf); raf = requestAnimationFrame(tick); };
+  const pause = () => { playing = false; cancelAnimationFrame(raf); setUI(); syncAudio(); };
+  pp.onclick = () => (playing ? pause() : play());
+  big.onclick = play;
+  canvas.onclick = () => (playing ? pause() : play());
+  bar.oninput = () => { bar.dragging = true; time.textContent = `${fmt(bar.value / 1000 * TL.end)} / ${fmt(TL.end)}`; };
+  bar.onchange = () => { bar.dragging = false; const was = playing; pause(); seek(bar.value / 1000 * TL.end); if (was) play(); };
+  // full screen: the real API where it exists, a fixed overlay everywhere (iPhone has no element full screen)
+  const setFull = on => {
+    host.classList.toggle('mfull', on); document.body.classList.toggle('mfull-open', on); fs.textContent = on ? '✕' : '⛶';
+    if (on && host.requestFullscreen && !document.fullscreenElement) host.requestFullscreen().catch(() => {});
+    if (!on && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    requestAnimationFrame(size);
+  };
+  fs.onclick = () => setFull(!host.classList.contains('mfull'));
+  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && host.classList.contains('mfull')) setFull(false); });
+  host._seek = t => { pause(); seek(t); }; host._end = TL.end; host._scenes = TL.list.map(s => [s.id, +s.t.toFixed(1)]);
+  size(); seek(0); setUI();
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { seek(TL.end); return; }
   const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); play(); } }, { threshold: .4 });
   io.observe(host);
 }
@@ -362,8 +391,8 @@ function makeScene(G, tagsEl, TL) {
       lamps.forEach((l, i) => { l.intensity = 5.5 * dim * (1 + .03 * Math.sin(t * 2 + i)); });
       if (candle2.visible && t > T.serve) candleLight.intensity = Math.min(3, candleLight.intensity) * (1 + .08 * Math.sin(t * 13));
     },
-    tagsAt(cam, t, wrap) {
-      const Wd = wrap.clientWidth, H = wrap.clientHeight; let cur = TL.list[0]; for (const s of TL.list) if (t >= s.t) cur = s;
+    tagsAt(cam, t, cv) {
+      const Wd = cv.clientWidth, H = cv.clientHeight, ox = cv.offsetLeft, oy = cv.offsetTop; let cur = TL.list[0]; for (const s of TL.list) if (t >= s.t) cur = s;
       for (const [k, c] of Object.entries(cardEls)) {
         let on = (cur.tags || []).includes(k) && t > cur.t + 1.4;
         if (cur.id === 'recap') { const L = cur.tags, i = L.indexOf(k), step = (cur.d - 3) / L.length; on = i >= 0 && t >= cur.t + 2 + i * step && t < cur.t + 2 + (i + 1) * step; }
@@ -371,7 +400,7 @@ function makeScene(G, tagsEl, TL) {
         const [o, off] = anchors[c.anc]; o.getWorldPosition(tmp); tmp.y += off; tmp.project(cam);
         const vis = tmp.z < 1 && Math.abs(tmp.x) < 1.15 && Math.abs(tmp.y) < 1.15;
         const px = clamp((tmp.x + 1) / 2 * Wd, 70, Wd - 70), py = clamp((1 - tmp.y) / 2 * H, 64, H - 6);
-        c.d.style.opacity = vis ? 1 : 0; c.d.style.transform = `translate(${px.toFixed(1)}px, ${py.toFixed(1)}px) translate(-50%, -100%)`;
+        c.d.style.opacity = vis ? 1 : 0; c.d.style.transform = `translate(${(px + ox).toFixed(1)}px, ${(py + oy).toFixed(1)}px) translate(-50%, -100%)`;
       }
     },
     filter: t => t > T.crash + 1.0 && t < T.sofia2 + 1.5 ? `saturate(${t < T.gone + 4 ? .3 : .3 + (t - T.gone - 4) / 6 * .7}) contrast(1.06)` : 'none',
