@@ -1,0 +1,440 @@
+{
+"end": 184.79,
+"phrases": [
+{
+"id": "p1",
+"cap": "Question 4. You run k get nodes, and you see this.",
+"pause": 0,
+"focus": [],
+"term": [
+"$ k get nodes",
+"NAME           STATUS     ROLES",
+"controlplane   Ready      control-plane",
+"node01         NotReady   <none>"
+],
+"t": 1.0,
+"d": 3.28
+},
+{
+"id": "p2",
+"cap": "node01 is NotReady. What does that mean? And how do you fix it?",
+"pause": 0,
+"focus": [],
+"t": 5.28,
+"d": 4.08
+},
+{
+"id": "p3",
+"cap": "First: what is a node? A node is simply a computer in the cluster.",
+"pause": 1,
+"focus": [
+"node"
+],
+"draw": [
+"node"
+],
+"t": 10.96,
+"d": 4.21
+},
+{
+"id": "p4",
+"cap": "Your apps run on it, inside pods.",
+"pause": 0,
+"focus": [
+"pod"
+],
+"draw": [
+"pod",
+"ctr"
+],
+"t": 16.18,
+"d": 2.51
+},
+{
+"id": "p5",
+"cap": "On every node runs a small program called the kubelet.",
+"pause": 0,
+"focus": [
+"kubelet"
+],
+"draw": [
+"kubelet"
+],
+"t": 19.68,
+"d": 3.31
+},
+{
+"id": "p6",
+"cap": "The kubelet is the node's manager. It starts the pods and looks after them.",
+"pause": 0,
+"focus": [
+"kubelet",
+"pod"
+],
+"draw": [
+"a_kubelet_cri",
+"cri",
+"a_cri_pod"
+],
+"t": 23.99,
+"d": 4.61
+},
+{
+"id": "p7",
+"cap": "The whole cluster is controlled from one central place: the API server.",
+"pause": 1,
+"focus": [
+"api"
+],
+"draw": [
+"cp",
+"api"
+],
+"t": 30.2,
+"d": 4.64
+},
+{
+"id": "p8",
+"cap": "Every few seconds, the kubelet tells the API server: I am here, node01 is fine.",
+"pause": 0,
+"focus": [
+"kubelet",
+"api"
+],
+"draw": [
+"a_api_kubelet"
+],
+"act": "beat",
+"t": 35.85,
+"d": 5.28
+},
+{
+"id": "p9",
+"cap": "This message is called the heartbeat.",
+"pause": 0,
+"focus": [
+"kubelet",
+"api"
+],
+"act": "beatword",
+"t": 42.13,
+"d": 2.23
+},
+{
+"id": "p10",
+"cap": "As long as the heartbeat arrives, node01 is Ready.",
+"pause": 0,
+"focus": [
+"node"
+],
+"act": "ready0",
+"t": 45.35,
+"d": 3.02
+},
+{
+"id": "p11",
+"cap": "Now, the problem.",
+"pause": 2,
+"focus": [
+"kubelet"
+],
+"t": 50.78,
+"d": 1.31
+},
+{
+"id": "p12",
+"cap": "On node01, the kubelet was stopped.",
+"pause": 0,
+"focus": [
+"kubelet"
+],
+"act": "stop",
+"t": 53.09,
+"d": 2.2
+},
+{
+"id": "p13",
+"cap": "No kubelet, no heartbeat.",
+"pause": 0,
+"focus": [
+"kubelet",
+"api"
+],
+"act": "flat",
+"t": 56.28,
+"d": 2.02
+},
+{
+"id": "p14",
+"cap": "The API server waits about 40 seconds. Then it marks node01 as NotReady.",
+"pause": 1,
+"focus": [
+"node",
+"api"
+],
+"act": "notready",
+"t": 59.91,
+"d": 5.24
+},
+{
+"id": "p15",
+"cap": "That is exactly what k get nodes showed us.",
+"pause": 0,
+"focus": [
+"node"
+],
+"t": 66.14,
+"d": 2.92
+},
+{
+"id": "p16",
+"cap": "While node01 is NotReady, no new pods are placed on it.",
+"pause": 0,
+"focus": [
+"pod"
+],
+"act": "nopods",
+"t": 70.06,
+"d": 3.56
+},
+{
+"id": "p17",
+"cap": "Let's confirm the cause. Run: k describe node node01.",
+"pause": 1,
+"focus": [
+"you",
+"api"
+],
+"draw": [
+"you"
+],
+"term": [
+"$ k describe node node01",
+"Conditions:",
+"  Ready  Unknown  NodeStatusUnknown",
+"  Kubelet stopped posting node status."
+],
+"t": 75.22,
+"d": 4.03
+},
+{
+"id": "p18",
+"cap": "Kubelet stopped posting node status. So the kubelet is the problem.",
+"pause": 0,
+"focus": [
+"kubelet"
+],
+"t": 80.25,
+"d": 4.53
+},
+{
+"id": "p19",
+"cap": "Now the key question: can kubectl start the kubelet?",
+"pause": 2,
+"focus": [
+"you",
+"kubelet"
+],
+"t": 87.18,
+"d": 3.99
+},
+{
+"id": "p20",
+"cap": "No. kubectl only talks to the API server.",
+"pause": 0,
+"focus": [
+"you",
+"api"
+],
+"act": "kubectl",
+"t": 92.16,
+"d": 3.3
+},
+{
+"id": "p21",
+"cap": "And the kubelet is not inside the API server. It is a program on the node01 computer.",
+"pause": 0,
+"focus": [
+"kubelet"
+],
+"act": "program",
+"t": 96.46,
+"d": 5.89
+},
+{
+"id": "p22",
+"cap": "So to start it, you must go to that computer yourself.",
+"pause": 0,
+"focus": [
+"you",
+"kubelet"
+],
+"t": 103.35,
+"d": 3.37
+},
+{
+"id": "p23",
+"cap": "ssh node01. Then sudo -i, to become root.",
+"pause": 1,
+"focus": [
+"you",
+"kubelet"
+],
+"act": "ssh",
+"term": [
+"$ ssh node01",
+"$ sudo -i"
+],
+"t": 108.32,
+"d": 4.14
+},
+{
+"id": "p24",
+"cap": "Ask the computer about the kubelet: systemctl status kubelet.",
+"pause": 1,
+"focus": [
+"kubelet"
+],
+"term": [
+"$ systemctl status kubelet --no-pager",
+"  Loaded: loaded (.../kubelet.service; disabled; ...)",
+"  Active: inactive (dead)"
+],
+"t": 114.06,
+"d": 4.81
+},
+{
+"id": "p25",
+"cap": "Two problems. inactive: it is not running now. disabled: it will not start after a reboot.",
+"pause": 0,
+"focus": [
+"kubelet"
+],
+"act": "status",
+"t": 119.88,
+"d": 6.06
+},
+{
+"id": "p26",
+"cap": "The question says the fix must survive a reboot. So we fix both, with one command.",
+"pause": 1,
+"focus": [
+"kubelet"
+],
+"t": 127.54,
+"d": 5.25
+},
+{
+"id": "p27",
+"cap": "systemctl enable --now kubelet.",
+"pause": 0,
+"focus": [
+"kubelet"
+],
+"act": "fix",
+"term": [
+"$ systemctl enable --now kubelet",
+"Created symlink ... → .../kubelet.service."
+],
+"t": 133.79,
+"d": 3.36
+},
+{
+"id": "p28",
+"cap": "enable: start it at every boot. --now: start it right away.",
+"pause": 0,
+"focus": [
+"kubelet"
+],
+"t": 138.15,
+"d": 4.58
+},
+{
+"id": "p29",
+"cap": "Check both: systemctl is-active kubelet, and systemctl is-enabled kubelet.",
+"pause": 1,
+"focus": [
+"kubelet"
+],
+"act": "fixed",
+"term": [
+"$ systemctl is-active kubelet",
+"active",
+"$ systemctl is-enabled kubelet",
+"enabled"
+],
+"t": 144.33,
+"d": 5.61
+},
+{
+"id": "p30",
+"cap": "The kubelet runs again, and the heartbeat comes back.",
+"pause": 0,
+"focus": [
+"kubelet",
+"api"
+],
+"act": "beat2",
+"t": 150.94,
+"d": 3.12
+},
+{
+"id": "p31",
+"cap": "After a few seconds, node01 is Ready again.",
+"pause": 0,
+"focus": [
+"node"
+],
+"act": "ready",
+"t": 155.06,
+"d": 2.88
+},
+{
+"id": "p32",
+"cap": "Type exit to leave node01, and check again: k get nodes.",
+"pause": 1,
+"focus": [
+"you",
+"node"
+],
+"term": [
+"$ exit",
+"$ k get nodes",
+"NAME           STATUS   ROLES",
+"controlplane   Ready    control-plane",
+"node01         Ready    <none>"
+],
+"t": 159.54,
+"d": 3.85
+},
+{
+"id": "p33",
+"cap": "The rule to remember.",
+"pause": 2,
+"focus": [],
+"t": 165.79,
+"d": 1.54
+},
+{
+"id": "p34",
+"cap": "If the problem is inside the API server, like a Deployment, fix it with kubectl from where you are.",
+"pause": 0,
+"focus": [
+"you",
+"api"
+],
+"t": 168.33,
+"d": 6.58
+},
+{
+"id": "p35",
+"cap": "If the problem is a program on the node, like the kubelet, ssh to the node and use systemctl.",
+"pause": 0,
+"focus": [
+"kubelet"
+],
+"t": 175.91,
+"d": 6.38
+}
+]
+}

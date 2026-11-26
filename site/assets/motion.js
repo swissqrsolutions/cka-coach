@@ -72,7 +72,7 @@ function makeFilm(script, bh = BH) {
     K: new W.Pen('black', INK.black, { park: [VW + 260, VH + 160] }), Bl: new W.Pen('blue', INK.blue, { park: [VW + 300, VH - 200] }),
     R: new W.Pen('red', INK.red, { park: [VW + 200, VH + 260] }), G: new W.Pen('green', INK.green, { park: [VW + 320, VH + 80] }), O: new W.Pen('orange', INK.orange, { park: [VW + 240, VH - 40] }),
   };
-  const m = mapShapes(), mags = [], caps = [];
+  const m = mapShapes(), mags = [], caps = [], overlays = [], terms = [];
   const a = {
     m, pen, tl,
     draw: (p, shapes, t, by) => tl.draw(p, shapes, t, { by }),
@@ -97,15 +97,17 @@ function makeFilm(script, bh = BH) {
     // a glossy magnet (the hero) slides along arrow shafts: legs [[arrow, t0, t1, reverse]]
     magnet: (color, legs, o = {}) => mags.push({ color, legs: legs.map(([k, t0, t1, rev]) => ({ s: typeof k === 'string' ? m['a_' + k].shaft : k, t0, t1, rev })), until: o.until ?? 1e9, size: o.size ?? 46 }),
     caption: (t, s) => caps.push([t, s]),
+    overlay: f => overlays.push(f), term: (t, lines) => terms.push({ t, lines }),
   };
   const cam = script(a);
   tl.end();
   const board = new W.Board(tl, { W: BW, H: bh, ghosts: ghosts() });
+  for (const f of overlays) board.overlays.push({ draw: f });
   board.objs.push({ draw(ctx, t, c) { for (const e of tl.erasers) W.drawEraser(ctx, e, t, c); } });
   board.objs.push({ draw(ctx, t, c) { for (const g of mags) drawMag(ctx, g, t, c); } });
   board.objs.push({ draw(ctx, t, c) { for (const k in pen) { const p = pen[k]; ctx.save(); W.drawMarker(ctx, p, W.penPose(p, t, cam), c, t); ctx.restore(); } } });
   const end = Math.max(cam.k[cam.k.length - 1].t, ...tl.strokes.map(s => s.t1), ...tl.erasers.map(e => e.t1 + .5), ...caps.map(c => c[0] + .6)) + .3;
-  return { board, cam, caps, end };
+  return { board, cam, caps, end, terms };
 }
 const shade = (h, k) => '#' + [1, 3, 5].map(i => Math.round(parseInt(h.slice(i, i + 2), 16) * k).toString(16).padStart(2, '0')).join('');
 function drawMag(ctx, g, t, c) {
@@ -155,76 +157,7 @@ const SHORTS = {
       a.wipe([r1, n1], 6.2, .5); a.wipe([n2], 6.7, .3); a.wipe([n3], 7.0, .3);
       draw(G, a.text('cpu request: 100m', NOTE.api, { h: 48, align: 'center' }), 6.8, 7.5); draw(G, a.text('→ node01 ✓', NOTE.sched, { h: 54 }), 7.5, 8.1);
       draw(G, a.text('Running ✓', NOTE.pod, { h: 56, align: 'center' }), 8.3, 9.0); } },
-  4: { long: true, audio: 'media/q4.mp3', end: 189,
-    cam: [[0, 1200, 1710, .395], [17.5, 1200, 1710, .395], [19.5, 1200, 2520, .47], [29.5, 1200, 2520, .47], [31.5, 850, 1850, .55], [55, 850, 1850, .55],
-      [57, 900, 1500, .55], [65.5, 900, 1500, .55], [67.5, 1150, 1700, .48], [82, 1150, 1700, .48], [84, 900, 1450, .6], [94.5, 900, 1450, .6], [96.5, 900, 1600, .5],
-      [115.5, 900, 1600, .5], [117.5, 700, 1700, .55], [126, 700, 1700, .55], [128.5, 700, 2420, .62], [151, 700, 2420, .62], [153, 850, 2000, .5], [161, 850, 2000, .5],
-      [163.5, 900, 1600, .5], [170, 900, 1600, .5], [172.5, 1200, 1710, .395], [189, 1200, 1710, .395]],
-    lines: [
-      [.8, "Question 4. First, the big picture. A Kubernetes cluster is a group of machines. The control plane is the brain: the API server, etcd, the scheduler and the controller manager. The other machines are workers, called nodes. Here we have one worker: node01."],
-      [18.77, "Your apps run in pods, and pods run on nodes. On every node, two programs make this work: containerd starts the containers, and the kubelet is the node's manager."],
-      [30.89, "The kubelet is the link between the node and the control plane. It asks the API server which pods should run here, tells containerd to start them, and every few seconds it reports back: node01 is fine. That report is the heartbeat."],
-      [47.51, "Now, the problem. Someone stopped the kubelet on node01, and also switched it off for the next reboot. The heartbeats stop."],
-      [56.21, "The control plane waits. After about 40 seconds without a heartbeat, it marks node01 as NotReady. You see this with: k get nodes."],
-      [66.65, "What does NotReady mean for you? The scheduler stops putting new pods on node01. Nobody looks after the pods already there, and after about 5 minutes Kubernetes starts moving them away. The node is useless until the kubelet is back."],
-      [82.83, "How do you find the cause? Run k describe node node01. Under Conditions it says: Kubelet stopped posting node status. So the problem is the kubelet itself."],
-      [95.24, "The most important part: every kubectl command talks to the API server. Deployments, pods and services live there, so kubectl fixes them from where you are. But the kubelet is not stored in the API server. It is a Linux service running on node01. No kubectl command can start it."],
-      [116.51, "So you go to the machine itself: ssh node01. Then sudo -i to become root, because only root may manage services."],
-      [126.37, "systemctl status kubelet shows the cause: inactive (dead). And disabled, so it would not even start after a reboot. The question says the fix must survive a reboot, so just starting it is not enough."],
-      [141.13, "The fix is one command: systemctl enable --now kubelet. enable = start at every boot. --now = start it right away."],
-      [152.01, "Check it: systemctl is-enabled kubelet says enabled. The heartbeat comes back, and within a few seconds node01 is Ready again."],
-      [161.8, "Type exit to leave node01, and check from the control plane: k get nodes. node01 is Ready. The question is solved."],
-      [170.32, "The rule: if the broken thing lives in the API server (a Deployment, a Service), use kubectl from where you are. If it lives on the node itself (the kubelet, containerd), ssh to that node and use systemctl."],
-    ],
-    run(a) { const { pen: { R, O, G, Bl }, draw } = a, T = (s, xy, o) => a.text(s, xy, { h: 50, ...o });
-      // b1: the brain and the worker
-      const cpR = W.circle(1200, 1450, 1230, { ry: 540, w: 8, lap: .25 }), nR = W.circle(1200, 2540, 1230, { ry: 550, w: 8, lap: .25 });
-      const brain = T('= the brain', [560, 1052], { h: 60 }), worker = T('= a worker', [380, 2132], { h: 60 });
-      draw(Bl, cpR, 4.0, 5.6); draw(Bl, brain, 5.8, 6.8); draw(Bl, nR, 12.5, 14.0); draw(Bl, worker, 14.2, 15.2);
-      a.wipe([cpR, nR], 17.0, 1.0);
-      // b2: pod, containerd, kubelet
-      const rp = a.ring('pod', 26), rc = a.ring('cri', 26), rk = a.ring('kubelet', 26);
-      draw(Bl, rp, 20.5, 21.3); draw(Bl, rc, 23.5, 24.3); draw(Bl, rk, 26.5, 27.3); a.wipe([rp, rc], 29.6, .6); a.wipe([rk, worker], 30.2, .5);
-      // b3: the kubelet asks for pods, then the heartbeat
-      a.magnet(INK.blue, [['api_kubelet', 35.5, 37.5]], { until: 37.5, size: 34 }); a.magnet(INK.blue, [['kubelet_cri', 38.5, 39.3]], { until: 39.3, size: 30 });
-      const hb = T('heartbeat', [440, 1700], { h: 58 }); draw(G, hb, 41.0, 42.0);
-      for (const t of [41.5, 43.6, 45.7]) a.magnet(INK.green, [['api_kubelet', t, t + 1.6, true]], { until: t + 1.6, size: 30 });
-      // b4: the kubelet stops
-      const r1 = a.ring('kubelet', 26), n1 = a.text('stopped', NOTE.kubelet), x1 = a.cross([430, 1810]);
-      draw(R, r1, 49.0, 49.8); draw(R, n1, 50.2, 51.0); draw(R, x1, 52.5, 53.0);
-      // b5: NotReady
-      const n2 = a.text('NotReady', NOTE.status), g1 = T('k get nodes', NOTE.fix, { h: 62 });
-      draw(R, n2, 60.0, 60.8); draw(O, g1, 62.0, 63.0);
-      // b6: what NotReady means
-      const n3 = T('no new pods here', NOTE.sched, { h: 50 }), rp2 = a.ring('pod', 26), n4 = T('moved after ~5 min', NOTE.pod, { h: 42, align: 'center' });
-      draw(R, n3, 70.0, 71.2); draw(R, rp2, 73.5, 74.3); draw(R, n4, 75.5, 76.8);
-      // b7: describe node
-      a.wipe([g1], 83.0, .4);
-      const d1 = T('k describe node node01', NOTE.fix, { h: 54 }), d2 = T('"Kubelet stopped posting node status"', [120, 2012], { h: 42 });
-      draw(O, d1, 84.0, 85.4); draw(R, d2, 88.0, 90.0);
-      // b8: kubectl only reaches the API server
-      a.wipe([d1, n3, rp2, n4], 95.6, .8);
-      draw(O, a.m.a_you_api, 97.5, 98.5); const k1 = T('kubectl → API server', NOTE.fix, { h: 56 }); draw(O, k1, 98.6, 99.8);
-      const gd = a.ring('dep', 22); draw(G, gd, 102.5, 103.2);
-      const ls = T('Linux service, not in API server', NOTE.kubelet2, { h: 42 }); draw(R, ls, 108.5, 110.5);
-      // b9: ssh node01, sudo -i
-      a.wipe([d2, gd], 116.8, .6);
-      draw(O, a.m.a_ssh, 117.8, 119.3); const s1 = T('ssh node01', NOTE.ssh, { h: 58 }), s2 = T('sudo -i', [520, 1992], { h: 58 });
-      draw(O, s1, 119.5, 120.4); draw(O, s2, 122.0, 122.8);
-      // b10: systemctl status
-      a.wipe([ls], 127.0, .5);
-      const st = T('systemctl status kubelet', NOTE.kubelet2, { h: 46 }), st2 = T('inactive (dead), disabled', [140, 2715], { h: 46 });
-      draw(O, st, 128.5, 129.8); draw(R, st2, 131.0, 132.4);
-      // b11: the fix
-      const fx = T('systemctl enable --now kubelet', [140, 2795], { h: 42 }); draw(O, fx, 143.0, 144.6);
-      // b12: fixed: heartbeat again
-      a.wipe([r1, n1], 152.4, .5); a.wipe([x1, hb], 152.9, .4); a.wipe([st2], 153.3, .4);
-      draw(G, a.text('active, enabled ✓', NOTE.kubelet, { h: 48 }), 154.0, 155.0);
-      for (const t of [155.5, 157.6, 159.7]) a.magnet(INK.green, [['api_kubelet', t, t + 1.6, true]], { until: t + 1.6, size: 30 });
-      // b13: Ready, exit
-      a.wipe([n2], 162.2, .4); draw(G, a.text('Ready ✓', NOTE.status), 163.0, 163.8);
-      a.wipe([k1], 165.0, .4); draw(O, T('exit, then k get nodes', NOTE.fix, { h: 54 }), 165.6, 167.0);
-    } },
+  4: { long: true, audio: 'media/q4.mp3', json: 'media/q4film.json', film: q4Film },
   5: { cap: 'The kubelet can\'t start: its systemd file on node01 points to a wrong path. That file is on the node, not in Kubernetes, so you ssh there to fix it.',
     run(a) { const { pen: { R, O, G }, draw } = a;
       const r1 = a.ring('kubelet', 26), n1 = a.text('10-kubeadm.conf:', NOTE.kubelet, { h: 46 }), n1b = a.text('wrong path', NOTE.kubelet2, { h: 46 }), n2 = a.text('NotReady', NOTE.status);
@@ -235,7 +168,62 @@ const SHORTS = {
       a.magnet(INK.green, [['api_kubelet', 8.3, 9.1, true]], { until: 9.1, size: 32 });
       draw(G, a.text('Ready ✓', NOTE.status), 9.1, 9.7); } },
 };
-const shortFilm = n => a => { const S = SHORTS[n]; preDraw(a); S.run(a);
+
+// ───────── Q4, explained slowly: an empty board; each part is drawn when the voice names it; the named part is lit, the rest dimmed
+const RECT = k => k === 'ctr' ? [1790, 2290, 460, 140] : B[k] ? B[k].slice(0, 4) : FR[k] ? FR[k].slice(0, 4) : null;
+function fitCam(keys, drawn) {
+  const R = (keys.length ? keys : drawn).map(RECT).filter(Boolean);
+  if (!R.length) return [1200, 2000, .42];
+  const x0 = Math.min(...R.map(r => r[0])), y0 = Math.min(...R.map(r => r[1])), x1 = Math.max(...R.map(r => r[0] + r[2])), y1 = Math.max(...R.map(r => r[1] + r[3]));
+  const pad = 170, z = Math.max(.42, Math.min(.95, VW / (x1 - x0 + 2 * pad), VH / (y1 - y0 + 2 * pad)));
+  return [(x0 + x1) / 2, (y0 + y1) / 2, z];
+}
+function q4Film(a, J) {
+  const { m, pen: { K, Bl, R, G, O }, draw } = a, T = (s, xy, o) => a.text(s, xy, { h: 50, ...o });
+  const P = J.phrases, at = id => P.find(p => p.id === id).t, keys = [], spots = [], drawn = [];
+  let cam = [1200, 2000, .42]; keys.push([0, ...cam]);
+  const W2 = {};   // strokes we may wipe later
+  const beats = (t0, t1) => { for (let t = t0; t < t1 - 1; t += 1.9) a.magnet(INK.green, [['api_kubelet', t, t + 1.5, true]], { until: t + 1.5, size: 30 }); };
+  const ACT = {
+    beat: t => beats(t + 1.2, at('p12') + .5),
+    beatword: t => draw(G, W2.hb = T('heartbeat', [440, 1700], { h: 60 }), t + .4, t + 1.4),
+    ready0: t => draw(G, W2.rd = a.text('Ready', NOTE.status, { h: 60 }), t + .6, t + 1.4),
+    stop: t => { draw(R, W2.ring = a.ring('kubelet', 26), t + .4, t + 1.2); draw(R, W2.stop = a.text('stopped', NOTE.kubelet, { h: 58 }), t + 1.3, t + 2.0); },
+    flat: t => draw(R, W2.x = a.cross([430, 1810]), t + .5, t + 1.0),
+    notready: t => { a.wipe([W2.rd], t + 2.6, .4); draw(R, W2.nr = a.text('NotReady', NOTE.status, { h: 60 }), t + 3.1, t + 4.0); },
+    nopods: t => draw(R, W2.np = T('no new pods', [2020, 2690], { h: 52, align: 'center' }), t + .6, t + 1.6),
+    kubectl: t => { draw(O, m.a_you_api, t + .3, t + 1.3); draw(O, W2.kc = T('kubectl → API server only', NOTE.fix, { h: 50 }), t + 1.4, t + 2.8); },
+    program: t => draw(R, W2.pg = T('a program on node01', NOTE.kubelet2, { h: 46 }), t + 1.8, t + 3.0),
+    ssh: t => { draw(O, m.a_ssh, t + .2, t + 1.6); draw(O, T('ssh node01', NOTE.ssh, { h: 58 }), t + 1.6, t + 2.4); },
+    status: t => { a.wipe([W2.pg], t + .1, .4); draw(R, W2.st = T('inactive, disabled', NOTE.kubelet2, { h: 50 }), t + .6, t + 1.8); },
+    fix: t => draw(O, W2.fx = T('systemctl enable --now kubelet', [140, 2715], { h: 42 }), t + .3, t + 2.0),
+    fixed: t => { a.wipe([W2.ring, W2.stop], t + .3, .5); a.wipe([W2.x, W2.st], t + .8, .4); draw(G, T('active, enabled ✓', NOTE.kubelet, { h: 50 }), t + 1.4, t + 2.4); },
+    beat2: t => beats(t + .6, t + 7.5),
+    ready: t => { a.wipe([W2.nr, W2.np], t + .2, .4); draw(G, a.text('Ready ✓', NOTE.status, { h: 60 }), t + .8, t + 1.6); },
+  };
+  for (const ph of P) {
+    const t = ph.t;
+    a.caption(t, ph.cap);
+    (ph.draw || []).forEach((k, i) => { const n = (ph.draw || []).length, d = Math.min(1.6, 3.2 / n); draw(k.startsWith('a_') ? Bl : K, m[k], t + .2 + i * d, t + .2 + (i + 1) * d - .1); if (!k.startsWith('a_')) drawn.push(k); });
+    if (ph.act) ACT[ph.act](t);
+    if (ph.term) a.term(t, ph.term);
+    const next = fitCam(ph.focus || [], drawn.length ? drawn : []);
+    keys.push([t, ...cam], [t + 1.3, ...next]); cam = next;
+    spots.push({ t, rects: (ph.focus || []).map(RECT).filter(Boolean) });
+  }
+  keys.push([J.end, ...cam]);
+  // spotlight: everything is dimmed except the part being named
+  a.overlay((ctx, t, c) => {
+    let s = null; for (const x of spots) if (t >= x.t) s = x;
+    if (!s || !s.rects.length) return;
+    const al = Math.min(1, (t - s.t - .3) / .6) * .62; if (al <= 0) return;
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.beginPath(); ctx.rect(0, 0, VW, VH);
+    for (const [x, y, w, h] of s.rects) { const [ax, ay] = W.toScreen(c, x - 60, y - 60), [bx, by] = W.toScreen(c, x + w + 60, y + h + 60); ctx.roundRect(ax, ay, bx - ax, by - ay, 28); }
+    ctx.fillStyle = `rgba(246,245,241,${al})`; ctx.fill('evenodd');
+  });
+  return new W.Camera(keys.map(([t, x, y, z]) => [t, x, y, z]));
+}
+const shortFilm = n => a => { const S = SHORTS[n]; if (S.film) return S.film(a, S._J); preDraw(a); S.run(a);
   if (S.long) { S.lines.forEach(([t, l]) => a.caption(t, l)); return new W.Camera(S.cam); }
   a.caption(2.4, S.cap); return new W.Camera(CAM0); };
 
@@ -248,7 +236,12 @@ async function build(host, kind) {
     <div class="mctl"><button type="button" class="mpp" aria-label="Play or pause">▶</button><input class="mseek" type="range" min="0" max="1000" value="0" aria-label="Position"><span class="mtime">0:00</span><button type="button" class="msnd" aria-label="Sound on or off" hidden>🔇</button><button type="button" class="mfs" aria-label="Full screen">⛶</button></div>
     <p class="mcap" aria-live="polite"></p>`;
   await font();
-  const F = makeFilm(shortFilm(kind)); if (S.end) F.end = Math.max(F.end, S.end);
+  if (S.json && !S._J) S._J = await (await fetch(new URL('../' + S.json, import.meta.url), { cache: 'no-cache' })).json();
+  const F = makeFilm(shortFilm(kind)); if (S.end) F.end = Math.max(F.end, S.end); if (S._J) F.end = Math.max(F.end, S._J.end);
+  if (F.terms.length) host.querySelector('.mctl').insertAdjacentHTML('beforebegin', '<pre class="mterm" aria-label="Terminal"></pre>');
+  const term = host.querySelector('.mterm');
+  const termAt = t => { if (!term) return; const out = []; for (const e of F.terms) { if (t < e.t) break; let st = e.t + .4; for (const l of e.lines) { if (l.startsWith('$')) { const n = Math.floor((t - st) * 20); if (n < 0) break; out.push(l.slice(0, n)); st += l.length / 20 + .4; } else { if (t < st) break; out.push(l); st += .3; } } }
+    const html = out.slice(-6).map(l => `<span class="${l.startsWith('$') ? 'c' : /NotReady|inactive|disabled|Unknown|stopped/.test(l) ? 'bad' : /Ready|active|enabled/.test(l) ? 'ok' : ''}">${l.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</span>`).join('\n'); if (term.innerHTML !== html) term.innerHTML = html; };
   const $ = q => host.querySelector(q);
   const cv = $('canvas'), ctx = cv.getContext('2d'), cap = $('.mcap'), big = $('.mbig'), pp = $('.mpp'), bar = $('.mseek'), time = $('.mtime'), snd = $('.msnd'), fs = $('.mfs');
   let raf = 0, playing = false, T = 0, last = 0, audio = null, muted = true;
@@ -261,7 +254,7 @@ async function build(host, kind) {
     if (cap.dataset.s !== c[1]) { cap.dataset.s = c[1]; cap.textContent = c[1]; }
     cap.style.opacity = Math.min(1, (t - c[0]) / .5);
   };
-  const frame = t => { F.board.render(ctx, t, F.cam); showCap(t); if (!bar.dragging) bar.value = Math.round(t / F.end * 1000); time.textContent = `${fmt(t)} / ${fmt(F.end)}`; };
+  const frame = t => { F.board.render(ctx, t, F.cam); showCap(t); termAt(t); if (!bar.dragging) bar.value = Math.round(t / F.end * 1000); time.textContent = `${fmt(t)} / ${fmt(F.end)}`; };
   const setUI = () => { pp.textContent = playing ? '⏸' : '▶'; big.hidden = playing; };
   const tick = now => {
     if (!playing) return; if (!host.isConnected) return pause();

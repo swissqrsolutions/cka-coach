@@ -438,3 +438,6 @@ details.reveal{margin-top:8px}details.reveal summary{cursor:pointer;font-weight:
 .mfull .mwrap{width:min(100vw,calc((100vh - 170px) * .8));border:0;border-radius:0}
 .mfull .mctl,.mfull .mcap{width:min(100vw,calc((100vh - 170px) * .8));box-sizing:border-box;border-radius:0}
 body.mfull-open{overflow:hidden}
+.mterm{margin:0;padding:9px 12px;min-height:9.2em;background:#0b1020;color:#c9d1d9;font:12.5px/1.5 var(--mono);white-space:pre;overflow:hidden;border-radius:0}
+.mterm .c{color:#e6edf3;font-weight:700}.mterm .bad{color:#ff7b72}.mterm .ok{color:#7ee787}
+.mlong .mcap{font-size:16px;min-height:5.2em}
