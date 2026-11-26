@@ -178,7 +178,8 @@ function fit4(k) {
   return [x + w / 2, y + h / 2, Math.max(WIDE_Z, Math.min(WIDE_Z * 2, VW / mw, VH / mh))];
 }
 function q4Film(a, J) {
-  const { pen: { K, Bl, R, G, O }, draw } = a, T = (s, xy, o) => a.text(s, xy, { h: 70, ...o }), P = J.phrases, at = id => P.find(p => p.id === id).t;
+  const rec = [], draw = (pen, shapes, t0, t1) => { rec.push(shapes); a.draw(pen, shapes, t0, t1); };   // remember what each sentence writes
+  const { pen: { K, Bl, R, G, O } } = a, T = (s, xy, o) => a.text(s, xy, { h: 70, ...o }), P = J.phrases, at = id => P.find(p => p.id === id).t;
   const GREY = '#6b7280';
   const frame = (k, label) => { const [x, y, w, h] = L4[k]; return [...W.rect(x, y, w, h, { w: 5, over: 10, color: GREY, alpha: .75 }), ...W.text(label, x + 40, y + 95, { h: 84, color: GREY })]; };
   const box = (k, label, sub, hh = 100) => { const [x, y, w, h] = L4[k]; const t = sub ? [...W.text(label, x + w / 2, y + h / 2 - 4, { h: hh, align: 'center' }), ...W.text(sub, x + w / 2, y + h / 2 + 84, { h: 64, align: 'center', color: GREY })] : W.text(label, x + w / 2, y + 140, { h: hh, align: 'center' }); return [...W.rect(x, y, w, h, { w: 8, over: 8 }), ...t]; };
@@ -207,7 +208,7 @@ function q4Film(a, J) {
     stop: t => { draw(R, N.ring = ring(), t + 1.4, t + 2.3); draw(R, N.st = T('stopped', [1170, 960], { h: 76 }), t + 2.4, t + 3.2); },
     flat: t => draw(R, N.x = a.cross([1050, 690]), t + 1.4, t + 1.9),
     notready: t => { flashes.push([t + 1.2, 'cp']); a.wipe([N.rd], t + 2.4, .4); draw(R, N.nr = T('NotReady', [1620, 515], { h: 84 }), t + 2.9, t + 3.8); },
-    nopods: t => { draw(R, N.np = T('no new pods', [1290, 1640], { h: 66 }), t + 2.4, t + 3.4); draw(R, N.na = [...arrow([[2045, 1340], [1880, 1340]]), ...a.cross([1962, 1340])], t + 3.5, t + 4.2); },
+    nopods: t => { draw(R, N.np = T('no new pods', [1125, 1640], { h: 62 }), t + 2.4, t + 3.4); draw(R, N.na = [...arrow([[2045, 1340], [1880, 1340]]), ...a.cross([1962, 1340])], t + 3.5, t + 4.2); },
     pulse: t => a.blink([N.ring], t + .2, t + 1.6),
     pulseya: t => a.blink([SH.a_ya, N.kc], t + .2, t + 2.0),
     nokubectl: t => draw(R, N.yx = a.cross([1000, 1385]), t + 1.8, t + 2.3),
@@ -222,12 +223,25 @@ function q4Film(a, J) {
     ready: t => { a.wipe([N.nr], t + 2.4, .4); a.wipe([N.np, N.na], t + 2.8, .4); draw(G, T('Ready ✓', [1620, 515], { h: 84 }), t + 3.2, t + 4.0); draw(G, T('✓', [1950, 250], { h: 140 }), t + 4.2, t + 4.7); },
   };
   const keys = [[0, ...fit4('WIDE')]]; let cam = fit4('WIDE'); const spots = [];
+  // a shot must contain the part being talked about AND everything the marker writes during that sentence
+  const fitBox = (keys, strokes) => {
+    const R0 = keys.map(k => { const [x, y, w, h] = L4[k]; return [x, y, x + w, y + h]; });
+    for (const st of strokes.flat(9)) if (st && st.box) R0.push(st.box);
+    if (!R0.length) return null;
+    const x0 = Math.min(...R0.map(r => r[0])), y0 = Math.min(...R0.map(r => r[1])), x1 = Math.max(...R0.map(r => r[2])), y1 = Math.max(...R0.map(r => r[3]));
+    const w = (x1 - x0) * 1.24 + 80, h = (y1 - y0) * 1.24 + 80;
+    return [(x0 + x1) / 2, (y0 + y1) / 2, Math.max(WIDE_Z, Math.min(WIDE_Z * 2, VW / w, VH / h))];
+  };
   for (const ph of P) {
-    const t = ph.t;
+    const t = ph.t, r0 = rec.length;
     (ph.draw || []).forEach((k, i) => { const n = ph.draw.length, d = Math.min(1.6, 3 / n); draw(PEN[k] || K, SH[k], t + .3 + i * d, t + .3 + (i + 1) * d - .1); });
     if (ph.act && ACT[ph.act]) ACT[ph.act](t);
     a.caption(t, ph.cap);
-    if (ph.focus !== 'TERM') { const next = fit4(ph.focus); keys.push([t, ...cam], [t + .7, ...next]); cam = next; }
+    const wrote = rec.slice(r0);
+    if (ph.focus !== 'TERM' || wrote.length) {
+      const next = ph.focus === 'WIDE' ? fit4('WIDE') : fitBox(ph.focus !== 'TERM' && L4[ph.focus] ? [ph.focus] : ['node'], wrote) || cam;
+      keys.push([t, ...cam], [t + .7, ...next]); cam = next;
+    }
     spots.push({ t, k: ph.focus && L4[ph.focus] && ph.focus !== 'WIDE' ? ph.focus : null });
   }
   keys.push([J.end, ...cam]);
