@@ -155,14 +155,76 @@ const SHORTS = {
       a.wipe([r1, n1], 6.2, .5); a.wipe([n2], 6.7, .3); a.wipe([n3], 7.0, .3);
       draw(G, a.text('cpu request: 100m', NOTE.api, { h: 48, align: 'center' }), 6.8, 7.5); draw(G, a.text('→ node01 ✓', NOTE.sched, { h: 54 }), 7.5, 8.1);
       draw(G, a.text('Running ✓', NOTE.pod, { h: 56, align: 'center' }), 8.3, 9.0); } },
-  4: { cap: 'The kubelet is a Linux service on node01, not a Kubernetes object. kubectl can\'t start it, so you ssh to the node.',
-    run(a) { const { pen: { R, O, G }, draw } = a;
-      const r1 = a.ring('kubelet', 26), n1 = a.text('stopped', NOTE.kubelet), n2 = a.text('NotReady', NOTE.status), x1 = a.cross([430, 1760]);
-      draw(R, r1, 1.2, 1.9); draw(R, n1, 1.9, 2.5); draw(R, n2, 2.6, 3.2); draw(R, x1, 3.3, 3.6);
-      draw(O, a.m.a_ssh, 4.2, 5.2); draw(O, a.text('ssh node01', NOTE.ssh, { h: 52 }), 5.2, 5.9); draw(O, a.text('systemctl enable --now kubelet', NOTE.kubelet2, { h: 40 }), 5.9, 6.9);
-      a.wipe([r1, n1], 7.0, .5); a.wipe([x1], 7.5, .25); a.wipe([n2], 7.75, .3);
-      draw(G, a.text('active ✓', NOTE.kubelet), 7.6, 8.2); a.magnet(INK.green, [['api_kubelet', 8.0, 8.9, true]], { until: 8.9, size: 32 });
-      draw(G, a.text('Ready ✓', NOTE.status), 8.9, 9.5); } },
+  4: { long: true, audio: 'media/q4.mp3', end: 189,
+    cam: [[0, 1200, 1710, .395], [17.5, 1200, 1710, .395], [19.5, 1200, 2520, .47], [29.5, 1200, 2520, .47], [31.5, 850, 1850, .55], [55, 850, 1850, .55],
+      [57, 900, 1500, .55], [65.5, 900, 1500, .55], [67.5, 1150, 1700, .48], [82, 1150, 1700, .48], [84, 900, 1450, .6], [94.5, 900, 1450, .6], [96.5, 900, 1600, .5],
+      [115.5, 900, 1600, .5], [117.5, 700, 1700, .55], [126, 700, 1700, .55], [128.5, 700, 2420, .62], [151, 700, 2420, .62], [153, 850, 2000, .5], [161, 850, 2000, .5],
+      [163.5, 900, 1600, .5], [170, 900, 1600, .5], [172.5, 1200, 1710, .395], [189, 1200, 1710, .395]],
+    lines: [
+      [.8, "Question 4. First, the big picture. A Kubernetes cluster is a group of machines. The control plane is the brain: the API server, etcd, the scheduler and the controller manager. The other machines are workers, called nodes. Here we have one worker: node01."],
+      [18.77, "Your apps run in pods, and pods run on nodes. On every node, two programs make this work: containerd starts the containers, and the kubelet is the node's manager."],
+      [30.89, "The kubelet is the link between the node and the control plane. It asks the API server which pods should run here, tells containerd to start them, and every few seconds it reports back: node01 is fine. That report is the heartbeat."],
+      [47.51, "Now, the problem. Someone stopped the kubelet on node01, and also switched it off for the next reboot. The heartbeats stop."],
+      [56.21, "The control plane waits. After about 40 seconds without a heartbeat, it marks node01 as NotReady. You see this with: k get nodes."],
+      [66.65, "What does NotReady mean for you? The scheduler stops putting new pods on node01. Nobody looks after the pods already there, and after about 5 minutes Kubernetes starts moving them away. The node is useless until the kubelet is back."],
+      [82.83, "How do you find the cause? Run k describe node node01. Under Conditions it says: Kubelet stopped posting node status. So the problem is the kubelet itself."],
+      [95.24, "The most important part: every kubectl command talks to the API server. Deployments, pods and services live there, so kubectl fixes them from where you are. But the kubelet is not stored in the API server. It is a Linux service running on node01. No kubectl command can start it."],
+      [116.51, "So you go to the machine itself: ssh node01. Then sudo -i to become root, because only root may manage services."],
+      [126.37, "systemctl status kubelet shows the cause: inactive (dead). And disabled, so it would not even start after a reboot. The question says the fix must survive a reboot, so just starting it is not enough."],
+      [141.13, "The fix is one command: systemctl enable --now kubelet. enable = start at every boot. --now = start it right away."],
+      [152.01, "Check it: systemctl is-enabled kubelet says enabled. The heartbeat comes back, and within a few seconds node01 is Ready again."],
+      [161.8, "Type exit to leave node01, and check from the control plane: k get nodes. node01 is Ready. The question is solved."],
+      [170.32, "The rule: if the broken thing lives in the API server (a Deployment, a Service), use kubectl from where you are. If it lives on the node itself (the kubelet, containerd), ssh to that node and use systemctl."],
+    ],
+    run(a) { const { pen: { R, O, G, Bl }, draw } = a, T = (s, xy, o) => a.text(s, xy, { h: 50, ...o });
+      // b1: the brain and the worker
+      const cpR = W.circle(1200, 1450, 1230, { ry: 540, w: 8, lap: .25 }), nR = W.circle(1200, 2540, 1230, { ry: 550, w: 8, lap: .25 });
+      const brain = T('= the brain', [560, 1052], { h: 60 }), worker = T('= a worker', [380, 2132], { h: 60 });
+      draw(Bl, cpR, 4.0, 5.6); draw(Bl, brain, 5.8, 6.8); draw(Bl, nR, 12.5, 14.0); draw(Bl, worker, 14.2, 15.2);
+      a.wipe([cpR, nR], 17.0, 1.0);
+      // b2: pod, containerd, kubelet
+      const rp = a.ring('pod', 26), rc = a.ring('cri', 26), rk = a.ring('kubelet', 26);
+      draw(Bl, rp, 20.5, 21.3); draw(Bl, rc, 23.5, 24.3); draw(Bl, rk, 26.5, 27.3); a.wipe([rp, rc], 29.6, .6); a.wipe([rk, worker], 30.2, .5);
+      // b3: the kubelet asks for pods, then the heartbeat
+      a.magnet(INK.blue, [['api_kubelet', 35.5, 37.5]], { until: 37.5, size: 34 }); a.magnet(INK.blue, [['kubelet_cri', 38.5, 39.3]], { until: 39.3, size: 30 });
+      const hb = T('heartbeat', [440, 1700], { h: 58 }); draw(G, hb, 41.0, 42.0);
+      for (const t of [41.5, 43.6, 45.7]) a.magnet(INK.green, [['api_kubelet', t, t + 1.6, true]], { until: t + 1.6, size: 30 });
+      // b4: the kubelet stops
+      const r1 = a.ring('kubelet', 26), n1 = a.text('stopped', NOTE.kubelet), x1 = a.cross([430, 1810]);
+      draw(R, r1, 49.0, 49.8); draw(R, n1, 50.2, 51.0); draw(R, x1, 52.5, 53.0);
+      // b5: NotReady
+      const n2 = a.text('NotReady', NOTE.status), g1 = T('k get nodes', NOTE.fix, { h: 62 });
+      draw(R, n2, 60.0, 60.8); draw(O, g1, 62.0, 63.0);
+      // b6: what NotReady means
+      const n3 = T('no new pods here', NOTE.sched, { h: 50 }), rp2 = a.ring('pod', 26), n4 = T('moved after ~5 min', NOTE.pod, { h: 42, align: 'center' });
+      draw(R, n3, 70.0, 71.2); draw(R, rp2, 73.5, 74.3); draw(R, n4, 75.5, 76.8);
+      // b7: describe node
+      a.wipe([g1], 83.0, .4);
+      const d1 = T('k describe node node01', NOTE.fix, { h: 54 }), d2 = T('"Kubelet stopped posting node status"', [120, 2012], { h: 42 });
+      draw(O, d1, 84.0, 85.4); draw(R, d2, 88.0, 90.0);
+      // b8: kubectl only reaches the API server
+      a.wipe([d1, n3, rp2, n4], 95.6, .8);
+      draw(O, a.m.a_you_api, 97.5, 98.5); const k1 = T('kubectl → API server', NOTE.fix, { h: 56 }); draw(O, k1, 98.6, 99.8);
+      const gd = a.ring('dep', 22); draw(G, gd, 102.5, 103.2);
+      const ls = T('Linux service, not in API server', NOTE.kubelet2, { h: 42 }); draw(R, ls, 108.5, 110.5);
+      // b9: ssh node01, sudo -i
+      a.wipe([d2, gd], 116.8, .6);
+      draw(O, a.m.a_ssh, 117.8, 119.3); const s1 = T('ssh node01', NOTE.ssh, { h: 58 }), s2 = T('sudo -i', [520, 1992], { h: 58 });
+      draw(O, s1, 119.5, 120.4); draw(O, s2, 122.0, 122.8);
+      // b10: systemctl status
+      a.wipe([ls], 127.0, .5);
+      const st = T('systemctl status kubelet', NOTE.kubelet2, { h: 46 }), st2 = T('inactive (dead), disabled', [140, 2715], { h: 46 });
+      draw(O, st, 128.5, 129.8); draw(R, st2, 131.0, 132.4);
+      // b11: the fix
+      const fx = T('systemctl enable --now kubelet', [140, 2795], { h: 42 }); draw(O, fx, 143.0, 144.6);
+      // b12: fixed: heartbeat again
+      a.wipe([r1, n1], 152.4, .5); a.wipe([x1, hb], 152.9, .4); a.wipe([st2], 153.3, .4);
+      draw(G, a.text('active, enabled ✓', NOTE.kubelet, { h: 48 }), 154.0, 155.0);
+      for (const t of [155.5, 157.6, 159.7]) a.magnet(INK.green, [['api_kubelet', t, t + 1.6, true]], { until: t + 1.6, size: 30 });
+      // b13: Ready, exit
+      a.wipe([n2], 162.2, .4); draw(G, a.text('Ready ✓', NOTE.status), 163.0, 163.8);
+      a.wipe([k1], 165.0, .4); draw(O, T('exit, then k get nodes', NOTE.fix, { h: 54 }), 165.6, 167.0);
+    } },
   5: { cap: 'The kubelet can\'t start: its systemd file on node01 points to a wrong path. That file is on the node, not in Kubernetes, so you ssh there to fix it.',
     run(a) { const { pen: { R, O, G }, draw } = a;
       const r1 = a.ring('kubelet', 26), n1 = a.text('10-kubeadm.conf:', NOTE.kubelet, { h: 46 }), n1b = a.text('wrong path', NOTE.kubelet2, { h: 46 }), n2 = a.text('NotReady', NOTE.status);
@@ -173,40 +235,65 @@ const SHORTS = {
       a.magnet(INK.green, [['api_kubelet', 8.3, 9.1, true]], { until: 9.1, size: 32 });
       draw(G, a.text('Ready ✓', NOTE.status), 9.1, 9.7); } },
 };
-const shortFilm = n => a => { preDraw(a); SHORTS[n].run(a); a.caption(2.4, SHORTS[n].cap); return new W.Camera(CAM0); };
+const shortFilm = n => a => { const S = SHORTS[n]; preDraw(a); S.run(a);
+  if (S.long) { S.lines.forEach(([t, l]) => a.caption(t, l)); return new W.Camera(S.cam); }
+  a.caption(2.4, S.cap); return new W.Camera(CAM0); };
 
-// ───────── mounting
+// ───────── mounting: a small player (play/pause, seek, time, sound, full screen)
+const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 async function build(host, kind) {
-  host.classList.add('motion', kind === 'home' ? 'mhome' : 'mshort');
-  host.innerHTML = `<div class="mwrap"><canvas width="${VW}" height="${VH}" aria-hidden="true"></canvas></div><p class="mcap" aria-live="polite"></p><div class="mbar"><button type="button" class="btn ghost mrep" hidden>↻ Replay</button></div>`;
+  const S = SHORTS[kind];
+  host.classList.add('motion', 'mshort'); if (S.long) host.classList.add('mlong');
+  host.innerHTML = `<div class="mwrap"><canvas width="${VW}" height="${VH}" aria-hidden="true"></canvas><button type="button" class="mbig" aria-label="Play">▶</button></div>
+    <div class="mctl"><button type="button" class="mpp" aria-label="Play or pause">▶</button><input class="mseek" type="range" min="0" max="1000" value="0" aria-label="Position"><span class="mtime">0:00</span><button type="button" class="msnd" aria-label="Sound on or off" hidden>🔇</button><button type="button" class="mfs" aria-label="Full screen">⛶</button></div>
+    <p class="mcap" aria-live="polite"></p>`;
   await font();
-  const F = makeFilm(shortFilm(kind));
-  const cv = host.querySelector('canvas'), ctx = cv.getContext('2d'), cap = host.querySelector('.mcap'), rep = host.querySelector('.mrep');
-  let raf = 0;
+  const F = makeFilm(shortFilm(kind)); if (S.end) F.end = Math.max(F.end, S.end);
+  const $ = q => host.querySelector(q);
+  const cv = $('canvas'), ctx = cv.getContext('2d'), cap = $('.mcap'), big = $('.mbig'), pp = $('.mpp'), bar = $('.mseek'), time = $('.mtime'), snd = $('.msnd'), fs = $('.mfs');
+  let raf = 0, playing = false, T = 0, last = 0, audio = null, muted = true;
+  if (S.audio) { audio = new Audio(new URL('../' + S.audio, import.meta.url).href); audio.preload = 'auto'; snd.hidden = false; }
+  const syncAudio = () => { if (!audio) return; if (playing && !muted) { if (Math.abs(audio.currentTime - T) > .3) audio.currentTime = T; audio.play().catch(() => {}); } else audio.pause(); };
+  snd.onclick = () => { muted = !muted; snd.textContent = muted ? '🔇' : '🔊'; syncAudio(); };
   const showCap = t => {
     let c = null; for (const x of F.caps) if (t >= x[0]) c = x;
     if (!c) { cap.style.opacity = 0; return; }
     if (cap.dataset.s !== c[1]) { cap.dataset.s = c[1]; cap.textContent = c[1]; }
     cap.style.opacity = Math.min(1, (t - c[0]) / .5);
   };
-  const frame = t => { F.board.render(ctx, t, F.cam); showCap(t); };
-  const play = () => {
-    cancelAnimationFrame(raf); rep.hidden = true; const t0 = performance.now();
-    const tick = now => { if (!host.isConnected) return; const t = (now - t0) / 1000; frame(Math.min(t, F.end)); if (t < F.end) raf = requestAnimationFrame(tick); else rep.hidden = false; };
-    raf = requestAnimationFrame(tick);
+  const frame = t => { F.board.render(ctx, t, F.cam); showCap(t); if (!bar.dragging) bar.value = Math.round(t / F.end * 1000); time.textContent = `${fmt(t)} / ${fmt(F.end)}`; };
+  const setUI = () => { pp.textContent = playing ? '⏸' : '▶'; big.hidden = playing; };
+  const tick = now => {
+    if (!playing) return; if (!host.isConnected) return pause();
+    const dt = Math.min(.05, (now - last) / 1000); last = now;
+    T = audio && !muted && !audio.paused ? audio.currentTime : T + dt;   // the sound leads when it plays
+    frame(Math.min(T, F.end));
+    if (T < F.end) raf = requestAnimationFrame(tick); else { playing = false; setUI(); syncAudio(); }
   };
-  rep.onclick = play;
-  if (reduce()) { frame(F.end); return; }
+  const play = () => { if (T >= F.end - .05) T = 0; playing = true; last = performance.now(); setUI(); syncAudio(); cancelAnimationFrame(raf); raf = requestAnimationFrame(tick); };
+  const pause = () => { playing = false; cancelAnimationFrame(raf); setUI(); syncAudio(); };
+  pp.onclick = () => (playing ? pause() : play()); big.onclick = play; cv.onclick = () => (playing ? pause() : play());
+  bar.oninput = () => { bar.dragging = true; T = bar.value / 1000 * F.end; frame(T); bar.dragging = false; };
+  bar.onchange = () => { T = bar.value / 1000 * F.end; frame(T); syncAudio(); };
+  const setFull = on => {
+    host.classList.toggle('mfull', on); document.body.classList.toggle('mfull-open', on); fs.textContent = on ? '✕' : '⛶';
+    if (on && host.requestFullscreen && !document.fullscreenElement) host.requestFullscreen().catch(() => {});
+    if (!on && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  };
+  fs.onclick = () => setFull(!host.classList.contains('mfull'));
+  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && host.classList.contains('mfull')) setFull(false); });
+  host._seek = t => { pause(); T = Math.min(t, F.end); frame(T); };   // for screenshots
+  setUI();
+  if (reduce()) { T = F.end; frame(T); return; }
   frame(0);
+  if (S.long) return;   // a long film waits for ▶
   const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); play(); } }, { threshold: .4 });
   io.observe(host);
-  host._seek = t => { cancelAnimationFrame(raf); frame(Math.min(t, F.end)); };   // for screenshots
 }
 function scan(root) {
   root.querySelectorAll('[data-motion]:not(.motion)').forEach(h => {
     const k = h.dataset.motion;
-    if (k === 'home') import('./film3d.js?v=3dec8310').then(m => m.mountFilm(h)).catch(e => { console.warn('motion', e); h.remove(); });
-    else if (SHORTS[k]) build(h, k).catch(e => { console.warn('motion', e); h.remove(); });
+    if (SHORTS[k]) build(h, k).catch(e => { console.warn('motion', e); h.remove(); });
     else h.remove();
   });
 }

@@ -94,7 +94,7 @@
     }).join('');
     const weak = Object.entries(store.get('weak', {})).filter(([n]) => Q(+n));
     const weakCard = weak.length ? `<h2>Weak list <span class="chip bad">over target time</span></h2><div class="card"><ul class="qlist">${weak.map(([n, w]) => `<li><a href="#/q/${n}"><span class="num">${n}</span><span>${esc(Q(+n).title)}</span><span class="st fail">${Math.floor(w.sec / 60)}:${String(w.sec % 60).padStart(2, '0')} / ${Q(+n).target}:00</span></a></li>`).join('')}</ul></div>` : '';
-    app.innerHTML = `${installCard()}${weakCard}<h1>Practice</h1><h2>Kubernetes in motion</h2><div data-motion="home"></div><a class="btn ghost block" href="#/cheat">Cheat sheet (commands, YAML from docs, facts, warm-up)</a><a class="btn ghost block" href="#/basics">New here? The basics</a><p class="sub">40 questions · ${solo} solved alone. Open one, set it up in Killercoda, solve it.</p>${groups}`;
+    app.innerHTML = `${installCard()}${weakCard}<h1>Practice</h1><a class="btn ghost block" href="#/cheat">Cheat sheet (commands, YAML from docs, facts, warm-up)</a><a class="btn ghost block" href="#/basics">New here? The basics</a><p class="sub">40 questions · ${solo} solved alone. Open one, set it up in Killercoda, solve it.</p>${groups}`;
     if ($('#installBtn')) $('#installBtn').onclick = async () => { installEvt.prompt(); await installEvt.userChoice; installEvt = null; render(); };
   }
   function cheatPage() {
