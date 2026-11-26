@@ -233,7 +233,8 @@ async function build(host, kind) {
   const S = SHORTS[kind];
   host.classList.add('motion', 'mshort'); if (S.long) host.classList.add('mlong');
   host.innerHTML = `<div class="mwrap"><canvas width="${VW}" height="${VH}" aria-hidden="true"></canvas><button type="button" class="mbig" aria-label="Play">▶</button></div>
-    <div class="mctl"><button type="button" class="mpp" aria-label="Play or pause">▶</button><input class="mseek" type="range" min="0" max="1000" value="0" aria-label="Position"><span class="mtime">0:00</span><button type="button" class="msnd" aria-label="Sound on or off" hidden>🔇</button><button type="button" class="mfs" aria-label="Full screen">⛶</button></div>
+    <div class="mctl"><button type="button" class="mpp" aria-label="Play or pause">▶</button><input class="mseek" type="range" min="0" max="1000" value="0" aria-label="Position"><span class="mtime">0:00</span></div>
+    <div class="mctl mctl2"><button type="button" class="mback" aria-label="Back 10 seconds">⟲ 10</button><button type="button" class="mfwd" aria-label="Forward 10 seconds">10 ⟳</button><button type="button" class="mspd" aria-label="Speed">1×</button><span class="mvolbox" hidden><button type="button" class="msnd" aria-label="Sound on or off">🔇</button><input class="mvol" type="range" min="0" max="100" value="80" aria-label="Volume"></span><button type="button" class="mfs" aria-label="Full screen">⛶</button></div>
     <p class="mcap" aria-live="polite"></p>`;
   await font();
   if (S.json && !S._J) S._J = await (await fetch(new URL('../' + S.json, import.meta.url), { cache: 'no-cache' })).json();
@@ -243,11 +244,25 @@ async function build(host, kind) {
   const termAt = t => { if (!term) return; const out = []; for (const e of F.terms) { if (t < e.t) break; let st = e.t + .4; for (const l of e.lines) { if (l.startsWith('$')) { const n = Math.floor((t - st) * 20); if (n < 0) break; out.push(l.slice(0, n)); st += l.length / 20 + .4; } else { if (t < st) break; out.push(l); st += .3; } } }
     const html = out.slice(-6).map(l => `<span class="${l.startsWith('$') ? 'c' : /NotReady|inactive|disabled|Unknown|stopped/.test(l) ? 'bad' : /Ready|active|enabled/.test(l) ? 'ok' : ''}">${l.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</span>`).join('\n'); if (term.innerHTML !== html) term.innerHTML = html; };
   const $ = q => host.querySelector(q);
-  const cv = $('canvas'), ctx = cv.getContext('2d'), cap = $('.mcap'), big = $('.mbig'), pp = $('.mpp'), bar = $('.mseek'), time = $('.mtime'), snd = $('.msnd'), fs = $('.mfs');
-  let raf = 0, playing = false, T = 0, last = 0, audio = null, muted = true;
-  if (S.audio) { audio = new Audio(new URL('../' + S.audio, import.meta.url).href); audio.preload = 'auto'; snd.hidden = false; }
-  const syncAudio = () => { if (!audio) return; if (playing && !muted) { if (Math.abs(audio.currentTime - T) > .3) audio.currentTime = T; audio.play().catch(() => {}); } else audio.pause(); };
-  snd.onclick = () => { muted = !muted; snd.textContent = muted ? '🔇' : '🔊'; syncAudio(); };
+  const cv = $('canvas'), ctx = cv.getContext('2d'), cap = $('.mcap'), big = $('.mbig'), pp = $('.mpp'), bar = $('.mseek'), time = $('.mtime'), snd = $('.msnd'), fs = $('.mfs'), vol = $('.mvol'), spd = $('.mspd');
+  const pref = (k, d) => { try { const v = JSON.parse(localStorage.getItem('cka:film-' + k)); return v ?? d; } catch { return d; } };
+  const keep = (k, v) => { try { localStorage.setItem('cka:film-' + k, JSON.stringify(v)); } catch {} };
+  let raf = 0, playing = false, T = 0, last = 0, audio = null, muted = true, rate = pref('rate', 1), gain = null;
+  const RATES = [.75, 1, 1.25, 1.5];
+  if (S.audio) { audio = new Audio(new URL('../' + S.audio, import.meta.url).href); audio.preload = 'auto'; $('.mvolbox').hidden = false; }
+  vol.value = Math.round(pref('vol', .8) * 100);
+  // volume through the Web Audio mixer: iPhones ignore audio.volume, a gain node works everywhere
+  const applyVol = () => { const v = vol.value / 100; keep('vol', v); if (gain) gain.gain.value = v * v; else if (audio) audio.volume = v; snd.textContent = muted || v === 0 ? '🔇' : v < .5 ? '🔉' : '🔊'; };
+  const mixer = () => { if (gain || !audio) return; try { const AC = window.AudioContext || window.webkitAudioContext, ac = new AC(); const src = ac.createMediaElementSource(audio); gain = ac.createGain(); src.connect(gain).connect(ac.destination); ac.resume?.(); } catch { gain = null; } applyVol(); };
+  const setRate = r => { rate = r; keep('rate', r); spd.textContent = (r === 1 ? '1' : String(r)) + '×'; if (audio) audio.playbackRate = r; };
+  setRate(rate);
+  const syncAudio = () => { if (!audio) return; audio.playbackRate = rate; if (playing && !muted) { if (Math.abs(audio.currentTime - T) > .3) audio.currentTime = T; audio.play().catch(() => {}); } else audio.pause(); };
+  const soundOn = on => { muted = !on; if (on) { mixer(); if (vol.value == 0) vol.value = 60; } applyVol(); syncAudio(); };
+  snd.onclick = () => soundOn(muted);
+  vol.oninput = () => { if (muted && vol.value > 0) soundOn(true); else applyVol(); };
+  spd.onclick = () => setRate(RATES[(RATES.indexOf(rate) + 1) % RATES.length]);
+  const jump = d => { T = Math.max(0, Math.min(F.end, T + d)); frame(T); syncAudio(); };
+  $('.mback').onclick = () => jump(-10); $('.mfwd').onclick = () => jump(10);
   const showCap = t => {
     let c = null; for (const x of F.caps) if (t >= x[0]) c = x;
     if (!c) { cap.style.opacity = 0; return; }
@@ -259,11 +274,14 @@ async function build(host, kind) {
   const tick = now => {
     if (!playing) return; if (!host.isConnected) return pause();
     const dt = Math.min(.05, (now - last) / 1000); last = now;
-    T = audio && !muted && !audio.paused ? audio.currentTime : T + dt;   // the sound leads when it plays
+    // the sound leads while it plays; if it is far off (a jump, or a file that can't seek yet), the film keeps its own clock and pulls the sound along
+    if (audio && !muted && !audio.paused && Math.abs(audio.currentTime - T) < 1.5) T = audio.currentTime;
+    else { T += dt * rate; if (audio && !muted && Math.abs(audio.currentTime - T) > 1.5) try { audio.currentTime = T; } catch {} }
     frame(Math.min(T, F.end));
     if (T < F.end) raf = requestAnimationFrame(tick); else { playing = false; setUI(); syncAudio(); }
   };
-  const play = () => { if (T >= F.end - .05) T = 0; playing = true; last = performance.now(); setUI(); syncAudio(); cancelAnimationFrame(raf); raf = requestAnimationFrame(tick); };
+  let first = true;
+  const play = () => { if (first && audio) { first = false; soundOn(true); } if (T >= F.end - .05) T = 0; playing = true; last = performance.now(); setUI(); syncAudio(); cancelAnimationFrame(raf); raf = requestAnimationFrame(tick); };
   const pause = () => { playing = false; cancelAnimationFrame(raf); setUI(); syncAudio(); };
   pp.onclick = () => (playing ? pause() : play()); big.onclick = play; cv.onclick = () => (playing ? pause() : play());
   bar.oninput = () => { bar.dragging = true; T = bar.value / 1000 * F.end; frame(T); bar.dragging = false; };

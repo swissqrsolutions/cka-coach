@@ -441,3 +441,9 @@ body.mfull-open{overflow:hidden}
 .mterm{margin:0;padding:9px 12px;min-height:9.2em;background:#0b1020;color:#c9d1d9;font:12.5px/1.5 var(--mono);white-space:pre;overflow:hidden;border-radius:0}
 .mterm .c{color:#e6edf3;font-weight:700}.mterm .bad{color:#ff7b72}.mterm .ok{color:#7ee787}
 .mlong .mcap{font-size:16px;min-height:5.2em}
+.mctl2{padding-top:0;gap:6px}
+.mctl2 button{width:auto;min-width:40px;padding:0 9px;font-size:14px;font-weight:700}
+.mctl2 .mfs{margin-left:auto}
+.mvolbox{display:flex;align-items:center;gap:4px;flex:1;min-width:0}
+.mvolbox[hidden]{display:none}
+.mvol{flex:1;min-width:50px;accent-color:#6f9cff;height:28px}
