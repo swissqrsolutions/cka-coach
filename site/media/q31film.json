@@ -1,0 +1,455 @@
+{
+"end": 95.39,
+"goal": [
+"Goal: 2/2 Running,",
+"sidecar tails the log"
+],
+"rule": {
+"title": "Sidecar",
+"rows": [
+[
+"sidecar",
+"a 2nd container, same pod",
+"2/2 Running"
+],
+[
+"share a file",
+"one volume, mounted in both",
+"emptyDir + volumeMounts"
+]
+]
+},
+"shapes": {
+"pod": {
+"rect": [
+40,
+420,
+2020,
+1500
+],
+"frame": true,
+"label": "Pod of deployment app"
+},
+"mc": {
+"rect": [
+140,
+620,
+820,
+340
+],
+"label": "busybox",
+"sub": "writes /var/log/app.log",
+"h": 90
+},
+"sc": {
+"rect": [
+1140,
+620,
+820,
+340
+],
+"label": "log-shipper",
+"sub": "tail -f /var/log/app.log",
+"h": 84
+},
+"vol": {
+"rect": [
+540,
+1320,
+1020,
+300
+],
+"label": "volume: logs",
+"sub": "emptyDir, at /var/log",
+"h": 84
+},
+"a_mv": {
+"arrow": [
+[
+550,
+960
+],
+[
+800,
+1320
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_vs": {
+"arrow": [
+[
+1300,
+1320
+],
+[
+1550,
+960
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 31. Add a sidecar container that ships an app's log.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get pods -n work",
+"out": [
+"NAME       READY  STATUS",
+"app-...    1/1    Running"
+],
+"next": "controlplane $"
+}
+],
+"hl": "1/1",
+"t": 1.0,
+"d": 4.04
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: 2 of 2 containers Running, and the sidecar shows the log.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 6.59,
+"d": 4.24
+},
+{
+"id": "s3",
+"ch": "Why a volume",
+"cap": "The app's container writes its log to a file: slash var slash log slash app dot log.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"pod",
+"mc"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 12.57,
+"d": 5.48
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "But that file lives inside this one container. No other container can see it.",
+"focus": "mc",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 19.6,
+"d": 4.69
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "A sidecar is a second container in the same pod. Here it reads the log and ships it.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"sc"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 26.04,
+"d": 5.11
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "To share the file, both containers mount the same volume, named logs, at slash var slash log.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [
+"vol",
+"a_mv",
+"a_vs"
+],
+"acts": [
+{
+"dots": "a_mv",
+"a": 2.4,
+"n": 1,
+"color": "G",
+"back": false
+},
+{
+"dots": "a_vs",
+"a": 3.4,
+"n": 1,
+"color": "G",
+"back": false
+}
+],
+"term": [],
+"hl": null,
+"t": 32.71,
+"d": 6.24
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "An emptyDir volume fits well: an empty folder that lives as long as the pod.",
+"focus": "vol",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 40.7,
+"d": 5.06
+},
+{
+"id": "s8",
+"ch": "The fix",
+"cap": "Save the deployment as YAML, and keep a backup.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get deployment app -o yaml -n work > app.yaml",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "cp app.yaml app-backup.yaml",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 48.11,
+"d": 2.79
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "In vim, add three pieces. One: a volumeMount in the existing container.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "vim app.yaml",
+"out": [
+"        volumeMounts:",
+"        - name: logs",
+"          mountPath: /var/log"
+],
+"next": "controlplane $"
+}
+],
+"hl": "mountPath: /var/log",
+"t": 52.25,
+"d": 5.09
+},
+{
+"id": "s10",
+"ch": null,
+"cap": "Two: the new container, log-shipper, with busybox, tail dash f, and the same mount.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "# still in vim",
+"out": [
+"      - name: log-shipper",
+"        image: busybox:1.36",
+"        command: [\"sh\",\"-c\",\"tail -f /var/log/app.log\"]",
+"        volumeMounts:",
+"        - name: logs",
+"          mountPath: /var/log"
+],
+"next": "controlplane $"
+}
+],
+"hl": "log-shipper",
+"t": 58.89,
+"d": 4.98
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "Three: the volume itself, logs, an emptyDir, under the pod's volumes.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "# and at the pod level",
+"out": [
+"      volumes:",
+"      - name: logs",
+"        emptyDir: {}"
+],
+"next": "controlplane $"
+}
+],
+"hl": "emptyDir",
+"t": 65.41,
+"d": 4.65
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "Apply it. A new pod starts, with 2 of 2 containers.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k apply -f app.yaml",
+"out": [
+"deployment.apps/app configured"
+],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k get pods -n work",
+"out": [
+"app-...    2/2    Running"
+],
+"next": "controlplane $"
+}
+],
+"hl": "2/2",
+"t": 71.61,
+"d": 3.28
+},
+{
+"id": "s13",
+"ch": null,
+"cap": "Check the sidecar's logs. It shows the app's lines.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"dots": "a_mv",
+"a": 2.0,
+"n": 1,
+"color": "G",
+"back": false
+},
+{
+"dots": "a_vs",
+"a": 2.8,
+"n": 1,
+"color": "G",
+"back": false
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 3.6,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k logs deployment/app -c log-shipper --tail=3 -n work",
+"out": [
+"Tue Nov 24 10:00:01 UTC 2026",
+"Tue Nov 24 10:00:03 UTC 2026"
+],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 76.44,
+"d": 3.01
+},
+{
+"id": "s14",
+"ch": "The rule",
+"cap": "The rule: a sidecar is another container in the same pod.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 81.41,
+"d": 3.61
+},
+{
+"id": "s15",
+"ch": null,
+"cap": "To share files, give both containers a volumeMount of one shared volume.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 86.37,
+"d": 4.68
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "What do both containers need?",
+"opts": [
+[
+"The same image",
+false,
+"Images can differ. They need the same volume."
+],
+[
+"A volumeMount of the shared volume",
+true,
+"Correct."
+],
+[
+"A Service between them",
+false,
+"Containers in one pod need no Service. They share volumes directly."
+]
+],
+"t": 47.51
+}
+]
+}

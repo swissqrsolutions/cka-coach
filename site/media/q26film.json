@@ -1,0 +1,448 @@
+{
+"end": 89.49,
+"goal": [
+"Goal: app=api → app=db :80",
+"everyone else blocked"
+],
+"rule": {
+"title": "NetworkPolicy",
+"rows": [
+[
+"top podSelector",
+"the pods you protect",
+"app=db"
+],
+[
+"from: + ports:",
+"who may come in, on which port",
+"app=api, TCP 80"
+]
+]
+},
+"shapes": {
+"ns": {
+"rect": [
+40,
+420,
+2020,
+1500
+],
+"frame": true,
+"label": "namespace prod"
+},
+"api": {
+"rect": [
+140,
+620,
+600,
+280
+],
+"label": "api",
+"sub": "app=api",
+"h": 96
+},
+"oth": {
+"rect": [
+140,
+1340,
+600,
+280
+],
+"label": "other",
+"sub": "app=other",
+"h": 96
+},
+"db": {
+"rect": [
+1360,
+900,
+620,
+300
+],
+"label": "db",
+"sub": "app=db",
+"h": 96
+},
+"pol": {
+"rect": [
+1300,
+1380,
+740,
+360
+],
+"label": "NetworkPolicy",
+"sub": "db-policy",
+"h": 76
+},
+"a_ad": {
+"arrow": [
+[
+740,
+760
+],
+[
+1360,
+1000
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_od": {
+"arrow": [
+[
+740,
+1480
+],
+[
+1360,
+1120
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 26. In namespace prod, only the api pods may talk to the db pods, on port 80.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 7.18
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: api may reach db on port 80. Everyone else is blocked.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 9.53,
+"d": 4.81
+},
+{
+"id": "s3",
+"ch": "How it works",
+"cap": "By default, every pod can reach every other pod.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"ns",
+"api",
+"db",
+"oth",
+"a_ad",
+"a_od"
+],
+"acts": [
+{
+"dots": "a_ad",
+"a": 2.6,
+"n": 1,
+"color": "G",
+"back": false
+},
+{
+"dots": "a_od",
+"a": 3.0,
+"n": 1,
+"color": "G",
+"back": false
+}
+],
+"term": [],
+"hl": null,
+"t": 16.09,
+"d": 2.86
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "A NetworkPolicy changes this, for the pods it selects.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [
+"pol"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 20.5,
+"d": 3.24
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "Once a policy selects the db pods, all incoming traffic to them is blocked, except what the policy allows.",
+"focus": "WIDE",
+"pause": 1.6,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 25.09,
+"d": 7.15
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "Policies work with labels, not pod names. So first read the labels.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get pods --show-labels -n prod",
+"out": [
+"NAME   READY  STATUS   LABELS",
+"api    1/1    Running  app=api",
+"db     1/1    Running  app=db",
+"other  1/1    Running  app=other"
+],
+"next": "controlplane $"
+}
+],
+"hl": "app=db",
+"t": 34.19,
+"d": 4.39
+},
+{
+"id": "s7",
+"ch": "Write it",
+"cap": "Start from the example in the Kubernetes docs, and keep only what you need.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 40.12,
+"d": 4.33
+},
+{
+"id": "s8",
+"ch": null,
+"cap": "The top podSelector, app equals db, chooses the pods to protect. policyTypes: Ingress.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "vim np.yaml",
+"out": [
+"  podSelector:",
+"    matchLabels:",
+"      app: db",
+"  policyTypes:",
+"  - Ingress"
+],
+"next": "controlplane $"
+}
+],
+"hl": "app: db",
+"t": 45.8,
+"d": 6.47
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "Under ingress, from podSelector app equals api, and ports TCP 80: who may come in.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "cat np.yaml | tail -9",
+"out": [
+"  ingress:",
+"  - from:",
+"    - podSelector:",
+"        matchLabels:",
+"          app: api",
+"    ports:",
+"    - protocol: TCP",
+"      port: 80"
+],
+"next": "controlplane $"
+}
+],
+"hl": "app: api",
+"t": 54.02,
+"d": 6.42
+},
+{
+"id": "s10",
+"ch": "Apply and test",
+"cap": "Apply it, and read it back with describe.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k apply -f np.yaml",
+"out": [
+"networkpolicy.networking.k8s.io/db-policy created"
+],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k describe networkpolicy db-policy -n prod",
+"out": [
+"  PodSelector:  app=db",
+"  Allowing ingress traffic:",
+"    To Port: 80/TCP",
+"    From: PodSelector: app=api"
+],
+"next": "controlplane $"
+}
+],
+"hl": "app=api",
+"t": 62.79,
+"d": 2.15
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "Now api gets through, and other is blocked.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "ox",
+"cross": [
+1050,
+1300
+],
+"c": "R",
+"a": 0.6
+},
+{
+"dots": "a_ad",
+"a": 1.2,
+"n": 1,
+"color": "G",
+"back": false
+}
+],
+"term": [],
+"hl": null,
+"t": 66.49,
+"d": 2.9
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "Test it: from api, wget works. From other, it times out.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 4.0,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k exec api -n prod -- wget -qO- -T 3 db-svc | grep title",
+"out": [
+"<title>Welcome to nginx!</title>"
+],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k exec other -n prod -- wget -qO- -T 3 db-svc",
+"out": [
+"wget: download timed out"
+],
+"next": "controlplane $"
+}
+],
+"hl": "timed out",
+"t": 70.94,
+"d": 4.41
+},
+{
+"id": "s13",
+"ch": "The rule",
+"cap": "The rule: the top podSelector picks the pods you protect.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 77.3,
+"d": 3.5
+},
+{
+"id": "s14",
+"ch": null,
+"cap": "from lists who may come in, and ports says on which port.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 82.15,
+"d": 2.99
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "Which pods does the policy's top podSelector choose?",
+"opts": [
+[
+"The pods allowed to connect (api)",
+false,
+"No. Those go under from:."
+],
+[
+"The pods being protected (db)",
+true,
+"Correct."
+],
+[
+"All pods in the namespace",
+false,
+"Only an empty selector {} chooses all pods."
+]
+],
+"t": 62.19
+}
+]
+}

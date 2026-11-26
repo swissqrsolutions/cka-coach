@@ -1,0 +1,667 @@
+{
+"end": 135.21,
+"goal": [
+"Goal: kubectl works",
+"cluster Ready"
+],
+"rule": {
+"title": "kubectl: connection refused",
+"rows": [
+[
+"API server down",
+"kubectl is useless now",
+"crictl ps -a, crictl logs"
+],
+[
+"wrong setting",
+"/etc/kubernetes/manifests",
+"back up, fix, wait"
+]
+]
+},
+"shapes": {
+"m": {
+"rect": [
+40,
+420,
+2020,
+1380
+],
+"frame": true,
+"label": "controlplane (computer)"
+},
+"kl": {
+"rect": [
+110,
+560,
+680,
+230
+],
+"label": "kubelet",
+"sub": null,
+"h": 96
+},
+"mf": {
+"rect": [
+110,
+900,
+680,
+300
+],
+"label": "manifests/",
+"sub": "kube-apiserver.yaml",
+"h": 84
+},
+"as": {
+"rect": [
+1060,
+560,
+900,
+230
+],
+"label": "kube-apiserver",
+"sub": "port 6443",
+"h": 90
+},
+"et": {
+"rect": [
+1060,
+1060,
+900,
+230
+],
+"label": "etcd",
+"sub": "port 2379",
+"h": 96
+},
+"you": {
+"rect": [
+110,
+1880,
+640,
+300
+],
+"label": "You",
+"sub": "kubectl",
+"h": 100
+},
+"a_km": {
+"arrow": [
+[
+450,
+900
+],
+[
+450,
+790
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_ka": {
+"arrow": [
+[
+790,
+675
+],
+[
+1060,
+675
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_ae": {
+"arrow": [
+[
+1510,
+790
+],
+[
+1510,
+1060
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_ya": {
+"arrow": [
+[
+750,
+2030
+],
+[
+1700,
+2030
+],
+[
+1700,
+790
+]
+],
+"both": false,
+"dashed": false,
+"pen": "O"
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 8. kubectl suddenly fails: the connection to port 6443 was refused.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get nodes",
+"out": [
+"The connection to the server 172.30.1.2:6443",
+"was refused - did you specify the right",
+"host or port?"
+],
+"next": "controlplane $"
+}
+],
+"hl": "refused",
+"t": 1.0,
+"d": 6.46
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: make the cluster work again.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 9.01,
+"d": 2.23
+},
+{
+"id": "s3",
+"ch": "How it works",
+"cap": "kubectl always talks to the API server, on port 6443.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [
+"m",
+"as",
+"you",
+"a_ya"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 12.99,
+"d": 4.87
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "Refused means: nothing listens there. The API server is down.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [
+{
+"id": "yx",
+"cross": [
+1700,
+1400
+],
+"c": "R",
+"a": 0.8
+},
+{
+"id": "dn",
+"t": "down",
+"x": 1100,
+"y": 880,
+"h": 70,
+"c": "R",
+"a": 1.4,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 19.21,
+"d": 4.11
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "On the control plane, the kubelet starts the API server from a file in slash etc slash kubernetes slash manifests.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [
+"kl",
+"mf",
+"a_km",
+"a_ka"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 25.07,
+"d": 7.88
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "Pods made from these files are called static pods. If one dies, the kubelet starts it again.",
+"focus": "kl",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 34.7,
+"d": 5.84
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "The API server keeps all its data in etcd, on port 2379.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [
+"et",
+"a_ae"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 42.29,
+"d": 5.33
+},
+{
+"id": "s8",
+"ch": "What broke",
+"cap": "kubectl can't help now. Ask the container runtime directly: crictl ps dash a.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "crictl ps -a | grep kube-apiserver",
+"out": [
+"3f2a1b9c8d7e6  ...  Exited  kube-apiserver  5"
+],
+"next": "controlplane $"
+}
+],
+"hl": "Exited",
+"t": 49.38,
+"d": 6.82
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "It starts, and exits. Again and again.",
+"focus": "as",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"blink": [
+"as"
+],
+"a": 0.2,
+"d": 3.0
+},
+{
+"id": "ex",
+"t": "exits again and again",
+"x": 1100,
+"y": 960,
+"h": 52,
+"c": "R",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 57.55,
+"d": 2.45
+},
+{
+"id": "s10",
+"ch": null,
+"cap": "Read its logs: crictl logs, with the container ID.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "crictl logs 3f2a1b9c8d7e6 2>&1 | tail -20",
+"out": [
+"... dial tcp 127.0.0.1:2380:",
+"  connect: connection refused"
+],
+"next": "controlplane $"
+}
+],
+"hl": "2380",
+"t": 61.56,
+"d": 4.25
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "It tries to reach etcd on port 2380. But etcd listens for clients on 2379.",
+"focus": "WIDE",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"id": "ex2",
+"cross": [
+1510,
+925
+],
+"c": "R",
+"a": 0.6
+},
+{
+"id": "p80",
+"t": "2380 ?",
+"x": 1560,
+"y": 1020,
+"h": 60,
+"c": "R",
+"a": 1.4,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 67.15,
+"d": 7.24
+},
+{
+"id": "s12",
+"ch": "Where to fix",
+"cap": "The port is written in the manifest: kube-apiserver.yaml.",
+"focus": "mf",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "rmf",
+"ring": "mf",
+"c": "R",
+"a": 0.4
+}
+],
+"term": [],
+"hl": null,
+"t": 76.94,
+"d": 3.76
+},
+{
+"id": "s13",
+"ch": null,
+"cap": "It is a file on the control plane machine. And the API server is down anyway, so kubectl can't change it.",
+"focus": "WIDE",
+"pause": 1.6,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 82.25,
+"d": 7.21
+},
+{
+"id": "s14",
+"ch": "The fix",
+"cap": "First, back up the file.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "cp /etc/kubernetes/manifests/kube-apiserver.yaml /root/kube-apiserver.yaml.orig",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 91.4,
+"d": 1.41
+},
+{
+"id": "s15",
+"ch": null,
+"cap": "Then edit it, and change 2380 back to 2379.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"p80",
+"ex2",
+"rmf"
+],
+"a": 3.5
+},
+{
+"id": "p79",
+"t": "2379 ✓",
+"x": 1560,
+"y": 1020,
+"h": 60,
+"c": "G",
+"a": 4.2,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "vim /etc/kubernetes/manifests/kube-apiserver.yaml",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "grep etcd-servers /etc/kubernetes/manifests/kube-apiserver.yaml",
+"out": [
+"    - --etcd-servers=https://127.0.0.1:2379"
+],
+"next": "controlplane $"
+}
+],
+"hl": "2379",
+"t": 94.16,
+"d": 4.31
+},
+{
+"id": "s16",
+"ch": null,
+"cap": "The kubelet sees that the file changed, and starts the API server again with the new setting.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"dots": "a_km",
+"a": 0.6,
+"n": 1,
+"color": "G",
+"back": false
+},
+{
+"dots": "a_ka",
+"a": 1.6,
+"n": 1,
+"color": "G",
+"back": false
+}
+],
+"term": [],
+"hl": null,
+"t": 100.22,
+"d": 5.27
+},
+{
+"id": "s17",
+"ch": null,
+"cap": "Wait until crictl ps shows it Running.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"dn",
+"ex"
+],
+"a": 2.0
+},
+{
+"id": "up",
+"t": "Running ✓",
+"x": 1100,
+"y": 880,
+"h": 60,
+"c": "G",
+"a": 2.6,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "crictl ps | grep kube-apiserver",
+"out": [
+"8c1d2e3f4a5b6  ...  Running  kube-apiserver"
+],
+"next": "controlplane $"
+}
+],
+"hl": "Running",
+"t": 107.04,
+"d": 3.24
+},
+{
+"id": "s18",
+"ch": null,
+"cap": "And kubectl works again: k get nodes.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"yx"
+],
+"a": 0.3
+},
+{
+"dots": "a_ya",
+"a": 1.0,
+"n": 1,
+"color": "G",
+"back": false
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 3.0,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get nodes",
+"out": [
+"NAME           STATUS   ROLES",
+"controlplane   Ready    control-plane",
+"node01         Ready    <none>"
+],
+"next": "controlplane $"
+}
+],
+"hl": "Ready",
+"t": 111.83,
+"d": 2.63
+},
+{
+"id": "s19",
+"ch": "The rule",
+"cap": "The rule: when kubectl is refused, the API server is down. Use crictl, not kubectl.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 116.42,
+"d": 7.34
+},
+{
+"id": "s20",
+"ch": null,
+"cap": "Its settings live in the manifests folder. Back up, fix the file, and the kubelet restarts it.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 125.1,
+"d": 5.76
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "Why does the API server keep crashing?",
+"opts": [
+[
+"etcd is down",
+false,
+"etcd runs fine. The API server looks at the wrong port."
+],
+[
+"Its manifest has the wrong etcd port",
+true,
+"Correct."
+],
+[
+"kubectl is set up wrong",
+false,
+"kubectl only connects. The server itself crashes."
+]
+],
+"t": 76.34
+}
+]
+}

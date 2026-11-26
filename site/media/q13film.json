@@ -1,0 +1,444 @@
+{
+"end": 88.38,
+"goal": [
+"Goal: deploy-bot may",
+"get, list, create deployments"
+],
+"rule": {
+"title": "RBAC in three parts",
+"rows": [
+[
+"who",
+"ServiceAccount",
+"deploy-bot"
+],
+[
+"what + link",
+"Role + RoleBinding",
+"prove it: k auth can-i --as"
+]
+]
+},
+"shapes": {
+"ns": {
+"rect": [
+40,
+420,
+2020,
+1500
+],
+"frame": true,
+"label": "namespace dev"
+},
+"sa": {
+"rect": [
+110,
+620,
+560,
+300
+],
+"label": "ServiceAccount",
+"sub": "deploy-bot",
+"h": 80
+},
+"rb": {
+"rect": [
+760,
+620,
+560,
+300
+],
+"label": "RoleBinding",
+"sub": "the link",
+"h": 80
+},
+"ro": {
+"rect": [
+1410,
+620,
+580,
+300
+],
+"label": "Role",
+"sub": "deploy-manager",
+"h": 90
+},
+"vb": {
+"rect": [
+1410,
+1060,
+580,
+320
+],
+"label": "get, list, create",
+"sub": "on deployments",
+"h": 70
+},
+"a_sr": {
+"arrow": [
+[
+670,
+770
+],
+[
+760,
+770
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_rr": {
+"arrow": [
+[
+1320,
+770
+],
+[
+1410,
+770
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_rv": {
+"arrow": [
+[
+1700,
+920
+],
+[
+1700,
+1060
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 13. A program in namespace dev needs permission to manage deployments.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 5.54
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: deploy-bot may get, list and create deployments. Nothing more.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 7.89,
+"d": 4.56
+},
+{
+"id": "s3",
+"ch": "Three parts",
+"cap": "In Kubernetes, a permission has three parts.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [
+"ns"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 14.2,
+"d": 2.71
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "Who: a ServiceAccount. It is an identity for a program, like a user name for an app.",
+"focus": "sa",
+"pause": 1.2,
+"draw": [
+"sa"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 18.26,
+"d": 5.44
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "What: a Role. It lists the allowed verbs, on which resources.",
+"focus": "ro",
+"pause": 1.2,
+"draw": [
+"ro",
+"vb",
+"a_rv"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 25.24,
+"d": 3.54
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "And the link: a RoleBinding. It gives the Role to the ServiceAccount.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"rb",
+"a_sr",
+"a_rr"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 30.33,
+"d": 4.12
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "Without the binding, the Role does nothing. And all three live in namespace dev.",
+"focus": "WIDE",
+"pause": 1.6,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 36.0,
+"d": 4.61
+},
+{
+"id": "s8",
+"ch": "Create them",
+"cap": "Create the ServiceAccount: k create serviceaccount deploy-bot.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k create serviceaccount deploy-bot -n dev",
+"out": [
+"serviceaccount/deploy-bot created"
+],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 42.56,
+"d": 3.98
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "Create the Role, with its verbs and the resource.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k create role deploy-manager --verb=get,list,create --resource=deployments -n dev",
+"out": [
+"role.rbac.authorization.k8s.io/deploy-manager created"
+],
+"next": "controlplane $"
+}
+],
+"hl": "get,list,create",
+"t": 47.89,
+"d": 2.75
+},
+{
+"id": "s10",
+"ch": null,
+"cap": "Create the RoleBinding. Write the ServiceAccount as namespace, colon, name.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k create rolebinding deploy-bot-binding --role=deploy-manager --serviceaccount=dev:deploy-bot -n dev",
+"out": [
+"rolebinding.rbac.authorization.k8s.io/deploy-bot-binding created"
+],
+"next": "controlplane $"
+}
+],
+"hl": "dev:deploy-bot",
+"t": 52.19,
+"d": 4.59
+},
+{
+"id": "s11",
+"ch": "Prove it",
+"cap": "Read it back: k get rolebinding, dash o wide.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get rolebinding deploy-bot-binding -o wide -n dev",
+"out": [
+"deploy-bot-binding  Role/deploy-manager  dev/deploy-bot"
+],
+"next": "controlplane $"
+}
+],
+"hl": "Role/deploy-manager",
+"t": 59.13,
+"d": 2.77
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "Now test as the ServiceAccount: k auth can-i create deployments, dash dash as.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "ok",
+"t": "create: yes ✓",
+"x": 1430,
+"y": 1470,
+"h": 58,
+"c": "G",
+"a": 4.0,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k auth can-i create deployments --as=system:serviceaccount:dev:deploy-bot -n dev",
+"out": [
+"yes"
+],
+"next": "controlplane $"
+}
+],
+"hl": "yes",
+"t": 63.45,
+"d": 5.17
+},
+{
+"id": "s13",
+"ch": null,
+"cap": "And delete? No. Delete is not in the Role.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"id": "no",
+"t": "delete: no",
+"x": 1430,
+"y": 1570,
+"h": 58,
+"c": "R",
+"a": 3.5,
+"align": null
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 4.2,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k auth can-i delete deployments --as=system:serviceaccount:dev:deploy-bot -n dev",
+"out": [
+"no"
+],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 70.17,
+"d": 2.54
+},
+{
+"id": "s14",
+"ch": "The rule",
+"cap": "The rule: who, what, and the link. ServiceAccount, Role, RoleBinding.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 74.66,
+"d": 4.29
+},
+{
+"id": "s15",
+"ch": null,
+"cap": "And always prove it with k auth can-i, using dash dash as.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 80.3,
+"d": 3.72
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "How do you name the ServiceAccount in the RoleBinding?",
+"opts": [
+[
+"--serviceaccount=deploy-bot",
+false,
+"It needs the namespace too: dev:deploy-bot."
+],
+[
+"--serviceaccount=dev:deploy-bot",
+true,
+"Correct."
+],
+[
+"--user=deploy-bot",
+false,
+"That is a user, not a ServiceAccount."
+]
+],
+"t": 58.53
+}
+]
+}

@@ -1,0 +1,420 @@
+{
+"end": 96.37,
+"goal": [
+"Goal: pod x on node01",
+"node01 tainted + labeled"
+],
+"rule": {
+"title": "Taint, toleration, nodeSelector",
+"rows": [
+[
+"taint",
+"keeps pods out",
+"toleration lets one in"
+],
+[
+"label + nodeSelector",
+"pulls the pod to a node",
+"needed for node01"
+]
+]
+},
+"shapes": {
+"on": {
+"rect": [
+40,
+420,
+960,
+1250
+],
+"frame": true,
+"label": "other node"
+},
+"n1": {
+"rect": [
+1100,
+420,
+960,
+1250
+],
+"frame": true,
+"label": "node01"
+},
+"tn": {
+"rect": [
+1170,
+560,
+820,
+280
+],
+"label": "taint",
+"sub": "env=prod:NoSchedule",
+"h": 90
+},
+"lb": {
+"rect": [
+1170,
+940,
+820,
+260
+],
+"label": "label",
+"sub": "env=prod",
+"h": 90
+},
+"px": {
+"rect": [
+500,
+1860,
+1100,
+300
+],
+"label": "Pod x",
+"sub": "toleration + nodeSelector",
+"h": 90
+},
+"a_pn": {
+"arrow": [
+[
+1300,
+1860
+],
+[
+1580,
+1670
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_po": {
+"arrow": [
+[
+800,
+1860
+],
+[
+520,
+1670
+]
+],
+"both": false,
+"dashed": true,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 36. Reserve node01 for production pods, and place one pod there.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 5.76
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: taint and label node01, and run pod x on it.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 8.11,
+"d": 4.34
+},
+{
+"id": "s3",
+"ch": "Two tools",
+"cap": "Normally, the scheduler may put a pod on any node with room.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [
+"on",
+"n1"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 14.2,
+"d": 3.21
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "A taint is a keep-out sign on a node. env=prod, NoSchedule: pods without a matching toleration are not scheduled here.",
+"focus": "n1",
+"pause": 1.4,
+"draw": [
+"tn"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 18.76,
+"d": 8.6
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "A label is just a name tag on the node: env=prod.",
+"focus": "n1",
+"pause": 1.0,
+"draw": [
+"lb"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 29.11,
+"d": 3.86
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "Set both: k taint nodes node01, then k label nodes node01.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k taint nodes node01 env=prod:NoSchedule",
+"out": [
+"node/node01 tainted"
+],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k label nodes node01 env=prod",
+"out": [
+"node/node01 labeled"
+],
+"next": "controlplane $"
+}
+],
+"hl": "env=prod:NoSchedule",
+"t": 34.32,
+"d": 5.25
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "Now the pod. A toleration lets it ignore the keep-out sign.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"px"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 41.12,
+"d": 3.82
+},
+{
+"id": "s8",
+"ch": null,
+"cap": "But a toleration only allows. It does not send the pod to node01. It could still land on another node.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [
+"a_po"
+],
+"acts": [
+{
+"dots": "a_po",
+"a": 2.0,
+"n": 1,
+"color": "R",
+"back": false
+}
+],
+"term": [],
+"hl": null,
+"t": 46.48,
+"d": 7.1
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "To pull it to node01, add a nodeSelector, env=prod. Then it must land on a node with that label.",
+"focus": "WIDE",
+"pause": 1.6,
+"draw": [
+"a_pn"
+],
+"acts": [
+{
+"dots": "a_pn",
+"a": 2.6,
+"n": 1,
+"color": "G",
+"back": false
+}
+],
+"term": [],
+"hl": null,
+"t": 55.33,
+"d": 7.28
+},
+{
+"id": "s10",
+"ch": "The fix",
+"cap": "Generate the pod YAML with a dry run.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k run x --image=nginx:1.27 --dry-run=client -o yaml > x.yaml",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 65.16,
+"d": 2.37
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "Add nodeSelector env prod, and a toleration: key env, value prod, effect NoSchedule.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "vim x.yaml",
+"out": [
+"  nodeSelector:",
+"    env: prod",
+"  tolerations:",
+"  - key: \"env\"",
+"    operator: \"Equal\"",
+"    value: \"prod\"",
+"    effect: \"NoSchedule\""
+],
+"next": "controlplane $"
+}
+],
+"hl": "nodeSelector",
+"t": 68.88,
+"d": 6.05
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "Apply it, and check the NODE column: node01.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"dots": "a_pn",
+"a": 2.6,
+"n": 1,
+"color": "G",
+"back": false
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 3.4,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k apply -f x.yaml",
+"out": [
+"pod/x created"
+],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k get pod x -o wide",
+"out": [
+"x   1/1   Running   ...   node01"
+],
+"next": "controlplane $"
+}
+],
+"hl": "node01",
+"t": 76.68,
+"d": 3.25
+},
+{
+"id": "s13",
+"ch": "The rule",
+"cap": "The rule: a taint keeps pods out. A toleration lets a pod in.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 81.88,
+"d": 4.2
+},
+{
+"id": "s14",
+"ch": null,
+"cap": "A nodeSelector decides where the pod goes. For a fixed node, use both.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 87.43,
+"d": 4.59
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "Which part makes the pod go to node01?",
+"opts": [
+[
+"The toleration",
+false,
+"It only lets the pod pass the taint."
+],
+[
+"The nodeSelector",
+true,
+"Correct."
+],
+[
+"The taint",
+false,
+"The taint keeps other pods out."
+]
+],
+"t": 64.56
+}
+]
+}

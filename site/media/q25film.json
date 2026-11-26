@@ -1,0 +1,502 @@
+{
+"end": 103.29,
+"goal": [
+"Goal: Gateway + HTTPRoute",
+"same host, TLS, rules"
+],
+"rule": {
+"title": "Ingress → Gateway API",
+"rows": [
+[
+"Gateway",
+"receives: port, host, TLS",
+"gatewayClassName"
+],
+[
+"HTTPRoute",
+"routes: path → Service",
+"parentRefs: the Gateway"
+]
+]
+},
+"shapes": {
+"ing": {
+"rect": [
+40,
+420,
+960,
+320
+],
+"label": "Ingress web-ing",
+"sub": "receives + routes",
+"h": 84
+},
+"tls": {
+"rect": [
+40,
+860,
+960,
+280
+],
+"label": "Secret web-tls",
+"sub": "TLS certificate",
+"h": 84
+},
+"gwc": {
+"rect": [
+1100,
+420,
+960,
+240
+],
+"label": "GatewayClass nginx",
+"sub": "already exists",
+"h": 72
+},
+"gw": {
+"rect": [
+1100,
+780,
+960,
+320
+],
+"label": "Gateway web-gw",
+"sub": "HTTPS 443, host, TLS",
+"h": 80
+},
+"rt": {
+"rect": [
+1100,
+1220,
+960,
+320
+],
+"label": "HTTPRoute web-route",
+"sub": "path / → backend-svc:80",
+"h": 76
+},
+"svc": {
+"rect": [
+1100,
+1660,
+960,
+260
+],
+"label": "Service backend-svc",
+"sub": "port 80",
+"h": 80
+},
+"a_cg": {
+"arrow": [
+[
+1580,
+660
+],
+[
+1580,
+780
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_rg": {
+"arrow": [
+[
+1580,
+1220
+],
+[
+1580,
+1100
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_rs": {
+"arrow": [
+[
+1580,
+1540
+],
+[
+1580,
+1660
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_tg": {
+"arrow": [
+[
+1000,
+1000
+],
+[
+1100,
+940
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 25. Replace an Ingress with the newer Gateway API.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get ingress -n web",
+"out": [
+"NAME     CLASS  HOSTS             PORTS",
+"web-ing  nginx  shop.example.com  80, 443"
+],
+"next": "controlplane $"
+}
+],
+"hl": "shop.example.com",
+"t": 1.0,
+"d": 4.38
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: a Gateway and an HTTPRoute with the same host, TLS and rules. Then delete the Ingress.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 6.93,
+"d": 7.38
+},
+{
+"id": "s3",
+"ch": "Two objects",
+"cap": "The Ingress does two jobs in one object: it receives traffic, and it routes it.",
+"focus": "ing",
+"pause": 1.2,
+"draw": [
+"ing"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 16.06,
+"d": 4.8
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "The Gateway API splits this. A Gateway receives traffic: port, hostname and TLS.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"gwc",
+"gw",
+"a_cg"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 22.42,
+"d": 6.02
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "It uses a GatewayClass, which already exists in the cluster.",
+"focus": "gwc",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 29.98,
+"d": 3.46
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "An HTTPRoute holds the rules: which path goes to which Service.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"rt",
+"svc",
+"a_rs"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 34.8,
+"d": 4.37
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "The HTTPRoute attaches to the Gateway, with parentRefs.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [
+"a_rg"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 40.72,
+"d": 3.9
+},
+{
+"id": "s8",
+"ch": "Read the values",
+"cap": "First read everything from the Ingress: k describe ingress.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k describe ingress web-ing -n web",
+"out": [
+"TLS:",
+"  web-tls terminates shop.example.com",
+"Rules:",
+"  shop.example.com",
+"    /   backend-svc:80"
+],
+"next": "controlplane $"
+}
+],
+"hl": "web-tls",
+"t": 46.37,
+"d": 3.49
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "And the GatewayClass name: k get gatewayclass.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get gatewayclass",
+"out": [
+"NAME   CONTROLLER",
+"nginx  gateway.nginx.org/nginx-gateway-controller"
+],
+"next": "controlplane $"
+}
+],
+"hl": "nginx ",
+"t": 51.4,
+"d": 2.76
+},
+{
+"id": "s10",
+"ch": null,
+"cap": "The certificate is the Secret web-tls. The Gateway will point to it.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"tls",
+"a_tg"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 55.72,
+"d": 4.3
+},
+{
+"id": "s11",
+"ch": "Write them",
+"cap": "Write the Gateway from the docs: class nginx, an HTTPS listener on 443, the hostname, and TLS with web-tls.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "vim gw.yaml",
+"out": [
+"  gatewayClassName: nginx",
+"  - protocol: HTTPS",
+"    port: 443",
+"    hostname: \"shop.example.com\"",
+"      certificateRefs:",
+"      - name: web-tls"
+],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k apply -f gw.yaml",
+"out": [
+"gateway.gateway.networking.k8s.io/web-gw created"
+],
+"next": "controlplane $"
+}
+],
+"hl": "web-tls",
+"t": 62.16,
+"d": 10.08
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "Write the HTTPRoute: parentRefs web-gw, the hostname, path slash, and backend-svc port 80.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "vim route.yaml",
+"out": [
+"  parentRefs:",
+"  - name: web-gw",
+"    backendRefs:",
+"    - name: backend-svc",
+"      port: 80"
+],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k apply -f route.yaml",
+"out": [
+"httproute.gateway.networking.k8s.io/web-route created"
+],
+"next": "controlplane $"
+}
+],
+"hl": "web-gw",
+"t": 73.79,
+"d": 7.5
+},
+{
+"id": "s13",
+"ch": null,
+"cap": "Check both objects. Only then, delete the Ingress.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"id": "ix",
+"cross": [
+520,
+580
+],
+"c": "R",
+"a": 4.0
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 4.8,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get gateway,httproute -n web",
+"out": [
+"gateway.../web-gw        nginx",
+"httproute.../web-route   [\"shop.example.com\"]"
+],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k delete ingress web-ing -n web",
+"out": [
+"ingress.networking.k8s.io \"web-ing\" deleted"
+],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 82.84,
+"d": 3.13
+},
+{
+"id": "s14",
+"ch": "The rule",
+"cap": "The rule: a Gateway receives traffic, with port, host and TLS.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 87.92,
+"d": 4.31
+},
+{
+"id": "s15",
+"ch": null,
+"cap": "An HTTPRoute routes it to Services, and attaches to the Gateway with parentRefs.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 93.58,
+"d": 5.36
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "Where does the TLS certificate go now?",
+"opts": [
+[
+"In the HTTPRoute",
+false,
+"Routes only route. TLS belongs to the Gateway's listener."
+],
+[
+"In the Gateway's listener",
+true,
+"Correct."
+],
+[
+"In the Service",
+false,
+"The Service only forwards traffic to the pods."
+]
+],
+"t": 61.56
+}
+]
+}

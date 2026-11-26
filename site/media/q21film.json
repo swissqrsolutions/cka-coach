@@ -1,0 +1,689 @@
+{
+"end": 132.02,
+"goal": [
+"Goal: both nodes v1.35.2",
+"Ready, schedulable"
+],
+"rule": {
+"title": "kubeadm upgrade",
+"rows": [
+[
+"control plane first",
+"kubeadm upgrade apply",
+"workers: kubeadm upgrade node"
+],
+[
+"on every node",
+"kubeadm first, then drain",
+"kubelet + kubectl, restart, uncordon"
+]
+]
+},
+"shapes": {
+"apt": {
+"rect": [
+40,
+80,
+960,
+260
+],
+"label": "apt repository",
+"sub": "pkgs.k8s.io v1.35",
+"h": 80
+},
+"cpn": {
+"rect": [
+40,
+420,
+960,
+1300
+],
+"frame": true,
+"label": "controlplane"
+},
+"n1": {
+"rect": [
+1100,
+420,
+960,
+1300
+],
+"frame": true,
+"label": "node01"
+},
+"c1": {
+"rect": [
+110,
+560,
+820,
+230
+],
+"label": "kubeadm",
+"sub": "the upgrade tool",
+"h": 90
+},
+"c2": {
+"rect": [
+110,
+880,
+820,
+300
+],
+"label": "control plane pods",
+"sub": "API server, etcd, ...",
+"h": 70
+},
+"c3": {
+"rect": [
+110,
+1270,
+820,
+230
+],
+"label": "kubelet + kubectl",
+"sub": null,
+"h": 76
+},
+"w1": {
+"rect": [
+1170,
+560,
+820,
+230
+],
+"label": "kubeadm",
+"sub": null,
+"h": 90
+},
+"w3": {
+"rect": [
+1170,
+1270,
+820,
+230
+],
+"label": "kubelet + kubectl",
+"sub": null,
+"h": 76
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 21. Upgrade the cluster to Kubernetes 1.35.2, one node at a time.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get nodes",
+"out": [
+"NAME           STATUS   ROLES           VERSION",
+"controlplane   Ready    control-plane   v1.35.0",
+"node01         Ready    <none>          v1.35.0"
+],
+"next": "controlplane $"
+}
+],
+"hl": "v1.35.0",
+"t": 1.0,
+"d": 6.79
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: both nodes on 1.35.2, Ready, and schedulable again.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 9.34,
+"d": 5.64
+},
+{
+"id": "s3",
+"ch": "The plan",
+"cap": "Always upgrade the control plane first. Then the workers.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [
+"cpn",
+"n1"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 16.73,
+"d": 3.38
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "On the control plane, three things get the new version: kubeadm, the control plane pods, and the kubelet with kubectl.",
+"focus": "cpn",
+"pause": 1.6,
+"draw": [
+"c1",
+"c2",
+"c3"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 21.46,
+"d": 7.49
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "On a worker, there are no control plane pods. Just kubeadm, and the kubelet with kubectl.",
+"focus": "n1",
+"pause": 1.4,
+"draw": [
+"w1",
+"w3"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 30.9,
+"d": 5.77
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "The packages come from apt. First, check which exact version apt offers.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [
+"apt"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "apt-get update",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "apt-cache madison kubeadm | head -3",
+"out": [
+"kubeadm | 1.35.2-1.1 | https://pkgs.k8s.io/..."
+],
+"next": "controlplane $"
+}
+],
+"hl": "1.35.2-1.1",
+"t": 38.42,
+"d": 4.67
+},
+{
+"id": "s7",
+"ch": "Control plane",
+"cap": "Upgrade kubeadm first. The packages are on hold, so unhold, install, and hold again.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "v1",
+"t": "v1.35.2 ✓",
+"x": 560,
+"y": 850,
+"h": 50,
+"c": "G",
+"a": 6.0,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "apt-mark unhold kubeadm",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "apt-get install -y kubeadm=1.35.2-1.1",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "apt-mark hold kubeadm",
+"out": [
+"kubeadm set on hold."
+],
+"next": "controlplane $"
+}
+],
+"hl": "kubeadm=1.35.2-1.1",
+"t": 44.64,
+"d": 5.89
+},
+{
+"id": "s8",
+"ch": null,
+"cap": "kubeadm upgrade plan checks what will change.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "kubeadm upgrade plan",
+"out": [
+"...",
+"You can now apply the upgrade by executing:",
+"    kubeadm upgrade apply v1.35.2"
+],
+"next": "controlplane $"
+}
+],
+"hl": "upgrade apply v1.35.2",
+"t": 52.08,
+"d": 2.82
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "kubeadm upgrade apply v1.35.2 upgrades the control plane pods.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [
+{
+"id": "v2",
+"t": "v1.35.2 ✓",
+"x": 560,
+"y": 1245,
+"h": 50,
+"c": "G",
+"a": 5.0,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "kubeadm upgrade apply v1.35.2",
+"out": [
+"[upgrade] SUCCESS! A control plane node of",
+"your cluster was upgraded to \"v1.35.2\"."
+],
+"next": "controlplane $"
+}
+],
+"hl": "SUCCESS",
+"t": 56.26,
+"d": 5.99
+},
+{
+"id": "s10",
+"ch": null,
+"cap": "Before the kubelet, drain the node: its pods move away, and it gets no new ones.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "dr",
+"t": "drained",
+"x": 760,
+"y": 515,
+"h": 50,
+"c": "O",
+"a": 4.0,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k drain controlplane --ignore-daemonsets --delete-emptydir-data",
+"out": [
+"node/controlplane drained"
+],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 64.0,
+"d": 4.89
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "Now kubelet and kubectl: unhold, install, hold. Then daemon-reload, and restart the kubelet.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "v3",
+"t": "v1.35.2 ✓",
+"x": 560,
+"y": 1565,
+"h": 50,
+"c": "G",
+"a": 7.0,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "apt-mark unhold kubelet kubectl",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "apt-get install -y kubelet=1.35.2-1.1 kubectl=1.35.2-1.1",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "apt-mark hold kubelet kubectl",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "systemctl daemon-reload",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "systemctl restart kubelet",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 71.04,
+"d": 6.7
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "Then uncordon it, so it may get pods again.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"dr"
+],
+"a": 2.0
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k uncordon controlplane",
+"out": [
+"node/controlplane uncordoned"
+],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 79.29,
+"d": 2.46
+},
+{
+"id": "s13",
+"ch": "Worker",
+"cap": "Now node01. ssh to it, and upgrade kubeadm there the same way.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "w1v",
+"t": "v1.35.2 ✓",
+"x": 1620,
+"y": 850,
+"h": 50,
+"c": "G",
+"a": 5.0,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "ssh node01",
+"out": [],
+"next": "node01 $"
+},
+{
+"p": "node01 $",
+"cmd": "apt-get update",
+"out": [],
+"next": "node01 $"
+},
+{
+"p": "node01 $",
+"cmd": "apt-get install -y kubeadm=1.35.2-1.1",
+"out": [],
+"next": "node01 $"
+}
+],
+"hl": null,
+"t": 83.5,
+"d": 5.34
+},
+{
+"id": "s14",
+"ch": null,
+"cap": "On a worker the command is kubeadm upgrade node. Not apply.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "node01 $",
+"cmd": "kubeadm upgrade node",
+"out": [
+"[upgrade] The configuration for this node",
+"was successfully updated!"
+],
+"next": "node01 $"
+}
+],
+"hl": "upgrade node",
+"t": 90.39,
+"d": 4.01
+},
+{
+"id": "s15",
+"ch": null,
+"cap": "Exit, and drain node01 from the control plane, where kubectl works.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "node01 $",
+"cmd": "exit",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k drain node01 --ignore-daemonsets --delete-emptydir-data",
+"out": [
+"node/node01 drained"
+],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 96.15,
+"d": 4.76
+},
+{
+"id": "s16",
+"ch": null,
+"cap": "Back on node01: new kubelet and kubectl, daemon-reload, restart the kubelet, and exit.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "w3v",
+"t": "v1.35.2 ✓",
+"x": 1620,
+"y": 1565,
+"h": 50,
+"c": "G",
+"a": 7.0,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "ssh node01",
+"out": [],
+"next": "node01 $"
+},
+{
+"p": "node01 $",
+"cmd": "apt-get install -y kubelet=1.35.2-1.1 kubectl=1.35.2-1.1",
+"out": [],
+"next": "node01 $"
+},
+{
+"p": "node01 $",
+"cmd": "systemctl daemon-reload",
+"out": [],
+"next": "node01 $"
+},
+{
+"p": "node01 $",
+"cmd": "systemctl restart kubelet",
+"out": [],
+"next": "node01 $"
+},
+{
+"p": "node01 $",
+"cmd": "exit",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 102.46,
+"d": 6.44
+},
+{
+"id": "s17",
+"ch": null,
+"cap": "Finally, uncordon node01, and check the versions.",
+"focus": "TERM",
+"pause": 1.8,
+"draw": [],
+"acts": [
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 6.0,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k uncordon node01",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k get nodes",
+"out": [
+"controlplane   Ready    control-plane   v1.35.2",
+"node01         Ready    <none>          v1.35.2"
+],
+"next": "controlplane $"
+}
+],
+"hl": "v1.35.2",
+"t": 110.45,
+"d": 3.54
+},
+{
+"id": "s18",
+"ch": "The rule",
+"cap": "The rule: control plane first, then workers. kubeadm before the kubelet.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 116.14,
+"d": 4.61
+},
+{
+"id": "s19",
+"ch": null,
+"cap": "apply on the control plane, node on the workers. Drain before the kubelet, uncordon after.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 122.11,
+"d": 5.56
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "Why drain before upgrading the kubelet?",
+"opts": [
+[
+"It makes the upgrade faster",
+false,
+"No. It protects the apps."
+],
+[
+"Restarting the kubelet disturbs the pods on that node, so move them first",
+true,
+"Correct."
+],
+[
+"kubeadm needs it",
+false,
+"kubeadm already ran. The drain is for the apps."
+]
+],
+"t": 70.44
+}
+]
+}

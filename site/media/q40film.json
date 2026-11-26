@@ -1,0 +1,454 @@
+{
+"end": 106.22,
+"goal": [
+"Goal: PVC bound to mariadb-pv",
+"app Running on it"
+],
+"rule": {
+"title": "PV and PVC",
+"rows": [
+[
+"PV",
+"the disk (Retain keeps data)",
+"cluster-wide"
+],
+[
+"PVC",
+"the request",
+"storageClassName: \"\" → the old PV"
+]
+]
+},
+"shapes": {
+"pv": {
+"rect": [
+1100,
+420,
+960,
+400
+],
+"label": "PersistentVolume",
+"sub": "mariadb-pv: 250Mi, RWO",
+"h": 84
+},
+"sc": {
+"rect": [
+40,
+420,
+960,
+320
+],
+"label": "default StorageClass",
+"sub": "makes NEW empty disks",
+"h": 70
+},
+"pvc": {
+"rect": [
+1100,
+1000,
+960,
+340
+],
+"label": "PersistentVolumeClaim",
+"sub": "mariadb",
+"h": 76
+},
+"dep": {
+"rect": [
+40,
+1000,
+960,
+340
+],
+"label": "Deployment mariadb",
+"sub": "claimName: mariadb",
+"h": 80
+},
+"a_cv": {
+"arrow": [
+[
+1580,
+1000
+],
+[
+1580,
+820
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_dc": {
+"arrow": [
+[
+1000,
+1170
+],
+[
+1100,
+1170
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_sx": {
+"arrow": [
+[
+520,
+740
+],
+[
+1300,
+1000
+]
+],
+"both": false,
+"dashed": true,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 40. The MariaDB app was deleted. But its disk, a PersistentVolume, still holds the data.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get pv",
+"out": [
+"NAME        CAPACITY  ACCESS  RECLAIM  STATUS",
+"mariadb-pv  250Mi     RWO     Retain   Available"
+],
+"next": "controlplane $"
+}
+],
+"hl": "Available",
+"t": 1.0,
+"d": 7.03
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: a claim bound to that disk, and the app running on it again.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 9.58,
+"d": 4.14
+},
+{
+"id": "s3",
+"ch": "PV and PVC",
+"cap": "A PersistentVolume is a piece of storage. This one: 250 megabytes, ReadWriteOnce, and no storage class.",
+"focus": "pv",
+"pause": 1.4,
+"draw": [
+"pv"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 15.47,
+"d": 7.81
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "Retain means: when the app was deleted, the data was kept.",
+"focus": "pv",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "rt",
+"t": "Retain: data kept",
+"x": 1160,
+"y": 900,
+"h": 54,
+"c": "B",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 25.03,
+"d": 3.51
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "Apps don't use a PV directly. They ask for storage with a claim: a PersistentVolumeClaim.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"pvc",
+"a_cv"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 30.09,
+"d": 5.81
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "Kubernetes binds a claim to a PV that matches: the access mode, enough size, and the same storage class.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 37.44,
+"d": 7.19
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "Careful: a claim without storageClassName gets the default StorageClass. That makes a brand new, empty disk.",
+"focus": "WIDE",
+"pause": 1.6,
+"draw": [
+"sc",
+"a_sx"
+],
+"acts": [
+{
+"dots": "a_sx",
+"a": 2.6,
+"n": 1,
+"color": "R",
+"back": false
+}
+],
+"term": [],
+"hl": null,
+"t": 46.38,
+"d": 7.06
+},
+{
+"id": "s8",
+"ch": null,
+"cap": "So set storageClassName to empty quotes. Then it only binds to a PV with no class, like ours.",
+"focus": "WIDE",
+"pause": 1.6,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 55.39,
+"d": 6.27
+},
+{
+"id": "s9",
+"ch": "The fix",
+"cap": "Write the PVC: name mariadb, namespace mariadb, an empty storageClassName, ReadWriteOnce, 250Mi.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "vim pvc.yaml",
+"out": [
+"  storageClassName: \"\"",
+"  accessModes:",
+"    - ReadWriteOnce",
+"  resources:",
+"    requests:",
+"      storage: 250Mi"
+],
+"next": "controlplane $"
+}
+],
+"hl": "storageClassName: \"\"",
+"t": 64.22,
+"d": 9.36
+},
+{
+"id": "s10",
+"ch": null,
+"cap": "Apply it, and check: Bound, to mariadb-pv.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [
+{
+"dots": "a_cv",
+"a": 3.0,
+"n": 1,
+"color": "G",
+"back": false
+},
+{
+"id": "bd",
+"t": "Bound ✓",
+"x": 1160,
+"y": 1300,
+"h": 56,
+"c": "G",
+"a": 3.6,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k apply -f pvc.yaml",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k get pvc -n mariadb",
+"out": [
+"NAME     STATUS  VOLUME      CAPACITY",
+"mariadb  Bound   mariadb-pv  250Mi"
+],
+"next": "controlplane $"
+}
+],
+"hl": "Bound",
+"t": 75.13,
+"d": 3.44
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "Now point the deployment at the claim: claimName mariadb.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [
+"dep",
+"a_dc"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "vim /root/mariadb-deploy.yaml",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "grep claimName /root/mariadb-deploy.yaml",
+"out": [
+"          claimName: mariadb"
+],
+"next": "controlplane $"
+}
+],
+"hl": "claimName: mariadb",
+"t": 80.32,
+"d": 3.69
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "Apply it, and check the pod and the PV.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 4.4,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k apply -f /root/mariadb-deploy.yaml",
+"out": [
+"deployment.apps/mariadb created"
+],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k get pv mariadb-pv",
+"out": [
+"mariadb-pv  250Mi  RWO  Retain  Bound  mariadb/mariadb"
+],
+"next": "controlplane $"
+}
+],
+"hl": "mariadb/mariadb",
+"t": 85.56,
+"d": 2.41
+},
+{
+"id": "s13",
+"ch": "The rule",
+"cap": "The rule: a PV is the disk, a PVC is the request, and the pod uses the PVC.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 89.91,
+"d": 6.09
+},
+{
+"id": "s14",
+"ch": null,
+"cap": "To reuse a PV with no class, set storageClassName to empty quotes.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 97.36,
+"d": 4.51
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "How do you make the claim bind to the old PV?",
+"opts": [
+[
+"Leave out storageClassName",
+false,
+"The default StorageClass may give you a new, empty disk."
+],
+[
+"storageClassName: \"\" with 250Mi and ReadWriteOnce",
+true,
+"Correct."
+],
+[
+"Delete and recreate the PV",
+false,
+"Never. The data is on it."
+]
+],
+"t": 63.62
+}
+]
+}

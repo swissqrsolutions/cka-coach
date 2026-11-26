@@ -1,0 +1,466 @@
+{
+"end": 90.07,
+"goal": [
+"Goal: /root/argo-helm.yaml",
+"with no CRDs"
+],
+"rule": {
+"title": "helm template",
+"rows": [
+[
+"helm template",
+"writes YAML only",
+"installs nothing"
+],
+[
+"switch CRDs off",
+"--set crds.install=false",
+"check: grep -c = 0"
+]
+]
+},
+"shapes": {
+"repo": {
+"rect": [
+40,
+420,
+960,
+280
+],
+"label": "Helm repository",
+"sub": "name: argocd",
+"h": 86
+},
+"ch": {
+"rect": [
+40,
+820,
+960,
+360
+],
+"label": "chart: argo-cd",
+"sub": "version 7.7.3",
+"h": 90
+},
+"vals": {
+"rect": [
+110,
+1300,
+820,
+260
+],
+"label": "values",
+"sub": "crds.install: true",
+"h": 80
+},
+"tpl": {
+"rect": [
+1100,
+820,
+960,
+360
+],
+"label": "helm template",
+"sub": "fills in the values",
+"h": 84
+},
+"file": {
+"rect": [
+1100,
+1300,
+960,
+260
+],
+"label": "argo-helm.yaml",
+"sub": "plain YAML",
+"h": 80
+},
+"cl": {
+"rect": [
+1100,
+1700,
+960,
+260
+],
+"label": "cluster",
+"sub": "nothing installed",
+"h": 84
+},
+"a_rc": {
+"arrow": [
+[
+520,
+700
+],
+[
+520,
+820
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_ct": {
+"arrow": [
+[
+1000,
+1000
+],
+[
+1100,
+1000
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_vc": {
+"arrow": [
+[
+520,
+1300
+],
+[
+520,
+1180
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_tf": {
+"arrow": [
+[
+1580,
+1180
+],
+[
+1580,
+1300
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 15. Make the install files for Argo CD with Helm, but without its CRDs.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 6.35
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: save the YAML to slash root slash argo-helm dot yaml, with no CRDs in it.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 8.7,
+"d": 6.52
+},
+{
+"id": "s3",
+"ch": "How Helm works",
+"cap": "Helm installs apps from charts. Charts come from a repository.",
+"focus": "repo",
+"pause": 1.0,
+"draw": [
+"repo"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 16.97,
+"d": 3.96
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "A chart is a package of YAML templates, plus settings called values.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"ch",
+"a_rc"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 22.28,
+"d": 4.14
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "One value decides if the CRDs are included: crds dot install. It is true by default.",
+"focus": "vals",
+"pause": 1.4,
+"draw": [
+"vals",
+"a_vc"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 27.98,
+"d": 6.96
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "helm template fills the values into the templates, and prints plain YAML.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"tpl",
+"a_ct"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 36.68,
+"d": 4.08
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "It installs nothing. You save the output in a file.",
+"focus": "WIDE",
+"pause": 1.6,
+"draw": [
+"file",
+"a_tf",
+"cl"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 42.31,
+"d": 3.03
+},
+{
+"id": "s8",
+"ch": "The steps",
+"cap": "Add the repository with the name argocd, then update.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "helm repo add argocd https://argoproj.github.io/argo-helm",
+"out": [
+"\"argocd\" has been added to your repositories"
+],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "helm repo update",
+"out": [
+"Update Complete. Happy Helming!"
+],
+"next": "controlplane $"
+}
+],
+"hl": "\"argocd\"",
+"t": 47.29,
+"d": 3.65
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "Check that version 7.7.3 exists.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "helm search repo argocd/argo-cd --versions | grep 7.7.3",
+"out": [
+"argocd/argo-cd  7.7.3  ...  A Helm chart for Argo CD"
+],
+"next": "controlplane $"
+}
+],
+"hl": "7.7.3",
+"t": 52.29,
+"d": 3.21
+},
+{
+"id": "s10",
+"ch": null,
+"cap": "Find the CRD setting: helm show values, and grep for crds.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "helm show values argocd/argo-cd --version 7.7.3 | grep -A3 \"^crds\"",
+"out": [
+"crds:",
+"  # -- Install and upgrade CRDs",
+"  install: true"
+],
+"next": "controlplane $"
+}
+],
+"hl": "install: true",
+"t": 57.05,
+"d": 4.59
+},
+{
+"id": "s11",
+"ch": "Write the file",
+"cap": "Render it with crds.install equals false, and send the output into the file.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"vals"
+],
+"a": 4.5
+},
+{
+"id": "v2",
+"t": "crds.install: false",
+"x": 140,
+"y": 1450,
+"h": 54,
+"c": "G",
+"a": 5.2,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "helm template my-argo argocd/argo-cd --version 7.7.3 --namespace argocd --set crds.install=false > /root/argo-helm.yaml",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": "crds.install=false",
+"t": 63.99,
+"d": 5.17
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "Check it: count the CRDs in the file. It must be zero.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"id": "z",
+"t": "0 CRDs ✓",
+"x": 1160,
+"y": 1640,
+"h": 56,
+"c": "G",
+"a": 3.5,
+"align": null
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 4.2,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "grep -c \"kind: CustomResourceDefinition\" /root/argo-helm.yaml",
+"out": [
+"0"
+],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 70.7,
+"d": 3.73
+},
+{
+"id": "s13",
+"ch": "The rule",
+"cap": "The rule: helm template only writes YAML. It installs nothing.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 76.38,
+"d": 3.92
+},
+{
+"id": "s14",
+"ch": null,
+"cap": "Switch parts of a chart off with dash dash set, and always check the file.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 81.65,
+"d": 4.07
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "How do you leave the CRDs out?",
+"opts": [
+[
+"--skip-crds",
+false,
+"That only skips a chart's crds/ folder. This chart makes its CRDs from templates, switched by crds.install."
+],
+[
+"--set crds.install=false",
+true,
+"Correct."
+],
+[
+"Delete the CRDs afterwards",
+false,
+"The file must not contain them at all."
+]
+],
+"t": 63.39
+}
+]
+}

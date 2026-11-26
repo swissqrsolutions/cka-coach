@@ -85,12 +85,14 @@
       : isIOS ? `<div class="card install"><p><b>Install:</b> tap Share, then <b>Add to Home Screen</b>.</p></div>`
       : `<div class="card install"><p><b>Install:</b> Chrome menu ⋮ → <b>Add to Home screen</b> → Install.</p></div>`;
   }
+  // questions with a teaching film (assets/motion.js)
+  const FILMED = new Set([1, 2, 3, 4, 5, 8, 13, 15, 20, 21, 23, 25, 26, 31, 36, 40]);
   function home() { // the Practice tab
     const p = prog(), solo = PQ().filter(q => (p[q.n] || {}).st === 'solo').length;
     const groups = D.topics.map(t => {
       const qs = PQ().filter(q => q.topic === t.name);
       return `<h2>${esc(topicShort(t.name))} <span class="chip">${t.weight}% of exam</span></h2>
-        <div class="card"><ul class="qlist">${qs.map(q => `<li><a href="#/q/${q.n}"><span class="num">${q.n}</span><span>${esc(q.title)}</span><span class="st ${statusOf(q.n)}">${ST[statusOf(q.n)] || ''}</span></a></li>`).join('')}</ul></div>`;
+        <div class="card"><ul class="qlist">${qs.map(q => `<li><a href="#/q/${q.n}"><span class="num">${q.n}</span><span>${esc(q.title)}${FILMED.has(q.n) ? ' <span class="film" title="Has a teaching film">🎬</span>' : ''}</span><span class="st ${statusOf(q.n)}">${ST[statusOf(q.n)] || ''}</span></a></li>`).join('')}</ul></div>`;
     }).join('');
     const weak = Object.entries(store.get('weak', {})).filter(([n]) => Q(+n));
     const weakCard = weak.length ? `<h2>Weak list <span class="chip bad">over target time</span></h2><div class="card"><ul class="qlist">${weak.map(([n, w]) => `<li><a href="#/q/${n}"><span class="num">${n}</span><span>${esc(Q(+n).title)}</span><span class="st fail">${Math.floor(w.sec / 60)}:${String(w.sec % 60).padStart(2, '0')} / ${Q(+n).target}:00</span></a></li>`).join('')}</ul></div>` : '';

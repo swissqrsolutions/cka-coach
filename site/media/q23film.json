@@ -1,0 +1,417 @@
+{
+"end": 92.68,
+"goal": [
+"Goal: node01:30080",
+"reaches nginx on port 80"
+],
+"rule": {
+"title": "Three ports",
+"rows": [
+[
+"containerPort 80",
+"inside the pod",
+"k edit deployment"
+],
+[
+"port 80, nodePort 30080",
+"Service type NodePort",
+"k expose + k patch"
+]
+]
+},
+"shapes": {
+"nd": {
+"rect": [
+40,
+420,
+2020,
+1300
+],
+"frame": true,
+"label": "node01"
+},
+"pod": {
+"rect": [
+1300,
+760,
+680,
+320
+],
+"label": "Pod (nginx)",
+"sub": "containerPort: 80",
+"h": 84
+},
+"svc": {
+"rect": [
+560,
+760,
+620,
+320
+],
+"label": "Service np-svc",
+"sub": "port 80",
+"h": 80
+},
+"npt": {
+"rect": [
+110,
+1300,
+620,
+260
+],
+"label": "nodePort",
+"sub": "30080",
+"h": 90
+},
+"usr": {
+"rect": [
+110,
+1880,
+900,
+300
+],
+"label": "User",
+"sub": "curl node01:30080",
+"h": 90
+},
+"a_un": {
+"arrow": [
+[
+420,
+1880
+],
+[
+420,
+1560
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_ns": {
+"arrow": [
+[
+730,
+1430
+],
+[
+870,
+1430
+],
+[
+870,
+1080
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_sp": {
+"arrow": [
+[
+1180,
+920
+],
+[
+1300,
+920
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 23. Make an nginx deployment reachable from outside the cluster, on node port 30080.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 7.48
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: node01 colon 30080 must reach nginx on port 80.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 9.83,
+"d": 6.04
+},
+{
+"id": "s3",
+"ch": "Three ports",
+"cap": "Your app runs in a pod on a node. Inside the pod, nginx listens on port 80.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"nd",
+"pod"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 17.62,
+"d": 5.63
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "First, the deployment should declare that port: containerPort 80.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k edit deployment/np -n web",
+"out": [
+"        ports:",
+"        - containerPort: 80",
+"          protocol: TCP",
+"deployment.apps/np edited"
+],
+"next": "controlplane $"
+}
+],
+"hl": "containerPort: 80",
+"t": 24.8,
+"d": 3.9
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "A Service gives the pods one fixed address. Its port 80 forwards to port 80 in the pod.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"svc",
+"a_sp"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 30.25,
+"d": 5.91
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "A NodePort Service also opens one port on every node, between 30000 and 32767.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"npt",
+"a_ns"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 37.71,
+"d": 8.09
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "Then anyone can reach the app as: node address, colon, node port.",
+"focus": "WIDE",
+"pause": 1.6,
+"draw": [
+"usr",
+"a_un"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 47.35,
+"d": 3.79
+},
+{
+"id": "s8",
+"ch": "The fix",
+"cap": "Create it: k expose deployment np, type NodePort, port 80.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k expose deployment np --name=np-svc --port=80 --target-port=80 --type=NodePort -n web",
+"out": [
+"service/np-svc exposed"
+],
+"next": "controlplane $"
+}
+],
+"hl": "--type=NodePort",
+"t": 53.69,
+"d": 4.42
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "expose picks a random node port. Patch it to 30080.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k patch service np-svc -p '{\"spec\":{\"ports\":[{\"port\":80,\"nodePort\":30080}]}}' -n web",
+"out": [
+"service/np-svc patched"
+],
+"next": "controlplane $"
+}
+],
+"hl": "\"nodePort\":30080",
+"t": 59.67,
+"d": 4.11
+},
+{
+"id": "s10",
+"ch": null,
+"cap": "Check the Service: 80 colon 30080.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get service np-svc -n web",
+"out": [
+"NAME    TYPE      PORT(S)",
+"np-svc  NodePort  80:30080/TCP"
+],
+"next": "controlplane $"
+}
+],
+"hl": "80:30080",
+"t": 65.32,
+"d": 3.05
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "And test it from outside: curl node01 colon 30080.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"dots": "a_un",
+"a": 2.0,
+"n": 1,
+"color": "G",
+"back": false
+},
+{
+"dots": "a_ns",
+"a": 2.8,
+"n": 1,
+"color": "G",
+"back": false
+},
+{
+"dots": "a_sp",
+"a": 3.6,
+"n": 1,
+"color": "G",
+"back": false
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 4.4,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "curl -s -m 3 node01:30080 | grep title",
+"out": [
+"<title>Welcome to nginx!</title>"
+],
+"next": "controlplane $"
+}
+],
+"hl": "Welcome",
+"t": 69.92,
+"d": 4.59
+},
+{
+"id": "s12",
+"ch": "The rule",
+"cap": "The rule: containerPort is inside the pod, port is the Service, and nodePort is on every node.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 76.47,
+"d": 6.28
+},
+{
+"id": "s13",
+"ch": null,
+"cap": "Create the Service with expose, and set the exact node port with patch.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 84.09,
+"d": 4.24
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "Which object opens port 30080 on the node?",
+"opts": [
+[
+"The pod, with containerPort",
+false,
+"containerPort is only inside the pod."
+],
+[
+"A Service of type NodePort",
+true,
+"Correct."
+],
+[
+"An Ingress",
+false,
+"An Ingress routes HTTP by host and path. It does not open a node port."
+]
+],
+"t": 53.09
+}
+]
+}

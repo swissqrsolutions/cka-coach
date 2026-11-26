@@ -1,0 +1,519 @@
+{
+"end": 93.14,
+"goal": [
+"Goal: pods can talk,",
+"NetworkPolicy works"
+],
+"rule": {
+"title": "CNI plug-in",
+"rows": [
+[
+"pod network",
+"built by a CNI plug-in",
+"no CNI: NotReady"
+],
+[
+"NetworkPolicy",
+"Calico enforces it",
+"cidr = cluster-cidr"
+]
+]
+},
+"shapes": {
+"cpn": {
+"rect": [
+40,
+420,
+960,
+1100
+],
+"frame": true,
+"label": "controlplane"
+},
+"n1": {
+"rect": [
+1100,
+420,
+960,
+1100
+],
+"frame": true,
+"label": "node01"
+},
+"pa": {
+"rect": [
+160,
+700,
+720,
+300
+],
+"label": "Pod",
+"sub": "10.244.0.5",
+"h": 90
+},
+"pb": {
+"rect": [
+1220,
+700,
+720,
+300
+],
+"label": "Pod",
+"sub": "10.244.1.7",
+"h": 90
+},
+"cni": {
+"rect": [
+40,
+1620,
+2020,
+230
+],
+"label": "CNI plug-in: Calico",
+"sub": "builds the pod network",
+"h": 84
+},
+"op": {
+"rect": [
+1100,
+1960,
+960,
+220
+],
+"label": "tigera-operator",
+"sub": "installs Calico",
+"h": 76
+},
+"np": {
+"rect": [
+40,
+1960,
+960,
+220
+],
+"label": "NetworkPolicy",
+"sub": "needs Calico",
+"h": 76
+},
+"a_pp": {
+"arrow": [
+[
+880,
+850
+],
+[
+1220,
+850
+]
+],
+"both": true,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 20. The cluster has no network plug-in yet.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get nodes",
+"out": [
+"NAME           STATUS     ROLES",
+"controlplane   NotReady   control-plane",
+"node01         NotReady   <none>"
+],
+"next": "controlplane $"
+}
+],
+"hl": "NotReady",
+"t": 1.0,
+"d": 3.48
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: pods must talk to each other, and NetworkPolicy must work.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 6.03,
+"d": 4.21
+},
+{
+"id": "s3",
+"ch": "The pod network",
+"cap": "A cluster has several nodes.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [
+"cpn",
+"n1"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 11.99,
+"d": 1.64
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "Every pod gets its own IP address. And every pod must reach every other pod, even on another node.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [
+"pa",
+"pb",
+"a_pp"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 14.98,
+"d": 6.51
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "Kubernetes does not build this network itself. A CNI plug-in does.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "px",
+"cross": [
+1050,
+850
+],
+"c": "R",
+"a": 0.4
+}
+],
+"term": [],
+"hl": null,
+"t": 23.24,
+"d": 4.63
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "Without a CNI, the nodes stay NotReady.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "nr1",
+"t": "NotReady",
+"x": 720,
+"y": 515,
+"h": 54,
+"c": "R",
+"a": 0.3,
+"align": null
+},
+{
+"id": "nr2",
+"t": "NotReady",
+"x": 1500,
+"y": 515,
+"h": 54,
+"c": "R",
+"a": 0.9,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 29.41,
+"d": 2.55
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "The task also wants NetworkPolicy. Flannel builds the network, but does not enforce policies. Calico does.",
+"focus": "WIDE",
+"pause": 1.6,
+"draw": [
+"np"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 33.51,
+"d": 7.25
+},
+{
+"id": "s8",
+"ch": "Install Calico",
+"cap": "Calico comes in two parts. First the operator: k create dash f, with the tigera-operator URL.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [
+"op"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k create -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.1/manifests/tigera-operator.yaml",
+"out": [
+"...",
+"deployment.apps/tigera-operator created"
+],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 43.31,
+"d": 7.05
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "Calico must use the cluster's pod address range. Find it in the controller manager's settings.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get pods -l component=kube-controller-manager -o yaml -n kube-system | grep cluster-cidr",
+"out": [
+"    - --cluster-cidr=10.244.0.0/16"
+],
+"next": "controlplane $"
+}
+],
+"hl": "10.244.0.0/16",
+"t": 51.91,
+"d": 5.81
+},
+{
+"id": "s10",
+"ch": null,
+"cap": "Download custom-resources.yaml, and set the same cidr in it.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "curl -LO https://raw.githubusercontent.com/projectcalico/calico/v3.29.1/manifests/custom-resources.yaml",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "vim custom-resources.yaml",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "grep cidr custom-resources.yaml",
+"out": [
+"      cidr: 10.244.0.0/16"
+],
+"next": "controlplane $"
+}
+],
+"hl": "cidr: 10.244.0.0/16",
+"t": 59.27,
+"d": 4.05
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "Apply it. The operator now installs Calico on every node.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [
+"cni"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k apply -f custom-resources.yaml",
+"out": [
+"installation.operator.tigera.io/default created",
+"apiserver.operator.tigera.io/default created"
+],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 65.07,
+"d": 3.59
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "Now the pods can reach each other.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"px"
+],
+"a": 0.2
+},
+{
+"dots": "a_pp",
+"a": 0.6,
+"n": 1,
+"color": "G",
+"back": false
+},
+{
+"dots": "a_pp",
+"a": 1.4,
+"n": 1,
+"color": "G",
+"back": true
+}
+],
+"term": [],
+"hl": null,
+"t": 70.21,
+"d": 1.74
+},
+{
+"id": "s13",
+"ch": null,
+"cap": "Check it: the calico pods are Running, and the nodes are Ready.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"nr1",
+"nr2"
+],
+"a": 3.0
+},
+{
+"id": "r1",
+"t": "Ready ✓",
+"x": 720,
+"y": 515,
+"h": 54,
+"c": "G",
+"a": 3.6,
+"align": null
+},
+{
+"id": "r2",
+"t": "Ready ✓",
+"x": 1500,
+"y": 515,
+"h": 54,
+"c": "G",
+"a": 4.0,
+"align": null
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 4.6,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get pods -A | grep -i calico",
+"out": [
+"calico-system  calico-node-...  1/1  Running"
+],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k get nodes",
+"out": [
+"controlplane   Ready    control-plane",
+"node01         Ready    <none>"
+],
+"next": "controlplane $"
+}
+],
+"hl": "Ready",
+"t": 73.5,
+"d": 3.42
+},
+{
+"id": "s14",
+"ch": "The rule",
+"cap": "The rule: without a CNI, pods can't talk, and nodes stay NotReady.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 78.87,
+"d": 4.39
+},
+{
+"id": "s15",
+"ch": null,
+"cap": "For NetworkPolicy, choose Calico, and give it the cluster's pod range.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 84.61,
+"d": 4.18
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "Which plug-in do you install?",
+"opts": [
+[
+"Flannel",
+false,
+"Flannel does not enforce NetworkPolicy."
+],
+[
+"Calico",
+true,
+"Correct."
+],
+[
+"Either one",
+false,
+"Only Calico enforces NetworkPolicy here."
+]
+],
+"t": 42.71
+}
+]
+}

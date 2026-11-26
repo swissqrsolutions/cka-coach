@@ -138,6 +138,17 @@ const SHORTS = {
   3: { long: true, audio: 'media/q3.mp3', json: 'media/q3film.json', film: genFilm },
   4: { long: true, audio: 'media/q4.mp3', json: 'media/q4film.json', film: q4Film },
   5: { long: true, audio: 'media/q5.mp3', json: 'media/q5film.json', film: genFilm },
+  8: { long: true, audio: 'media/q8.mp3', json: 'media/q8film.json', film: genFilm },
+  13: { long: true, audio: 'media/q13.mp3', json: 'media/q13film.json', film: genFilm },
+  15: { long: true, audio: 'media/q15.mp3', json: 'media/q15film.json', film: genFilm },
+  20: { long: true, audio: 'media/q20.mp3', json: 'media/q20film.json', film: genFilm },
+  21: { long: true, audio: 'media/q21.mp3', json: 'media/q21film.json', film: genFilm },
+  23: { long: true, audio: 'media/q23.mp3', json: 'media/q23film.json', film: genFilm },
+  25: { long: true, audio: 'media/q25.mp3', json: 'media/q25film.json', film: genFilm },
+  26: { long: true, audio: 'media/q26.mp3', json: 'media/q26film.json', film: genFilm },
+  31: { long: true, audio: 'media/q31.mp3', json: 'media/q31film.json', film: genFilm },
+  36: { long: true, audio: 'media/q36.mp3', json: 'media/q36film.json', film: genFilm },
+  40: { long: true, audio: 'media/q40.mp3', json: 'media/q40film.json', film: genFilm },
 };
 
 // ───────── Q4, explained slowly (layout v4): two computers side by side, You outside both; one focus at a time
@@ -236,15 +247,17 @@ function q4Film(a, J) {
 }
 
 // ───────── the general teaching film (Q1, Q2, Q3, Q5): a script in media/qNfilm.json drives the board, the camera, the terminal and the questions
-const L5 = { goal: [1100, 80, 960, 260], reg: [40, 80, 960, 260], cp: [40, 420, 960, 1300], api: [110, 560, 820, 420], dep: [230, 770, 580, 170], sched: [110, 1300, 820, 200],
+const L5base = { goal: [1100, 80, 960, 260], reg: [40, 80, 960, 260], cp: [40, 420, 960, 1300], api: [110, 560, 820, 420], dep: [230, 770, 580, 170], sched: [110, 1300, 820, 200],
   node: [1100, 420, 960, 1300], kubelet: [1170, 560, 820, 250], cri: [1170, 880, 820, 170], conf: [1170, 880, 820, 170], pod: [1290, 1180, 580, 320], you: [110, 1880, 640, 300],
   cmdnote: [130, 1020, 790, 90], WIDE: [40, 80, 2020, 2100] };
 function genFilm(a, J) {
-  const GREY = '#6b7280', rec = [];
+  const GREY = '#6b7280', rec = [], L5 = { ...L5base, ...(J.wide ? { WIDE: J.wide } : {}) };
+  for (const [k, sp] of Object.entries(J.shapes || {})) if (sp.rect) L5[k] = sp.rect;
   const { pen: { K, Bl, R, G, O } } = a, PENS = { K, B: Bl, R, G, O }, COL = { K: INK.black, B: INK.blue, R: INK.red, G: INK.green, O: INK.orange };
   const draw = (pen, shapes, t0, t1) => { rec.push(shapes); a.draw(pen, shapes, t0, t1); };
-  const frame = (k, label) => { const [x, y, w, h] = L5[k]; return [...W.rect(x, y, w, h, { w: 5, over: 10, color: GREY, alpha: .75 }), ...W.text(label, x + 40, y + 95, { h: 84, color: GREY })]; };
-  const box = (k, label, sub, hh = 100) => { const [x, y, w, h] = L5[k]; const t = sub ? [...W.text(label, x + w / 2, y + h / 2 - 4, { h: hh, align: 'center' }), ...W.text(sub, x + w / 2, y + h / 2 + 78, { h: 60, align: 'center', color: GREY })] : W.text(label, x + w / 2, y + h / 2 + hh * .4, { h: hh, align: 'center' }); return [...W.rect(x, y, w, h, { w: 8, over: 8 }), ...t]; };
+  const frame = (k, label) => { const [x, y, w, h] = L5[k]; return [...W.rect(x, y, w, h, { w: 5, over: 10, color: GREY, alpha: .75 }), ...W.text(label, x + 40, y + 95, { h: Math.min(84, w * .6 / Math.max(1, label.length) / .52), color: GREY })]; };
+  const fitT = (str, x, y, h, maxW, o = {}) => { let t = W.text(str, x, y, { h, ...o }); if (t.width > maxW) t = W.text(str, x, y, { h: h * maxW / t.width, ...o }); return t; };
+  const box = (k, label, sub, hh = 100) => { const [x, y, w, h] = L5[k]; const t = sub ? [...fitT(label, x + w / 2, y + h / 2 - 4, hh, w * .88, { align: 'center' }), ...fitT(sub, x + w / 2, y + h / 2 + 78, sub.length > 24 ? 46 : 60, w * .9, { align: 'center', color: GREY })] : fitT(label, x + w / 2, y + h / 2 + hh * .4, hh, w * .88, { align: 'center' }); return [...W.rect(x, y, w, h, { w: 8, over: 8 }), ...t]; };
   const arrow = (pts, o) => arrowP(pts, { w: 9, ...o });
   const SH = {
     goal: [...W.rect(...L5.goal, { w: 6, over: 6 }), ...W.text(J.goal[0], 1180, 190, { h: 72 }), ...W.text(J.goal[1], 1180, 295, { h: 72 })],
@@ -258,7 +271,12 @@ function genFilm(a, J) {
     a_ak: arrow([[935, 620], [1170, 620]]), a_kc: arrow([[1580, 810], [1580, 880]]), a_cp: arrow([[1580, 1050], [1580, 1180]]),
     a_reg: arrow([[1000, 210], [1050, 210], [1050, 965], [1170, 965]]), a_sa: arrow([[850, 1300], [850, 985]], { both: true }), a_sn: arrow([[930, 1400], [1290, 1340]]),
   };
-  const PEN = { a_ya: O, a_ssh: O, goal: O, reg: K };
+  for (const [k, sp] of Object.entries(J.shapes || {})) {
+    if (sp.arrow) { SH[k] = sp.dashed ? W.dashed(sp.arrow, { w: 7, dash: 50, gap: 34 }) : arrow(sp.arrow, { both: !!sp.both }); if (sp.dashed) SH[k].shaft = W.poly(sp.arrow.flat(), { w: 1 }); }
+    else if (sp.frame) SH[k] = frame(k, sp.label);
+    else if (sp.rect) SH[k] = box(k, sp.label, sp.sub, sp.h || 90);
+  }
+  const PEN = { a_ya: O, a_ssh: O, goal: O, reg: K, ...Object.fromEntries(Object.entries(J.shapes || {}).filter(([, sp]) => sp.pen).map(([k, sp]) => [k, { O, R, G, B: Bl, K }[sp.pen]])) };
   const N = {}, pins = [], spots = [];
   const ring = k => { const [x, y, w, h] = L5[k]; return W.circle(x + w / 2, y + h / 2, w / 2 + 50, { ry: h / 2 + 60, w: 9, lap: .3 }); };
   const parts = id => N[id] || SH[id];
@@ -337,16 +355,16 @@ async function build(host, kind) {
   }
   const term = $0('.mterm');
   // terminal: each entry types its command (slowly) after the current prompt; output lines follow; the prompt changes after ssh / sudo -i / exit
-  const TE = J ? J.phrases.flatMap(p => { let st = p.t + .35; return (p.term || []).map(e => { const x = { ...e, t: st }; st += e.cmd.length / 16 + .5 + e.out.length * .25 + .4; return x; }); }) : [];
+  const TE = J ? J.phrases.flatMap(p => { let st = p.t + .35; return (p.term || []).map(e => { const x = { ...e, t: st, r: Math.max(16, e.cmd.length / 2.4) }; st += e.cmd.length / x.r + .5 + e.out.length * .25 + .4; return x; }); }) : [];
   const phAt = t => { let c = null; if (J) for (const p of J.phrases) if (t >= p.t) c = p; return c; };
   const esc = x => x.replace(/&/g, '&amp;').replace(/</g, '&lt;');
   const termAt = t => {
     if (!term) return; const lines = []; let prompt = 'controlplane $', typing = '';
     for (const e of TE) {
       if (t < e.t) break;
-      const n = Math.floor((t - e.t) * 16);
+      const n = Math.floor((t - e.t) * e.r);
       if (n < e.cmd.length) { typing = e.cmd.slice(0, n); prompt = e.p; break; }
-      lines.push({ p: e.p, c: e.cmd }); let ot = e.t + e.cmd.length / 16 + .4;
+      lines.push({ p: e.p, c: e.cmd }); let ot = e.t + e.cmd.length / e.r + .4;
       for (const o of e.out) { if (t < ot) break; lines.push({ o }); ot += .25; }
       prompt = e.next; typing = '';
     }
@@ -354,7 +372,7 @@ async function build(host, kind) {
     const cls = x => /NotReady|inactive|disabled|Unknown|stopped/.test(x) ? 'bad' : /Ready|active|enabled/.test(x) ? 'ok' : '';
     const row = l => l.o !== undefined ? `<span class="${cls(l.o)}${hl && l.o.includes(hl) ? ' hl' : ''}">${esc(l.o)}</span>` : `<span class="pr${hl && l.p.includes(hl) ? ' hl' : ''}">${esc(l.p)}</span> <span class="c${hl && l.c.includes(hl) ? ' hl' : ''}">${esc(l.c)}</span>`;
     const all = [...lines.map(row), `<span class="pr${hl && prompt.includes(hl) ? ' hl' : ''}">${esc(prompt)}</span> <span class="c">${esc(typing)}</span><span class="cur">▌</span>`];
-    const html = all.slice(-7).join('\n'); if (term.innerHTML !== html) term.innerHTML = html;
+    const html = all.slice(-8).map(x => `<div>${x}</div>`).join(''); if (term.innerHTML !== html) term.innerHTML = html;
     host.classList.toggle('mtermfocus', !!(ph && ph.focus === 'TERM'));
   };
   // captions: key words in the same colours as the board

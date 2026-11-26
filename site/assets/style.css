@@ -469,3 +469,5 @@ body.mfull-open{overflow:hidden}
 .mrule.on1 .r1,.mrule.on2 .r2{opacity:1}
 .mrule span:last-child{font-weight:800;color:#d97757}
 .mcap .kr{color:#c8413a}.mcap .kg{color:#2e7a4d}.mcap .ko{color:#c0582f}.mcap .kb{color:#2a5cb3}
+.mterm{white-space:pre-wrap;word-break:break-all;height:12.2em;min-height:0;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden}
+.qlist .film{font-size:.9em;margin-left:4px}
