@@ -1,0 +1,638 @@
+{
+"end": 138.16,
+"goal": [
+"Goal: node01 Ready",
+"no reboot"
+],
+"rule": {
+"title": "kubelet keeps failing",
+"rows": [
+[
+"it fails",
+"systemctl status",
+"203/EXEC = bad path"
+],
+[
+"why it fails",
+"journalctl -u kubelet",
+"then fix, daemon-reload, restart"
+]
+]
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 5. node01 is NotReady again. But this time, the cause is different.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get nodes",
+"out": [
+"NAME           STATUS     ROLES",
+"controlplane   Ready      control-plane",
+"node01         NotReady   <none>"
+],
+"next": "controlplane $"
+}
+],
+"hl": "NotReady",
+"t": 1.0,
+"d": 5.67
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: make node01 Ready. Do not reboot it.",
+"focus": "goal",
+"pause": 1.6,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 8.22,
+"d": 3.38
+},
+{
+"id": "s3",
+"ch": "Remember",
+"cap": "Remember: the kubelet on node01 sends a heartbeat to the API server.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [
+"cp",
+"api",
+"node",
+"kubelet",
+"a_hb"
+],
+"acts": [
+{
+"dots": "a_hb",
+"a": 1.6,
+"n": 2,
+"color": "G",
+"back": false
+}
+],
+"term": [],
+"hl": null,
+"t": 13.55,
+"d": 4.95
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "No heartbeat, and the node turns NotReady.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "hx",
+"cross": [
+1050,
+690
+],
+"c": "R",
+"a": 0.5
+},
+{
+"id": "nr",
+"t": "NotReady",
+"x": 1620,
+"y": 515,
+"h": 84,
+"c": "R",
+"a": 1.2,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 19.85,
+"d": 2.57
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "The kubelet is a Linux program on node01. So you go there, with ssh.",
+"focus": "WIDE",
+"pause": 1.6,
+"draw": [
+"you",
+"a_ssh"
+],
+"acts": [
+{
+"pin": "show",
+"a": 0.2
+},
+{
+"pin": "in",
+"a": 1.5
+}
+],
+"term": [],
+"hl": null,
+"t": 23.97,
+"d": 5.5
+},
+{
+"id": "s6",
+"ch": "What broke",
+"cap": "ssh node01. Then ask: systemctl status kubelet.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "ssh node01",
+"out": [],
+"next": "node01 $"
+},
+{
+"p": "node01 $",
+"cmd": "sudo -i",
+"out": [],
+"next": "root@node01 #"
+},
+{
+"p": "root@node01 #",
+"cmd": "systemctl status kubelet",
+"out": [
+"Active: activating (auto-restart)",
+"  (Result: exit-code)",
+"Process: ExecStart=/usr/local/bin/kubelet",
+"  (code=exited, status=203/EXEC)"
+],
+"next": "root@node01 #"
+}
+],
+"hl": null,
+"t": 31.42,
+"d": 4.87
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "This time the kubelet is not stopped. It tries to start, fails, and tries again.",
+"focus": "node",
+"pause": 1.4,
+"draw": [],
+"acts": [
+{
+"id": "rk",
+"ring": "kubelet",
+"c": "R",
+"a": 0.4
+},
+{
+"id": "ff",
+"t": "starts, fails, retries",
+"x": 1170,
+"y": 1200,
+"h": 56,
+"c": "R",
+"a": 1.6,
+"align": null
+},
+{
+"blink": [
+"kubelet"
+],
+"a": 1.0,
+"d": 3.0
+}
+],
+"term": [],
+"hl": null,
+"t": 37.64,
+"d": 5.01
+},
+{
+"id": "s8",
+"ch": null,
+"cap": "Look at status 203 slash EXEC. It means: the program file could not be started.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": "203/EXEC",
+"t": 44.41,
+"d": 5.7
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "Ask the log why: journalctl, dash u, kubelet.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "root@node01 #",
+"cmd": "journalctl -u kubelet -n 30 --no-pager",
+"out": [
+"Failed at step EXEC spawning",
+"/usr/local/bin/kubelet:",
+"No such file or directory"
+],
+"next": "root@node01 #"
+}
+],
+"hl": null,
+"t": 52.05,
+"d": 3.38
+},
+{
+"id": "s10",
+"ch": null,
+"cap": "No such file. There is no kubelet program in slash usr slash local slash bin.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": "No such file",
+"t": 56.78,
+"d": 5.42
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "Where is it really? which kubelet.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "root@node01 #",
+"cmd": "which kubelet",
+"out": [
+"/usr/bin/kubelet"
+],
+"next": "root@node01 #"
+}
+],
+"hl": "/usr/bin/kubelet",
+"t": 63.96,
+"d": 1.9
+},
+{
+"id": "s12",
+"ch": "Where to fix",
+"cap": "systemd starts the kubelet using a small config file.",
+"focus": "node",
+"pause": 1.2,
+"draw": [
+"conf"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 68.21,
+"d": 3.39
+},
+{
+"id": "s13",
+"ch": null,
+"cap": "systemctl cat kubelet shows it: 10 dash kubeadm dot conf.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "root@node01 #",
+"cmd": "systemctl cat kubelet",
+"out": [
+"# …/kubelet.service.d/10-kubeadm.conf",
+"ExecStart=",
+"ExecStart=/usr/local/bin/kubelet …"
+],
+"next": "root@node01 #"
+}
+],
+"hl": "/usr/local/bin/kubelet",
+"t": 73.15,
+"d": 4.38
+},
+{
+"id": "s14",
+"ch": null,
+"cap": "Its ExecStart line has the wrong path: slash usr slash local slash bin, instead of slash usr slash bin.",
+"focus": "node",
+"pause": 1.4,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"ff"
+],
+"a": 0.2
+},
+{
+"id": "rcf",
+"ring": "conf",
+"c": "R",
+"a": 0.6
+},
+{
+"id": "bad",
+"t": "wrong: /usr/local/bin",
+"x": 1170,
+"y": 1200,
+"h": 50,
+"c": "R",
+"a": 1.4,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 78.89,
+"d": 7.43
+},
+{
+"id": "s15",
+"ch": null,
+"cap": "This file is on node01, not in the API server. kubectl cannot reach it.",
+"focus": "WIDE",
+"pause": 1.6,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 88.07,
+"d": 5.6
+},
+{
+"id": "s16",
+"ch": "The fix",
+"cap": "Open the file in vim, and remove the word local from the path.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"bad",
+"rcf"
+],
+"a": 4.5
+},
+{
+"id": "good",
+"t": "/usr/bin ✓",
+"x": 1170,
+"y": 1200,
+"h": 60,
+"c": "G",
+"a": 5.2,
+"align": null
+}
+],
+"term": [
+{
+"p": "root@node01 #",
+"cmd": "vim …/kubelet.service.d/10-kubeadm.conf",
+"out": [],
+"next": "root@node01 #"
+},
+{
+"p": "root@node01 #",
+"cmd": "grep ExecStart= …/10-kubeadm.conf",
+"out": [
+"ExecStart=",
+"ExecStart=/usr/bin/kubelet …"
+],
+"next": "root@node01 #"
+}
+],
+"hl": "/usr/bin/kubelet",
+"t": 95.62,
+"d": 3.67
+},
+{
+"id": "s17",
+"ch": null,
+"cap": "systemd keeps its files in memory. systemctl daemon-reload reads them again.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "root@node01 #",
+"cmd": "systemctl daemon-reload",
+"out": [],
+"next": "root@node01 #"
+}
+],
+"hl": null,
+"t": 100.64,
+"d": 5.38
+},
+{
+"id": "s18",
+"ch": null,
+"cap": "Then restart the kubelet, and check its status.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"rk"
+],
+"a": 4.0
+},
+{
+"id": "runk",
+"t": "running ✓",
+"x": 1170,
+"y": 1300,
+"h": 56,
+"c": "G",
+"a": 4.6,
+"align": null
+}
+],
+"term": [
+{
+"p": "root@node01 #",
+"cmd": "systemctl restart kubelet",
+"out": [],
+"next": "root@node01 #"
+},
+{
+"p": "root@node01 #",
+"cmd": "systemctl status kubelet",
+"out": [
+"Active: active (running)"
+],
+"next": "root@node01 #"
+}
+],
+"hl": "active (running)",
+"t": 107.77,
+"d": 2.64
+},
+{
+"id": "s19",
+"ch": null,
+"cap": "The kubelet runs. The heartbeat comes back.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"hx"
+],
+"a": 0.2
+},
+{
+"dots": "a_hb",
+"a": 0.8,
+"n": 2,
+"color": "G",
+"back": false
+}
+],
+"term": [],
+"hl": null,
+"t": 112.16,
+"d": 2.41
+},
+{
+"id": "s20",
+"ch": null,
+"cap": "Type exit twice, then k get nodes. node01 is Ready.",
+"focus": "TERM",
+"pause": 1.8,
+"draw": [],
+"acts": [
+{
+"pin": "out",
+"a": 2.0
+},
+{
+"wipe": [
+"nr"
+],
+"a": 5.0
+},
+{
+"id": "rd",
+"t": "Ready ✓",
+"x": 1620,
+"y": 515,
+"h": 84,
+"c": "G",
+"a": 5.5,
+"align": null
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 6.2,
+"align": null
+}
+],
+"term": [
+{
+"p": "root@node01 #",
+"cmd": "exit",
+"out": [],
+"next": "node01 $"
+},
+{
+"p": "node01 $",
+"cmd": "exit",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k get nodes",
+"out": [
+"NAME           STATUS   ROLES",
+"controlplane   Ready    control-plane",
+"node01         Ready    <none>"
+],
+"next": "controlplane $"
+}
+],
+"hl": "node01         Ready",
+"t": 116.12,
+"d": 4.11
+},
+{
+"id": "s21",
+"ch": "The rule",
+"cap": "The rule: systemctl status tells you that it fails. journalctl tells you why.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 122.38,
+"d": 5.34
+},
+{
+"id": "s22",
+"ch": null,
+"cap": "After you change a systemd file, always run daemon-reload, then restart.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 129.07,
+"d": 4.74
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "So what is wrong?",
+"opts": [
+[
+"The kubelet program is missing",
+false,
+"It exists, at /usr/bin/kubelet."
+],
+[
+"The start file points to the wrong path",
+true,
+"Correct."
+],
+[
+"node01 needs a reboot",
+false,
+"A reboot reads the same wrong file. And the task says: no reboot."
+]
+],
+"t": 67.61
+}
+]
+}

@@ -1,0 +1,528 @@
+{
+"end": 122.21,
+"goal": [
+"Goal: pod Running",
+"CPU request 100m"
+],
+"rule": {
+"title": "Pending",
+"rows": [
+[
+"Pending",
+"no node fits",
+"describe → Events"
+],
+[
+"wrong request",
+"lives in the Deployment",
+"k set resources"
+]
+]
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 3. A pod of deployment api is stuck in Pending.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get pods -n app",
+"out": [
+"NAME                  READY  STATUS",
+"api-6d4cf56db6-7xk2p  1/1    Running",
+"api-7b9c8d5f4-zq8mn   0/1    Pending"
+],
+"next": "controlplane $"
+}
+],
+"hl": "Pending",
+"t": 1.0,
+"d": 4.0
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: get it running. The container needs 100m CPU.",
+"focus": "goal",
+"pause": 1.6,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 6.55,
+"d": 4.37
+},
+{
+"id": "s3",
+"ch": "How a pod gets a node",
+"cap": "A node is a computer with a limited amount of CPU.",
+"focus": "node",
+"pause": 1.2,
+"draw": [
+"node"
+],
+"acts": [
+{
+"id": "cpu",
+"t": "limited CPU",
+"x": 1620,
+"y": 515,
+"h": 64,
+"c": "B",
+"a": 0.9,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 12.87,
+"d": 3.35
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "A pod can ask for some of that CPU. That amount is its request.",
+"focus": "node",
+"pause": 1.2,
+"draw": [
+"pod"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 17.76,
+"d": 4.11
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "In the control plane, the scheduler picks a node for every new pod.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [
+"cp",
+"api",
+"sched",
+"a_sa"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 23.42,
+"d": 3.71
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "It only picks a node that still has enough free CPU for the request.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [
+"a_sn"
+],
+"acts": [
+{
+"dots": "a_sn",
+"a": 1.2,
+"n": 1,
+"color": "G",
+"back": false
+}
+],
+"term": [],
+"hl": null,
+"t": 28.48,
+"d": 4.07
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "CPU is counted in millicores. 1000m is one full CPU, so 100m is one tenth.",
+"focus": "cp",
+"pause": 1.8,
+"draw": [],
+"acts": [
+{
+"id": "mc",
+"t": "1000m = 1 CPU",
+"x": 140,
+"y": 1640,
+"h": 60,
+"c": "B",
+"a": 1.4,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 34.3,
+"d": 7.35
+},
+{
+"id": "s8",
+"ch": "What broke",
+"cap": "Here, the deployment asks for cpu: 100. Without the m, that means 100 whole CPUs.",
+"focus": "cp",
+"pause": 1.4,
+"draw": [
+"dep"
+],
+"acts": [
+{
+"id": "req",
+"t": "cpu: \"100\" = 100 CPUs",
+"x": 140,
+"y": 1080,
+"h": 46,
+"c": "R",
+"a": 2.0,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 43.8,
+"d": 6.97
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "No node has 100 free CPUs. So the scheduler finds no node.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "sx",
+"cross": [
+1110,
+1370
+],
+"c": "R",
+"a": 1.0
+}
+],
+"term": [],
+"hl": null,
+"t": 52.52,
+"d": 4.56
+},
+{
+"id": "s10",
+"ch": null,
+"cap": "The new pod is not placed anywhere. It stays Pending.",
+"focus": "node",
+"pause": 1.4,
+"draw": [],
+"acts": [
+{
+"id": "pend",
+"t": "Pending",
+"x": 1125,
+"y": 1640,
+"h": 64,
+"c": "R",
+"a": 1.0,
+"align": null
+},
+{
+"blink": [
+"pod"
+],
+"a": 0.2,
+"d": 2.5
+}
+],
+"term": [],
+"hl": null,
+"t": 58.63,
+"d": 2.98
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "Confirm it: k describe pod, with the Pending pod's name.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k describe pod api-7b9c8d5f4-zq8mn -n app",
+"out": [
+"Events:",
+"  Warning  FailedScheduling  ...",
+"  0/2 nodes are available:",
+"  ... Insufficient cpu ..."
+],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 63.36,
+"d": 3.47
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "Insufficient cpu. The request is too big for every node.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": "Insufficient cpu",
+"t": 68.18,
+"d": 3.76
+},
+{
+"id": "s13",
+"ch": null,
+"cap": "See the request: get the deployment as YAML, and grep for requests.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get deploy api -o yaml -n app | grep -A 1 requests",
+"out": [
+"        requests:",
+"          cpu: \"100\""
+],
+"next": "controlplane $"
+}
+],
+"hl": "cpu: \"100\"",
+"t": 73.69,
+"d": 4.21
+},
+{
+"id": "s14",
+"ch": "Where to fix",
+"cap": "The request lives in the deployment, in the API server.",
+"focus": "cp",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "rdep",
+"ring": "dep",
+"c": "R",
+"a": 0.4
+}
+],
+"term": [],
+"hl": null,
+"t": 80.25,
+"d": 3.29
+},
+{
+"id": "s15",
+"ch": null,
+"cap": "So kubectl fixes it, from where you are.",
+"focus": "WIDE",
+"pause": 1.6,
+"draw": [
+"you",
+"a_ya"
+],
+"acts": [
+{
+"pin": "show",
+"a": 0.3
+},
+{
+"id": "kc",
+"t": "kubectl",
+"x": 470,
+"y": 1460,
+"h": 84,
+"c": "O",
+"a": 3.4,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 85.09,
+"d": 2.6
+},
+{
+"id": "s16",
+"ch": "The fix",
+"cap": "Run: k set resources deployment/api, dash dash requests, cpu=100m.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"req",
+"rdep"
+],
+"a": 4.0
+},
+{
+"id": "req2",
+"t": "cpu: 100m ✓",
+"x": 140,
+"y": 1080,
+"h": 50,
+"c": "G",
+"a": 4.8,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k set resources deployment/api --requests=cpu=100m -n app",
+"out": [
+"deployment.apps/api resource requirements",
+"  updated"
+],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 89.64,
+"d": 7.14
+},
+{
+"id": "s17",
+"ch": null,
+"cap": "Now the scheduler finds a node with enough free CPU.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"sx"
+],
+"a": 0.3
+},
+{
+"dots": "a_sn",
+"a": 0.8,
+"n": 1,
+"color": "G",
+"back": false
+}
+],
+"term": [],
+"hl": null,
+"t": 98.13,
+"d": 3.34
+},
+{
+"id": "s18",
+"ch": null,
+"cap": "Check it: k rollout status deployment/api.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"pend"
+],
+"a": 2.6
+},
+{
+"id": "run",
+"t": "Running ✓",
+"x": 1125,
+"y": 1640,
+"h": 64,
+"c": "G",
+"a": 3.2,
+"align": null
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 4.0,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k rollout status deployment/api -n app",
+"out": [
+"deployment \"api\" successfully rolled out"
+],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 103.03,
+"d": 3.47
+},
+{
+"id": "s19",
+"ch": "The rule",
+"cap": "The rule: Pending means no node fits. describe tells you why.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 108.44,
+"d": 3.94
+},
+{
+"id": "s20",
+"ch": null,
+"cap": "A wrong request lives in the deployment. Fix it with set resources.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 113.74,
+"d": 4.12
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "What is the right fix?",
+"opts": [
+[
+"Add more nodes",
+false,
+"The task says the container needs 100m. The request is simply wrong."
+],
+[
+"Change the request to 100m",
+true,
+"Correct."
+],
+[
+"Delete the Pending pod",
+false,
+"The deployment makes a new one, with the same request."
+]
+],
+"t": 79.65
+}
+]
+}

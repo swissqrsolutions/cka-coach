@@ -1,0 +1,526 @@
+{
+"end": 122.85,
+"goal": [
+"Goal: stays Running",
+"runs sleep 3600"
+],
+"rule": {
+"title": "CrashLoopBackOff",
+"rows": [
+[
+"wrong command",
+"lives in the Deployment",
+"k edit deployment"
+],
+[
+"why it stopped",
+"logs --previous, describe",
+"Exit Code"
+]
+]
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 2. The pod of deployment api keeps restarting.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get pods -n app",
+"out": [
+"NAME                 READY  STATUS            RESTARTS",
+"api-5d9c7b6f4-x2x9k  0/1    CrashLoopBackOff  3"
+],
+"next": "controlplane $"
+}
+],
+"hl": "CrashLoopBackOff",
+"t": 1.0,
+"d": 3.93
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: the pod must stay Running, and run sleep 3600.",
+"focus": "goal",
+"pause": 1.6,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 6.48,
+"d": 4.2
+},
+{
+"id": "s3",
+"ch": "How it runs",
+"cap": "Your deployment is stored in the API server.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [
+"cp",
+"api",
+"dep"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 12.63,
+"d": 2.63
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "It also says which command the container runs.",
+"focus": "cp",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "cmd",
+"t": "command: sh -c \"exit 1\"",
+"x": 140,
+"y": 1080,
+"h": 44,
+"c": "K",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 16.61,
+"d": 2.63
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "On the node, the kubelet starts the container in a pod.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [
+"node",
+"kubelet",
+"pod",
+"a_kp"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 20.79,
+"d": 2.96
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "A container lives only as long as its command runs.",
+"focus": "pod",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 25.09,
+"d": 3.05
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "When the command ends, the container stops.",
+"focus": "pod",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 29.9,
+"d": 2.37
+},
+{
+"id": "s8",
+"ch": "What broke",
+"cap": "Here, the command is: exit 1. It ends at once, with an error.",
+"focus": "cp",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "rc",
+"ring": "cmdnote",
+"c": "R",
+"a": 0.4
+}
+],
+"term": [],
+"hl": null,
+"t": 34.02,
+"d": 3.79
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "The kubelet starts it again. It stops again. And again.",
+"focus": "node",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"blink": [
+"pod"
+],
+"a": 0.3,
+"d": 3.5
+},
+{
+"id": "rs",
+"t": "restarts: 3",
+"x": 1125,
+"y": 1600,
+"h": 52,
+"c": "R",
+"a": 2.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 39.35,
+"d": 3.34
+},
+{
+"id": "s10",
+"ch": null,
+"cap": "Between tries, Kubernetes waits longer each time. That is CrashLoopBackOff.",
+"focus": "node",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"id": "clb",
+"t": "CrashLoopBackOff",
+"x": 1125,
+"y": 1695,
+"h": 52,
+"c": "R",
+"a": 2.5,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 44.25,
+"d": 4.98
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "Did the app print an error? k logs, with dash dash previous, shows the last run.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k logs api-5d9c7b6f4-x2x9k --previous -n app",
+"out": [
+"(no output)"
+],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 51.18,
+"d": 4.72
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "Nothing. So look at how the container is started: k describe pod.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k describe pod api-5d9c7b6f4-x2x9k -n app",
+"out": [
+"    Command:",
+"      sh -c exit 1",
+"    Last State:  Terminated",
+"      Exit Code: 1"
+],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 57.25,
+"d": 3.94
+},
+{
+"id": "s13",
+"ch": null,
+"cap": "The command is exit 1, and the exit code is 1. Not zero means: error.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": "Exit Code: 1",
+"t": 62.54,
+"d": 4.7
+},
+{
+"id": "s14",
+"ch": "Where to fix",
+"cap": "The command lives in the deployment, in the API server.",
+"focus": "cp",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "rdep",
+"ring": "dep",
+"c": "R",
+"a": 0.4
+}
+],
+"term": [],
+"hl": null,
+"t": 69.78,
+"d": 3.26
+},
+{
+"id": "s15",
+"ch": null,
+"cap": "If you only fix one pod, the deployment soon makes a new pod with the old command.",
+"focus": "cp",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 74.6,
+"d": 4.92
+},
+{
+"id": "s16",
+"ch": null,
+"cap": "So you fix the deployment itself, with kubectl.",
+"focus": "WIDE",
+"pause": 1.6,
+"draw": [
+"you",
+"a_ya"
+],
+"acts": [
+{
+"pin": "show",
+"a": 0.3
+},
+{
+"id": "kc",
+"t": "kubectl",
+"x": 470,
+"y": 1460,
+"h": 84,
+"c": "O",
+"a": 3.4,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 81.26,
+"d": 3.07
+},
+{
+"id": "s17",
+"ch": "The fix",
+"cap": "Run k edit deployment/api.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k edit deployment/api -n app",
+"out": [
+"      - command:",
+"        - sh",
+"        - -c",
+"        - sleep 3600",
+"deployment.apps/api edited"
+],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 86.28,
+"d": 2.48
+},
+{
+"id": "s18",
+"ch": null,
+"cap": "In the editor, change exit 1 to sleep 3600. Then save and close.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"cmd",
+"rc",
+"rdep"
+],
+"a": 2.0
+},
+{
+"id": "cmd2",
+"t": "command: sh -c \"sleep 3600\" ✓",
+"x": 140,
+"y": 1080,
+"h": 42,
+"c": "G",
+"a": 2.8,
+"align": null
+}
+],
+"term": [],
+"hl": "sleep 3600",
+"t": 90.11,
+"d": 4.99
+},
+{
+"id": "s19",
+"ch": null,
+"cap": "Kubernetes makes a new pod. Its command now runs for an hour.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"dots": "a_kp",
+"a": 0.8,
+"n": 1,
+"color": "G",
+"back": false
+}
+],
+"term": [],
+"hl": null,
+"t": 97.05,
+"d": 3.85
+},
+{
+"id": "s20",
+"ch": null,
+"cap": "Check it: k get pods. Running, and RESTARTS stays at zero.",
+"focus": "TERM",
+"pause": 1.8,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"rs",
+"clb"
+],
+"a": 2.6
+},
+{
+"id": "run",
+"t": "Running ✓",
+"x": 1125,
+"y": 1640,
+"h": 64,
+"c": "G",
+"a": 3.2,
+"align": null
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 4.0,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get pods -n app",
+"out": [
+"NAME                 READY  STATUS   RESTARTS",
+"api-7f9b8c6d5-k4m2p  1/1    Running  0"
+],
+"next": "controlplane $"
+}
+],
+"hl": "Running  0",
+"t": 102.46,
+"d": 3.63
+},
+{
+"id": "s21",
+"ch": "The rule",
+"cap": "The rule: a crashing command is fixed in the deployment.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 108.24,
+"d": 3.11
+},
+{
+"id": "s22",
+"ch": null,
+"cap": "logs dash dash previous shows the last run. describe shows the command, and the exit code.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 112.69,
+"d": 5.81
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "Where do you change the command?",
+"opts": [
+[
+"Inside the running container, with k exec",
+false,
+"The container restarts with the old command. Your change is lost."
+],
+[
+"In the deployment",
+true,
+"Correct."
+],
+[
+"On node01, with ssh",
+false,
+"The command is not on the node. It is in the deployment."
+]
+],
+"t": 69.18
+}
+]
+}

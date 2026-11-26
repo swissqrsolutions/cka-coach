@@ -133,40 +133,11 @@ function preDraw(a) {
 }
 const CAM0 = [[0, 1200, 1710, .395], [1.2, 1200, 1800, .45]];
 const SHORTS = {
-  1: { cap: 'The wrong image name is in the Deployment, and the Deployment lives in the API server. kubectl talks to the API server, so k set image fixes it from where you are.',
-    run(a) { const { pen: { R, O, G }, draw } = a;
-      const r1 = a.ring('dep'), n1 = a.text('image: not found', NOTE.api, { h: 52, align: 'center' }), x1 = a.cross(NOTE.pull), n2 = a.text('ImagePullBackOff', NOTE.pod, { h: 44, align: 'center' });
-      draw(R, r1, 1.2, 1.8); draw(R, n1, 1.8, 2.6); draw(R, x1, 2.7, 3.0); draw(R, n2, 3.1, 3.9);
-      draw(O, a.m.a_you_api, 4.4, 5.2); draw(O, a.text('k set image', NOTE.fix, { h: 52 }), 5.2, 5.9);
-      a.wipe([r1, n1], 6.1, .5); a.wipe([x1], 6.6, .3); a.wipe([n2], 6.9, .4);
-      draw(G, a.text('image: nginx:1.27', NOTE.api, { h: 50, align: 'center' }), 6.7, 7.4); a.magnet(INK.blue, [['pull', 7.4, 8.4]], { until: 8.4, size: 36 });
-      draw(G, a.text('Running ✓', NOTE.pod, { h: 56, align: 'center' }), 8.4, 9.1); } },
-  2: { cap: 'A Deployment lives in the API server. kubectl talks to the API server, so k edit fixes it from where you are.',
-    run(a) { const { pen: { R, O, G }, draw } = a;
-      const r1 = a.ring('dep'), n1 = a.text('command: exit 1', NOTE.api, { h: 52, align: 'center' }), n2 = a.text('CrashLoopBackOff', NOTE.pod, { h: 44, align: 'center' });
-      draw(R, r1, 1.2, 1.8); draw(R, n1, 1.8, 2.6); draw(R, n2, 2.8, 3.6); a.blink(a.m.ctr, 1.4, 4.6);
-      draw(O, a.m.a_you_api, 4.4, 5.2); draw(O, a.text('k edit', NOTE.fix, { h: 52 }), 5.2, 5.7);
-      a.wipe([r1, n1], 6.0, .5); a.wipe([n2], 6.6, .4);
-      draw(G, a.text('command: sleep 3600', NOTE.api, { h: 46, align: 'center' }), 6.6, 7.4); a.magnet(INK.green, [['api_kubelet', 7.4, 8.3]], { until: 8.3, size: 34 });
-      draw(G, a.text('Running ✓', NOTE.pod, { h: 56, align: 'center' }), 8.3, 9.0); } },
-  3: { cap: 'The scheduler finds no node with enough free CPU for this request. The request is in the Deployment in the API server, so kubectl fixes it.',
-    run(a) { const { pen: { R, O, G }, draw } = a;
-      const r1 = a.ring('dep'), n1 = a.text('cpu request: 100', NOTE.api, { h: 50, align: 'center' }), n2 = a.text('no node fits', NOTE.sched, { h: 54 }), n3 = a.text('Pending', NOTE.pod, { h: 56, align: 'center' });
-      draw(R, r1, 1.2, 1.8); draw(R, n1, 1.8, 2.6); draw(R, n2, 2.7, 3.4); draw(R, n3, 3.5, 4.1);
-      draw(O, a.m.a_you_api, 4.5, 5.3); draw(O, a.text('k set resources', NOTE.fix, { h: 50 }), 5.3, 6.1);
-      a.wipe([r1, n1], 6.2, .5); a.wipe([n2], 6.7, .3); a.wipe([n3], 7.0, .3);
-      draw(G, a.text('cpu request: 100m', NOTE.api, { h: 48, align: 'center' }), 6.8, 7.5); draw(G, a.text('→ node01 ✓', NOTE.sched, { h: 54 }), 7.5, 8.1);
-      draw(G, a.text('Running ✓', NOTE.pod, { h: 56, align: 'center' }), 8.3, 9.0); } },
+  1: { long: true, audio: 'media/q1.mp3', json: 'media/q1film.json', film: genFilm },
+  2: { long: true, audio: 'media/q2.mp3', json: 'media/q2film.json', film: genFilm },
+  3: { long: true, audio: 'media/q3.mp3', json: 'media/q3film.json', film: genFilm },
   4: { long: true, audio: 'media/q4.mp3', json: 'media/q4film.json', film: q4Film },
-  5: { cap: 'The kubelet can\'t start: its systemd file on node01 points to a wrong path. That file is on the node, not in Kubernetes, so you ssh there to fix it.',
-    run(a) { const { pen: { R, O, G }, draw } = a;
-      const r1 = a.ring('kubelet', 26), n1 = a.text('10-kubeadm.conf:', NOTE.kubelet, { h: 46 }), n1b = a.text('wrong path', NOTE.kubelet2, { h: 46 }), n2 = a.text('NotReady', NOTE.status);
-      draw(R, r1, 1.2, 1.9); draw(R, [n1, n1b], 1.9, 3.0); draw(R, n2, 3.1, 3.7);
-      draw(O, a.m.a_ssh, 4.2, 5.2); draw(O, a.text('ssh node01', NOTE.ssh, { h: 52 }), 5.2, 5.9);
-      a.wipe([r1, n1, n1b], 6.1, .6); a.wipe([n2], 6.7, .3);
-      draw(G, a.text('path fixed ✓', NOTE.kubelet, { h: 50 }), 6.8, 7.5); draw(G, a.text('daemon-reload, restart', NOTE.kubelet2, { h: 40 }), 7.5, 8.3);
-      a.magnet(INK.green, [['api_kubelet', 8.3, 9.1, true]], { until: 9.1, size: 32 });
-      draw(G, a.text('Ready ✓', NOTE.status), 9.1, 9.7); } },
+  5: { long: true, audio: 'media/q5.mp3', json: 'media/q5film.json', film: genFilm },
 };
 
 // ───────── Q4, explained slowly (layout v4): two computers side by side, You outside both; one focus at a time
@@ -263,6 +234,84 @@ function q4Film(a, J) {
   });
   return new W.Camera(keys);
 }
+
+// ───────── the general teaching film (Q1, Q2, Q3, Q5): a script in media/qNfilm.json drives the board, the camera, the terminal and the questions
+const L5 = { goal: [1100, 80, 960, 260], reg: [40, 80, 960, 260], cp: [40, 420, 960, 1300], api: [110, 560, 820, 420], dep: [230, 770, 580, 170], sched: [110, 1300, 820, 200],
+  node: [1100, 420, 960, 1300], kubelet: [1170, 560, 820, 250], cri: [1170, 880, 820, 170], conf: [1170, 880, 820, 170], pod: [1290, 1180, 580, 320], you: [110, 1880, 640, 300],
+  cmdnote: [130, 1020, 790, 90], WIDE: [40, 80, 2020, 2100] };
+function genFilm(a, J) {
+  const GREY = '#6b7280', rec = [];
+  const { pen: { K, Bl, R, G, O } } = a, PENS = { K, B: Bl, R, G, O }, COL = { K: INK.black, B: INK.blue, R: INK.red, G: INK.green, O: INK.orange };
+  const draw = (pen, shapes, t0, t1) => { rec.push(shapes); a.draw(pen, shapes, t0, t1); };
+  const frame = (k, label) => { const [x, y, w, h] = L5[k]; return [...W.rect(x, y, w, h, { w: 5, over: 10, color: GREY, alpha: .75 }), ...W.text(label, x + 40, y + 95, { h: 84, color: GREY })]; };
+  const box = (k, label, sub, hh = 100) => { const [x, y, w, h] = L5[k]; const t = sub ? [...W.text(label, x + w / 2, y + h / 2 - 4, { h: hh, align: 'center' }), ...W.text(sub, x + w / 2, y + h / 2 + 78, { h: 60, align: 'center', color: GREY })] : W.text(label, x + w / 2, y + h / 2 + hh * .4, { h: hh, align: 'center' }); return [...W.rect(x, y, w, h, { w: 8, over: 8 }), ...t]; };
+  const arrow = (pts, o) => arrowP(pts, { w: 9, ...o });
+  const SH = {
+    goal: [...W.rect(...L5.goal, { w: 6, over: 6 }), ...W.text(J.goal[0], 1180, 190, { h: 72 }), ...W.text(J.goal[1], 1180, 295, { h: 72 })],
+    reg: box('reg', 'Registry', 'images, e.g. Docker Hub', 90), cp: frame('cp', 'control plane'), node: frame('node', 'node01'),
+    api: [...W.rect(...L5.api, { w: 8, over: 8 }), ...W.text('API server', 520, 690, { h: 100, align: 'center' })],
+    dep: [...W.rect(...L5.dep, { w: 6, over: 5 }), ...W.text('Deployment', 520, 880, { h: 66, align: 'center' })],
+    sched: box('sched', 'scheduler', null, 90), kubelet: box('kubelet', 'kubelet'), cri: box('cri', 'containerd', null, 84), conf: box('conf', '10-kubeadm.conf', null, 66),
+    pod: [...W.rect(...L5.pod, { w: 8, over: 8 }), ...W.text('Pod', 1580, 1290, { h: 90, align: 'center' }), ...W.rect(1390, 1340, 380, 120, { w: 6, over: 5 }), ...W.text('app', 1580, 1425, { h: 64, align: 'center' })],
+    you: box('you', 'You', 'kubectl'),
+    a_kp: arrow([[1580, 810], [1580, 1180]]), a_ya: arrow([[430, 1880], [430, 985]]), a_hb: arrow([[1170, 690], [935, 690]]), a_ssh: arrow([[750, 2060], [1580, 2060], [1580, 1725]]),
+    a_ak: arrow([[935, 620], [1170, 620]]), a_kc: arrow([[1580, 810], [1580, 880]]), a_cp: arrow([[1580, 1050], [1580, 1180]]),
+    a_reg: arrow([[1000, 210], [1050, 210], [1050, 965], [1170, 965]]), a_sa: arrow([[850, 1300], [850, 985]], { both: true }), a_sn: arrow([[930, 1400], [1290, 1340]]),
+  };
+  const PEN = { a_ya: O, a_ssh: O, goal: O, reg: K };
+  const N = {}, pins = [], spots = [];
+  const ring = k => { const [x, y, w, h] = L5[k]; return W.circle(x + w / 2, y + h / 2, w / 2 + 50, { ry: h / 2 + 60, w: 9, lap: .3 }); };
+  const parts = id => N[id] || SH[id];
+  const DO = (t, x) => {
+    const at = t + (x.a || 0);
+    if (x.t !== undefined) draw(PENS[x.c] || R, N[x.id] = a.text(x.t, [x.x, x.y], { h: x.h, align: x.align || undefined }), at, at + Math.min(1.6, .25 + x.t.length * .05));
+    else if (x.ring) draw(PENS[x.c] || R, N[x.id] = ring(x.ring), at, at + .8);
+    else if (x.cross) draw(PENS[x.c] || R, N[x.id] = a.cross(x.cross), at, at + .5);
+    else if (x.wipe) a.wipe(x.wipe.map(parts).filter(Boolean), at, .5);
+    else if (x.dots) for (let i = 0; i < (x.n || 1); i++) a.magnet(COL[x.color] || INK.green, [[SH[x.dots].shaft, at + i * 2.1, at + i * 2.1 + 1.6, x.back]], { until: at + i * 2.1 + 1.6, size: 34 });
+    else if (x.blink) a.blink(x.blink.map(parts).filter(Boolean), at, at + (x.d || 2));
+    else if (x.pin) pins.push(x.pin === 'show' ? { t: at, to: [430, 1860] } : { t: at, path: SH.a_ssh.shaft, d: 2.4, back: x.pin === 'out' });
+  };
+  const fitBox = (keys, strokes) => {
+    const R0 = keys.map(k => { const [x, y, w, h] = L5[k]; return [x, y, x + w, y + h]; });
+    for (const st of strokes.flat(9)) if (st && st.box) R0.push(st.box);
+    if (!R0.length) return null;
+    const x0 = Math.min(...R0.map(r => r[0])), y0 = Math.min(...R0.map(r => r[1])), x1 = Math.max(...R0.map(r => r[2])), y1 = Math.max(...R0.map(r => r[3]));
+    const wz = Math.min(VW / (L5.WIDE[2] * 1.24), VH / (L5.WIDE[3] * 1.24));
+    return [(x0 + x1) / 2, (y0 + y1) / 2, Math.max(wz, Math.min(wz * 2, VW / ((x1 - x0) * 1.24 + 80), VH / ((y1 - y0) * 1.24 + 80)))];
+  };
+  let cam = fitBox(['WIDE'], []); const keys = [[0, ...cam]];
+  for (const ph of J.phrases) {
+    const t = ph.t, r0 = rec.length;
+    ph.draw.forEach((k, i) => { const n = ph.draw.length, d = Math.min(1.6, 3 / n); draw(PEN[k] || (k.startsWith('a_') ? Bl : K), SH[k], t + .3 + i * d, t + .3 + (i + 1) * d - .1); });
+    ph.acts.forEach(x => DO(t, x));
+    a.caption(t, ph.cap);
+    const wrote = rec.slice(r0);
+    if (ph.focus !== 'TERM' || wrote.length) {
+      let next;
+      if (ph.focus === 'WIDE') next = fitBox(['WIDE'], []);
+      else if (ph.focus === 'TERM') { const xs = wrote.flat(9).filter(st => st && st.box).map(st => st.box[0]); next = fitBox([xs.length && Math.min(...xs) > 1050 ? 'node' : 'cp'], wrote); }
+      else next = fitBox([ph.focus], wrote);
+      if (next) { keys.push([t, ...cam], [t + .7, ...next]); cam = next; }
+    }
+    spots.push({ t, k: L5[ph.focus] && !['WIDE', 'TERM'].includes(ph.focus) ? ph.focus : null });
+  }
+  keys.push([J.end, ...cam]);
+  a.overlay((ctx, t, c) => {
+    let sp = null; for (const x of spots) if (t >= x.t) sp = x;
+    if (!sp || !sp.k) return; const al = Math.min(1, (t - sp.t - .2) / .5) * .7; if (al <= 0) return;
+    const [x, y, w, h] = L5[sp.k], [ax, ay] = W.toScreen(c, x - 40, y - 40), [bx, by] = W.toScreen(c, x + w + 40, y + h + 40);
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.beginPath(); ctx.rect(0, 0, VW, VH); ctx.roundRect(ax, ay, bx - ax, by - ay, 30);
+    ctx.fillStyle = `rgba(240,240,238,${al})`; ctx.fill('evenodd');
+    ctx.beginPath(); ctx.roundRect(ax, ay, bx - ax, by - ay, 30); ctx.lineWidth = 10; ctx.strokeStyle = `rgba(47,111,222,${al * .45})`; ctx.stroke();
+  });
+  a.overlay((ctx, t, c) => {
+    let pos = null;
+    for (const p of pins) { if (t < p.t) break; if (!p.path) { pos = p.to; continue; } const u = Math.min(1, (t - p.t) / p.d), e = u * u * (3 - 2 * u); pos = p.path.at(p.path.len * (p.back ? 1 - e : e)); }
+    if (pos) W.drawPinMagnet(ctx, pos[0], pos[1] - 20, c, { size: 150 });
+  });
+  return new W.Camera(keys);
+}
 const shortFilm = n => a => { const S = SHORTS[n]; if (S.film) return S.film(a, S._J); preDraw(a); S.run(a);
   if (S.long) { S.lines.forEach(([t, l]) => a.caption(t, l)); return new W.Camera(S.cam); }
   a.caption(2.4, S.cap); return new W.Camera(CAM0); };
@@ -282,7 +331,8 @@ async function build(host, kind) {
   const J = S._J, $0 = q => host.querySelector(q);
   if (J) {
     $0('.mctl').insertAdjacentHTML('beforebegin', '<pre class="mterm" aria-label="Terminal"></pre>');
-    $0('.mwrap').insertAdjacentHTML('beforeend', '<div class="mq" hidden></div><div class="mrule" hidden><b>Fix it where it lives</b><div class="r1"><span>Deployment</span><span>lives in the API server</span><span>kubectl</span></div><div class="r2"><span>kubelet</span><span>lives on the node</span><span>ssh + systemctl</span></div></div>');
+    const RU = J.rule || { title: 'Fix it where it lives', rows: [['Deployment', 'lives in the API server', 'kubectl'], ['kubelet', 'lives on the node', 'ssh + systemctl']] };
+    $0('.mwrap').insertAdjacentHTML('beforeend', `<div class="mq" hidden></div><div class="mrule" hidden><b>${RU.title}</b>${RU.rows.map((r, i) => `<div class="r${i + 1}">${r.map(c => `<span>${c.replace(/</g, '&lt;')}</span>`).join('')}</div>`).join('')}</div>`);
     const chs = J.phrases.filter(p => p.ch); $0('.mcap').insertAdjacentHTML('beforebegin', `<div class="mchap">${chs.map(p => `<button type="button" data-t="${p.t}">${p.ch}</button>`).join('')}</div>`);
   }
   const term = $0('.mterm');
@@ -340,7 +390,8 @@ async function build(host, kind) {
   const ruleEl = $0('.mrule'), qEl = $0('.mq'), qDone = new Set();
   const extras = t => {
     if (!J) return; const ph = phAt(t), id = ph && ph.id;
-    if (ruleEl) { const on = ['s37', 's38', 's39'].includes(id) || t >= J.end - .1; ruleEl.hidden = !on; ruleEl.classList.toggle('on1', ['s38', 's39'].includes(id) || t >= J.end - .1); ruleEl.classList.toggle('on2', id === 's39' || t >= J.end - .1); }
+    if (ruleEl) { const r0 = J.phrases.findIndex(p => p.ch === 'The rule'), i = J.phrases.indexOf(ph), end = t >= J.end - .1;
+      ruleEl.hidden = !(r0 >= 0 && i >= r0) && !end; ruleEl.classList.toggle('on1', i >= r0 + 1 || end); ruleEl.classList.toggle('on2', i >= r0 + 2 || end); }
     host.querySelectorAll('.mchap button').forEach(b => b.classList.toggle('on', ph && +b.dataset.t <= t && (!b.nextElementSibling || +b.nextElementSibling.dataset.t > t)));
   };
   const ask = q => {
