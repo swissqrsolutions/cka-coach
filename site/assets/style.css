@@ -447,3 +447,25 @@ body.mfull-open{overflow:hidden}
 .mvolbox{display:flex;align-items:center;gap:4px;flex:1;min-width:0}
 .mvolbox[hidden]{display:none}
 .mvol{flex:1;min-width:50px;accent-color:#6f9cff;height:28px}
+/* Q4 film v4: terminal prompts + highlight, focus switch, questions, chapters, rule card, coloured captions */
+.mterm{font-size:11.5px;transition:box-shadow .3s}
+.mterm .pr{color:#8ab4ff;font-weight:700}.mterm .hl{background:#f5d90a;color:#14213d;border-radius:3px;padding:0 2px}.mterm .cur{color:#8ab4ff;animation:mblink 1s steps(2) infinite}
+@keyframes mblink{50%{opacity:0}}
+.mtermfocus .mterm{box-shadow:inset 0 0 0 3px #d97757}
+.mtermfocus canvas{opacity:.5;transition:opacity .4s}.motion canvas{transition:opacity .4s}
+.mq{position:absolute;inset:0;background:rgba(246,245,241,.94);display:flex;flex-direction:column;justify-content:center;gap:10px;padding:18px}
+.mq[hidden]{display:none}
+.mqq{margin:0 0 6px;font-weight:800;font-size:18px;color:#14213d}
+.mq button{min-height:52px;border-radius:12px;border:2px solid #c9d3e6;background:#fff;color:#14213d;font:600 15px var(--sans);text-align:left;padding:8px 14px}
+.mq button.right{border-color:#2e7a4d;background:#dff3e8}.mq button.wrong{border-color:#c8413a;background:#fde8e6}
+.mqf{margin:4px 0 0;min-height:1.4em;font-size:14px;color:#14213d}
+.mchap{display:flex;gap:6px;overflow-x:auto;padding:8px 10px;background:#14213d;scrollbar-width:none}
+.mchap button{flex:none;border:0;border-radius:14px;padding:6px 10px;background:rgba(255,255,255,.12);color:#cfd8ea;font:600 12px var(--sans)}
+.mchap button.on{background:#6f9cff;color:#0b1220}
+.mrule{position:absolute;left:12px;right:12px;bottom:12px;background:#fff;border:2px solid #14213d;border-radius:14px;padding:10px 12px;box-shadow:0 6px 20px rgba(0,0,0,.2);font-size:14px;color:#14213d}
+.mrule[hidden]{display:none}
+.mrule b{display:block;font-size:16px;margin-bottom:6px}
+.mrule div{display:grid;grid-template-columns:1fr 1.5fr 1.2fr;gap:6px;padding:6px 0;opacity:.25;transition:opacity .4s}
+.mrule.on1 .r1,.mrule.on2 .r2{opacity:1}
+.mrule span:last-child{font-weight:800;color:#d97757}
+.mcap .kr{color:#c8413a}.mcap .kg{color:#2e7a4d}.mcap .ko{color:#c0582f}.mcap .kb{color:#2a5cb3}

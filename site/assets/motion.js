@@ -169,59 +169,85 @@ const SHORTS = {
       draw(G, a.text('Ready ✓', NOTE.status), 9.1, 9.7); } },
 };
 
-// ───────── Q4, explained slowly: an empty board; each part is drawn when the voice names it; the named part is lit, the rest dimmed
-const RECT = k => k === 'ctr' ? [1790, 2290, 460, 140] : B[k] ? B[k].slice(0, 4) : FR[k] ? FR[k].slice(0, 4) : null;
-function fitCam(keys, drawn) {
-  const R = (keys.length ? keys : drawn).map(RECT).filter(Boolean);
-  if (!R.length) return [1200, 2000, .42];
-  const x0 = Math.min(...R.map(r => r[0])), y0 = Math.min(...R.map(r => r[1])), x1 = Math.max(...R.map(r => r[0] + r[2])), y1 = Math.max(...R.map(r => r[1] + r[3]));
-  const pad = 170, z = Math.max(.42, Math.min(.95, VW / (x1 - x0 + 2 * pad), VH / (y1 - y0 + 2 * pad)));
-  return [(x0 + x1) / 2, (y0 + y1) / 2, z];
+// ───────── Q4, explained slowly (layout v4): two computers side by side, You outside both; one focus at a time
+const L4 = { goal: [1100, 80, 960, 260], cp: [40, 420, 960, 1300], node: [1100, 420, 960, 1300], api: [110, 560, 820, 420], dep: [230, 770, 580, 170],
+  kubelet: [1170, 560, 820, 250], pod: [1290, 1180, 580, 320], you: [110, 1880, 640, 300], WIDE: [40, 80, 2020, 2100] };
+const WIDE_Z = Math.min(VW / (L4.WIDE[2] * 1.24), VH / (L4.WIDE[3] * 1.24));
+function fit4(k) {
+  const [x, y, w, h] = L4[k] || L4.WIDE, mw = w * 1.24, mh = h * 1.24;
+  return [x + w / 2, y + h / 2, Math.max(WIDE_Z, Math.min(WIDE_Z * 2, VW / mw, VH / mh))];
 }
 function q4Film(a, J) {
-  const { m, pen: { K, Bl, R, G, O }, draw } = a, T = (s, xy, o) => a.text(s, xy, { h: 50, ...o });
-  const P = J.phrases, at = id => P.find(p => p.id === id).t, keys = [], spots = [], drawn = [];
-  let cam = [1200, 2000, .42]; keys.push([0, ...cam]);
-  const W2 = {};   // strokes we may wipe later
-  const beats = (t0, t1) => { for (let t = t0; t < t1 - 1; t += 1.9) a.magnet(INK.green, [['api_kubelet', t, t + 1.5, true]], { until: t + 1.5, size: 30 }); };
-  const ACT = {
-    beat: t => beats(t + 1.2, at('p12') + .5),
-    beatword: t => draw(G, W2.hb = T('heartbeat', [440, 1700], { h: 60 }), t + .4, t + 1.4),
-    ready0: t => draw(G, W2.rd = a.text('Ready', NOTE.status, { h: 60 }), t + .6, t + 1.4),
-    stop: t => { draw(R, W2.ring = a.ring('kubelet', 26), t + .4, t + 1.2); draw(R, W2.stop = a.text('stopped', NOTE.kubelet, { h: 58 }), t + 1.3, t + 2.0); },
-    flat: t => draw(R, W2.x = a.cross([430, 1810]), t + .5, t + 1.0),
-    notready: t => { a.wipe([W2.rd], t + 2.6, .4); draw(R, W2.nr = a.text('NotReady', NOTE.status, { h: 60 }), t + 3.1, t + 4.0); },
-    nopods: t => draw(R, W2.np = T('no new pods', [2020, 2690], { h: 52, align: 'center' }), t + .6, t + 1.6),
-    kubectl: t => { draw(O, m.a_you_api, t + .3, t + 1.3); draw(O, W2.kc = T('kubectl → API server only', NOTE.fix, { h: 50 }), t + 1.4, t + 2.8); },
-    program: t => draw(R, W2.pg = T('a program on node01', NOTE.kubelet2, { h: 46 }), t + 1.8, t + 3.0),
-    ssh: t => { draw(O, m.a_ssh, t + .2, t + 1.6); draw(O, T('ssh node01', NOTE.ssh, { h: 58 }), t + 1.6, t + 2.4); },
-    status: t => { a.wipe([W2.pg], t + .1, .4); draw(R, W2.st = T('inactive, disabled', NOTE.kubelet2, { h: 50 }), t + .6, t + 1.8); },
-    fix: t => draw(O, W2.fx = T('systemctl enable --now kubelet', [140, 2715], { h: 42 }), t + .3, t + 2.0),
-    fixed: t => { a.wipe([W2.ring, W2.stop], t + .3, .5); a.wipe([W2.x, W2.st], t + .8, .4); draw(G, T('active, enabled ✓', NOTE.kubelet, { h: 50 }), t + 1.4, t + 2.4); },
-    beat2: t => beats(t + .6, t + 7.5),
-    ready: t => { a.wipe([W2.nr, W2.np], t + .2, .4); draw(G, a.text('Ready ✓', NOTE.status, { h: 60 }), t + .8, t + 1.6); },
+  const { pen: { K, Bl, R, G, O }, draw } = a, T = (s, xy, o) => a.text(s, xy, { h: 70, ...o }), P = J.phrases, at = id => P.find(p => p.id === id).t;
+  const GREY = '#6b7280';
+  const frame = (k, label) => { const [x, y, w, h] = L4[k]; return [...W.rect(x, y, w, h, { w: 5, over: 10, color: GREY, alpha: .75 }), ...W.text(label, x + 40, y + 95, { h: 84, color: GREY })]; };
+  const box = (k, label, sub, hh = 100) => { const [x, y, w, h] = L4[k]; const t = sub ? [...W.text(label, x + w / 2, y + h / 2 - 4, { h: hh, align: 'center' }), ...W.text(sub, x + w / 2, y + h / 2 + 84, { h: 64, align: 'center', color: GREY })] : W.text(label, x + w / 2, y + 140, { h: hh, align: 'center' }); return [...W.rect(x, y, w, h, { w: 8, over: 8 }), ...t]; };
+  const arrow = (pts, o) => arrowP(pts, { w: 9, ...o });
+  const SH = {
+    goal: [...W.rect(...L4.goal, { w: 6, over: 6 }), ...W.text('Goal: Ready', 1180, 190, { h: 76 }), ...W.text('and survives reboot', 1180, 300, { h: 76 })],
+    node: frame('node', 'node01'), cp: frame('cp', 'control plane'),
+    pod: [...W.rect(...L4.pod, { w: 8, over: 8 }), ...W.text('Pod', 1580, 1290, { h: 90, align: 'center' }), ...W.rect(1390, 1340, 380, 120, { w: 6, over: 5 }), ...W.text('app', 1580, 1425, { h: 64, align: 'center' })],
+    kubelet: box('kubelet', 'kubelet'), api: [...W.rect(...L4.api, { w: 8, over: 8 }), ...W.text('API server', 520, 690, { h: 100, align: 'center' })],
+    dep: [...W.rect(...L4.dep, { w: 6, over: 5 }), ...W.text('Deployment', 520, 880, { h: 66, align: 'center' })],
+    you: box('you', 'You', 'kubectl'),
+    a_kp: arrow([[1580, 810], [1580, 1180]]), a_ya: arrow([[430, 1880], [430, 985]]), a_hb: arrow([[1170, 690], [935, 690]]),
+    a_yk: W.dashed([[750, 1960], [1250, 815]], { w: 7, dash: 50, gap: 34 }), a_ssh: arrow([[750, 2060], [1580, 2060], [1580, 1725]]),
   };
+  const PEN = { a_ya: O, a_ssh: O, a_hb: Bl, a_kp: Bl, goal: O };
+  const N = {};   // notes we may wipe later
+  const beats = (t0, t1) => { for (let t = t0; t < t1 - 1; t += 2.2) a.magnet(INK.green, [[SH.a_hb.shaft, t, t + 1.6]], { until: t + 1.6, size: 34 }); };
+  const ring = () => W.circle(1580, 685, 470, { ry: 175, w: 9, lap: .3 });
+  const flashes = [], pins = [];
+  const ACT = {
+    pin: t => pins.push({ t, from: [430, 1860], to: [430, 1860], d: .01 }),
+    kubectl: t => draw(O, N.kc = T('kubectl', [470, 1460], { h: 84 }), t + 1.2, t + 2.2),
+    beat: t => beats(t + 1.0, at('s15') + .3),
+    hbword: t => draw(G, N.hb = T('heartbeat', [1050, 790], { h: 54, align: 'center' }), t + .4, t + 1.4),
+    ready0: t => draw(G, N.rd = T('Ready', [1620, 515], { h: 84 }), t + .5, t + 1.3),
+    stop: t => { draw(R, N.ring = ring(), t + 1.4, t + 2.3); draw(R, N.st = T('stopped', [1170, 960], { h: 76 }), t + 2.4, t + 3.2); },
+    flat: t => draw(R, N.x = a.cross([1050, 690]), t + 1.4, t + 1.9),
+    notready: t => { flashes.push([t + 1.2, 'cp']); a.wipe([N.rd], t + 2.4, .4); draw(R, N.nr = T('NotReady', [1620, 515], { h: 84 }), t + 2.9, t + 3.8); },
+    nopods: t => { draw(R, N.np = T('no new pods', [1290, 1640], { h: 66 }), t + 2.4, t + 3.4); draw(R, N.na = [...arrow([[2045, 1340], [1880, 1340]]), ...a.cross([1962, 1340])], t + 3.5, t + 4.2); },
+    pulse: t => a.blink([N.ring], t + .2, t + 1.6),
+    pulseya: t => a.blink([SH.a_ya, N.kc], t + .2, t + 2.0),
+    nokubectl: t => draw(R, N.yx = a.cross([1000, 1385]), t + 1.8, t + 2.3),
+    program: t => draw(R, N.pg = T('a Linux program on node01', [1170, 1085], { h: 54 }), t + .8, t + 2.4),
+    pinin: t => pins.push({ t: t + 1.6, path: SH.a_ssh.shaft, d: 2.2 }),
+    inactive: t => { a.wipe([N.st], t + .1, .4); draw(R, N.ia = T('inactive', [1170, 960], { h: 76 }), t + .6, t + 1.4); },
+    disabled: t => { a.wipe([N.pg], t + .1, .4); draw(R, N.di = T('disabled', [1170, 1085], { h: 76 }), t + .6, t + 1.4); a.blink(SH.goal.slice(-14), t + 1.2, t + 3.2); },
+    fixcmd: t => draw(O, N.fx = T('enable --now kubelet', [1300, 1160], { h: 50 }), t + 3.0, t + 4.4),
+    fixed: t => { a.wipe([N.ring, N.ia], t + 2.6, .5); a.wipe([N.di, N.fx], t + 3.1, .5); draw(G, N.ok = T('active, enabled ✓', [1170, 960], { h: 64 }), t + 3.7, t + 4.7); },
+    beat2: t => { a.wipe([N.x], t + .2, .3); beats(t + .8, at('s37')); },
+    pinout: t => pins.push({ t: t + 2.0, path: SH.a_ssh.shaft, d: 2.6, back: true }),
+    ready: t => { a.wipe([N.nr], t + 2.4, .4); a.wipe([N.np, N.na], t + 2.8, .4); draw(G, T('Ready ✓', [1620, 515], { h: 84 }), t + 3.2, t + 4.0); draw(G, T('✓', [1950, 250], { h: 140 }), t + 4.2, t + 4.7); },
+  };
+  const keys = [[0, ...fit4('WIDE')]]; let cam = fit4('WIDE'); const spots = [];
   for (const ph of P) {
     const t = ph.t;
+    (ph.draw || []).forEach((k, i) => { const n = ph.draw.length, d = Math.min(1.6, 3 / n); draw(PEN[k] || K, SH[k], t + .3 + i * d, t + .3 + (i + 1) * d - .1); });
+    if (ph.act && ACT[ph.act]) ACT[ph.act](t);
     a.caption(t, ph.cap);
-    (ph.draw || []).forEach((k, i) => { const n = (ph.draw || []).length, d = Math.min(1.6, 3.2 / n); draw(k.startsWith('a_') ? Bl : K, m[k], t + .2 + i * d, t + .2 + (i + 1) * d - .1); if (!k.startsWith('a_')) drawn.push(k); });
-    if (ph.act) ACT[ph.act](t);
-    if (ph.term) a.term(t, ph.term);
-    const next = fitCam(ph.focus || [], drawn.length ? drawn : []);
-    keys.push([t, ...cam], [t + 1.3, ...next]); cam = next;
-    spots.push({ t, rects: (ph.focus || []).map(RECT).filter(Boolean) });
+    if (ph.focus !== 'TERM') { const next = fit4(ph.focus); keys.push([t, ...cam], [t + .7, ...next]); cam = next; }
+    spots.push({ t, k: ph.focus && L4[ph.focus] && ph.focus !== 'WIDE' ? ph.focus : null });
   }
   keys.push([J.end, ...cam]);
-  // spotlight: everything is dimmed except the part being named
+  // strong dimming: what is not being talked about fades to grey; the lit part gets a soft halo
   a.overlay((ctx, t, c) => {
-    let s = null; for (const x of spots) if (t >= x.t) s = x;
-    if (!s || !s.rects.length) return;
-    const al = Math.min(1, (t - s.t - .3) / .6) * .62; if (al <= 0) return;
-    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.beginPath(); ctx.rect(0, 0, VW, VH);
-    for (const [x, y, w, h] of s.rects) { const [ax, ay] = W.toScreen(c, x - 60, y - 60), [bx, by] = W.toScreen(c, x + w + 60, y + h + 60); ctx.roundRect(ax, ay, bx - ax, by - ay, 28); }
-    ctx.fillStyle = `rgba(246,245,241,${al})`; ctx.fill('evenodd');
+    let sp = null; for (const x of spots) if (t >= x.t) sp = x;
+    const fl = flashes.find(([ft]) => t >= ft && t < ft + 1.0), k = fl ? fl[1] : sp && sp.k; if (!k) return;
+    const al = fl ? .55 * Math.sin(Math.PI * (t - fl[0])) : Math.min(1, (t - sp.t - .2) / .5) * .7; if (al <= 0) return;
+    const [x, y, w, h] = L4[k], [ax, ay] = W.toScreen(c, x - 40, y - 40), [bx, by] = W.toScreen(c, x + w + 40, y + h + 40);
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.beginPath(); ctx.rect(0, 0, VW, VH); ctx.roundRect(ax, ay, bx - ax, by - ay, 30);
+    ctx.fillStyle = `rgba(240,240,238,${al})`; ctx.fill('evenodd');
+    ctx.beginPath(); ctx.roundRect(ax, ay, bx - ax, by - ay, 30); ctx.lineWidth = 10; ctx.strokeStyle = `rgba(47,111,222,${al * .45})`; ctx.stroke();
   });
-  return new W.Camera(keys.map(([t, x, y, z]) => [t, x, y, z]));
+  // the "You are here" pin: starts at You, follows the ssh arrow into node01, and back after the two exits
+  a.overlay((ctx, t, c) => {
+    let pos = null;
+    for (const p of pins) { if (t < p.t) break; if (!p.path) { pos = p.to; continue; } const u = Math.min(1, (t - p.t) / p.d), e = u * u * (3 - 2 * u); pos = p.path.at(p.path.len * (p.back ? 1 - e : e)); }
+    if (pos) W.drawPinMagnet(ctx, pos[0], pos[1] - 20, c, { size: 150 });
+  });
+  return new W.Camera(keys);
 }
 const shortFilm = n => a => { const S = SHORTS[n]; if (S.film) return S.film(a, S._J); preDraw(a); S.run(a);
   if (S.long) { S.lines.forEach(([t, l]) => a.caption(t, l)); return new W.Camera(S.cam); }
@@ -239,10 +265,37 @@ async function build(host, kind) {
   await font();
   if (S.json && !S._J) S._J = await (await fetch(new URL('../' + S.json, import.meta.url), { cache: 'no-cache' })).json();
   const F = makeFilm(shortFilm(kind)); if (S.end) F.end = Math.max(F.end, S.end); if (S._J) F.end = Math.max(F.end, S._J.end);
-  if (F.terms.length) host.querySelector('.mctl').insertAdjacentHTML('beforebegin', '<pre class="mterm" aria-label="Terminal"></pre>');
-  const term = host.querySelector('.mterm');
-  const termAt = t => { if (!term) return; const out = []; for (const e of F.terms) { if (t < e.t) break; let st = e.t + .4; for (const l of e.lines) { if (l.startsWith('$')) { const n = Math.floor((t - st) * 20); if (n < 0) break; out.push(l.slice(0, n)); st += l.length / 20 + .4; } else { if (t < st) break; out.push(l); st += .3; } } }
-    const html = out.slice(-6).map(l => `<span class="${l.startsWith('$') ? 'c' : /NotReady|inactive|disabled|Unknown|stopped/.test(l) ? 'bad' : /Ready|active|enabled/.test(l) ? 'ok' : ''}">${l.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</span>`).join('\n'); if (term.innerHTML !== html) term.innerHTML = html; };
+  const J = S._J, $0 = q => host.querySelector(q);
+  if (J) {
+    $0('.mctl').insertAdjacentHTML('beforebegin', '<pre class="mterm" aria-label="Terminal"></pre>');
+    $0('.mwrap').insertAdjacentHTML('beforeend', '<div class="mq" hidden></div><div class="mrule" hidden><b>Fix it where it lives</b><div class="r1"><span>Deployment</span><span>lives in the API server</span><span>kubectl</span></div><div class="r2"><span>kubelet</span><span>lives on the node</span><span>ssh + systemctl</span></div></div>');
+    const chs = J.phrases.filter(p => p.ch); $0('.mcap').insertAdjacentHTML('beforebegin', `<div class="mchap">${chs.map(p => `<button type="button" data-t="${p.t}">${p.ch}</button>`).join('')}</div>`);
+  }
+  const term = $0('.mterm');
+  // terminal: each entry types its command (slowly) after the current prompt; output lines follow; the prompt changes after ssh / sudo -i / exit
+  const TE = J ? J.phrases.flatMap(p => { let st = p.t + .35; return (p.term || []).map(e => { const x = { ...e, t: st }; st += e.cmd.length / 16 + .5 + e.out.length * .25 + .4; return x; }); }) : [];
+  const phAt = t => { let c = null; if (J) for (const p of J.phrases) if (t >= p.t) c = p; return c; };
+  const esc = x => x.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const termAt = t => {
+    if (!term) return; const lines = []; let prompt = 'controlplane $', typing = '';
+    for (const e of TE) {
+      if (t < e.t) break;
+      const n = Math.floor((t - e.t) * 16);
+      if (n < e.cmd.length) { typing = e.cmd.slice(0, n); prompt = e.p; break; }
+      lines.push({ p: e.p, c: e.cmd }); let ot = e.t + e.cmd.length / 16 + .4;
+      for (const o of e.out) { if (t < ot) break; lines.push({ o }); ot += .25; }
+      prompt = e.next; typing = '';
+    }
+    const ph = phAt(t), hl = ph && ph.hl && t > ph.t + .6 ? ph.hl : null;
+    const cls = x => /NotReady|inactive|disabled|Unknown|stopped/.test(x) ? 'bad' : /Ready|active|enabled/.test(x) ? 'ok' : '';
+    const row = l => l.o !== undefined ? `<span class="${cls(l.o)}${hl && l.o.includes(hl) ? ' hl' : ''}">${esc(l.o)}</span>` : `<span class="pr${hl && l.p.includes(hl) ? ' hl' : ''}">${esc(l.p)}</span> <span class="c${hl && l.c.includes(hl) ? ' hl' : ''}">${esc(l.c)}</span>`;
+    const all = [...lines.map(row), `<span class="pr${hl && prompt.includes(hl) ? ' hl' : ''}">${esc(prompt)}</span> <span class="c">${esc(typing)}</span><span class="cur">▌</span>`];
+    const html = all.slice(-7).join('\n'); if (term.innerHTML !== html) term.innerHTML = html;
+    host.classList.toggle('mtermfocus', !!(ph && ph.focus === 'TERM'));
+  };
+  // captions: key words in the same colours as the board
+  const capHtml = s0 => esc(s0).replace(/\b(NotReady|inactive|disabled|stopped|Unknown)\b/g, '<b class="kr">$1</b>').replace(/\b(Ready|active|enabled|heartbeat)\b/g, '<b class="kg">$1</b>')
+    .replace(/\b(kubectl|ssh node01|ssh|sudo -i|systemctl[\w -]*kubelet|exit|k get nodes|k describe node node01)\b/g, '<b class="ko">$1</b>').replace(/\b(kubelet|API server|control plane|node01)\b(?![^<]*<\/b>)/g, '<b class="kb">$1</b>');
   const $ = q => host.querySelector(q);
   const cv = $('canvas'), ctx = cv.getContext('2d'), cap = $('.mcap'), big = $('.mbig'), pp = $('.mpp'), bar = $('.mseek'), time = $('.mtime'), snd = $('.msnd'), fs = $('.mfs'), vol = $('.mvol'), spd = $('.mspd');
   const pref = (k, d) => { try { const v = JSON.parse(localStorage.getItem('cka:film-' + k)); return v ?? d; } catch { return d; } };
@@ -266,23 +319,41 @@ async function build(host, kind) {
   const showCap = t => {
     let c = null; for (const x of F.caps) if (t >= x[0]) c = x;
     if (!c) { cap.style.opacity = 0; return; }
-    if (cap.dataset.s !== c[1]) { cap.dataset.s = c[1]; cap.textContent = c[1]; }
+    if (cap.dataset.s !== c[1]) { cap.dataset.s = c[1]; if (J) cap.innerHTML = capHtml(c[1]); else cap.textContent = c[1]; }
     cap.style.opacity = Math.min(1, (t - c[0]) / .5);
   };
-  const frame = t => { F.board.render(ctx, t, F.cam); showCap(t); termAt(t); if (!bar.dragging) bar.value = Math.round(t / F.end * 1000); time.textContent = `${fmt(t)} / ${fmt(F.end)}`; };
+  const frame = t => { F.board.render(ctx, t, F.cam); showCap(t); termAt(t); extras(t); if (!bar.dragging) bar.value = Math.round(t / F.end * 1000); time.textContent = `${fmt(t)} / ${fmt(F.end)}`; };
+  const ruleEl = $0('.mrule'), qEl = $0('.mq'), qDone = new Set();
+  const extras = t => {
+    if (!J) return; const ph = phAt(t), id = ph && ph.id;
+    if (ruleEl) { const on = ['s37', 's38', 's39'].includes(id) || t >= J.end - .1; ruleEl.hidden = !on; ruleEl.classList.toggle('on1', ['s38', 's39'].includes(id) || t >= J.end - .1); ruleEl.classList.toggle('on2', id === 's39' || t >= J.end - .1); }
+    host.querySelectorAll('.mchap button').forEach(b => b.classList.toggle('on', ph && +b.dataset.t <= t && (!b.nextElementSibling || +b.nextElementSibling.dataset.t > t)));
+  };
+  const ask = q => {
+    pause(); qEl.hidden = false;
+    qEl.innerHTML = `<p class="mqq">❓ ${esc(q.q)}</p>${q.opts.map((o, i) => `<button type="button" data-i="${i}">${esc(o[0])}</button>`).join('')}<p class="mqf" aria-live="polite"></p>`;
+    qEl.querySelectorAll('button').forEach(b => b.onclick = () => {
+      const o = q.opts[+b.dataset.i], f = qEl.querySelector('.mqf');
+      if (o[1]) { b.classList.add('right'); f.textContent = '✓ Correct.'; qDone.add(q.id); setTimeout(() => { qEl.hidden = true; play(); }, 1100); }
+      else { b.classList.add('wrong'); f.textContent = `${o[2]} Try again.`; }
+    });
+  };
+  const checkQ = (t0, t1) => { if (!J) return false; const q = J.questions.find(q => !qDone.has(q.id) && q.t > t0 && q.t <= t1); if (q) { T = q.t; frame(T); ask(q); return true; } return false; };
   const setUI = () => { pp.textContent = playing ? '⏸' : '▶'; big.hidden = playing; };
   const tick = now => {
     if (!playing) return; if (!host.isConnected) return pause();
-    const dt = Math.min(.05, (now - last) / 1000); last = now;
+    const dt = Math.min(.05, (now - last) / 1000); last = now; const T0 = T;
     // the sound leads while it plays; if it is far off (a jump, or a file that can't seek yet), the film keeps its own clock and pulls the sound along
     if (audio && !muted && !audio.paused && Math.abs(audio.currentTime - T) < 1.5) T = audio.currentTime;
     else { T += dt * rate; if (audio && !muted && Math.abs(audio.currentTime - T) > 1.5) try { audio.currentTime = T; } catch {} }
+    if (checkQ(T0, T)) return;
     frame(Math.min(T, F.end));
     if (T < F.end) raf = requestAnimationFrame(tick); else { playing = false; setUI(); syncAudio(); }
   };
   let first = true;
-  const play = () => { if (first && audio) { first = false; soundOn(true); } if (T >= F.end - .05) T = 0; playing = true; last = performance.now(); setUI(); syncAudio(); cancelAnimationFrame(raf); raf = requestAnimationFrame(tick); };
+  const play = () => { if (qEl && !qEl.hidden) return; if (first && audio) { first = false; soundOn(true); } if (T >= F.end - .05) T = 0; playing = true; last = performance.now(); setUI(); syncAudio(); cancelAnimationFrame(raf); raf = requestAnimationFrame(tick); };
   const pause = () => { playing = false; cancelAnimationFrame(raf); setUI(); syncAudio(); };
+  host.querySelectorAll('.mchap button').forEach(b => b.onclick = () => { qEl && (qEl.hidden = true); T = +b.dataset.t; frame(T); syncAudio(); if (!playing) play(); });
   pp.onclick = () => (playing ? pause() : play()); big.onclick = play; cv.onclick = () => (playing ? pause() : play());
   bar.oninput = () => { bar.dragging = true; T = bar.value / 1000 * F.end; frame(T); bar.dragging = false; };
   bar.onchange = () => { T = bar.value / 1000 * F.end; frame(T); syncAudio(); };
