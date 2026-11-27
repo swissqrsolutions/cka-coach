@@ -1,0 +1,684 @@
+{
+"end": 151.73,
+"goal": [
+"Goal: client gets",
+"the nginx page"
+],
+"rule": {
+"title": "port vs targetPort",
+"rows": [
+[
+"port",
+"the Service port",
+"clients call it: 80"
+],
+[
+"targetPort",
+"the container port",
+"must equal nginx: 80"
+]
+]
+},
+"shapes": {
+"ns": {
+"rect": [
+40,
+420,
+2020,
+1500
+],
+"frame": true,
+"label": "namespace web"
+},
+"cl": {
+"rect": [
+110,
+620,
+520,
+300
+],
+"label": "client",
+"sub": "busybox pod",
+"h": 90
+},
+"svc": {
+"rect": [
+740,
+620,
+560,
+300
+],
+"label": "backend-svc",
+"sub": "Service",
+"h": 84
+},
+"pod": {
+"rect": [
+1410,
+620,
+580,
+300
+],
+"label": "backend pod",
+"sub": "nginx listens on 80",
+"h": 84
+},
+"pr": {
+"rect": [
+740,
+1060,
+560,
+200
+],
+"label": "port",
+"sub": "80",
+"h": 70
+},
+"tp": {
+"rect": [
+1410,
+1060,
+580,
+200
+],
+"label": "targetPort",
+"sub": "8080",
+"h": 70
+},
+"a_cs": {
+"arrow": [
+[
+630,
+770
+],
+[
+740,
+770
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_sp": {
+"arrow": [
+[
+1300,
+770
+],
+[
+1410,
+770
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_sq": {
+"arrow": [
+[
+1020,
+920
+],
+[
+1020,
+1060
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_pt": {
+"arrow": [
+[
+1300,
+1160
+],
+[
+1410,
+1160
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_tp": {
+"arrow": [
+[
+1700,
+1060
+],
+[
+1700,
+920
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 7. In namespace web, the pod client cannot reach the service backend-svc, on port 80.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"ns",
+"cl",
+"svc",
+"a_cs"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 7.33
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: fix it, without recreating the service.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 9.88,
+"d": 3.17
+},
+{
+"id": "s3",
+"ch": null,
+"cap": "The backend pods are Running. They run nginx, and nginx listens on port 80.",
+"focus": "pod",
+"pause": 1.2,
+"draw": [
+"pod",
+"a_sp"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 14.8,
+"d": 5.38
+},
+{
+"id": "s4",
+"ch": "Two ports",
+"cap": "A service has two ports. They are easy to mix up.",
+"focus": "svc",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 21.73,
+"d": 2.93
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "The first is port. Clients call the service on this port. Here it is 80.",
+"focus": "pr",
+"pause": 1.2,
+"draw": [
+"pr",
+"a_sq"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 26.01,
+"d": 4.37
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "The second is targetPort. The service forwards traffic to this port, inside the pod.",
+"focus": "tp",
+"pause": 1.2,
+"draw": [
+"tp",
+"a_pt",
+"a_tp"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 31.94,
+"d": 5.17
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "So targetPort must be the port the program listens on. For nginx: 80.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 38.65,
+"d": 4.85
+},
+{
+"id": "s8",
+"ch": "Look first",
+"cap": "Look at the endpoints first. They show the pods, and the port the service sends to.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get endpoints backend-svc -n web",
+"out": [
+"Warning: v1 Endpoints is deprecated in v1.33+; ...",
+"backend-svc   192.168.1.5:8080   1m"
+],
+"next": "controlplane $"
+}
+],
+"hl": "8080",
+"t": 45.26,
+"d": 4.47
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "A pod address is there. So the service finds the pod. But the port is 8080.",
+"focus": "tp",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "bad",
+"t": "8080: nothing listens",
+"x": 1100,
+"y": 1380,
+"h": 58,
+"c": "R",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 51.08,
+"d": 4.95
+},
+{
+"id": "s10",
+"ch": "Prove the symptom",
+"cap": "Confirm the symptom before you change anything. Ask the client, with wget.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k exec client -n web -- wget -qO- -T 3 backend-svc",
+"out": [
+"wget: can't connect to remote host (10.96.x.x): Connection refused",
+"command terminated with exit code 1"
+],
+"next": "controlplane $"
+}
+],
+"hl": "refused",
+"t": 58.18,
+"d": 4.72
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "Refused means: the traffic reaches the pod, but no program answers there.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [
+{
+"id": "x1",
+"cross": [
+1355,
+770
+],
+"c": "R",
+"a": 0.8
+}
+],
+"term": [],
+"hl": null,
+"t": 64.25,
+"d": 4.59
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "Which port is wrong? Describe the service.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k describe service backend-svc -n web",
+"out": [
+"Port:              <unset>  80/TCP",
+"TargetPort:        8080/TCP",
+"Endpoints:         192.168.1.5:8080"
+],
+"next": "controlplane $"
+}
+],
+"hl": "TargetPort",
+"t": 70.59,
+"d": 2.31
+},
+{
+"id": "s13",
+"ch": null,
+"cap": "Port 80 is right: clients call 80. TargetPort 8080 is wrong: nginx listens on 80.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 74.25,
+"d": 7.08
+},
+{
+"id": "s14",
+"ch": "The fix",
+"cap": "Edit the service in place: k edit service. Do not recreate it.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k edit service/backend-svc -n web",
+"out": [
+"service/backend-svc edited"
+],
+"next": "controlplane $"
+}
+],
+"hl": "edited",
+"t": 83.68,
+"d": 3.95
+},
+{
+"id": "s15",
+"ch": null,
+"cap": "In vim: type slash 8080, Enter, then c w, and 80. Escape, colon w q, Enter.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "# in vim: /8080 Enter, cw, 80, Esc, :wq",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 89.18,
+"d": 6.71
+},
+{
+"id": "s16",
+"ch": null,
+"cap": "Change only targetPort. Do not change port: clients still call 80.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 97.64,
+"d": 4.47
+},
+{
+"id": "s17",
+"ch": null,
+"cap": "Now the service forwards to port 80, where nginx listens.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"x1",
+"bad"
+],
+"a": 0.3
+},
+{
+"id": "tp2",
+"t": "targetPort: 80 ✓",
+"x": 1100,
+"y": 1380,
+"h": 60,
+"c": "G",
+"a": 1.0,
+"align": null
+},
+{
+"dots": "a_sp",
+"a": 1.0,
+"n": 1,
+"color": "G",
+"back": false
+}
+],
+"term": [],
+"hl": null,
+"t": 103.87,
+"d": 3.77
+},
+{
+"id": "s18",
+"ch": "Prove it",
+"cap": "Test again from the client.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"dots": "a_cs",
+"a": 1.0,
+"n": 1,
+"color": "G",
+"back": false
+},
+{
+"dots": "a_sp",
+"a": 1.8,
+"n": 1,
+"color": "G",
+"back": false
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 2.6,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k exec client -n web -- wget -qO- -T 3 backend-svc",
+"out": [
+"<title>Welcome to nginx!</title>"
+],
+"next": "controlplane $"
+}
+],
+"hl": "Welcome",
+"t": 109.18,
+"d": 1.45
+},
+{
+"id": "s19",
+"ch": "If it fails",
+"cap": "Want one command, without vim? k patch does the same.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k patch service backend-svc -p '{\"spec\":{\"ports\":[{\"port\":80,\"targetPort\":80}]}}' -n web",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": "\"targetPort\":80",
+"t": 112.18,
+"d": 3.25
+},
+{
+"id": "s20",
+"ch": null,
+"cap": "If wget says download timed out, not refused, your network plug-in drops traffic instead of refusing it. Same meaning.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 117.18,
+"d": 7.72
+},
+{
+"id": "s21",
+"ch": null,
+"cap": "Still refused after the fix? Maybe you changed containerPort in the deployment. Undo it, and fix the service.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 126.65,
+"d": 6.93
+},
+{
+"id": "s22",
+"ch": "The rule",
+"cap": "The rule: port is what clients call. targetPort is where the container listens.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 135.93,
+"d": 4.87
+},
+{
+"id": "s23",
+"ch": null,
+"cap": "Read the endpoints first. A pod address with the wrong port means: fix targetPort.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 142.15,
+"d": 5.23
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "The endpoint shows an address with :8080. What does it tell you?",
+"opts": [
+[
+"The selector is wrong",
+false,
+"No. A pod address is listed, so the selector works."
+],
+[
+"The service forwards to port 8080",
+true,
+"Correct."
+],
+[
+"The pod is not Running",
+false,
+"The pods are Running. The port is wrong."
+]
+],
+"t": 57.58
+},
+{
+"id": "Q2",
+"q": "Which setting must change?",
+"opts": [
+[
+"port, to 8080",
+false,
+"No. Clients still call 80."
+],
+[
+"targetPort, to 80",
+true,
+"Correct."
+],
+[
+"containerPort in the deployment",
+false,
+"Fix the service, not the deployment."
+]
+],
+"t": 83.08
+},
+{
+"id": "Q3",
+"q": "Which port do the clients call?",
+"opts": [
+[
+"port",
+true,
+"Correct."
+],
+[
+"targetPort",
+false,
+"targetPort is where the service forwards."
+],
+[
+"8080",
+false,
+"8080 is the wrong forward port."
+]
+],
+"t": 135.33
+}
+]
+}

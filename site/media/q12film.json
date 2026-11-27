@@ -1,0 +1,544 @@
+{
+"end": 119.47,
+"goal": [
+"Goal: 2 files",
+"api.log, top.txt"
+],
+"rule": {
+"title": "Output into files",
+"rows": [
+[
+"> sends output",
+"into a file, not the screen",
+"k logs api -n app > file"
+],
+[
+"k top pod -A",
+"--sort-by=cpu: top row first",
+"only the NAME in top.txt"
+]
+]
+},
+"shapes": {
+"cpf": {
+"rect": [
+40,
+420,
+2020,
+1300
+],
+"frame": true,
+"label": "controlplane"
+},
+"api": {
+"rect": [
+110,
+620,
+560,
+300
+],
+"label": "Pod api",
+"sub": "namespace app",
+"h": 84
+},
+"f1": {
+"rect": [
+1100,
+620,
+900,
+300
+],
+"label": "/opt/api.log",
+"sub": "the pod logs",
+"h": 84
+},
+"all": {
+"rect": [
+110,
+1100,
+560,
+300
+],
+"label": "all pods",
+"sub": "all namespaces",
+"h": 84
+},
+"f2": {
+"rect": [
+1100,
+1100,
+900,
+300
+],
+"label": "/opt/top.txt",
+"sub": "one pod name",
+"h": 84
+},
+"gr": {
+"rect": [
+560,
+1850,
+1000,
+260
+],
+"label": "grader",
+"sub": "opens both files",
+"h": 84
+},
+"a_af": {
+"arrow": [
+[
+670,
+770
+],
+[
+1100,
+770
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_pt": {
+"arrow": [
+[
+670,
+1250
+],
+[
+1100,
+1250
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 12. Two small jobs. Each one ends in a file.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"cpf"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 3.76
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: write two files. A grader opens both and compares them.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal",
+"gr"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 6.31,
+"d": 4.4
+},
+{
+"id": "s3",
+"ch": "File one",
+"cap": "Job one: the logs of pod api, in namespace app, go into slash opt slash api dot log.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"api",
+"f1",
+"a_af"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 12.46,
+"d": 6.69
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "The greater-than sign sends output into a file, instead of the screen.",
+"focus": "f1",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 20.7,
+"d": 3.88
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "Write the logs. Then look at the first three lines.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k logs api -n app > /opt/api.log",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "head -3 /opt/api.log",
+"out": [
+"/docker-entrypoint.sh: /docker-entrypoint.d/ is not empty,",
+"  will attempt to perform configuration",
+"..."
+],
+"next": "controlplane $"
+}
+],
+"hl": "docker-entrypoint",
+"t": 26.13,
+"d": 2.81
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "The first command printed nothing. That is normal. File one is done.",
+"focus": "f1",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "d1",
+"t": "done ✓",
+"x": 1100,
+"y": 985,
+"h": 54,
+"c": "G",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 30.29,
+"d": 3.95
+},
+{
+"id": "s7",
+"ch": "File two",
+"cap": "Job two: find the pod that uses the most C P U, in all namespaces.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"all",
+"f2",
+"a_pt"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 36.39,
+"d": 4.93
+},
+{
+"id": "s8",
+"ch": null,
+"cap": "k top shows live usage. Dash A means all namespaces. Without it, you only see one.",
+"focus": "all",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 42.87,
+"d": 5.66
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "Sort by C P U. The top pod comes first.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k top pod -A --sort-by=cpu",
+"out": [
+"NAMESPACE     NAME                          CPU(cores)   MEMORY(bytes)",
+"kube-system   kube-apiserver-controlplane   45m          310Mi",
+"..."
+],
+"next": "controlplane $"
+}
+],
+"hl": "kube-apiserver-controlplane",
+"t": 50.08,
+"d": 2.9
+},
+{
+"id": "s10",
+"ch": null,
+"cap": "The 45m means 45 millicores: 0.045 of one C P U.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "mc",
+"t": "45m = 0.045 CPU",
+"x": 110,
+"y": 1500,
+"h": 58,
+"c": "B",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 54.33,
+"d": 6.58
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "The answer is the NAME in the first row. Your cluster may show another pod.",
+"focus": "f2",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 62.46,
+"d": 4.34
+},
+{
+"id": "s12",
+"ch": "Write the name",
+"cap": "Write only the name, and read it back.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "echo kube-apiserver-controlplane > /opt/top.txt",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "cat /opt/top.txt",
+"out": [
+"kube-apiserver-controlplane"
+],
+"next": "controlplane $"
+}
+],
+"hl": "kube-apiserver-controlplane",
+"t": 69.15,
+"d": 1.98
+},
+{
+"id": "s13",
+"ch": null,
+"cap": "Do not retype the name. Copy it with the mouse from the k top output.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 72.68,
+"d": 4.02
+},
+{
+"id": "s14",
+"ch": "Prove it",
+"cap": "The grader reads the files. So read them too.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 2.2,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "cat /opt/api.log /opt/top.txt",
+"out": [
+"/docker-entrypoint.sh: /docker-entrypoint.d/ is not empty,",
+"  will attempt to perform configuration",
+"...",
+"kube-apiserver-controlplane"
+],
+"next": "controlplane $"
+}
+],
+"hl": "kube-apiserver-controlplane",
+"t": 78.46,
+"d": 2.51
+},
+{
+"id": "s15",
+"ch": null,
+"cap": "File two holds one name, and nothing else.",
+"focus": "f2",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 82.91,
+"d": 2.46
+},
+{
+"id": "s16",
+"ch": "If it fails",
+"cap": "If k top says Metrics API not available, metrics-server is missing or still starting. Wait a minute.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 86.92,
+"d": 6.6
+},
+{
+"id": "s17",
+"ch": null,
+"cap": "If the redirect says No such file or directory, the folder does not exist. Make it with mkdir dash p.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "mkdir -p /opt",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 95.27,
+"d": 6.97
+},
+{
+"id": "s18",
+"ch": "The rule",
+"cap": "The rule: the greater-than sign sends output into a file.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 104.59,
+"d": 3.4
+},
+{
+"id": "s19",
+"ch": null,
+"cap": "Sort k top with dash dash sort-by, and write only the pod name into top dot txt.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 109.35,
+"d": 5.78
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "k logs api > /opt/api.log prints nothing. Why?",
+"opts": [
+[
+"It failed",
+false,
+"A failure would print an error."
+],
+[
+"The output went into the file",
+true,
+"Correct."
+],
+[
+"The pod has no logs",
+false,
+"It has. head shows the nginx start-up lines."
+]
+],
+"t": 35.79
+},
+{
+"id": "Q2",
+"q": "What do you write into top.txt?",
+"opts": [
+[
+"The whole first row",
+false,
+"The grader compares the file with one pod name."
+],
+[
+"Only the NAME of the first row",
+true,
+"Correct."
+],
+[
+"The CPU number",
+false,
+"The question asks for the name of the pod."
+]
+],
+"t": 68.55
+},
+{
+"id": "Q3",
+"q": "The redirect says: No such file or directory. What now?",
+"opts": [
+[
+"mkdir -p /opt",
+true,
+"Correct. The folder did not exist."
+],
+[
+"Run k top again",
+false,
+"k top is fine. The folder is missing."
+],
+[
+"Delete pod api",
+false,
+"The pod is not the problem."
+]
+],
+"t": 103.99
+}
+]
+}

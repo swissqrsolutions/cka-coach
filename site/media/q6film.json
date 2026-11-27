@@ -1,0 +1,731 @@
+{
+"end": 173.91,
+"goal": [
+"Goal: client gets",
+"the nginx page"
+],
+"rule": {
+"title": "Service selector = pod label",
+"rows": [
+[
+"no endpoints",
+"k get endpoints: <none>",
+"selector and label differ"
+],
+[
+"fix the Service",
+"k set selector service/...",
+"prove it: wget from client"
+]
+]
+},
+"shapes": {
+"ns": {
+"rect": [
+40,
+420,
+2020,
+1500
+],
+"frame": true,
+"label": "namespace web"
+},
+"cl": {
+"rect": [
+110,
+620,
+520,
+300
+],
+"label": "client",
+"sub": "busybox pod",
+"h": 90
+},
+"svc": {
+"rect": [
+740,
+620,
+560,
+300
+],
+"label": "backend-svc",
+"sub": "Service, port 80",
+"h": 84
+},
+"pods": {
+"rect": [
+1410,
+620,
+580,
+300
+],
+"label": "backend",
+"sub": "Pods (nginx)",
+"h": 90
+},
+"sel": {
+"rect": [
+740,
+1060,
+560,
+200
+],
+"label": "selector",
+"sub": "app=backend-svc",
+"h": 70
+},
+"lab": {
+"rect": [
+1410,
+1060,
+580,
+200
+],
+"label": "label",
+"sub": "app=backend",
+"h": 70
+},
+"a_cs": {
+"arrow": [
+[
+630,
+770
+],
+[
+740,
+770
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_sp": {
+"arrow": [
+[
+1300,
+770
+],
+[
+1410,
+770
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_ss": {
+"arrow": [
+[
+1020,
+920
+],
+[
+1020,
+1060
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_pl": {
+"arrow": [
+[
+1700,
+920
+],
+[
+1700,
+1060
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 6. In namespace web, the pod client cannot reach the service backend-svc, on port 80.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"ns",
+"cl",
+"svc",
+"a_cs"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 7.25
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: find the problem, and fix it. Do not delete or recreate the service.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 9.8,
+"d": 5.04
+},
+{
+"id": "s3",
+"ch": "How it works",
+"cap": "A service is a front door. It sends traffic to pods.",
+"focus": "svc",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 16.59,
+"d": 3.15
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "Here, the pods come from a deployment named backend. They run nginx, and they are Running.",
+"focus": "pods",
+"pause": 1.2,
+"draw": [
+"pods",
+"a_sp"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 21.09,
+"d": 5.47
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "So the pods are fine. But how does a service find its pods?",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 28.11,
+"d": 3.49
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "By a label. A label is a name tag on a pod. These pods carry app equals backend.",
+"focus": "lab",
+"pause": 1.2,
+"draw": [
+"lab",
+"a_pl"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 33.15,
+"d": 5.5
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "The service has a selector. It means: send traffic to pods with this label.",
+"focus": "sel",
+"pause": 1.4,
+"draw": [
+"sel",
+"a_ss"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 40.2,
+"d": 4.53
+},
+{
+"id": "s8",
+"ch": null,
+"cap": "When the selector and the label match, those pods become the service's endpoints.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"dots": "a_sp",
+"a": 0.8,
+"n": 1,
+"color": "G",
+"back": false
+}
+],
+"term": [],
+"hl": null,
+"t": 46.48,
+"d": 4.64
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "When they differ, the service finds no pods. It has nothing to forward to.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [
+{
+"id": "x1",
+"cross": [
+1355,
+770
+],
+"c": "R",
+"a": 0.8
+}
+],
+"term": [],
+"hl": null,
+"t": 52.67,
+"d": 4.4
+},
+{
+"id": "s10",
+"ch": "Look first",
+"cap": "So look first: does the service have endpoints? k get endpoints.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get endpoints backend-svc -n web",
+"out": [
+"Warning: v1 Endpoints is deprecated in v1.33+; ...",
+"backend-svc   <none>"
+],
+"next": "controlplane $"
+}
+],
+"hl": "<none>",
+"t": 58.81,
+"d": 3.75
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "Ignore the warning line. The answer is none: no pods behind the service.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [
+{
+"id": "e0",
+"t": "endpoints: <none>",
+"x": 740,
+"y": 1480,
+"h": 58,
+"c": "R",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 63.92,
+"d": 4.54
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "Two causes are possible: the selector is wrong, or the pods are not Ready.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 70.2,
+"d": 4.47
+},
+{
+"id": "s13",
+"ch": "Compare",
+"cap": "What label does the service want? k get service, dash o wide.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get service backend-svc -o wide -n web",
+"out": [
+"NAME         TYPE       PORT(S)  SELECTOR",
+"backend-svc  ClusterIP  80/TCP   app=backend-svc"
+],
+"next": "controlplane $"
+}
+],
+"hl": "app=backend-svc",
+"t": 76.82,
+"d": 3.66
+},
+{
+"id": "s14",
+"ch": null,
+"cap": "The last column is the selector. The service looks for app equals backend-svc.",
+"focus": "sel",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 81.83,
+"d": 5.43
+},
+{
+"id": "s15",
+"ch": null,
+"cap": "And the real label of the pods? k get pods, dash dash show-labels.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get pods --show-labels -n web",
+"out": [
+"NAME         READY  STATUS   LABELS",
+"backend-...  1/1    Running  app=backend,pod-template-hash=..."
+],
+"next": "controlplane $"
+}
+],
+"hl": "app=backend",
+"t": 88.81,
+"d": 4.21
+},
+{
+"id": "s16",
+"ch": null,
+"cap": "The pods are Running, with the label app equals backend.",
+"focus": "lab",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 94.38,
+"d": 3.2
+},
+{
+"id": "s17",
+"ch": null,
+"cap": "backend-svc, against backend. They differ.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "ne",
+"t": "different!",
+"x": 1000,
+"y": 1370,
+"h": 70,
+"c": "R",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 99.12,
+"d": 3.12
+},
+{
+"id": "s18",
+"ch": "The fix",
+"cap": "Which label goes into the selector? app equals backend.",
+"focus": "lab",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 104.4,
+"d": 3.33
+},
+{
+"id": "s19",
+"ch": null,
+"cap": "Not pod-template-hash. That label changes on every rollout.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 109.27,
+"d": 3.97
+},
+{
+"id": "s20",
+"ch": null,
+"cap": "Use k set selector. It changes spec dot selector, the right place.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k set selector service/backend-svc app=backend -n web",
+"out": [
+"service/backend-svc selector updated"
+],
+"next": "controlplane $"
+}
+],
+"hl": "app=backend",
+"t": 115.39,
+"d": 4.3
+},
+{
+"id": "s21",
+"ch": null,
+"cap": "Now the selector matches the label.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"x1",
+"ne",
+"e0"
+],
+"a": 0.3
+},
+{
+"id": "fx",
+"t": "selector = label ✓",
+"x": 740,
+"y": 1370,
+"h": 60,
+"c": "G",
+"a": 1.0,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 121.24,
+"d": 1.87
+},
+{
+"id": "s22",
+"ch": "Prove it",
+"cap": "Test from the client pod, with wget.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"dots": "a_cs",
+"a": 1.0,
+"n": 1,
+"color": "G",
+"back": false
+},
+{
+"dots": "a_sp",
+"a": 1.8,
+"n": 1,
+"color": "G",
+"back": false
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 2.6,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k exec client -n web -- wget -qO- -T 3 backend-svc",
+"out": [
+"<title>Welcome to nginx!</title>"
+],
+"next": "controlplane $"
+}
+],
+"hl": "Welcome",
+"t": 124.66,
+"d": 2.5
+},
+{
+"id": "s23",
+"ch": null,
+"cap": "The busybox client has wget, not curl. Dash q capital O dash means: quiet, print to the screen.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 128.71,
+"d": 6.75
+},
+{
+"id": "s24",
+"ch": "If it fails",
+"cap": "Still none after the fix? Look for a typo, or pods that are not Ready, 0 of 1. Compare with show-labels again.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 137.22,
+"d": 7.53
+},
+{
+"id": "s25",
+"ch": null,
+"cap": "Do not use k edit on the metadata labels. The selector lives under spec. Use k set selector.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 146.5,
+"d": 6.5
+},
+{
+"id": "s26",
+"ch": null,
+"cap": "And No resources found? You forgot dash n web.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 154.75,
+"d": 3.03
+},
+{
+"id": "s27",
+"ch": "The rule",
+"cap": "The rule: a service finds its pods by label.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 159.53,
+"d": 2.86
+},
+{
+"id": "s28",
+"ch": null,
+"cap": "The selector must equal the pod label. k get endpoints shows it at once: none means no match.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 163.74,
+"d": 5.82
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "A service shows <none> as endpoints. What does it mean?",
+"opts": [
+[
+"No pods match the selector, or the pods are not Ready",
+true,
+"Correct."
+],
+[
+"The service has no IP address",
+false,
+"The service exists. It just finds no pods."
+],
+[
+"The client pod is down",
+false,
+"The client only sends requests. Endpoints depend on the service and its pods."
+]
+],
+"t": 76.22
+},
+{
+"id": "Q2",
+"q": "The labels differ and the pods are fine. What do you change?",
+"opts": [
+[
+"The pods",
+false,
+"The pods are fine. Fix the service."
+],
+[
+"The service's selector",
+true,
+"Correct."
+],
+[
+"The client pod",
+false,
+"The client only calls the service."
+]
+],
+"t": 103.8
+},
+{
+"id": "Q3",
+"q": "Which label do you put in the selector?",
+"opts": [
+[
+"app=backend",
+true,
+"Correct."
+],
+[
+"pod-template-hash=...",
+false,
+"It changes on every rollout."
+],
+[
+"app=backend-svc",
+false,
+"That is the wrong value already in the service."
+]
+],
+"t": 114.79
+}
+]
+}

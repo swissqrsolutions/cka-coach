@@ -1,0 +1,630 @@
+{
+"end": 134.38,
+"goal": [
+"Goal: DNS works,",
+"2 CoreDNS pods"
+],
+"rule": {
+"title": "No DNS answers",
+"rows": [
+[
+"no CoreDNS pods",
+"check Deployment coredns",
+"0/0 = scaled to zero"
+],
+[
+"fix",
+"scale to 2, in kube-system",
+"prove it: nslookup"
+]
+]
+},
+"shapes": {
+"ns": {
+"rect": [
+40,
+420,
+2020,
+1500
+],
+"frame": true,
+"label": "the cluster"
+},
+"tp": {
+"rect": [
+110,
+620,
+520,
+300
+],
+"label": "test pod",
+"sub": "asks for a name",
+"h": 80
+},
+"kd": {
+"rect": [
+740,
+620,
+520,
+300
+],
+"label": "kube-dns",
+"sub": "Service",
+"h": 90
+},
+"cd": {
+"rect": [
+1360,
+620,
+640,
+300
+],
+"label": "CoreDNS pods",
+"sub": "answer the lookups",
+"h": 80
+},
+"dp": {
+"rect": [
+1360,
+1060,
+640,
+300
+],
+"label": "coredns",
+"sub": "Deployment, kube-system",
+"h": 70
+},
+"a_tk": {
+"arrow": [
+[
+630,
+770
+],
+[
+740,
+770
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_kc": {
+"arrow": [
+[
+1260,
+770
+],
+[
+1360,
+770
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_dc": {
+"arrow": [
+[
+1680,
+1060
+],
+[
+1680,
+920
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 11. Pods in the cluster cannot resolve service names.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"ns",
+"tp"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 4.16
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Connections by IP address still work. Only names fail.",
+"focus": "tp",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "ip",
+"t": "by IP: works",
+"x": 110,
+"y": 1000,
+"h": 54,
+"c": "G",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 6.71,
+"d": 3.58
+},
+{
+"id": "s3",
+"ch": null,
+"cap": "Your task: find the cause, and fix it. Two CoreDNS replicas must be running.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 11.84,
+"d": 5.29
+},
+{
+"id": "s4",
+"ch": "How it works",
+"cap": "A pod asks: what is the IP of this name? The answer comes from DNS.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 18.88,
+"d": 4.62
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "In a cluster, DNS is CoreDNS. Its pods answer the lookups.",
+"focus": "cd",
+"pause": 1.2,
+"draw": [
+"cd"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 25.05,
+"d": 4.6
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "A Deployment named coredns, in namespace kube-system, keeps them running.",
+"focus": "dp",
+"pause": 1.2,
+"draw": [
+"dp",
+"a_dc"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 31.19,
+"d": 4.18
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "Pods ask a Service, kube-dns. It forwards the question to a CoreDNS pod.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [
+"kd",
+"a_tk",
+"a_kc"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 36.92,
+"d": 5.61
+},
+{
+"id": "s8",
+"ch": null,
+"cap": "If no CoreDNS pod runs, nobody answers.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [
+{
+"id": "x1",
+"cross": [
+1310,
+770
+],
+"c": "R",
+"a": 0.8
+}
+],
+"term": [],
+"hl": null,
+"t": 44.28,
+"d": 3.36
+},
+{
+"id": "s9",
+"ch": "See it fail",
+"cap": "First, see the symptom yourself. Run nslookup in a test pod.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup kubernetes.default.svc.cluster.local",
+"out": [
+";; connection timed out; no servers could be reached"
+],
+"next": "controlplane $"
+}
+],
+"hl": "timed out",
+"t": 49.38,
+"d": 3.87
+},
+{
+"id": "s10",
+"ch": null,
+"cap": "Use the full name. A short name can print NXDOMAIN with busybox, even when DNS works.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 54.61,
+"d": 6.4
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "Timed out: nobody answers. Are the CoreDNS pods there?",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get pods -l k8s-app=kube-dns -n kube-system",
+"out": [
+"No resources found in kube-system namespace."
+],
+"next": "controlplane $"
+}
+],
+"hl": "No resources",
+"t": 62.76,
+"d": 3.86
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "No pods. No pod, no answer.",
+"focus": "cd",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 67.97,
+"d": 2.04
+},
+{
+"id": "s13",
+"ch": "The cause",
+"cap": "The Deployment decides how many pods run. Look at it.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get deployment coredns -n kube-system",
+"out": [
+"NAME      READY  UP-TO-DATE  AVAILABLE  AGE",
+"coredns   0/0    0           0          30m"
+],
+"next": "controlplane $"
+}
+],
+"hl": "0/0",
+"t": 72.16,
+"d": 3.23
+},
+{
+"id": "s14",
+"ch": null,
+"cap": "Zero of zero. Nothing crashed. Someone asked for zero pods.",
+"focus": "dp",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "z0",
+"t": "replicas 0/0",
+"x": 1360,
+"y": 1440,
+"h": 58,
+"c": "R",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 76.74,
+"d": 4.07
+},
+{
+"id": "s15",
+"ch": "The fix",
+"cap": "Scale it back to 2. The question wants two replicas.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k scale deployment/coredns --replicas=2 -n kube-system",
+"out": [
+"deployment.apps/coredns scaled"
+],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k rollout status deployment/coredns --timeout=120s -n kube-system",
+"out": [
+"deployment \"coredns\" successfully rolled out"
+],
+"next": "controlplane $"
+}
+],
+"hl": "successfully",
+"t": 82.96,
+"d": 3.21
+},
+{
+"id": "s16",
+"ch": null,
+"cap": "Scale coredns, the Deployment. Not kube-dns: that is the Service, and the label.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 87.52,
+"d": 5.44
+},
+{
+"id": "s17",
+"ch": null,
+"cap": "Two pods start. The Service has someone to forward to again.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"x1",
+"z0"
+],
+"a": 0.3
+},
+{
+"id": "z2",
+"t": "replicas 2/2 ✓",
+"x": 1360,
+"y": 1440,
+"h": 58,
+"c": "G",
+"a": 1.0,
+"align": null
+},
+{
+"dots": "a_tk",
+"a": 1.0,
+"n": 1,
+"color": "G",
+"back": false
+},
+{
+"dots": "a_kc",
+"a": 1.6,
+"n": 1,
+"color": "G",
+"back": false
+}
+],
+"term": [],
+"hl": null,
+"t": 94.72,
+"d": 3.43
+},
+{
+"id": "s18",
+"ch": "Prove it",
+"cap": "Ask again, with the full name.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 2.4,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup kubernetes.default.svc.cluster.local",
+"out": [
+"Name:      kubernetes.default.svc.cluster.local",
+"Address:   10.96.0.1"
+],
+"next": "controlplane $"
+}
+],
+"hl": "10.96.0.1",
+"t": 99.69,
+"d": 1.65
+},
+{
+"id": "s19",
+"ch": null,
+"cap": "The answer is the address under Name. The first Address line is the DNS server itself.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 102.89,
+"d": 5.79
+},
+{
+"id": "s20",
+"ch": "If it fails",
+"cap": "If the test pod t already exists, delete it: k delete pod t. Then test again.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k delete pod t",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 111.03,
+"d": 5.39
+},
+{
+"id": "s21",
+"ch": "The rule",
+"cap": "The rule: when names fail but IPs work, check the CoreDNS pods.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 118.17,
+"d": 4.62
+},
+{
+"id": "s22",
+"ch": null,
+"cap": "No pods means look at the Deployment coredns, and scale it to 2. Then prove it with nslookup.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 124.14,
+"d": 5.89
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "There are no CoreDNS pods. What do you check next?",
+"opts": [
+[
+"The Deployment coredns",
+true,
+"Correct. It decides how many pods run."
+],
+[
+"The test pod image",
+false,
+"The image is fine. Nobody answers."
+],
+[
+"The kube-dns Service",
+false,
+"The Service only forwards. First ask why there are no pods."
+]
+],
+"t": 71.56
+},
+{
+"id": "Q2",
+"q": "What does READY 0/0 mean?",
+"opts": [
+[
+"Two pods crashed",
+false,
+"Then READY would show something like 0/2."
+],
+[
+"The Deployment asks for zero pods",
+true,
+"Correct."
+],
+[
+"CoreDNS is just slow",
+false,
+"Slow pods would still be wanted. Here none are wanted."
+]
+],
+"t": 82.36
+},
+{
+"id": "Q3",
+"q": "Which address is the answer?",
+"opts": [
+[
+"The first Address line",
+false,
+"That one is the DNS server itself."
+],
+[
+"The Address under Name",
+true,
+"Correct."
+],
+[
+"Neither",
+false,
+"The one under Name is the answer."
+]
+],
+"t": 110.43
+}
+]
+}

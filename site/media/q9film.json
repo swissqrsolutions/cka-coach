@@ -1,0 +1,768 @@
+{
+"end": 161.7,
+"goal": [
+"Goal: pod test",
+"becomes Running"
+],
+"rule": {
+"title": "Pending, no Events",
+"rows": [
+[
+"no Events",
+"the scheduler never looked",
+"look in kube-system"
+],
+[
+"scheduler broken",
+"fix its file in manifests/",
+"back up to /root, wait 30 s"
+]
+]
+},
+"shapes": {
+"cpf": {
+"rect": [
+40,
+420,
+2020,
+1500
+],
+"frame": true,
+"label": "controlplane"
+},
+"tp": {
+"rect": [
+110,
+620,
+600,
+300
+],
+"label": "Pod test",
+"sub": "Pending",
+"h": 90
+},
+"nd": {
+"rect": [
+110,
+1100,
+600,
+260
+],
+"label": "a node",
+"sub": "where test should run",
+"h": 70
+},
+"sch": {
+"rect": [
+1060,
+620,
+900,
+300
+],
+"label": "kube-scheduler",
+"sub": "static pod, kube-system",
+"h": 80
+},
+"mf": {
+"rect": [
+1060,
+1100,
+900,
+300
+],
+"label": "manifests/",
+"sub": "kube-scheduler.yaml",
+"h": 84
+},
+"kl": {
+"rect": [
+1060,
+1540,
+900,
+260
+],
+"label": "kubelet",
+"sub": null,
+"h": 90
+},
+"a_sp": {
+"arrow": [
+[
+1060,
+770
+],
+[
+710,
+770
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_pn": {
+"arrow": [
+[
+410,
+920
+],
+[
+410,
+1100
+]
+],
+"both": false,
+"dashed": true,
+"pen": null
+},
+"a_ms": {
+"arrow": [
+[
+1510,
+1100
+],
+[
+1510,
+920
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_km": {
+"arrow": [
+[
+1510,
+1540
+],
+[
+1510,
+1400
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 9. In namespace default, a pod named test stays Pending.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"cpf",
+"tp"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 4.45
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Other pods, which already ran, are fine. Only the new pod is stuck.",
+"focus": "tp",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 7.0,
+"d": 3.93
+},
+{
+"id": "s3",
+"ch": null,
+"cap": "Your task: find the cause, and fix it, so that test is Running.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 12.48,
+"d": 3.68
+},
+{
+"id": "s4",
+"ch": "How it works",
+"cap": "Every new pod needs a node. Something must choose one.",
+"focus": "nd",
+"pause": 1.0,
+"draw": [
+"nd"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 17.91,
+"d": 3.01
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "That is the kube-scheduler. It picks a node for each new pod.",
+"focus": "sch",
+"pause": 1.2,
+"draw": [
+"sch",
+"a_sp",
+"a_pn"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 22.27,
+"d": 3.45
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "The scheduler is itself a pod, in namespace kube-system. A static pod.",
+"focus": "sch",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 27.27,
+"d": 4.76
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "A static pod starts from a file, in slash etc slash kubernetes slash manifests.",
+"focus": "mf",
+"pause": 1.2,
+"draw": [
+"mf",
+"a_ms"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 33.58,
+"d": 5.49
+},
+{
+"id": "s8",
+"ch": null,
+"cap": "The kubelet reads that folder, and starts what it finds.",
+"focus": "kl",
+"pause": 1.2,
+"draw": [
+"kl",
+"a_km"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 40.62,
+"d": 3.0
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "If the scheduler is broken, nobody places new pods.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [
+{
+"id": "x1",
+"cross": [
+885,
+770
+],
+"c": "R",
+"a": 0.8
+}
+],
+"term": [],
+"hl": null,
+"t": 45.17,
+"d": 3.29
+},
+{
+"id": "s10",
+"ch": "Look first",
+"cap": "First, why is test Pending? Describe the pod.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k describe pod test",
+"out": [
+"Node:             <none>",
+"Status:           Pending",
+"...",
+"Events:           <none>"
+],
+"next": "controlplane $"
+}
+],
+"hl": "Events:",
+"t": 50.21,
+"d": 2.81
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "Look at the last line. Events are empty.",
+"focus": "tp",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "ev",
+"t": "Events: <none>",
+"x": 470,
+"y": 1020,
+"h": 48,
+"c": "R",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 54.37,
+"d": 2.37
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "The scheduler never looked at this pod. With a reason in Events, it would be question 3.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 58.29,
+"d": 4.9
+},
+{
+"id": "s13",
+"ch": "Find the cause",
+"cap": "Is the scheduler running? Its pod lives in kube-system.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get pods -n kube-system",
+"out": [
+"kube-scheduler-controlplane   0/1   CrashLoopBackOff   4 (30s ago)   2m"
+],
+"next": "controlplane $"
+}
+],
+"hl": "CrashLoopBackOff",
+"t": 65.34,
+"d": 3.36
+},
+{
+"id": "s14",
+"ch": null,
+"cap": "CrashLoopBackOff. Its container cannot start.",
+"focus": "sch",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "cr",
+"t": "CrashLoopBackOff",
+"x": 1060,
+"y": 1010,
+"h": 44,
+"c": "R",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 70.05,
+"d": 2.98
+},
+{
+"id": "s15",
+"ch": null,
+"cap": "Why? Describe the scheduler pod.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k describe pod kube-scheduler-controlplane -n kube-system",
+"out": [
+"Warning  Failed  ...  exec: \"kube-schedulerx\": executable",
+"  file not found in $PATH: unknown"
+],
+"next": "controlplane $"
+}
+],
+"hl": "kube-schedulerx",
+"t": 74.58,
+"d": 1.99
+},
+{
+"id": "s16",
+"ch": null,
+"cap": "The program name is misspelled: kube-schedulerx. There is an extra x.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 77.92,
+"d": 4.62
+},
+{
+"id": "s17",
+"ch": null,
+"cap": "Do not expect k logs to help. The program never started, so there are no logs.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 84.29,
+"d": 4.91
+},
+{
+"id": "s18",
+"ch": "The fix",
+"cap": "First, back up the file. Put the copy in slash root.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "cp /etc/kubernetes/manifests/kube-scheduler.yaml /root/kube-scheduler.yaml.orig",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 91.35,
+"d": 3.18
+},
+{
+"id": "s19",
+"ch": null,
+"cap": "Never keep the backup inside manifests. It would run as a second scheduler.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 95.88,
+"d": 4.75
+},
+{
+"id": "s20",
+"ch": null,
+"cap": "Edit the file. Remove the extra x. Then check the command line.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "vim /etc/kubernetes/manifests/kube-scheduler.yaml",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "grep -A1 command: /etc/kubernetes/manifests/kube-scheduler.yaml",
+"out": [
+"  - command:",
+"    - kube-scheduler"
+],
+"next": "controlplane $"
+}
+],
+"hl": "- kube-scheduler",
+"t": 102.98,
+"d": 3.97
+},
+{
+"id": "s21",
+"ch": null,
+"cap": "In vim: type slash schedulerx, Enter, dollar, x. Then colon w q.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "# in vim: /schedulerx Enter, $, x, :wq",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 108.49,
+"d": 4.86
+},
+{
+"id": "s22",
+"ch": null,
+"cap": "The kubelet sees that the file changed, and restarts the pod itself.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"dots": "a_km",
+"a": 0.6,
+"n": 1,
+"color": "G",
+"back": false
+},
+{
+"dots": "a_ms",
+"a": 1.6,
+"n": 1,
+"color": "G",
+"back": false
+}
+],
+"term": [],
+"hl": null,
+"t": 115.11,
+"d": 3.91
+},
+{
+"id": "s23",
+"ch": null,
+"cap": "No restart needed. Wait about 30 seconds.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"cr",
+"x1"
+],
+"a": 2.0
+},
+{
+"id": "up",
+"t": "Running ✓",
+"x": 1060,
+"y": 1010,
+"h": 44,
+"c": "G",
+"a": 2.6,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get pods -n kube-system | grep scheduler",
+"out": [
+"kube-scheduler-controlplane   1/1   Running   0   30s"
+],
+"next": "controlplane $"
+}
+],
+"hl": "Running",
+"t": 120.56,
+"d": 2.88
+},
+{
+"id": "s24",
+"ch": "Prove it",
+"cap": "Now the pod test. Does it get a node?",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"ev"
+],
+"a": 1.0
+},
+{
+"dots": "a_sp",
+"a": 2.0,
+"n": 1,
+"color": "G",
+"back": false
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 3.0,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get pod test",
+"out": [
+"test   1/1   Running   0   5m"
+],
+"next": "controlplane $"
+}
+],
+"hl": "Running",
+"t": 124.99,
+"d": 2.25
+},
+{
+"id": "s25",
+"ch": "If it fails",
+"cap": "If the scheduler disappears after your edit, the YAML is broken. Use spaces, never tabs.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 129.19,
+"d": 5.98
+},
+{
+"id": "s26",
+"ch": null,
+"cap": "Compare with the backup in slash root. And a deleted scheduler pod comes back broken: the kubelet rebuilds it from the file.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 136.93,
+"d": 7.49
+},
+{
+"id": "s27",
+"ch": "The rule",
+"cap": "The rule: a Pending pod with empty Events means the scheduler never looked.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 146.17,
+"d": 4.57
+},
+{
+"id": "s28",
+"ch": null,
+"cap": "Check kube-system, read why it fails, and fix its file in manifests. Back up first.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 152.09,
+"d": 5.26
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "A Pending pod has empty Events. What does that suggest?",
+"opts": [
+[
+"The scheduler never looked at it",
+true,
+"Correct."
+],
+[
+"No node has enough room",
+false,
+"Then the Events would give a reason. That is question 3."
+],
+[
+"The image name is wrong",
+false,
+"Image errors show up in Events, with a reason."
+]
+],
+"t": 64.74
+},
+{
+"id": "Q2",
+"q": "Where do you fix the program name?",
+"opts": [
+[
+"With k edit pod, on the scheduler pod",
+false,
+"That is only the mirror pod. Edit the file in manifests/."
+],
+[
+"In the file in manifests/",
+true,
+"Correct."
+],
+[
+"In a Deployment",
+false,
+"The scheduler is a static pod. It has no Deployment."
+]
+],
+"t": 90.75
+},
+{
+"id": "Q3",
+"q": "Where do you keep the backup copy?",
+"opts": [
+[
+"In manifests/, next to the original",
+false,
+"It would run as a second scheduler."
+],
+[
+"In /root",
+true,
+"Correct."
+],
+[
+"Nowhere. Edit without a backup",
+false,
+"Keep one. If the YAML breaks, compare with it."
+]
+],
+"t": 102.38
+}
+]
+}

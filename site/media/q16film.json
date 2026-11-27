@@ -1,0 +1,704 @@
+{
+"end": 161.6,
+"goal": [
+"Goal: install 2,",
+"upgrade 3, undo"
+],
+"rule": {
+"title": "Release and revision",
+"rows": [
+[
+"release",
+"one installed copy of a chart",
+"name web, namespace demo"
+],
+[
+"revision",
+"+1 for install, upgrade, rollback",
+"rollback makes revision 3"
+]
+]
+},
+"shapes": {
+"repo": {
+"rect": [
+40,
+420,
+960,
+220
+],
+"label": "Helm repository",
+"sub": "ingress-nginx",
+"h": 84
+},
+"ch": {
+"rect": [
+40,
+720,
+960,
+260
+],
+"label": "chart",
+"sub": "ingress-nginx",
+"h": 90
+},
+"set": {
+"rect": [
+40,
+1180,
+960,
+260
+],
+"label": "controller.replicaCount",
+"sub": "the setting to change",
+"h": 74
+},
+"nsf": {
+"rect": [
+1100,
+420,
+960,
+1500
+],
+"frame": true,
+"label": "namespace demo"
+},
+"r1": {
+"rect": [
+1170,
+720,
+820,
+230
+],
+"label": "revision 1",
+"sub": "2 replicas",
+"h": 84
+},
+"r2": {
+"rect": [
+1170,
+1030,
+820,
+230
+],
+"label": "revision 2",
+"sub": "3 replicas",
+"h": 84
+},
+"r3": {
+"rect": [
+1170,
+1340,
+820,
+230
+],
+"label": "revision 3",
+"sub": "copy of revision 1",
+"h": 84
+},
+"a_rc": {
+"arrow": [
+[
+520,
+640
+],
+[
+520,
+720
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_ch": {
+"arrow": [
+[
+1000,
+850
+],
+[
+1170,
+850
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_12": {
+"arrow": [
+[
+1580,
+950
+],
+[
+1580,
+1030
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_23": {
+"arrow": [
+[
+1580,
+1260
+],
+[
+1580,
+1340
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 16. Install an app with Helm, change it, and undo the change.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 4.61
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: install the release web with 2 replicas. Upgrade it to 3. Then roll back to revision 1.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 7.16,
+"d": 6.69
+},
+{
+"id": "s3",
+"ch": "How Helm works",
+"cap": "Helm installs apps from charts. A chart comes from a repository.",
+"focus": "repo",
+"pause": 1.0,
+"draw": [
+"repo",
+"ch",
+"a_rc"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 15.6,
+"d": 4.21
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "An installed copy of a chart is called a release. It has a name and a namespace.",
+"focus": "nsf",
+"pause": 1.2,
+"draw": [
+"nsf"
+],
+"acts": [
+{
+"id": "rw",
+"t": "release web",
+"x": 1170,
+"y": 650,
+"h": 62,
+"c": "B",
+"a": 1.0,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 21.16,
+"d": 5.07
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "Every install, upgrade or rollback adds one revision.",
+"focus": "r1",
+"pause": 1.2,
+"draw": [
+"r1",
+"a_ch"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 27.78,
+"d": 3.41
+},
+{
+"id": "s6",
+"ch": "Add the repo",
+"cap": "First, add the repository ingress-nginx, and update.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx",
+"out": [
+"\"ingress-nginx\" has been added to your repositories"
+],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "helm repo update",
+"out": [
+"...",
+"Update Complete. Happy Helming!"
+],
+"next": "controlplane $"
+}
+],
+"hl": "\"ingress-nginx\"",
+"t": 32.75,
+"d": 3.57
+},
+{
+"id": "s7",
+"ch": "The setting",
+"cap": "The chart has two replica settings. You need the controller one.",
+"focus": "set",
+"pause": 1.0,
+"draw": [
+"set"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 37.67,
+"d": 3.56
+},
+{
+"id": "s8",
+"ch": null,
+"cap": "Find them: helm show values, and grep. The caret a-to-z adds the top-level names.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "helm show values ingress-nginx/ingress-nginx | grep -E \"^[a-z]|replicaCount\"",
+"out": [
+"controller:",
+"...",
+"  replicaCount: 1",
+"...",
+"defaultBackend:",
+"...",
+"  replicaCount: 1"
+],
+"next": "controlplane $"
+}
+],
+"hl": "controller:",
+"t": 42.57,
+"d": 5.18
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "The first one is under controller. The second is under defaultBackend. Skip the second.",
+"focus": "set",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "db",
+"t": "defaultBackend: skip",
+"x": 60,
+"y": 1530,
+"h": 54,
+"c": "R",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 49.3,
+"d": 5.21
+},
+{
+"id": "s10",
+"ch": "Install",
+"cap": "Install the release web, in a new namespace demo, with 2 replicas.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "helm install web ingress-nginx/ingress-nginx -n demo --create-namespace --set controller.replicaCount=2",
+"out": [
+"...",
+"STATUS: deployed",
+"REVISION: 1"
+],
+"next": "controlplane $"
+}
+],
+"hl": "REVISION: 1",
+"t": 56.66,
+"d": 3.96
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "Dash dash create-namespace made demo. Dash dash set changes one setting.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 62.17,
+"d": 4.6
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "Check the deployment. Ready 0 of 2 at first is normal. Wait.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get deployments -n demo",
+"out": [
+"web-ingress-nginx-controller   2/2   2   2   ..."
+],
+"next": "controlplane $"
+}
+],
+"hl": "2/2",
+"t": 68.32,
+"d": 4.11
+},
+{
+"id": "s13",
+"ch": "Upgrade",
+"cap": "Now upgrade to 3 replicas. Use helm upgrade, not install: the name web is taken.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [
+"r2",
+"a_12"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "helm upgrade web ingress-nginx/ingress-nginx -n demo --set controller.replicaCount=3",
+"out": [
+"Release \"web\" has been upgraded. Happy Helming!",
+"...",
+"REVISION: 2"
+],
+"next": "controlplane $"
+}
+],
+"hl": "REVISION: 2",
+"t": 73.98,
+"d": 5.62
+},
+{
+"id": "s14",
+"ch": "Roll back",
+"cap": "Now undo it. Which revision holds 2 replicas? helm history shows it.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "helm history web -n demo",
+"out": [
+"1   ...   superseded   ingress-nginx-...   ...   Install complete",
+"2   ...   deployed     ingress-nginx-...   ...   Upgrade complete"
+],
+"next": "controlplane $"
+}
+],
+"hl": "Install complete",
+"t": 81.75,
+"d": 4.62
+},
+{
+"id": "s15",
+"ch": null,
+"cap": "Revision 1 is the install. Revision 2 is the upgrade.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 87.93,
+"d": 3.58
+},
+{
+"id": "s16",
+"ch": null,
+"cap": "Roll back to revision 1.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [
+"r3",
+"a_23"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "helm rollback web 1 -n demo",
+"out": [
+"Rollback was a success! Happy Helming!"
+],
+"next": "controlplane $"
+}
+],
+"hl": "success",
+"t": 93.05,
+"d": 1.51
+},
+{
+"id": "s17",
+"ch": null,
+"cap": "A rollback is itself a new revision. It copies revision 1 into revision 3.",
+"focus": "r3",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 96.11,
+"d": 5.44
+},
+{
+"id": "s18",
+"ch": "Prove it",
+"cap": "Check the release. The revision is 3, and the controller is at 2 of 2.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"id": "ok",
+"t": "controller: 2/2 ✓",
+"x": 60,
+"y": 1650,
+"h": 58,
+"c": "G",
+"a": 3.0,
+"align": null
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 4.0,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "helm list -n demo",
+"out": [
+"web   demo   3   ...   deployed   ingress-nginx-..."
+],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k get deployments -n demo",
+"out": [
+"web-ingress-nginx-controller   2/2   2   2   ..."
+],
+"next": "controlplane $"
+}
+],
+"hl": "3   ...",
+"t": 103.3,
+"d": 4.33
+},
+{
+"id": "s19",
+"ch": "If it fails",
+"cap": "helm list shows nothing? Helm needs dash n demo too. Try helm list dash A.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 110.18,
+"d": 4.93
+},
+{
+"id": "s20",
+"ch": null,
+"cap": "The error cannot re-use a name that is still in use means: the release exists. Use helm upgrade, or uninstall it first.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 116.86,
+"d": 7.57
+},
+{
+"id": "s21",
+"ch": null,
+"cap": "If the replicas did not change, the setting name was wrong. Repeat the search.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 126.19,
+"d": 4.62
+},
+{
+"id": "s22",
+"ch": null,
+"cap": "If the repository add fails: ingress-nginx was retired in March 2026. Practise with the podinfo chart, and the setting replicaCount.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 132.56,
+"d": 10.51
+},
+{
+"id": "s23",
+"ch": "The rule",
+"cap": "The rule: install, upgrade, rollback. Each one needs dash n demo.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 144.82,
+"d": 4.4
+},
+{
+"id": "s24",
+"ch": null,
+"cap": "A rollback adds a new revision. Change one setting with dash dash set, and find its exact name first.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 150.57,
+"d": 6.68
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "Which setting do you change?",
+"opts": [
+[
+"controller.replicaCount",
+true,
+"Correct."
+],
+[
+"defaultBackend.replicaCount",
+false,
+"That is the default backend, not the controller."
+],
+[
+"replicaCount",
+false,
+"It exists twice. You need the full path."
+]
+],
+"t": 56.06
+},
+{
+"id": "Q2",
+"q": "The name web is taken. How do you change the release to 3 replicas?",
+"opts": [
+[
+"helm install again",
+false,
+"The name web is already in use."
+],
+[
+"helm upgrade",
+true,
+"Correct."
+],
+[
+"helm rollback",
+false,
+"Rollback goes back. Upgrade changes it."
+]
+],
+"t": 81.15
+},
+{
+"id": "Q3",
+"q": "After the rollback, what revision does helm list show?",
+"opts": [
+[
+"1",
+false,
+"Rollback copies revision 1 into a new revision."
+],
+[
+"3",
+true,
+"Correct."
+],
+[
+"2",
+false,
+"Revision 2 is the upgrade. The rollback made a new one."
+]
+],
+"t": 109.58
+}
+]
+}

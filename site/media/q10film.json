@@ -1,0 +1,667 @@
+{
+"end": 163.99,
+"goal": [
+"Goal: only client",
+"in, TCP port 80"
+],
+"rule": {
+"title": "Policies only add up",
+"rows": [
+[
+"deny-all",
+"podSelector {} = all pods",
+"do not touch it"
+],
+[
+"allow-client",
+"protects app=backend",
+"from run=client, TCP 80"
+]
+]
+},
+"shapes": {
+"ns": {
+"rect": [
+40,
+420,
+2020,
+1500
+],
+"frame": true,
+"label": "namespace web"
+},
+"cl": {
+"rect": [
+110,
+620,
+560,
+300
+],
+"label": "client",
+"sub": "run=client",
+"h": 90
+},
+"be": {
+"rect": [
+1440,
+620,
+560,
+300
+],
+"label": "backend",
+"sub": "app=backend",
+"h": 90
+},
+"dn": {
+"rect": [
+110,
+1100,
+900,
+300
+],
+"label": "deny-all",
+"sub": "podSelector: all pods",
+"h": 84
+},
+"al": {
+"rect": [
+1100,
+1100,
+900,
+300
+],
+"label": "allow-client",
+"sub": "the new policy",
+"h": 84
+},
+"a_cb": {
+"arrow": [
+[
+670,
+770
+],
+[
+1440,
+770
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_ab": {
+"arrow": [
+[
+1550,
+1100
+],
+[
+1550,
+920
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 10. In namespace web, the pod client cannot reach the service backend-svc, on port 80.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"ns",
+"cl",
+"be",
+"a_cb"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 7.23
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "The service and its pods are healthy. So something blocks the traffic.",
+"focus": "be",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "x1",
+"cross": [
+1055,
+770
+],
+"c": "R",
+"a": 0.8
+}
+],
+"term": [],
+"hl": null,
+"t": 9.78,
+"d": 3.76
+},
+{
+"id": "s3",
+"ch": null,
+"cap": "Your task: create a NetworkPolicy named allow-client. Only client may reach the backend pods, on TCP port 80.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 15.08,
+"d": 8.42
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "And do not delete or change any existing policy.",
+"focus": "goal",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 25.25,
+"d": 2.87
+},
+{
+"id": "s5",
+"ch": "How it works",
+"cap": "A NetworkPolicy is a rule about which traffic may reach a pod.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 29.68,
+"d": 3.75
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "Once a policy selects a pod, only the traffic the policy allows gets in.",
+"focus": "be",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 34.97,
+"d": 4.55
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "Policies only add up. A second policy can allow more. It never takes anything away.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 41.07,
+"d": 5.53
+},
+{
+"id": "s8",
+"ch": "Find it",
+"cap": "A timeout, not refused, usually means a policy drops the traffic. List the policies.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get networkpolicy -n web",
+"out": [
+"NAME       POD-SELECTOR   AGE",
+"deny-all   <none>         2m"
+],
+"next": "controlplane $"
+}
+],
+"hl": "<none>",
+"t": 48.35,
+"d": 5.66
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "Under POD-SELECTOR, none means all pods. Describe it.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k describe networkpolicy deny-all -n web",
+"out": [
+"    <none> (Selected pods are isolated for ingress connectivity)"
+],
+"next": "controlplane $"
+}
+],
+"hl": "isolated",
+"t": 55.36,
+"d": 3.17
+},
+{
+"id": "s10",
+"ch": null,
+"cap": "deny-all selects every pod, and lets nothing in.",
+"focus": "dn",
+"pause": 1.4,
+"draw": [
+"dn"
+],
+"acts": [
+{
+"id": "nn",
+"t": "lets nothing in",
+"x": 120,
+"y": 1480,
+"h": 58,
+"c": "R",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 59.88,
+"d": 2.99
+},
+{
+"id": "s11",
+"ch": "Collect labels",
+"cap": "The new policy needs two labels: the pods to protect, and the pod to allow.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 65.22,
+"d": 4.57
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "Read them: k get pods, dash dash show-labels.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get pods --show-labels -n web",
+"out": [
+"NAME         READY  STATUS   LABELS",
+"backend-...  1/1    Running  app=backend,pod-template-hash=...",
+"client       1/1    Running  run=client"
+],
+"next": "controlplane $"
+}
+],
+"hl": "run=client",
+"t": 71.34,
+"d": 2.85
+},
+{
+"id": "s13",
+"ch": null,
+"cap": "Protect app equals backend. Let in run equals client.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 75.53,
+"d": 3.67
+},
+{
+"id": "s14",
+"ch": null,
+"cap": "Pods made with k run get the label run, equals the pod's name.",
+"focus": "cl",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 80.75,
+"d": 3.89
+},
+{
+"id": "s15",
+"ch": "Write it",
+"cap": "There is no k create networkpolicy. Copy the example from the docs, page Network Policies.",
+"focus": "al",
+"pause": 1.2,
+"draw": [
+"al",
+"a_ab"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 86.79,
+"d": 6.3
+},
+{
+"id": "s16",
+"ch": null,
+"cap": "At the top: name allow-client, namespace web. The podSelector is app backend. policyTypes: Ingress.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "vim np.yaml",
+"out": [
+"metadata:",
+"  name: allow-client",
+"  namespace: web",
+"spec:",
+"  podSelector:",
+"    matchLabels:",
+"      app: backend",
+"  policyTypes:",
+"  - Ingress"
+],
+"next": "controlplane $"
+}
+],
+"hl": "app: backend",
+"t": 94.64,
+"d": 7.09
+},
+{
+"id": "s17",
+"ch": null,
+"cap": "Under ingress: from podSelector run client, and ports TCP 80.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "cat np.yaml | tail -8",
+"out": [
+"  ingress:",
+"  - from:",
+"    - podSelector:",
+"        matchLabels:",
+"          run: client",
+"    ports:",
+"    - protocol: TCP",
+"      port: 80"
+],
+"next": "controlplane $"
+}
+],
+"hl": "run: client",
+"t": 103.48,
+"d": 4.59
+},
+{
+"id": "s18",
+"ch": null,
+"cap": "From the docs copy, delete Egress, the ipBlock and namespaceSelector blocks, and the whole egress part.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 109.82,
+"d": 6.58
+},
+{
+"id": "s19",
+"ch": "Apply",
+"cap": "Apply it.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k apply -f np.yaml",
+"out": [
+"networkpolicy.networking.k8s.io/allow-client created"
+],
+"next": "controlplane $"
+}
+],
+"hl": "created",
+"t": 118.75,
+"d": 0.7
+},
+{
+"id": "s20",
+"ch": null,
+"cap": "The policy is in. deny-all is still there, untouched. The two add up.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [
+{
+"id": "ad",
+"t": "policies add up",
+"x": 120,
+"y": 1600,
+"h": 58,
+"c": "B",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 120.99,
+"d": 4.27
+},
+{
+"id": "s21",
+"ch": null,
+"cap": "Now client may come in, on port 80.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"x1",
+"nn"
+],
+"a": 0.3
+},
+{
+"dots": "a_cb",
+"a": 0.8,
+"n": 1,
+"color": "G",
+"back": false
+}
+],
+"term": [],
+"hl": null,
+"t": 127.02,
+"d": 2.23
+},
+{
+"id": "s22",
+"ch": "Prove it",
+"cap": "Test from the client.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 2.2,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k exec client -n web -- wget -qO- -T 3 backend-svc",
+"out": [
+"<title>Welcome to nginx!</title>"
+],
+"next": "controlplane $"
+}
+],
+"hl": "Welcome",
+"t": 130.8,
+"d": 1.12
+},
+{
+"id": "s23",
+"ch": "If it fails",
+"cap": "Still a timeout? A label in your file does not match. Compare with show-labels.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 133.87,
+"d": 4.62
+},
+{
+"id": "s24",
+"ch": null,
+"cap": "Or the policy landed in the default namespace. k get networkpolicy dash A shows it. Set namespace web.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 140.24,
+"d": 7.02
+},
+{
+"id": "s25",
+"ch": "The rule",
+"cap": "The rule: a timeout means a policy drops the traffic. Never touch deny-all.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 149.01,
+"d": 5.01
+},
+{
+"id": "s26",
+"ch": null,
+"cap": "Add a second policy: protect backend, allow client, on port 80.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 155.36,
+"d": 4.28
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "Which fix is allowed?",
+"opts": [
+[
+"Delete deny-all",
+false,
+"The question forbids it. Policies only add up."
+],
+[
+"Add a second policy that allows client",
+true,
+"Correct."
+],
+[
+"Edit deny-all",
+false,
+"The question forbids that too."
+]
+],
+"t": 64.62
+},
+{
+"id": "Q2",
+"q": "Which label goes under from?",
+"opts": [
+[
+"app=backend",
+false,
+"That is the pod you protect. It goes in the top podSelector."
+],
+[
+"run=client",
+true,
+"Correct."
+],
+[
+"app=client",
+false,
+"No such label. Read the real one with --show-labels."
+]
+],
+"t": 86.19
+},
+{
+"id": "Q3",
+"q": "Why do you delete \"- Egress\" from the docs example?",
+"opts": [
+[
+"With no egress rules, it blocks all outgoing traffic",
+true,
+"Correct."
+],
+[
+"It is not valid YAML",
+false,
+"It is valid. But it would block outgoing traffic."
+],
+[
+"The policy would get slower",
+false,
+"Speed is not the point. Blocked outgoing traffic is."
+]
+],
+"t": 118.15
+}
+]
+}

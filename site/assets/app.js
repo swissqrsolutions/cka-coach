@@ -86,7 +86,7 @@
       : `<div class="card install"><p><b>Install:</b> Chrome menu ⋮ → <b>Add to Home screen</b> → Install.</p></div>`;
   }
   // questions with a teaching film (assets/motion.js)
-  const FILMED = new Set([1, 2, 3, 4, 5, 8, 13, 15, 20, 21, 23, 25, 26, 31, 36, 40]);
+  const FILMED = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 13, 15, 20, 21, 23, 25, 26, 31, 36, 40]);
   function home() { // the Practice tab
     const p = prog(), solo = PQ().filter(q => (p[q.n] || {}).st === 'solo').length;
     const groups = D.topics.map(t => {

@@ -1,0 +1,623 @@
+{
+"end": 140.01,
+"goal": [
+"Goal: node-viewer",
+"get, list nodes"
+],
+"rule": {
+"title": "Cluster-wide: no namespace",
+"rows": [
+[
+"nodes",
+"have no namespace",
+"k api-resources: false"
+],
+[
+"ClusterRole + Binding",
+"no -n on them",
+"the SA still needs -n ops"
+]
+]
+},
+"shapes": {
+"nsf": {
+"rect": [
+40,
+420,
+960,
+700
+],
+"frame": true,
+"label": "namespace ops"
+},
+"clf": {
+"rect": [
+1100,
+420,
+960,
+1500
+],
+"frame": true,
+"label": "whole cluster"
+},
+"sa": {
+"rect": [
+110,
+620,
+780,
+300
+],
+"label": "ServiceAccount",
+"sub": "node-viewer",
+"h": 84
+},
+"crb": {
+"rect": [
+1170,
+620,
+820,
+300
+],
+"label": "ClusterRoleBinding",
+"sub": "node-viewer-binding",
+"h": 56
+},
+"cr": {
+"rect": [
+1170,
+1060,
+820,
+300
+],
+"label": "ClusterRole",
+"sub": "node-reader",
+"h": 84
+},
+"vb": {
+"rect": [
+1170,
+1500,
+820,
+300
+],
+"label": "get, list",
+"sub": "on nodes",
+"h": 84
+},
+"a_sb": {
+"arrow": [
+[
+890,
+770
+],
+[
+1170,
+770
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_bc": {
+"arrow": [
+[
+1580,
+920
+],
+[
+1580,
+1060
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_cv": {
+"arrow": [
+[
+1580,
+1360
+],
+[
+1580,
+1500
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 14. A ServiceAccount named node-viewer, in namespace ops, must read the nodes.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"nsf",
+"sa"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 5.82
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: node-viewer may get and list nodes. Use a ClusterRole, node-reader, and a ClusterRoleBinding, node-viewer-binding.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 8.37,
+"d": 7.9
+},
+{
+"id": "s3",
+"ch": "What is new",
+"cap": "This is like question 13: who, what, and the link.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 18.02,
+"d": 3.11
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "But with one difference. Nodes belong to no namespace.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 22.69,
+"d": 3.33
+},
+{
+"id": "s5",
+"ch": "Look first",
+"cap": "Check it: k api-resources, and grep for nodes.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k api-resources | grep -w nodes",
+"out": [
+"nodes   no   v1   false   Node"
+],
+"next": "controlplane $"
+}
+],
+"hl": "false",
+"t": 27.56,
+"d": 3.26
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "The fourth column is NAMESPACED. It says false. Nodes are cluster-wide.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "nn",
+"t": "nodes: NAMESPACED false",
+"x": 110,
+"y": 1300,
+"h": 46,
+"c": "R",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 32.17,
+"d": 4.38
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "Other cluster-wide things: PersistentVolumes, namespaces, StorageClasses.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 38.1,
+"d": 4.82
+},
+{
+"id": "s8",
+"ch": "The parts",
+"cap": "A Role only works inside one namespace. So it cannot give access to nodes.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 45.07,
+"d": 4.69
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "You need the cluster versions: a ClusterRole, and a ClusterRoleBinding.",
+"focus": "clf",
+"pause": 1.2,
+"draw": [
+"clf",
+"cr",
+"crb",
+"a_bc"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 51.31,
+"d": 4.08
+},
+{
+"id": "s10",
+"ch": null,
+"cap": "The ServiceAccount still lives in a namespace: ops.",
+"focus": "sa",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 56.94,
+"d": 3.18
+},
+{
+"id": "s11",
+"ch": "Create them",
+"cap": "Create the ServiceAccount, with dash n ops.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k create serviceaccount node-viewer -n ops",
+"out": [
+"serviceaccount/node-viewer created"
+],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 61.68,
+"d": 2.59
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "Create the ClusterRole: verbs get and list, resource nodes.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [
+"vb",
+"a_cv"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k create clusterrole node-reader --verb=get,list --resource=nodes",
+"out": [
+"clusterrole.rbac.authorization.k8s.io/node-reader created"
+],
+"next": "controlplane $"
+}
+],
+"hl": "get,list",
+"t": 65.61,
+"d": 3.63
+},
+{
+"id": "s13",
+"ch": null,
+"cap": "No dash n here. A ClusterRole has no namespace.",
+"focus": "cr",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 70.79,
+"d": 3.28
+},
+{
+"id": "s14",
+"ch": null,
+"cap": "Create the binding. Write the ServiceAccount as namespace, colon, name.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [
+"a_sb"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k create clusterrolebinding node-viewer-binding --clusterrole=node-reader --serviceaccount=ops:node-viewer",
+"out": [
+"clusterrolebinding.rbac.authorization.k8s.io/node-viewer-binding created"
+],
+"next": "controlplane $"
+}
+],
+"hl": "ops:node-viewer",
+"t": 75.62,
+"d": 4.34
+},
+{
+"id": "s15",
+"ch": "Prove it",
+"cap": "Read the binding back: k get clusterrolebinding, dash o wide.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get clusterrolebinding node-viewer-binding -o wide",
+"out": [
+"node-viewer-binding   ClusterRole/node-reader   ...   ops/node-viewer"
+],
+"next": "controlplane $"
+}
+],
+"hl": "ClusterRole/node-reader",
+"t": 82.11,
+"d": 3.64
+},
+{
+"id": "s16",
+"ch": null,
+"cap": "The names match: ClusterRole node-reader, and ops slash node-viewer.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 87.3,
+"d": 4.23
+},
+{
+"id": "s17",
+"ch": null,
+"cap": "Now ask the API, as the ServiceAccount. Can it list nodes?",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "ok",
+"t": "list: yes ✓",
+"x": 110,
+"y": 1500,
+"h": 58,
+"c": "G",
+"a": 4.0,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k auth can-i list nodes --as=system:serviceaccount:ops:node-viewer",
+"out": [
+"yes"
+],
+"next": "controlplane $"
+}
+],
+"hl": "yes",
+"t": 93.08,
+"d": 3.84
+},
+{
+"id": "s18",
+"ch": null,
+"cap": "And delete nodes? Not granted.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"id": "no",
+"t": "delete: no",
+"x": 110,
+"y": 1600,
+"h": 58,
+"c": "R",
+"a": 3.0,
+"align": null
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 4.0,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k auth can-i delete nodes --as=system:serviceaccount:ops:node-viewer",
+"out": [
+"no"
+],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 98.48,
+"d": 1.86
+},
+{
+"id": "s19",
+"ch": null,
+"cap": "Notice: no dash n in these tests. Nodes have no namespace.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 102.29,
+"d": 3.97
+},
+{
+"id": "s20",
+"ch": "If it fails",
+"cap": "Objects look fine, but still no? Look for a typo in the ServiceAccount or namespace, in the binding.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 108.41,
+"d": 6.34
+},
+{
+"id": "s21",
+"ch": null,
+"cap": "k describe clusterrolebinding shows it. Delete the binding, and create it again.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 116.5,
+"d": 4.77
+},
+{
+"id": "s22",
+"ch": "The rule",
+"cap": "The rule: a resource with no namespace needs a ClusterRole and a ClusterRoleBinding.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 123.02,
+"d": 5.47
+},
+{
+"id": "s23",
+"ch": null,
+"cap": "The ServiceAccount keeps its namespace. And test with k auth can-i, using dash dash as.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 129.84,
+"d": 5.82
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "Is the resource nodes namespaced?",
+"opts": [
+[
+"Yes, so use a Role",
+false,
+"Nodes have no namespace. A Role cannot give access to them."
+],
+[
+"No, so use the Cluster versions",
+true,
+"Correct."
+],
+[
+"It depends on -n",
+false,
+"Nodes have no namespace at all."
+]
+],
+"t": 44.47
+},
+{
+"id": "Q2",
+"q": "Which flag does a ClusterRoleBinding need?",
+"opts": [
+[
+"--role=node-reader",
+false,
+"A ClusterRoleBinding needs --clusterrole=."
+],
+[
+"--clusterrole=node-reader",
+true,
+"Correct."
+],
+[
+"--user=node-viewer",
+false,
+"That is a user. Here it is a ServiceAccount: ops:node-viewer."
+]
+],
+"t": 81.51
+},
+{
+"id": "Q3",
+"q": "The check says no for list. What is the likely cause?",
+"opts": [
+[
+"You made a Role and a RoleBinding",
+true,
+"Delete them. Use the Cluster versions."
+],
+[
+"Nodes need a namespace",
+false,
+"Nodes have no namespace."
+],
+[
+"The cluster is down",
+false,
+"Then no command would work."
+]
+],
+"t": 107.81
+}
+]
+}
