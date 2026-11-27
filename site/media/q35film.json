@@ -1,0 +1,735 @@
+{
+"end": 184.55,
+"goal": [
+"Goal: pod api",
+"env + secret"
+],
+"rule": {
+"title": "Config in, secret as files",
+"rows": [
+[
+"envFrom: configMapRef",
+"container level",
+"all keys become env vars"
+],
+[
+"volumes + volumeMounts",
+"volumes: pod level",
+"the name db links them"
+]
+]
+},
+"shapes": {
+"fr": {
+"rect": [
+40,
+420,
+2020,
+1500
+],
+"frame": true,
+"label": "namespace app"
+},
+"cm": {
+"rect": [
+110,
+620,
+900,
+300
+],
+"label": "ConfigMap app-cfg",
+"sub": "LOG_LEVEL=debug",
+"h": 62
+},
+"sc": {
+"rect": [
+1100,
+620,
+900,
+300
+],
+"label": "Secret db-sec",
+"sub": "password=s3cret",
+"h": 80
+},
+"ev": {
+"rect": [
+110,
+1060,
+900,
+260
+],
+"label": "envFrom",
+"sub": "all keys become env vars",
+"h": 55
+},
+"vo": {
+"rect": [
+1100,
+1060,
+900,
+260
+],
+"label": "volume db",
+"sub": "Secret files in /etc/db",
+"h": 58
+},
+"pod": {
+"rect": [
+560,
+1480,
+1000,
+260
+],
+"label": "pod api",
+"sub": "image nginx:1.27",
+"h": 84
+},
+"a_ce": {
+"arrow": [
+[
+560,
+920
+],
+[
+560,
+1060
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_sv": {
+"arrow": [
+[
+1550,
+920
+],
+[
+1550,
+1060
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_ep": {
+"arrow": [
+[
+560,
+1320
+],
+[
+800,
+1480
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_vp": {
+"arrow": [
+[
+1550,
+1320
+],
+[
+1300,
+1480
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 35. Namespace app is new, and nearly empty.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"fr"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 4.01
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: a Config Map named app-cfg, with LOG underscore LEVEL equals debug. A Secret named db-sec, with password equals S three cret.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 6.56,
+"d": 11.0
+},
+{
+"id": "s3",
+"ch": "How it works",
+"cap": "A Config Map stores plain settings, as key and value.",
+"focus": "cm",
+"pause": 1.2,
+"draw": [
+"cm"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 19.31,
+"d": 3.37
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "A Secret is the same, for sensitive values like passwords.",
+"focus": "sc",
+"pause": 1.2,
+"draw": [
+"sc"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 24.23,
+"d": 3.67
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "Then a pod named api, image nginx 1.27. It must use both.",
+"focus": "pod",
+"pause": 1.2,
+"draw": [
+"pod"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 29.45,
+"d": 5.72
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "All keys of the Config Map become environment variables. That is what env from does.",
+"focus": "ev",
+"pause": 1.4,
+"draw": [
+"ev",
+"a_ce",
+"a_ep"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 36.72,
+"d": 5.24
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "The Secret is mounted as files under slash etc slash db. Each key becomes a file.",
+"focus": "vo",
+"pause": 1.4,
+"draw": [
+"vo",
+"a_sv",
+"a_vp"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 43.71,
+"d": 5.81
+},
+{
+"id": "s8",
+"ch": "Look first",
+"cap": "First look at what exists in the namespace.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get configmaps,secrets -n app",
+"out": [
+"NAME                         DATA   AGE",
+"configmap/kube-root-ca.crt   1      1m"
+],
+"next": "controlplane $"
+}
+],
+"hl": "kube-root-ca",
+"t": 51.27,
+"d": 2.27
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "Only kube root C A dot C R T. Every namespace has it.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 54.88,
+"d": 3.92
+},
+{
+"id": "s10",
+"ch": "Create both",
+"cap": "Both have a one-line create. No YAML is needed.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k create configmap app-cfg --from-literal=LOG_LEVEL=debug -n app",
+"out": [
+"configmap/app-cfg created"
+],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k create secret generic db-sec --from-literal=password=s3cret -n app",
+"out": [
+"secret/db-sec created"
+],
+"next": "controlplane $"
+}
+],
+"hl": "created",
+"t": 60.36,
+"d": 3.12
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "Do not forget generic. k create secret, alone, needs a type.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 65.03,
+"d": 3.7
+},
+{
+"id": "s12",
+"ch": "The pod YAML",
+"cap": "For the pod, let kubectl write the YAML. Dry run client prints it, and creates nothing.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k run api --image=nginx:1.27 --dry-run=client -o yaml -n app > pod.yaml",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "cat pod.yaml",
+"out": [
+"...",
+"spec:",
+"  containers:",
+"  - image: nginx:1.27",
+"    name: api",
+"    resources: {}",
+"  dnsPolicy: ClusterFirst",
+"..."
+],
+"next": "controlplane $"
+}
+],
+"hl": "resources",
+"t": 70.88,
+"d": 5.66
+},
+{
+"id": "s13",
+"ch": null,
+"cap": "Resources shows the container level, 4 spaces in. Dns policy shows the pod level, 2 spaces in.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 78.09,
+"d": 7.07
+},
+{
+"id": "s14",
+"ch": "Add the blocks",
+"cap": "Now add the blocks. Copy them from the docs pages: Configure a Pod to Use a ConfigMap, and Secrets.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "vim pod.yaml",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 86.9,
+"d": 6.66
+},
+{
+"id": "s15",
+"ch": null,
+"cap": "At container level: env from, and volume mounts.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "# in vim: add at container level",
+"out": [
+"    resources: {}",
+"    envFrom:",
+"    - configMapRef:",
+"        name: app-cfg",
+"    volumeMounts:",
+"    - name: db",
+"      mountPath: /etc/db"
+],
+"next": "controlplane $"
+}
+],
+"hl": "envFrom",
+"t": 95.11,
+"d": 3.04
+},
+{
+"id": "s16",
+"ch": null,
+"cap": "At pod level, in the column of containers: volumes.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "# in vim: add at pod level",
+"out": [
+"  volumes:",
+"  - name: db",
+"    secret:",
+"      secretName: db-sec",
+"  dnsPolicy: ClusterFirst"
+],
+"next": "controlplane $"
+}
+],
+"hl": "volumes",
+"t": 99.7,
+"d": 3.31
+},
+{
+"id": "s17",
+"ch": null,
+"cap": "The name db links volumes to volume mounts.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 104.56,
+"d": 2.85
+},
+{
+"id": "s18",
+"ch": null,
+"cap": "In vim: type colon set paste before you press i and paste. Save with colon w q.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 109.56,
+"d": 5.78
+},
+{
+"id": "s19",
+"ch": "Create the pod",
+"cap": "Apply the file. It does nothing until the cluster has it.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k apply -f pod.yaml",
+"out": [
+"pod/api created"
+],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k get pod api -n app",
+"out": [
+"api   1/1   Running   0   10s"
+],
+"next": "controlplane $"
+}
+],
+"hl": "Running",
+"t": 117.09,
+"d": 3.22
+},
+{
+"id": "s20",
+"ch": "Prove it",
+"cap": "Prove the variable is inside the container.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k exec api -n app -- env | grep LOG_LEVEL",
+"out": [
+"LOG_LEVEL=debug"
+],
+"next": "controlplane $"
+}
+],
+"hl": "LOG_LEVEL=debug",
+"t": 121.86,
+"d": 2.48
+},
+{
+"id": "s21",
+"ch": null,
+"cap": "And the file.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"id": "ok",
+"t": "env + file ✓",
+"x": 560,
+"y": 1810,
+"h": 54,
+"c": "G",
+"a": 2.6,
+"align": null
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 4.0,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k exec api -n app -- cat /etc/db/password",
+"out": [
+"s3cret"
+],
+"next": "controlplane $"
+}
+],
+"hl": "s3cret",
+"t": 125.89,
+"d": 0.78
+},
+{
+"id": "s22",
+"ch": null,
+"cap": "The file has no newline at the end. So your prompt may follow S three cret on the same line.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 128.62,
+"d": 5.62
+},
+{
+"id": "s23",
+"ch": "If it fails",
+"cap": "Create Container Config Error? The Config Map name in env from does not exist. k describe pod names it. Delete the pod, fix, and apply again.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 136.59,
+"d": 9.95
+},
+{
+"id": "s24",
+"ch": null,
+"cap": "Stuck in Container Creating? The Secret name in volumes does not exist. Read Events in k describe pod, and fix secret name.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 148.29,
+"d": 8.39
+},
+{
+"id": "s25",
+"ch": null,
+"cap": "Forbidden, pod updates may not change fields? A pod cannot change its env and volumes. Delete the pod, and apply again.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k delete pod api -n app",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 158.43,
+"d": 7.74
+},
+{
+"id": "s26",
+"ch": "The rule",
+"cap": "The rule: env from at container level. volumes at pod level.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 167.92,
+"d": 3.85
+},
+{
+"id": "s27",
+"ch": null,
+"cap": "Create both with one-line commands. Write the pod YAML with dry run, add two blocks, and prove it with exec.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 173.13,
+"d": 7.07
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "Why does the Secret command say generic?",
+"opts": [
+[
+"k create secret alone needs a type",
+true,
+"Correct. generic is that type."
+],
+[
+"It makes the Secret public",
+false,
+"generic is a type, not a visibility."
+],
+[
+"It is the name of the Secret",
+false,
+"The name is db-sec."
+]
+],
+"t": 70.28
+},
+{
+"id": "Q2",
+"q": "Where does volumes: go?",
+"opts": [
+[
+"Pod level, in the column of containers:",
+true,
+"Correct."
+],
+[
+"Under the container",
+false,
+"You get: unknown field spec.containers[0].volumes."
+],
+[
+"Inside envFrom",
+false,
+"envFrom is for the ConfigMap. volumes is a pod-level field."
+]
+],
+"t": 108.96
+},
+{
+"id": "Q3",
+"q": "Why can your prompt follow s3cret on the same line?",
+"opts": [
+[
+"The file has no newline at the end",
+true,
+"Correct. It is normal."
+],
+[
+"The pod crashed",
+false,
+"The pod is Running. The file is only short."
+],
+[
+"cat is broken",
+false,
+"cat prints the file as it is."
+]
+],
+"t": 135.99
+}
+]
+}

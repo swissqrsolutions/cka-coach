@@ -1,0 +1,722 @@
+{
+"end": 181.63,
+"goal": [
+"Goal: 3 pods",
+"share node01"
+],
+"rule": {
+"title": "Share the node equally",
+"rows": [
+[
+"free = offered - reserved",
+"Allocatable - Requests",
+"scale web to 0 first"
+],
+[
+"free x 0.9 / 3",
+"$(( )) rounds down",
+"here: 225m and 480Mi"
+]
+]
+},
+"shapes": {
+"fr": {
+"rect": [
+40,
+420,
+2020,
+1500
+],
+"frame": true,
+"label": "namespace shop, node node01"
+},
+"al": {
+"rect": [
+110,
+620,
+900,
+300
+],
+"label": "Allocatable",
+"sub": "cpu 1000m, memory 1800Mi",
+"h": 55
+},
+"rq": {
+"rect": [
+1100,
+620,
+900,
+300
+],
+"label": "Requests",
+"sub": "other pods: 250m, 200Mi",
+"h": 58
+},
+"fe": {
+"rect": [
+110,
+1060,
+900,
+260
+],
+"label": "free",
+"sub": "750m, 1600Mi",
+"h": 90
+},
+"hd": {
+"rect": [
+1100,
+1060,
+900,
+260
+],
+"label": "headroom",
+"sub": "about 10% stays free",
+"h": 67
+},
+"pp": {
+"rect": [
+110,
+1480,
+900,
+260
+],
+"label": "per pod",
+"sub": "225m, 480Mi",
+"h": 90
+},
+"dp": {
+"rect": [
+1100,
+1480,
+900,
+260
+],
+"label": "web x 3",
+"sub": "3 pods Running on node01",
+"h": 55
+},
+"a_af": {
+"arrow": [
+[
+560,
+920
+],
+[
+560,
+1060
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_rf": {
+"arrow": [
+[
+1300,
+920
+],
+[
+900,
+1060
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_fp": {
+"arrow": [
+[
+560,
+1320
+],
+[
+560,
+1480
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_pd": {
+"arrow": [
+[
+1010,
+1610
+],
+[
+1100,
+1610
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 34. In namespace shop, deployment web runs 3 replicas, all on node node01.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"fr"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 6.98
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: set C P U and memory requests, so the three pods share the free resources of the node equally.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 9.53,
+"d": 6.94
+},
+{
+"id": "s3",
+"ch": null,
+"cap": "Leave about 10 percent free, so the node stays stable. All 3 pods must be Running.",
+"focus": "hd",
+"pause": 1.2,
+"draw": [
+"hd"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 18.22,
+"d": 5.14
+},
+{
+"id": "s3b",
+"ch": null,
+"cap": "Without headroom, the node would run at 100 percent. One small spike could make it unstable.",
+"focus": "hd",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 24.91,
+"d": 5.97
+},
+{
+"id": "s4",
+"ch": "How it works",
+"cap": "A request is what one pod reserves on the node.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 32.63,
+"d": 2.77
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "A node offers a total to its pods. That total is called Allocatable. Other pods have already reserved a part.",
+"focus": "al",
+"pause": 1.4,
+"draw": [
+"al",
+"rq"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 36.96,
+"d": 7.05
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "Free is what the node offers, minus what is reserved.",
+"focus": "fe",
+"pause": 1.2,
+"draw": [
+"fe",
+"a_af",
+"a_rf"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 45.76,
+"d": 3.2
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "Each pod gets: free, times 0.9, divided by 3.",
+"focus": "pp",
+"pause": 1.2,
+"draw": [
+"pp",
+"a_fp"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 50.5,
+"d": 4.33
+},
+{
+"id": "s8",
+"ch": "Look first",
+"cap": "But web itself is in the numbers. Scale it to zero first. Then the node shows only the other pods.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k scale deployment/web --replicas=0 -n shop",
+"out": [
+"deployment.apps/web scaled"
+],
+"next": "controlplane $"
+}
+],
+"hl": "scaled",
+"t": 56.38,
+"d": 6.17
+},
+{
+"id": "s8b",
+"ch": null,
+"cap": "Otherwise the node would still count the old web pods, and your answer would come out too small.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 64.1,
+"d": 5.14
+},
+{
+"id": "s9",
+"ch": "Read the node",
+"cap": "Read the node. These are example numbers, yours differ. Allocatable first.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k describe node node01 | grep -A7 \"Allocatable:\"",
+"out": [
+"Allocatable:",
+"  cpu:                1",
+"  ...",
+"  memory:             1843756Ki"
+],
+"next": "controlplane $"
+}
+],
+"hl": "1843756Ki",
+"t": 70.99,
+"d": 4.72
+},
+{
+"id": "s10",
+"ch": null,
+"cap": "Now what is already reserved: the Requests column.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k describe node node01 | grep -A6 \"Allocated resources:\"",
+"out": [
+"  Resource           Requests     Limits",
+"  --------           --------     ------",
+"  cpu                250m (25%)   0 (0%)",
+"  memory             200Mi (11%)  0 (0%)"
+],
+"next": "controlplane $"
+}
+],
+"hl": "250m",
+"t": 77.26,
+"d": 2.92
+},
+{
+"id": "s11",
+"ch": "Calculate",
+"cap": "Let the shell do the maths. Dollar, double parentheses, always rounds down. First, memory in mebibytes.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "echo $(( 1843756 / 1024 ))",
+"out": [
+"1800"
+],
+"next": "controlplane $"
+}
+],
+"hl": "1800",
+"t": 82.33,
+"d": 6.72
+},
+{
+"id": "s11b",
+"ch": null,
+"cap": "Memory is shown in kibibytes. We want mebibytes, so we divide by 1024.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 90.6,
+"d": 5.72
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "Now the request per pod. C P U first, then memory.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "echo $(( (1000 - 250) * 9 / 10 / 3 ))",
+"out": [
+"225"
+],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "echo $(( (1800 - 200) * 9 / 10 / 3 ))",
+"out": [
+"480"
+],
+"next": "controlplane $"
+}
+],
+"hl": "480",
+"t": 97.87,
+"d": 3.37
+},
+{
+"id": "s13",
+"ch": null,
+"cap": "C P U: 750 times 0.9, divided by 3, is 225 m. Memory: 1600 times 0.9, divided by 3, is 480 Mi.",
+"focus": "pp",
+"pause": 1.4,
+"draw": [],
+"acts": [
+{
+"id": "n1",
+"t": "225m + 480Mi per pod",
+"x": 110,
+"y": 1810,
+"h": 54,
+"c": "B",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 102.79,
+"d": 14.25
+},
+{
+"id": "s14",
+"ch": null,
+"cap": "Do not copy these numbers. Use your own, from the node.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 118.79,
+"d": 3.27
+},
+{
+"id": "s15",
+"ch": "Set them",
+"cap": "Set the requests. Then bring the three pods back.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [
+"a_pd",
+"dp"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k set resources deployment/web --requests=cpu=225m,memory=480Mi -n shop",
+"out": [
+"deployment.apps/web resource requirements updated"
+],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k scale deployment/web --replicas=3 -n shop",
+"out": [
+"deployment.apps/web scaled"
+],
+"next": "controlplane $"
+}
+],
+"hl": "updated",
+"t": 123.81,
+"d": 2.79
+},
+{
+"id": "s16",
+"ch": null,
+"cap": "The requests apply to every new pod.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 128.15,
+"d": 2.03
+},
+{
+"id": "s16b",
+"ch": null,
+"cap": "Every new pod gets the same request. So the three pods are equal.",
+"focus": "dp",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 131.73,
+"d": 3.9
+},
+{
+"id": "s17",
+"ch": "Prove it",
+"cap": "Check the pods. All three must be Running, on node01.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get pods -o wide -n shop",
+"out": [
+"web-...   1/1   Running   0   20s   ...   node01",
+"web-...   1/1   Running   0   20s   ...   node01",
+"web-...   1/1   Running   0   20s   ...   node01"
+],
+"next": "controlplane $"
+}
+],
+"hl": "Running",
+"t": 137.78,
+"d": 3.75
+},
+{
+"id": "s18",
+"ch": null,
+"cap": "Now the node again. It should be near 90 percent.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"n1"
+],
+"a": 0.2
+},
+{
+"id": "ok",
+"t": "near 90% ✓",
+"x": 110,
+"y": 1810,
+"h": 54,
+"c": "G",
+"a": 3.0,
+"align": null
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 4.5,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k describe node node01 | grep -A6 \"Allocated resources:\"",
+"out": [
+"  cpu                925m (92%)    0 (0%)",
+"  memory             1640Mi (91%)  0 (0%)"
+],
+"next": "controlplane $"
+}
+],
+"hl": "92%",
+"t": 143.08,
+"d": 2.84
+},
+{
+"id": "s18b",
+"ch": null,
+"cap": "About 90 percent used, 10 percent free. That is the headroom the question asked for.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 147.87,
+"d": 5.29
+},
+{
+"id": "s19",
+"ch": "If it fails",
+"cap": "One pod Pending, and Events say Insufficient cpu, or memory? The requests are slightly too big. Lower them by 10 percent, and set them again.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 155.52,
+"d": 9.68
+},
+{
+"id": "s20",
+"ch": "The rule",
+"cap": "The rule: free is Allocatable, minus Requests.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 166.94,
+"d": 2.99
+},
+{
+"id": "s21",
+"ch": null,
+"cap": "Multiply by 0.9, divide by 3, round down. Always use your own numbers.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 171.28,
+"d": 6.0
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "Which column do you subtract from Allocatable?",
+"opts": [
+[
+"Requests",
+true,
+"Correct. It is what is already reserved."
+],
+[
+"Limits",
+false,
+"Do not take Limits. Use Requests."
+],
+[
+"Neither. Use the pod count",
+false,
+"Free is offered minus reserved."
+]
+],
+"t": 81.73
+},
+{
+"id": "Q2",
+"q": "What if the requests are slightly too big?",
+"opts": [
+[
+"One pod stays Pending: Insufficient cpu",
+true,
+"Correct. Lower the requests by 10 percent."
+],
+[
+"The node restarts",
+false,
+"The scheduler only leaves the pod Pending."
+],
+[
+"Nothing, the pods share anyway",
+false,
+"A pod that does not fit cannot be placed."
+]
+],
+"t": 137.18
+},
+{
+"id": "Q3",
+"q": "Why is the node at about 90 percent, not 100?",
+"opts": [
+[
+"Free was multiplied by 0.9: 10% headroom",
+true,
+"Correct."
+],
+[
+"One pod is still Pending",
+false,
+"All three are Running."
+],
+[
+"Limits are zero",
+false,
+"Limits do not decide the share. Requests do."
+]
+],
+"t": 154.92
+}
+]
+}

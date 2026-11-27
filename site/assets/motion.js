@@ -165,6 +165,14 @@ const SHORTS = {
   27: { long: true, audio: 'media/q27.mp3', json: 'media/q27film.json', film: genFilm },
   28: { long: true, audio: 'media/q28.mp3', json: 'media/q28film.json', film: genFilm },
   29: { long: true, audio: 'media/q29.mp3', json: 'media/q29film.json', film: genFilm },
+  30: { long: true, audio: 'media/q30.mp3', json: 'media/q30film.json', film: genFilm },
+  32: { long: true, audio: 'media/q32.mp3', json: 'media/q32film.json', film: genFilm },
+  33: { long: true, audio: 'media/q33.mp3', json: 'media/q33film.json', film: genFilm },
+  34: { long: true, audio: 'media/q34.mp3', json: 'media/q34film.json', film: genFilm },
+  35: { long: true, audio: 'media/q35.mp3', json: 'media/q35film.json', film: genFilm },
+  37: { long: true, audio: 'media/q37.mp3', json: 'media/q37film.json', film: genFilm },
+  38: { long: true, audio: 'media/q38.mp3', json: 'media/q38film.json', film: genFilm },
+  39: { long: true, audio: 'media/q39.mp3', json: 'media/q39film.json', film: genFilm },
 };
 
 // ───────── Q4, explained slowly (layout v4): two computers side by side, You outside both; one focus at a time

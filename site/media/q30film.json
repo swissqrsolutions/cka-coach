@@ -1,0 +1,695 @@
+{
+"end": 181.0,
+"goal": [
+"Goal: lookup",
+"saved in file"
+],
+"rule": {
+"title": "Use the full name",
+"rows": [
+[
+"svc.cluster.local",
+"name.namespace.svc.cluster.local",
+"works from every namespace"
+],
+[
+"> into the file, -i",
+"no -it for a file",
+"answer = Address under Name:"
+]
+]
+},
+"shapes": {
+"fr": {
+"rect": [
+40,
+420,
+2020,
+1500
+],
+"frame": true,
+"label": "the cluster"
+},
+"dn": {
+"rect": [
+110,
+620,
+900,
+300
+],
+"label": "namespace default",
+"sub": "pod t runs here",
+"h": 62
+},
+"wn": {
+"rect": [
+1100,
+620,
+900,
+300
+],
+"label": "namespace web",
+"sub": "backend-svc is here",
+"h": 70
+},
+"sn": {
+"rect": [
+110,
+1060,
+560,
+260
+],
+"label": "short name",
+"sub": "backend-svc",
+"h": 66
+},
+"fq": {
+"rect": [
+740,
+1060,
+1250,
+260
+],
+"label": "full name (FQDN)",
+"sub": "backend-svc.web.svc.cluster.local",
+"h": 50
+},
+"fl": {
+"rect": [
+110,
+1480,
+900,
+260
+],
+"label": "/root/dns.txt",
+"sub": "the lookup output",
+"h": 78
+},
+"an": {
+"rect": [
+1100,
+1480,
+900,
+260
+],
+"label": "the answer",
+"sub": "Address under Name:",
+"h": 70
+},
+"a_dw": {
+"arrow": [
+[
+1010,
+770
+],
+[
+1100,
+770
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_wf": {
+"arrow": [
+[
+1550,
+920
+],
+[
+1550,
+1060
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_fa": {
+"arrow": [
+[
+1550,
+1320
+],
+[
+1550,
+1480
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_af": {
+"arrow": [
+[
+1100,
+1610
+],
+[
+1010,
+1610
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 30. A Service named backend-svc lives in namespace web.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"fr",
+"wn"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 5.26
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: from a test pod in namespace default, look up the DNS name of that Service. Save the output in slash root slash dns dot txt.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal",
+"dn",
+"a_dw",
+"fl"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 7.81,
+"d": 10.2
+},
+{
+"id": "s3",
+"ch": "How it works",
+"cap": "Pods find Services by name. DNS answers those names.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 19.77,
+"d": 3.92
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "A short name, like backend-svc, only works from the same namespace.",
+"focus": "sn",
+"pause": 1.2,
+"draw": [
+"sn"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 25.23,
+"d": 4.61
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "The test pod is in default. The Service is in web. So the short name fails.",
+"focus": "sn",
+"pause": 1.4,
+"draw": [],
+"acts": [
+{
+"id": "nf",
+"t": "not found",
+"x": 110,
+"y": 1385,
+"h": 54,
+"c": "R",
+"a": 0.8,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 31.4,
+"d": 4.63
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "The full name adds the namespace, and then svc dot cluster dot local.",
+"focus": "fq",
+"pause": 1.2,
+"draw": [
+"fq",
+"a_wf"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 37.78,
+"d": 4.72
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "It is called the F Q D N. It works from every namespace.",
+"focus": "fq",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 44.05,
+"d": 3.62
+},
+{
+"id": "s8",
+"ch": "Look first",
+"cap": "First, find the namespace of the Service, and its IP.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get services -A | grep backend-svc",
+"out": [
+"web   backend-svc   ClusterIP   10.x.x.x   ..."
+],
+"next": "controlplane $"
+}
+],
+"hl": "backend-svc",
+"t": 49.22,
+"d": 3.15
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "The first column is the namespace: web. Note the IP too. You need it at the end.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 53.72,
+"d": 5.07
+},
+{
+"id": "s10",
+"ch": "Test first",
+"cap": "Test the name on screen first. You see a good answer before you write the file.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup backend-svc.web.svc.cluster.local",
+"out": [
+"...",
+"Name:\tbackend-svc.web.svc.cluster.local",
+"Address: 10.x.x.x",
+"..."
+],
+"next": "controlplane $"
+}
+],
+"hl": "Address: 10",
+"t": 61.14,
+"d": 4.22
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "The name is right. The Address is the IP of the Service.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 66.92,
+"d": 3.42
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "Do not use only backend-svc. From default, that name is not found.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"nf"
+],
+"a": 0.2
+}
+],
+"term": [],
+"hl": null,
+"t": 71.89,
+"d": 4.83
+},
+{
+"id": "s13",
+"ch": "Save it",
+"cap": "Now save it. The greater-than sign sends the output into the file, not onto the screen.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [
+"fl",
+"a_af"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k run t --image=busybox:1.36 --rm -i --restart=Never -- nslookup backend-svc.web.svc.cluster.local > /root/dns.txt",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": "dns.txt",
+"t": 79.07,
+"d": 5.26
+},
+{
+"id": "s14",
+"ch": null,
+"cap": "Use dash i here, not dash it. A terminal is not needed when the output goes into a file.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 85.88,
+"d": 5.8
+},
+{
+"id": "s15",
+"ch": null,
+"cap": "And dash dash rm means: run once, pass the output back, then delete the pod.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 93.42,
+"d": 5.0
+},
+{
+"id": "s16",
+"ch": "Read the file",
+"cap": "Read the file. The first Address is the DNS server. The answer is the one under Name.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [
+"an",
+"a_fa"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "cat /root/dns.txt",
+"out": [
+"Server:\t\t10.96.0.10",
+"Address:\t10.96.0.10:53",
+"Name:\tbackend-svc.web.svc.cluster.local",
+"Address: 10.x.x.x"
+],
+"next": "controlplane $"
+}
+],
+"hl": "Address: 10.x",
+"t": 100.17,
+"d": 5.56
+},
+{
+"id": "s17",
+"ch": "Prove it",
+"cap": "Prove that the IP in the file is the IP of the Service.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"id": "ok",
+"t": "same IP ✓",
+"x": 1100,
+"y": 1810,
+"h": 54,
+"c": "G",
+"a": 2.6,
+"align": null
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 4.4,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get service backend-svc -o jsonpath='{.spec.clusterIP}{\"\\n\"}' -n web",
+"out": [
+"10.x.x.x"
+],
+"next": "controlplane $"
+}
+],
+"hl": "10.x.x.x",
+"t": 108.08,
+"d": 3.65
+},
+{
+"id": "s18",
+"ch": null,
+"cap": "It is the same IP as under Name in the file. The lookup is saved.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 113.68,
+"d": 4.1
+},
+{
+"id": "s19",
+"ch": "If it fails",
+"cap": "NXDOMAIN, or can't find? A typo, or the wrong namespace in the name. Rebuild the name from the first step.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 119.33,
+"d": 7.29
+},
+{
+"id": "s20",
+"ch": null,
+"cap": "Pods t already exists? An older test pod is still there. Delete it, and run again.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k delete pod t",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 128.37,
+"d": 5.04
+},
+{
+"id": "s21",
+"ch": null,
+"cap": "The file also holds the line pod t deleted? That line comes from kubectl. It is usually accepted.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 135.16,
+"d": 6.72
+},
+{
+"id": "s22",
+"ch": null,
+"cap": "Or run without dash dash rm. Then write the logs into the file, and delete the pod.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k logs t > /root/dns.txt",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k delete pod t",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 143.62,
+"d": 5.48
+},
+{
+"id": "s23",
+"ch": null,
+"cap": "Can't find, No answer? busybox also asks for I P version six. There is none. Ignore it.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 150.85,
+"d": 6.35
+},
+{
+"id": "s24",
+"ch": null,
+"cap": "Every name fails? Then DNS itself is broken. That is question 11.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 158.95,
+"d": 4.99
+},
+{
+"id": "s25",
+"ch": "The rule",
+"cap": "The rule: from another namespace, use the full name.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 165.49,
+"d": 2.87
+},
+{
+"id": "s26",
+"ch": null,
+"cap": "Service, namespace, then svc dot cluster dot local. Save with the greater-than sign, and use dash i.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 169.71,
+"d": 6.94
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "From namespace default, which name finds the Service?",
+"opts": [
+[
+"backend-svc.web.svc.cluster.local",
+true,
+"Correct. Service, namespace, then svc.cluster.local."
+],
+[
+"backend-svc",
+false,
+"A short name only works from the same namespace."
+],
+[
+"web.backend-svc",
+false,
+"The Service comes first, then the namespace, then svc.cluster.local."
+]
+],
+"t": 60.54
+},
+{
+"id": "Q2",
+"q": "Why does the short name backend-svc fail from default?",
+"opts": [
+[
+"Short names only work in the same namespace",
+true,
+"Correct. Add the namespace and svc.cluster.local."
+],
+[
+"The Service has no IP",
+false,
+"It has a CLUSTER-IP. The name is the problem."
+],
+[
+"busybox cannot do DNS",
+false,
+"It can. The full name works."
+]
+],
+"t": 78.47
+},
+{
+"id": "Q3",
+"q": "Which Address line in the file is the answer?",
+"opts": [
+[
+"The one under Name:",
+true,
+"Correct. It is the IP of the Service."
+],
+[
+"The first one, next to Server",
+false,
+"That is the DNS server itself."
+],
+[
+"Both of them",
+false,
+"Only the one under Name: is the answer."
+]
+],
+"t": 107.48
+}
+]
+}

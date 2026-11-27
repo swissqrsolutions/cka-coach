@@ -1,0 +1,701 @@
+{
+"end": 177.49,
+"goal": [
+"Goal: web uses",
+"top minus 1"
+],
+"rule": {
+"title": "Top user class minus one",
+"rows": [
+[
+"highest user class",
+"ignore the system- ones",
+"1000, so the new one is 999"
+],
+[
+"priorityClassName:",
+"in the pod template spec",
+"same column as containers:"
+]
+]
+},
+"shapes": {
+"fr": {
+"rect": [
+40,
+420,
+2020,
+1500
+],
+"frame": true,
+"label": "the cluster (classes have no namespace)"
+},
+"sl": {
+"rect": [
+110,
+620,
+560,
+300
+],
+"label": "low-prio",
+"sub": "value 100",
+"h": 83
+},
+"sm": {
+"rect": [
+740,
+620,
+560,
+300
+],
+"label": "mid-prio",
+"sub": "value 1000",
+"h": 83
+},
+"sy": {
+"rect": [
+1370,
+620,
+630,
+300
+],
+"label": "system- classes",
+"sub": "ignore them",
+"h": 49
+},
+"nw": {
+"rect": [
+110,
+1060,
+900,
+260
+],
+"label": "high-priority",
+"sub": "the new class: 999",
+"h": 74
+},
+"dp": {
+"rect": [
+1100,
+1060,
+900,
+260
+],
+"label": "Deployment web",
+"sub": "namespace shop",
+"h": 76
+},
+"pd": {
+"rect": [
+560,
+1480,
+1000,
+260
+],
+"label": "new pods",
+"sub": "class + number",
+"h": 84
+},
+"a_mn": {
+"arrow": [
+[
+800,
+920
+],
+[
+600,
+1060
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_dn": {
+"arrow": [
+[
+1100,
+1190
+],
+[
+1010,
+1190
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_dp": {
+"arrow": [
+[
+1550,
+1320
+],
+[
+1300,
+1480
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_np": {
+"arrow": [
+[
+560,
+1320
+],
+[
+800,
+1480
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 33. In namespace shop, deployment web runs nginx.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"fr"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 4.8
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: create a Priority Class named high-priority. Its value must be exactly one less than the highest user-defined class.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 7.35,
+"d": 8.46
+},
+{
+"id": "s3",
+"ch": null,
+"cap": "Then make deployment web use that class.",
+"focus": "dp",
+"pause": 1.2,
+"draw": [
+"dp"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 17.57,
+"d": 2.32
+},
+{
+"id": "s4",
+"ch": "How it works",
+"cap": "A Priority Class is an object that holds a number. A higher number is scheduled first.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 21.44,
+"d": 5.27
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "A class has no namespace. It belongs to the whole cluster.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 28.26,
+"d": 3.55
+},
+{
+"id": "s5b",
+"ch": null,
+"cap": "Think of it as a queue number. The pod with the higher number is scheduled first.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 33.37,
+"d": 4.39
+},
+{
+"id": "s6",
+"ch": "Look first",
+"cap": "Look at which classes exist.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get priorityclass",
+"out": [
+"low-prio                  100          false",
+"mid-prio                  1000         false",
+"system-cluster-critical   2000000000   false",
+"system-node-critical      2000001000   false"
+],
+"next": "controlplane $"
+}
+],
+"hl": "mid-prio",
+"t": 39.31,
+"d": 1.6
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "Two user classes: low-prio with 100, and mid-prio with 1000.",
+"focus": "sm",
+"pause": 1.2,
+"draw": [
+"sl",
+"sm"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 42.26,
+"d": 4.77
+},
+{
+"id": "s8",
+"ch": null,
+"cap": "The two system classes belong to Kubernetes. Do not count them.",
+"focus": "sy",
+"pause": 1.2,
+"draw": [
+"sy"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 48.58,
+"d": 3.71
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "The highest user-defined value is 1000. One less is 999.",
+"focus": "nw",
+"pause": 1.2,
+"draw": [
+"nw",
+"a_mn"
+],
+"acts": [
+{
+"id": "v",
+"t": "1000 - 1 = 999",
+"x": 110,
+"y": 1385,
+"h": 54,
+"c": "B",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 54.45,
+"d": 5.41
+},
+{
+"id": "s9b",
+"ch": null,
+"cap": "Why one less? The new class must sit just below the highest user class.",
+"focus": "nw",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 61.41,
+"d": 4.21
+},
+{
+"id": "s10",
+"ch": "Create it",
+"cap": "Create the class. The deployment can only name a class that exists.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k create priorityclass high-priority --value=999",
+"out": [
+"priorityclass.scheduling.k8s.io/high-priority created"
+],
+"next": "controlplane $"
+}
+],
+"hl": "created",
+"t": 67.17,
+"d": 4.14
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "If the value is 1999999999, you counted a system class. Delete the class, and create it again.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 72.66,
+"d": 11.62
+},
+{
+"id": "s12",
+"ch": "Use it",
+"cap": "Now the deployment. The class goes in the pod template.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [
+"dp",
+"a_dn"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k edit deployment/web -n shop",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 86.63,
+"d": 3.17
+},
+{
+"id": "s12b",
+"ch": null,
+"cap": "The class belongs to the pods. In a deployment, the pod template sits deeper, under spec, template, spec.",
+"focus": "dp",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 91.35,
+"d": 6.38
+},
+{
+"id": "s13",
+"ch": null,
+"cap": "Add one line: priority class name, high-priority.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "# in vim: add one line under the 2nd spec:",
+"out": [
+"    spec:",
+"      priorityClassName: high-priority",
+"      containers:",
+"      - image: nginx:1.27"
+],
+"next": "controlplane $"
+}
+],
+"hl": "priorityClassName",
+"t": 99.47,
+"d": 3.16
+},
+{
+"id": "s14",
+"ch": null,
+"cap": "It starts in the same column as containers. Use the second spec, not the first.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 104.18,
+"d": 5.02
+},
+{
+"id": "s15",
+"ch": "Wait",
+"cap": "Priority is set when a pod is created. So the pods are replaced.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [
+"pd",
+"a_dp"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k rollout status deployment/web -n shop",
+"out": [
+"deployment \"web\" successfully rolled out"
+],
+"next": "controlplane $"
+}
+],
+"hl": "successfully",
+"t": 111.55,
+"d": 3.92
+},
+{
+"id": "s15b",
+"ch": null,
+"cap": "Old pods keep their old setting. Only new pods carry the class.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 117.02,
+"d": 3.89
+},
+{
+"id": "s16",
+"ch": "Prove it",
+"cap": "Now ask the pods for their class, and their number.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [
+"a_np"
+],
+"acts": [
+{
+"id": "ok",
+"t": "class + 999 ✓",
+"x": 560,
+"y": 1810,
+"h": 54,
+"c": "G",
+"a": 2.8,
+"align": null
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 4.4,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get pods -o custom-columns=NAME:.metadata.name,CLASS:.spec.priorityClassName,PRIO:.spec.priority -n shop",
+"out": [
+"NAME      CLASS           PRIO",
+"web-...   high-priority   999"
+],
+"next": "controlplane $"
+}
+],
+"hl": "999",
+"t": 122.47,
+"d": 2.61
+},
+{
+"id": "s17",
+"ch": null,
+"cap": "A Terminating pod may show none. Run the command again.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 127.03,
+"d": 3.24
+},
+{
+"id": "s17b",
+"ch": null,
+"cap": "Two things matter in that output: the class name, and the number 999.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 131.82,
+"d": 5.11
+},
+{
+"id": "s18",
+"ch": "If it fails",
+"cap": "No new pods? Run k describe rs. The words no Priority Class with name mean a typo. Fix it in k edit deployment.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 138.48,
+"d": 8.46
+},
+{
+"id": "s19",
+"ch": null,
+"cap": "The value of a class cannot be changed. It is immutable. Delete the class, and create it again.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k delete priorityclass high-priority",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 148.69,
+"d": 5.5
+},
+{
+"id": "s20",
+"ch": null,
+"cap": "Other pods got evicted? A higher priority pushes out lower ones. That is expected.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 155.94,
+"d": 5.4
+},
+{
+"id": "s21",
+"ch": "The rule",
+"cap": "The rule: take the highest user-defined value, and subtract one.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 163.09,
+"d": 4.05
+},
+{
+"id": "s22",
+"ch": null,
+"cap": "Create the class. Then name it in the pod template, and prove it on the new pods.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 168.49,
+"d": 4.65
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "Which value is the highest user-defined class?",
+"opts": [
+[
+"1000, mid-prio",
+true,
+"Correct."
+],
+[
+"2000001000, system-node-critical",
+false,
+"Do not count the system- classes."
+],
+[
+"100, low-prio",
+false,
+"mid-prio has a higher value."
+]
+],
+"t": 53.85
+},
+{
+"id": "Q2",
+"q": "The new class shows the value 1999999999. What went wrong?",
+"opts": [
+[
+"You counted a system- class",
+true,
+"Correct. Delete it, and create it again."
+],
+[
+"The deployment is too big",
+false,
+"The deployment has no part in the value."
+],
+[
+"Classes need a namespace",
+false,
+"Classes have no namespace."
+]
+],
+"t": 86.03
+},
+{
+"id": "Q3",
+"q": "Which spec: gets the priorityClassName line?",
+"opts": [
+[
+"The second, in the pod template",
+true,
+"Correct."
+],
+[
+"The first, of the Deployment",
+false,
+"The class belongs to the pods, so it sits in the template."
+],
+[
+"The metadata: block",
+false,
+"It is a field of the pod spec."
+]
+],
+"t": 110.95
+}
+]
+}

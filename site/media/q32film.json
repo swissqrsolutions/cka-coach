@@ -1,0 +1,668 @@
+{
+"end": 175.33,
+"goal": [
+"Goal: HPA web",
+"2-5, cpu 70%"
+],
+"rule": {
+"title": "HPA: create, then edit",
+"rows": [
+[
+"k autoscale --cpu=70%",
+"min, max, CPU target",
+"not --cpu-percent"
+],
+[
+"k edit: behavior:",
+"same column as maxReplicas",
+"window reads 30"
+]
+]
+},
+"shapes": {
+"fr": {
+"rect": [
+40,
+420,
+2020,
+1500
+],
+"frame": true,
+"label": "namespace shop"
+},
+"dp": {
+"rect": [
+110,
+620,
+900,
+300
+],
+"label": "Deployment web",
+"sub": "requests cpu: 100m",
+"h": 74
+},
+"hp": {
+"rect": [
+1100,
+620,
+900,
+300
+],
+"label": "HPA web",
+"sub": "min 2, max 5, cpu 70%",
+"h": 63
+},
+"ms": {
+"rect": [
+110,
+1060,
+900,
+260
+],
+"label": "metrics-server",
+"sub": "measures the pod CPU",
+"h": 67
+},
+"bh": {
+"rect": [
+1100,
+1060,
+900,
+260
+],
+"label": "behavior",
+"sub": "scaleDown window: 30 s",
+"h": 60
+},
+"tg": {
+"rect": [
+110,
+1480,
+900,
+260
+],
+"label": "TARGETS",
+"sub": "cpu: 0%/70%",
+"h": 90
+},
+"pd": {
+"rect": [
+1100,
+1480,
+900,
+260
+],
+"label": "pods",
+"sub": "from 2 up to 5",
+"h": 90
+},
+"a_hd": {
+"arrow": [
+[
+1100,
+770
+],
+[
+1010,
+770
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_md": {
+"arrow": [
+[
+560,
+920
+],
+[
+560,
+1060
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_hb": {
+"arrow": [
+[
+1550,
+920
+],
+[
+1550,
+1060
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_hp": {
+"arrow": [
+[
+1550,
+1320
+],
+[
+1550,
+1480
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_mt": {
+"arrow": [
+[
+560,
+1320
+],
+[
+560,
+1480
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 32. In namespace shop, deployment web runs nginx.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"fr",
+"dp"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 4.8
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: an autoscaler named web. Minimum 2 pods, maximum 5, target 70 percent C P U. And a scale-down window of 30 seconds.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 7.35,
+"d": 10.26
+},
+{
+"id": "s3",
+"ch": "How it works",
+"cap": "An H P A, a Horizontal Pod Autoscaler, sets the number of pods by C P U use.",
+"focus": "hp",
+"pause": 1.2,
+"draw": [
+"hp",
+"a_hd"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 19.36,
+"d": 6.01
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "It adds pods when the load is high, up to the maximum. And it removes them again, down to the minimum.",
+"focus": "hp",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 26.92,
+"d": 5.94
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "The C P U use is measured by metrics server. It is an add-on.",
+"focus": "ms",
+"pause": 1.2,
+"draw": [
+"ms",
+"a_md"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 34.61,
+"d": 3.93
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "70 percent means 70 percent of the C P U request of a pod.",
+"focus": "dp",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 40.09,
+"d": 4.68
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "No request, no percentage. So look at the request first.",
+"focus": "dp",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 46.32,
+"d": 3.53
+},
+{
+"id": "s8",
+"ch": "Look first",
+"cap": "Does the deployment request C P U?",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get deployment web -o jsonpath='{.spec.template.spec.containers[0].resources}' -n shop",
+"out": [
+"{\"requests\":{\"cpu\":\"100m\"}}"
+],
+"next": "controlplane $"
+}
+],
+"hl": "100m",
+"t": 51.4,
+"d": 1.95
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "A C P U request of 100 m exists. The H P A can calculate.",
+"focus": "dp",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 54.7,
+"d": 4.92
+},
+{
+"id": "s10",
+"ch": "Create it",
+"cap": "k autoscale writes the whole H P A. One command sets min, max, and the C P U target.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k autoscale deployment web --min=2 --max=5 --cpu=70% -n shop",
+"out": [
+"...autoscaling/web autoscaled"
+],
+"next": "controlplane $"
+}
+],
+"hl": "autoscaled",
+"t": 61.77,
+"d": 6.51
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "The H P A is named after the deployment: web.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 69.82,
+"d": 3.13
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "Do not use dash dash cpu dash percent. It is deprecated since version 1.34. Use dash dash cpu, with a percent sign.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 74.51,
+"d": 9.98
+},
+{
+"id": "s13",
+"ch": "The window",
+"cap": "The scale-down window is not a flag of k autoscale. So edit the H P A.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [
+"bh",
+"a_hb"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k edit hpa/web -n shop",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 86.84,
+"d": 4.98
+},
+{
+"id": "s14",
+"ch": null,
+"cap": "The stabilization window is how long the H P A waits before it removes pods.",
+"focus": "bh",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 93.37,
+"d": 4.81
+},
+{
+"id": "s15",
+"ch": null,
+"cap": "Add 3 lines at the top of spec: behavior, scaleDown, and stabilization window seconds, 30.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "# in vim: 3 new lines at the top of spec:",
+"out": [
+"spec:",
+"  behavior:",
+"    scaleDown:",
+"      stabilizationWindowSeconds: 30",
+"  maxReplicas: 5"
+],
+"next": "controlplane $"
+}
+],
+"hl": "stabilizationWindowSeconds",
+"t": 99.92,
+"d": 6.33
+},
+{
+"id": "s16",
+"ch": null,
+"cap": "Behavior starts in the same column as max replicas. A Tab or a wrong indent makes vim reopen with an error comment.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 108.0,
+"d": 7.74
+},
+{
+"id": "s17",
+"ch": "Check",
+"cap": "Now check the H P A. A number in TARGETS proves that metrics reach it.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [
+"tg",
+"a_mt"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get hpa web -n shop",
+"out": [
+"NAME  TARGETS       MINPODS  MAXPODS  REPLICAS",
+"web   cpu: 0%/70%   2        5        2"
+],
+"next": "controlplane $"
+}
+],
+"hl": "cpu: 0%/70%",
+"t": 118.09,
+"d": 4.52
+},
+{
+"id": "s18",
+"ch": null,
+"cap": "Unknown in the first minute is normal. Run it again.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"pd",
+"a_hp"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 124.16,
+"d": 2.87
+},
+{
+"id": "s19",
+"ch": "Prove it",
+"cap": "Prove that the window is saved.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"id": "ok",
+"t": "window = 30 ✓",
+"x": 1100,
+"y": 1385,
+"h": 54,
+"c": "G",
+"a": 2.6,
+"align": null
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 4.0,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get hpa web -o jsonpath='{.spec.behavior.scaleDown.stabilizationWindowSeconds}' -n shop",
+"out": [
+"30"
+],
+"next": "controlplane $"
+}
+],
+"hl": "30",
+"t": 128.59,
+"d": 1.62
+},
+{
+"id": "s20",
+"ch": null,
+"cap": "It reads 30. The H P A is done.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 132.16,
+"d": 2.33
+},
+{
+"id": "s21",
+"ch": "If it fails",
+"cap": "AlreadyExists? An H P A named web exists. Fix it with k edit instead.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 136.03,
+"d": 5.27
+},
+{
+"id": "s22",
+"ch": null,
+"cap": "Unknown after 2 minutes, and k top pod fails? metrics server is missing, or still starting. The exam has it.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 143.06,
+"d": 7.36
+},
+{
+"id": "s23",
+"ch": null,
+"cap": "vim reopens with an error comment on top? A Tab, or a wrong indent. Fix the 3 lines, and save again.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 152.16,
+"d": 7.21
+},
+{
+"id": "s24",
+"ch": "The rule",
+"cap": "The rule: k autoscale makes the H P A. k edit adds the behavior.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 161.12,
+"d": 4.78
+},
+{
+"id": "s25",
+"ch": null,
+"cap": "Check the C P U request first. The window must read 30.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 167.25,
+"d": 3.73
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "Why do you check the CPU request first?",
+"opts": [
+[
+"70% is a share of the CPU request",
+true,
+"Correct. No request, no percentage."
+],
+[
+"The request sets the maximum pods",
+false,
+"The maximum comes from --max."
+],
+[
+"kubectl refuses without it",
+false,
+"The percentage is simply calculated from the request."
+]
+],
+"t": 61.17
+},
+{
+"id": "Q2",
+"q": "Which flag sets the CPU target today?",
+"opts": [
+[
+"--cpu=70%",
+true,
+"Correct."
+],
+[
+"--cpu-percent=70",
+false,
+"Deprecated since v1.34."
+],
+[
+"--min=70",
+false,
+"--min sets the minimum number of pods."
+]
+],
+"t": 86.24
+},
+{
+"id": "Q3",
+"q": "Where does behavior: start?",
+"opts": [
+[
+"In the same column as maxReplicas:",
+true,
+"Correct."
+],
+[
+"Inside metrics:",
+false,
+"It is a sibling of maxReplicas, not part of metrics."
+],
+[
+"Anywhere. Indent is free",
+false,
+"A wrong indent makes vim reopen with an error comment."
+]
+],
+"t": 117.49
+}
+]
+}

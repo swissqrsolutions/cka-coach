@@ -1,0 +1,657 @@
+{
+"end": 173.67,
+"goal": [
+"Goal: fast is",
+"only default"
+],
+"rule": {
+"title": "Exactly one default",
+"rows": [
+[
+"fast: annotation \"true\"",
+"quotes: values are text",
+"shown as (default)"
+],
+[
+"old class: patch \"false\"",
+"never delete it",
+"only fast shows (default)"
+]
+]
+},
+"shapes": {
+"fr": {
+"rect": [
+40,
+420,
+2020,
+1500
+],
+"frame": true,
+"label": "the cluster (classes have no namespace)"
+},
+"lp": {
+"rect": [
+110,
+620,
+900,
+300
+],
+"label": "local-path",
+"sub": "the old default",
+"h": 89
+},
+"fa": {
+"rect": [
+1100,
+620,
+900,
+300
+],
+"label": "StorageClass fast",
+"sub": "rancher.io/local-path",
+"h": 62
+},
+"pt": {
+"rect": [
+110,
+1060,
+900,
+260
+],
+"label": "on local-path: \"false\"",
+"sub": "patch, never delete",
+"h": 48
+},
+"an": {
+"rect": [
+1100,
+1060,
+900,
+260
+],
+"label": "on fast: \"true\"",
+"sub": "is-default-class annotation",
+"h": 49
+},
+"wf": {
+"rect": [
+110,
+1480,
+900,
+260
+],
+"label": "WaitForFirstConsumer",
+"sub": "disk made on first use",
+"h": 53
+},
+"ok": {
+"rect": [
+1100,
+1480,
+900,
+260
+],
+"label": "only one default",
+"sub": "fast (default)",
+"h": 66
+},
+"a_lp": {
+"arrow": [
+[
+560,
+920
+],
+[
+560,
+1060
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_fa": {
+"arrow": [
+[
+1550,
+920
+],
+[
+1550,
+1060
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_ao": {
+"arrow": [
+[
+1550,
+1320
+],
+[
+1550,
+1480
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 39. The cluster has a Storage Class named local-path. It is the default.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"fr",
+"lp"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 5.6
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: create a Storage Class named fast. Provisioner rancher dot io slash local dash path. Binding mode Wait For First Consumer.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal",
+"fa"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 8.15,
+"d": 9.46
+},
+{
+"id": "s3",
+"ch": null,
+"cap": "Make fast the default. And no other class may stay marked as default.",
+"focus": "goal",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 19.36,
+"d": 4.07
+},
+{
+"id": "s4",
+"ch": "How it works",
+"cap": "A Storage Class is a template. A P V C asks, and Kubernetes makes a new disk from it.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 24.99,
+"d": 5.76
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "The provisioner is the program that makes the disk. Copy it from the question.",
+"focus": "fa",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 32.49,
+"d": 4.25
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "Wait For First Consumer means: make the disk only when a pod uses the claim.",
+"focus": "wf",
+"pause": 1.4,
+"draw": [
+"wf"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 38.29,
+"d": 4.59
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "The default mark is an annotation, named is default class.",
+"focus": "an",
+"pause": 1.2,
+"draw": [
+"an",
+"a_fa"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 44.64,
+"d": 3.68
+},
+{
+"id": "s8",
+"ch": "Look first",
+"cap": "Who is the default now?",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get storageclass",
+"out": [
+"NAME                   PROVISIONER",
+"local-path (default)   rancher.io/local-path"
+],
+"next": "controlplane $"
+}
+],
+"hl": "(default)",
+"t": 49.87,
+"d": 1.28
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "Local path is the old default. Its mark must come off later. A Storage Class has no namespace, so no dash n.",
+"focus": "lp",
+"pause": 1.4,
+"draw": [
+"a_lp"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 52.5,
+"d": 7.52
+},
+{
+"id": "s10",
+"ch": "Write it",
+"cap": "There is no k create storageclass. Copy the example from the docs page: Storage Classes.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "vim sc.yaml",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 62.37,
+"d": 6.03
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "Change the name, the annotation, and the provisioner. Add the binding mode.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "# in vim: the finished file",
+"out": [
+"kind: StorageClass",
+"metadata:",
+"  name: fast",
+"  annotations:",
+"    ...is-default-class: \"true\"",
+"provisioner: rancher.io/local-path",
+"volumeBindingMode: WaitForFirstConsumer"
+],
+"next": "controlplane $"
+}
+],
+"hl": "\"true\"",
+"t": 69.95,
+"d": 4.23
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "Delete the other lines of the example: reclaim policy, allow volume expansion, mount options, and parameters. The question did not ask for them.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 75.94,
+"d": 9.46
+},
+{
+"id": "s13",
+"ch": null,
+"cap": "Do not drop the quotes around true. Annotation values must be text.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 87.15,
+"d": 4.19
+},
+{
+"id": "s14",
+"ch": "Create it",
+"cap": "Apply the file. Then list the classes.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k apply -f sc.yaml",
+"out": [
+"storageclass.storage.k8s.io/fast created"
+],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k get storageclass",
+"out": [
+"fast (default)         rancher.io/local-path",
+"local-path (default)   rancher.io/local-path"
+],
+"next": "controlplane $"
+}
+],
+"hl": "fast (default)",
+"t": 93.49,
+"d": 2.23
+},
+{
+"id": "s15",
+"ch": null,
+"cap": "Two defaults. Jobs one and two are done. Job three is still open.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 97.27,
+"d": 4.22
+},
+{
+"id": "s16",
+"ch": "The old default",
+"cap": "Now take the mark off the old default. Copy the patch from the docs page: Change the default Storage Class.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [
+"pt",
+"a_lp"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k patch storageclass local-path -p '{\"metadata\": {\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"false\"}}}'",
+"out": [
+"storageclass.storage.k8s.io/local-path patched"
+],
+"next": "controlplane $"
+}
+],
+"hl": "patched",
+"t": 103.24,
+"d": 6.68
+},
+{
+"id": "s17",
+"ch": null,
+"cap": "Only that one annotation changes. Nothing else on local-path is touched.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 111.47,
+"d": 4.55
+},
+{
+"id": "s18",
+"ch": null,
+"cap": "Do not delete local-path to remove its mark. The question forbids it.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 117.57,
+"d": 4.21
+},
+{
+"id": "s19",
+"ch": "Prove it",
+"cap": "Look at the list once more. Only fast shows default.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [
+"ok",
+"a_ao"
+],
+"acts": [
+{
+"id": "ok2",
+"t": "only fast ✓",
+"x": 110,
+"y": 1385,
+"h": 54,
+"c": "G",
+"a": 3.0,
+"align": null
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 4.5,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get storageclass",
+"out": [
+"NAME             PROVISIONER",
+"fast (default)   rancher.io/local-path",
+"local-path       rancher.io/local-path"
+],
+"next": "controlplane $"
+}
+],
+"hl": "fast (default)",
+"t": 124.13,
+"d": 3.08
+},
+{
+"id": "s20",
+"ch": null,
+"cap": "A test claim that stays Pending is normal with Wait For First Consumer. It waits for a pod. Do not fix it.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 129.16,
+"d": 6.75
+},
+{
+"id": "s21",
+"ch": "If it fails",
+"cap": "Forbidden when you apply again after a typo? Provisioner and binding mode cannot change. Delete fast, fix the file, and apply again.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k delete storageclass fast",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 137.66,
+"d": 8.44
+},
+{
+"id": "s22",
+"ch": null,
+"cap": "No default at all? You patched fast instead of the old class. Patch fast back to true.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 147.86,
+"d": 5.28
+},
+{
+"id": "s23",
+"ch": null,
+"cap": "Cannot unmarshal bool? The true has no quotes. Write it with quotes.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 154.89,
+"d": 4.06
+},
+{
+"id": "s24",
+"ch": "The rule",
+"cap": "The rule: fast gets the mark true. The old class gets false.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 160.5,
+"d": 3.68
+},
+{
+"id": "s25",
+"ch": null,
+"cap": "Never delete the old class. Prove that only fast shows default.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 165.53,
+"d": 3.79
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "Why do you look at the current default first?",
+"opts": [
+[
+"You must take its mark off later",
+true,
+"Correct."
+],
+[
+"To copy its name into fast",
+false,
+"The name of fast comes from the question."
+],
+[
+"To delete it",
+false,
+"The question forbids deleting anything."
+]
+],
+"t": 61.77
+},
+{
+"id": "Q2",
+"q": "Why are there quotes around \"true\"?",
+"opts": [
+[
+"Annotation values must be text",
+true,
+"Correct."
+],
+[
+"They are optional",
+false,
+"Without quotes you get: cannot unmarshal bool."
+],
+[
+"YAML needs quotes on every word",
+false,
+"Only this value, which would be read as a boolean."
+]
+],
+"t": 92.89
+},
+{
+"id": "Q3",
+"q": "How do you remove the old default mark?",
+"opts": [
+[
+"Patch its annotation to \"false\"",
+true,
+"Correct. Nothing else changes."
+],
+[
+"Delete local-path",
+false,
+"The question forbids it."
+],
+[
+"Patch fast to \"false\"",
+false,
+"Then no class is the default at all."
+]
+],
+"t": 123.53
+}
+]
+}

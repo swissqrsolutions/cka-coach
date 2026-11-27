@@ -1,0 +1,796 @@
+{
+"end": 209.81,
+"goal": [
+"Goal: pod, PVC",
+"and PV chain"
+],
+"rule": {
+"title": "Pod, PVC, PV",
+"rows": [
+[
+"class + mode + size",
+"class manual, mode RWO",
+"PVC shows Bound"
+],
+[
+"build the PV first",
+"then the PVC, then the pod",
+"a PV has no namespace"
+]
+]
+},
+"shapes": {
+"fr": {
+"rect": [
+40,
+420,
+2020,
+1500
+],
+"frame": true,
+"label": "the cluster"
+},
+"pd": {
+"rect": [
+110,
+620,
+900,
+300
+],
+"label": "pod web-store",
+"sub": "claim pvc-data",
+"h": 80
+},
+"pvc": {
+"rect": [
+1100,
+620,
+900,
+300
+],
+"label": "PVC pvc-data",
+"sub": "asks 500Mi",
+"h": 80
+},
+"pv": {
+"rect": [
+1100,
+1060,
+900,
+260
+],
+"label": "PV pv-data",
+"sub": "1Gi, hostPath /mnt/data",
+"h": 58
+},
+"mt": {
+"rect": [
+110,
+1060,
+900,
+260
+],
+"label": "must fit",
+"sub": "class, mode, size",
+"h": 78
+},
+"bd": {
+"rect": [
+110,
+1480,
+900,
+260
+],
+"label": "Bound",
+"sub": "PV shows storage/pvc-data",
+"h": 53
+},
+"vm": {
+"rect": [
+1100,
+1480,
+900,
+260
+],
+"label": "one name, twice",
+"sub": "volumes + volumeMounts",
+"h": 60
+},
+"a_pp": {
+"arrow": [
+[
+1010,
+770
+],
+[
+1100,
+770
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_cv": {
+"arrow": [
+[
+1550,
+920
+],
+[
+1550,
+1060
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_vm": {
+"arrow": [
+[
+1100,
+1190
+],
+[
+1010,
+1190
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_mb": {
+"arrow": [
+[
+560,
+1320
+],
+[
+560,
+1480
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 38. Build the whole storage chain: a disk, a claim, and a pod.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"fr"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 5.21
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: three objects. The disk is a P V named pv-data, 1 gibibyte, mode Read Write Once, at slash mnt slash data, class manual.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal",
+"pv"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 7.76,
+"d": 10.44
+},
+{
+"id": "s3",
+"ch": null,
+"cap": "The claim is pvc-data, in namespace storage. It asks 500 mebibytes, same mode, same class.",
+"focus": "pvc",
+"pause": 1.4,
+"draw": [
+"pvc",
+"a_cv"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 19.96,
+"d": 6.87
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "The pod is web-store, nginx 1.27. It mounts the claim at slash usr slash share slash nginx slash html.",
+"focus": "pd",
+"pause": 1.4,
+"draw": [
+"pd",
+"a_pp"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 28.58,
+"d": 9.15
+},
+{
+"id": "s5",
+"ch": "How it works",
+"cap": "A P V is a disk for the whole cluster. It has no namespace.",
+"focus": "pv",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 39.48,
+"d": 3.82
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "A P V C is a request for a disk. It lives in a namespace.",
+"focus": "pvc",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 44.85,
+"d": 4.08
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "A pod never uses the P V directly. The chain is: pod, P V C, P V.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 50.48,
+"d": 5.36
+},
+{
+"id": "s8",
+"ch": null,
+"cap": "The claim connects to a disk only if three values fit. The same class. The same mode. And a disk big enough.",
+"focus": "mt",
+"pause": 1.4,
+"draw": [
+"mt",
+"a_vm"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 57.59,
+"d": 7.0
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "So build from right to left: the disk first, then the claim, then the pod.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 66.34,
+"d": 4.01
+},
+{
+"id": "s10",
+"ch": "The disk",
+"cap": "There is no k create P V. Copy pv-volume dot yaml from the docs page: Configure a Pod to Use a PersistentVolume for Storage.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "vim pv.yaml",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 72.5,
+"d": 9.39
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "Only the name and the size change. Delete the labels line and the type local line.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "# in vim: name pv-data, storage 1Gi",
+"out": [
+"spec:",
+"  storageClassName: manual",
+"  capacity:",
+"    storage: 1Gi",
+"  accessModes:",
+"    - ReadWriteOnce",
+"  hostPath:",
+"    path: \"/mnt/data\""
+],
+"next": "controlplane $"
+}
+],
+"hl": "1Gi",
+"t": 83.45,
+"d": 5.2
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "Do not add a namespace. A P V belongs to the whole cluster.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 90.39,
+"d": 3.82
+},
+{
+"id": "s13",
+"ch": null,
+"cap": "Apply it, and look. Available means: free, nobody uses it yet.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k apply -f pv.yaml",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k get pv",
+"out": [
+"...",
+"pv-data   1Gi   RWO   Retain   Available   manual"
+],
+"next": "controlplane $"
+}
+],
+"hl": "Available",
+"t": 95.76,
+"d": 4.37
+},
+{
+"id": "s14",
+"ch": "The claim",
+"cap": "Next the claim. Copy pv-claim dot yaml from the same page.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "vim pvc.yaml",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 101.68,
+"d": 4.05
+},
+{
+"id": "s15",
+"ch": null,
+"cap": "Only the name, the namespace, and 500 Mi change. The class manual must stay.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "# in vim: name, namespace, storage",
+"out": [
+"  name: pvc-data",
+"  namespace: storage",
+"spec:",
+"  storageClassName: manual",
+"  accessModes:",
+"    - ReadWriteOnce",
+"  resources:",
+"    requests:",
+"      storage: 500Mi"
+],
+"next": "controlplane $"
+}
+],
+"hl": "500Mi",
+"t": 107.28,
+"d": 5.33
+},
+{
+"id": "s16",
+"ch": null,
+"cap": "Apply it, and look. Do not go on before you see Bound.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [
+"bd",
+"a_mb"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k apply -f pvc.yaml",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k get pvc -n storage",
+"out": [
+"...",
+"pvc-data   Bound   pv-data   1Gi   RWO   manual"
+],
+"next": "controlplane $"
+}
+],
+"hl": "Bound",
+"t": 114.36,
+"d": 2.97
+},
+{
+"id": "s17",
+"ch": null,
+"cap": "Bound. Class and mode match, and 1 gibibyte fits 500 mebibytes.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 118.88,
+"d": 4.67
+},
+{
+"id": "s18",
+"ch": null,
+"cap": "The capacity says 1Gi, and that is correct. The claim gets the whole disk.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 125.1,
+"d": 4.6
+},
+{
+"id": "s19",
+"ch": "The pod",
+"cap": "Last, the pod. Copy pv-pod dot yaml from the same page.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "vim pod.yaml",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 132.05,
+"d": 4.39
+},
+{
+"id": "s20",
+"ch": null,
+"cap": "Four changes: the name, the namespace, the claim name, and the image.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "# in vim: claimName, mount",
+"out": [
+"  volumes:",
+"    - name: task-pv-storage",
+"      persistentVolumeClaim:",
+"        claimName: pvc-data",
+"...",
+"      volumeMounts:",
+"        - mountPath: \"/usr/share/nginx/html\"",
+"          name: task-pv-storage"
+],
+"next": "controlplane $"
+}
+],
+"hl": "claimName",
+"t": 137.99,
+"d": 4.13
+},
+{
+"id": "s21",
+"ch": null,
+"cap": "Claim name is the name of the P V C. The name task-pv-storage only links volumes to volume mounts.",
+"focus": "vm",
+"pause": 1.4,
+"draw": [
+"vm"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 143.87,
+"d": 7.2
+},
+{
+"id": "s22",
+"ch": null,
+"cap": "Do not rename it in one place only. Both must match.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 152.82,
+"d": 3.4
+},
+{
+"id": "s23",
+"ch": null,
+"cap": "Apply the pod.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k apply -f pod.yaml",
+"out": [
+"pod/web-store created"
+],
+"next": "controlplane $"
+}
+],
+"hl": "created",
+"t": 158.36,
+"d": 0.98
+},
+{
+"id": "s24",
+"ch": "Prove it",
+"cap": "Check the whole chain. The pod must be Running, and the P V Bound to the claim.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"id": "ok",
+"t": "chain connected ✓",
+"x": 110,
+"y": 1385,
+"h": 54,
+"c": "G",
+"a": 3.0,
+"align": null
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 4.6,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get pod web-store -n storage",
+"out": [
+"web-store   1/1   Running   0   30s"
+],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k get pv pv-data",
+"out": [
+"pv-data   1Gi   RWO   Retain   Bound   storage/pvc-data",
+"..."
+],
+"next": "controlplane $"
+}
+],
+"hl": "storage/pvc-data",
+"t": 160.69,
+"d": 4.53
+},
+{
+"id": "s25",
+"ch": "If it fails",
+"cap": "Container Creating? Wait a few seconds, and run it again.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 167.17,
+"d": 3.22
+},
+{
+"id": "s26",
+"ch": null,
+"cap": "The claim is Pending? The class or mode differ, or it asks for more than 1Gi. Describe it, delete it, fix the file, and apply again.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k describe pvc pvc-data -n storage",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 171.94,
+"d": 8.41
+},
+{
+"id": "s27",
+"ch": null,
+"cap": "Class names are case sensitive. manual and Manual are different classes.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 182.1,
+"d": 4.35
+},
+{
+"id": "s28",
+"ch": null,
+"cap": "The pod is Pending, claim not found? A typo in the claim name, or the pod is in another namespace.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 188.0,
+"d": 6.23
+},
+{
+"id": "s29",
+"ch": "The rule",
+"cap": "The rule: pod, P V C, P V. Class, mode, and size must fit.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 195.98,
+"d": 4.49
+},
+{
+"id": "s30",
+"ch": null,
+"cap": "Build the disk first, then the claim, then the pod. Wait for Bound.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 201.82,
+"d": 3.63
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "In which order do you create the objects?",
+"opts": [
+[
+"PV, then PVC, then pod",
+true,
+"Correct. Build right to left."
+],
+[
+"Pod, then PVC, then PV",
+false,
+"The pod needs the claim, and the claim needs a disk."
+],
+[
+"PVC, then pod, then PV",
+false,
+"Start with the disk."
+]
+],
+"t": 71.9
+},
+{
+"id": "Q2",
+"q": "The PVC asks 500Mi. Why does CAPACITY say 1Gi?",
+"opts": [
+[
+"The claim gets the whole disk",
+true,
+"Correct. It is not a mistake."
+],
+[
+"The PVC was edited",
+false,
+"Nothing edited it."
+],
+[
+"It is an error",
+false,
+"It is correct."
+]
+],
+"t": 131.45
+},
+{
+"id": "Q3",
+"q": "Where must the name task-pv-storage match?",
+"opts": [
+[
+"In volumes and in volumeMounts",
+true,
+"Correct. It is only a link."
+],
+[
+"Only in volumes",
+false,
+"volumeMounts must name the same volume."
+],
+[
+"It must equal the PVC name",
+false,
+"claimName is the PVC name. This name is only a link."
+]
+],
+"t": 157.76
+}
+]
+}

@@ -1,0 +1,688 @@
+{
+"end": 179.48,
+"goal": [
+"Goal: update,",
+"undo, save"
+],
+"rule": {
+"title": "Update, undo, save",
+"rows": [
+[
+"container=image",
+"left of = is the container",
+"nginx=nginx:1.28"
+],
+[
+"undo only once",
+"twice goes back to 1.28",
+"file must say nginx:1.27"
+]
+]
+},
+"shapes": {
+"fr": {
+"rect": [
+40,
+420,
+2020,
+1500
+],
+"frame": true,
+"label": "namespace shop"
+},
+"dp": {
+"rect": [
+110,
+620,
+900,
+300
+],
+"label": "Deployment web",
+"sub": "3 pods, container nginx",
+"h": 58
+},
+"sc": {
+"rect": [
+1100,
+620,
+900,
+300
+],
+"label": "set image",
+"sub": "nginx=nginx:1.28",
+"h": 83
+},
+"r1": {
+"rect": [
+110,
+1060,
+900,
+260
+],
+"label": "revision 1",
+"sub": "nginx:1.27",
+"h": 90
+},
+"r2": {
+"rect": [
+1100,
+1060,
+900,
+260
+],
+"label": "revision 2",
+"sub": "nginx:1.28",
+"h": 90
+},
+"un": {
+"rect": [
+110,
+1480,
+900,
+260
+],
+"label": "rollout undo",
+"sub": "back to revision 1",
+"h": 74
+},
+"fl": {
+"rect": [
+1100,
+1480,
+900,
+260
+],
+"label": "/root/image.txt",
+"sub": "nginx:1.27",
+"h": 71
+},
+"a_sd": {
+"arrow": [
+[
+1100,
+770
+],
+[
+1010,
+770
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_rr": {
+"arrow": [
+[
+1010,
+1190
+],
+[
+1100,
+1190
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_ur": {
+"arrow": [
+[
+560,
+1480
+],
+[
+560,
+1320
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_uf": {
+"arrow": [
+[
+1010,
+1610
+],
+[
+1100,
+1610
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 37. In namespace shop, deployment web runs 3 pods of nginx 1.27.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"fr",
+"dp"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 7.13
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: update the deployment to nginx 1.28, and wait. Then roll back. Then write the image in use into slash root slash image dot txt.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 9.68,
+"d": 11.2
+},
+{
+"id": "s3",
+"ch": "How it works",
+"cap": "A rolling update replaces old pods with new ones, a few at a time. The app stays up.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 22.63,
+"d": 5.38
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "Each change of the pod template gets a revision number. The old ones are kept.",
+"focus": "r1",
+"pause": 1.4,
+"draw": [
+"r1"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 29.56,
+"d": 4.39
+},
+{
+"id": "s4b",
+"ch": null,
+"cap": "While it runs, you will see: 1 out of 3 new replicas have been updated.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 35.7,
+"d": 4.1
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "So going back is easy. Undo returns to the previous revision.",
+"focus": "un",
+"pause": 1.2,
+"draw": [
+"un",
+"a_ur"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 41.54,
+"d": 3.95
+},
+{
+"id": "s6",
+"ch": "Look first",
+"cap": "First: what is the container called? Set image needs the container name, not the deployment name.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get deployment web -o wide -n shop",
+"out": [
+"NAME   READY   ...   CONTAINERS   IMAGES",
+"web    3/3     ...   nginx        nginx:1.27"
+],
+"next": "controlplane $"
+}
+],
+"hl": "nginx:1.27",
+"t": 47.05,
+"d": 5.76
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "The container is nginx. The old image is nginx 1.27.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 54.36,
+"d": 4.95
+},
+{
+"id": "s8",
+"ch": "Update",
+"cap": "Update the image. Then wait with rollout status.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [
+"sc",
+"a_sd",
+"r2",
+"a_rr"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k set image deployment/web nginx=nginx:1.28 -n shop",
+"out": [
+"deployment.apps/web image updated"
+],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k rollout status deployment/web -n shop",
+"out": [
+"Waiting for deployment \"web\" rollout to...",
+"deployment \"web\" successfully rolled out"
+],
+"next": "controlplane $"
+}
+],
+"hl": "successfully",
+"t": 61.46,
+"d": 2.91
+},
+{
+"id": "s8b",
+"ch": null,
+"cap": "The pod template changed. So the update creates revision 2.",
+"focus": "r2",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 65.93,
+"d": 3.65
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "Rollout status waits until all new pods are ready. The question asks for that.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 71.12,
+"d": 4.8
+},
+{
+"id": "s10",
+"ch": "Roll back",
+"cap": "Look at the history first. Two revisions.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k rollout history deployment/web -n shop",
+"out": [
+"REVISION  CHANGE-CAUSE",
+"1         <none>",
+"2         <none>"
+],
+"next": "controlplane $"
+}
+],
+"hl": "2         <none>",
+"t": 78.27,
+"d": 2.33
+},
+{
+"id": "s10b",
+"ch": null,
+"cap": "Revision 1 is nginx 1.27. Revision 2 is nginx 1.28.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 81.95,
+"d": 6.37
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "Now undo. It goes back to the previous revision.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k rollout undo deployment/web -n shop",
+"out": [
+"deployment.apps/web rolled back"
+],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k rollout status deployment/web -n shop",
+"out": [
+"deployment \"web\" successfully rolled out"
+],
+"next": "controlplane $"
+}
+],
+"hl": "rolled back",
+"t": 89.87,
+"d": 2.97
+},
+{
+"id": "s11b",
+"ch": null,
+"cap": "A rollback is a rollout too. So wait for it, with rollout status.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 94.39,
+"d": 4.06
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "Run undo only once. A second undo goes back to nginx 1.28.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 100.0,
+"d": 5.28
+},
+{
+"id": "s13",
+"ch": "Save the image",
+"cap": "Now the image into a file. J S O N path prints one field, and nothing else.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [
+"fl",
+"a_uf"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get deployment web -o jsonpath='{.spec.template.spec.containers[0].image}' -n shop > /root/image.txt",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "cat /root/image.txt",
+"out": [
+"nginx:1.27"
+],
+"next": "controlplane $"
+}
+],
+"hl": "nginx:1.27",
+"t": 107.63,
+"d": 5.23
+},
+{
+"id": "s14",
+"ch": null,
+"cap": "Your prompt may follow on the same line.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 114.41,
+"d": 2.02
+},
+{
+"id": "s14b",
+"ch": null,
+"cap": "J S O N path prints the image and nothing else. So the file stays clean.",
+"focus": "fl",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 117.98,
+"d": 4.76
+},
+{
+"id": "s15",
+"ch": "Prove it",
+"cap": "Check the deployment again. All 3 pods run the old image.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"id": "ok",
+"t": "file says 1.27 ✓",
+"x": 1100,
+"y": 1810,
+"h": 54,
+"c": "G",
+"a": 2.6,
+"align": null
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 4.2,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get deployment web -o wide -n shop",
+"out": [
+"NAME   READY   ...   CONTAINERS   IMAGES",
+"web    3/3     ...   nginx        nginx:1.27"
+],
+"next": "controlplane $"
+}
+],
+"hl": "3/3",
+"t": 124.28,
+"d": 3.57
+},
+{
+"id": "s16",
+"ch": null,
+"cap": "The file says nginx 1.27. The rollback worked.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 129.8,
+"d": 3.83
+},
+{
+"id": "s17",
+"ch": "If it fails",
+"cap": "Rollout status never finishes? The new image does not exist, a typo. Press control C, check the tag, and run set image again.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 135.19,
+"d": 8.47
+},
+{
+"id": "s18",
+"ch": null,
+"cap": "Unable to find container named web? You put the deployment name left of the equals sign. Use the CONTAINERS column.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 145.4,
+"d": 7.41
+},
+{
+"id": "s19",
+"ch": null,
+"cap": "The file image dot txt is empty? A typo in the J S O N path. Run it without the greater-than part first.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 154.56,
+"d": 7.72
+},
+{
+"id": "s20",
+"ch": "The rule",
+"cap": "The rule: set image takes container equals image.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 164.03,
+"d": 3.16
+},
+{
+"id": "s21",
+"ch": null,
+"cap": "Wait with rollout status. Undo once. Then write the image, with J S O N path, into the file.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 168.54,
+"d": 6.59
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "Which name goes left of the = sign in set image?",
+"opts": [
+[
+"The container name: nginx",
+true,
+"Correct. See the CONTAINERS column."
+],
+[
+"The deployment name: web",
+false,
+"You get: unable to find container named web."
+],
+[
+"The pod name",
+false,
+"set image needs the container name."
+]
+],
+"t": 60.86
+},
+{
+"id": "Q2",
+"q": "What does rollout status do?",
+"opts": [
+[
+"Waits until the new pods are ready",
+true,
+"Correct."
+],
+[
+"Rolls back to the old image",
+false,
+"That is rollout undo."
+],
+[
+"Lists the revisions",
+false,
+"That is rollout history."
+]
+],
+"t": 77.67
+},
+{
+"id": "Q3",
+"q": "You run undo twice. Which image runs now?",
+"opts": [
+[
+"nginx:1.28",
+true,
+"Correct. The second undo goes back to it."
+],
+[
+"nginx:1.27",
+false,
+"That is the image after one undo."
+],
+[
+"Both, mixed",
+false,
+"A rollout always ends with one revision."
+]
+],
+"t": 107.03
+}
+]
+}
