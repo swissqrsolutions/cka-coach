@@ -1,0 +1,743 @@
+{
+"end": 207.79,
+"goal": [
+"Goal: node set",
+"for Kubernetes"
+],
+"rule": {
+"title": "Prepare a node",
+"rows": [
+[
+"dpkg -i, enable --now",
+"package, then service",
+"enabled + active"
+],
+[
+"/etc/sysctl.d/ file",
+"settings survive a reboot",
+"sysctl --system loads them"
+]
+]
+},
+"shapes": {
+"nd": {
+"rect": [
+40,
+420,
+2020,
+1500
+],
+"frame": true,
+"label": "the node (no kubectl)"
+},
+"pk": {
+"rect": [
+110,
+620,
+900,
+300
+],
+"label": "cri-dockerd.deb",
+"sub": "the package",
+"h": 84
+},
+"sv": {
+"rect": [
+1100,
+620,
+900,
+300
+],
+"label": "cri-docker",
+"sub": "the service",
+"h": 90
+},
+"sf": {
+"rect": [
+110,
+1060,
+900,
+300
+],
+"label": "k8s.conf",
+"sub": "in /etc/sysctl.d/",
+"h": 84
+},
+"kn": {
+"rect": [
+1100,
+1060,
+900,
+300
+],
+"label": "kernel settings",
+"sub": "4 parameters",
+"h": 84
+},
+"bt": {
+"rect": [
+560,
+1500,
+1000,
+260
+],
+"label": "after a reboot",
+"sub": "the file loads again",
+"h": 76
+},
+"a_ps": {
+"arrow": [
+[
+1010,
+770
+],
+[
+1100,
+770
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_fk": {
+"arrow": [
+[
+1010,
+1210
+],
+[
+1100,
+1210
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_fb": {
+"arrow": [
+[
+560,
+1360
+],
+[
+800,
+1500
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 19. Prepare a node for Kubernetes. Three Linux jobs, no kubectl.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"nd"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 5.56
+},
+{
+"id": "s1b",
+"ch": null,
+"cap": "kubectl cannot help here. These are plain Linux jobs, on the node itself.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 8.11,
+"d": 4.82
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: install a package, start a service, and set 4 kernel parameters.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 14.48,
+"d": 4.69
+},
+{
+"id": "s3",
+"ch": "How it works",
+"cap": "Job one: the package slash root slash cri-dockerd dot deb. It is an adapter, so Kubernetes can use Docker to run containers.",
+"focus": "pk",
+"pause": 1.4,
+"draw": [
+"pk"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 20.91,
+"d": 9.26
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "Job two: the service cri-docker has to run. Installing the package does not start it for you.",
+"focus": "sv",
+"pause": 1.2,
+"draw": [
+"sv",
+"a_ps"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 31.92,
+"d": 6.25
+},
+{
+"id": "s4b",
+"ch": null,
+"cap": "Mind the names. The package is cri-dockerd, with a d. The service is cri-docker.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 39.72,
+"d": 6.24
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "Job three: four kernel settings. Each one is called a sysctl, written as name equals value.",
+"focus": "kn",
+"pause": 1.2,
+"draw": [
+"kn"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 47.52,
+"d": 6.3
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "They must persist across reboots. So they belong in a file, not only in a command.",
+"focus": "sf",
+"pause": 1.4,
+"draw": [
+"sf",
+"a_fk"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 55.37,
+"d": 4.82
+},
+{
+"id": "s7",
+"ch": "The package",
+"cap": "Install the package with dpkg dash i. dpkg installs a dot deb file.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "dpkg -i /root/cri-dockerd.deb",
+"out": [
+"Setting up cri-dockerd ..."
+],
+"next": "controlplane $"
+}
+],
+"hl": "Setting up",
+"t": 61.94,
+"d": 5.2
+},
+{
+"id": "s8",
+"ch": null,
+"cap": "Do not run apt-get install dash f on Killercoda. It can break the cluster.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 68.49,
+"d": 4.59
+},
+{
+"id": "s9",
+"ch": "The service",
+"cap": "Enable and start the service. Enable means: start at boot. Dash dash now means: start it now too.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "systemctl enable --now cri-docker",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": "--now",
+"t": 75.43,
+"d": 6.58
+},
+{
+"id": "s10",
+"ch": null,
+"cap": "Ask both questions. Is it enabled? Is it active?",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "sv1",
+"t": "enabled + active ✓",
+"x": 1100,
+"y": 985,
+"h": 54,
+"c": "G",
+"a": 2.0,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "systemctl is-enabled cri-docker",
+"out": [
+"enabled"
+],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "systemctl is-active cri-docker",
+"out": [
+"active"
+],
+"next": "controlplane $"
+}
+],
+"hl": "active",
+"t": 83.57,
+"d": 3.26
+},
+{
+"id": "s11",
+"ch": "The settings",
+"cap": "Write the settings into a file in slash etc slash sysctl dot d. Files there are read at every boot.",
+"focus": "sf",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 88.98,
+"d": 6.82
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "Open the file with vim. In vim: colon set paste, Enter, i, paste, Escape, colon w q.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "vim /etc/sysctl.d/k8s.conf",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "# in vim: :set paste, i, paste, Esc, :wq",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 97.35,
+"d": 6.71
+},
+{
+"id": "s13",
+"ch": null,
+"cap": "Copy the four lines from the question. Do not retype them.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "cat /etc/sysctl.d/k8s.conf",
+"out": [
+"net.bridge.bridge-nf-call-iptables = 1",
+"net.ipv6.conf.all.forwarding = 1",
+"net.ipv4.ip_forward = 1",
+"net.netfilter.nf_conntrack_max = 131072"
+],
+"next": "controlplane $"
+}
+],
+"hl": "nf_conntrack_max",
+"t": 105.81,
+"d": 3.4
+},
+{
+"id": "s13b",
+"ch": null,
+"cap": "The file shows the four lines from the question.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 110.76,
+"d": 2.37
+},
+{
+"id": "s14",
+"ch": null,
+"cap": "Do not use only sysctl dash w. It is lost at reboot.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "lost",
+"t": "sysctl -w: lost at reboot",
+"x": 110,
+"y": 1430,
+"h": 50,
+"c": "R",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 114.68,
+"d": 4.2
+},
+{
+"id": "s15",
+"ch": "Load them",
+"cap": "The file alone waits for a reboot. Dash dash system loads it now.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [
+"a_fb",
+"bt"
+],
+"acts": [
+{
+"dots": "a_fk",
+"a": 1.0,
+"n": 1,
+"color": "G",
+"back": false
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "sysctl --system",
+"out": [
+"* Applying /etc/sysctl.d/k8s.conf ...",
+"net.bridge.bridge-nf-call-iptables = 1",
+"..."
+],
+"next": "controlplane $"
+}
+],
+"hl": "k8s.conf",
+"t": 121.04,
+"d": 4.03
+},
+{
+"id": "s16",
+"ch": null,
+"cap": "The star line names your file. Your four values are in it.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"lost"
+],
+"a": 0.2
+}
+],
+"term": [],
+"hl": null,
+"t": 126.61,
+"d": 3.34
+},
+{
+"id": "s16b",
+"ch": null,
+"cap": "If forwarding stays off, pods stop talking. So these settings matter.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 131.5,
+"d": 4.06
+},
+{
+"id": "s17",
+"ch": "Prove it",
+"cap": "Prove all 4 values are live.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"id": "ok",
+"t": "4 values live ✓",
+"x": 1100,
+"y": 1430,
+"h": 54,
+"c": "G",
+"a": 3.0,
+"align": null
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 4.4,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "sysctl net.ipv4.ip_forward net.bridge.bridge-nf-call-iptables net.ipv6.conf.all.forwarding net.netfilter.nf_conntrack_max",
+"out": [
+"net.ipv4.ip_forward = 1",
+"net.bridge.bridge-nf-call-iptables = 1",
+"net.ipv6.conf.all.forwarding = 1",
+"net.netfilter.nf_conntrack_max = 131072"
+],
+"next": "controlplane $"
+}
+],
+"hl": "131072",
+"t": 137.11,
+"d": 1.82
+},
+{
+"id": "s18",
+"ch": "If it fails",
+"cap": "Dependency problems, or cannot connect to the Docker daemon, on Killercoda? The playground has no Docker. Expected. Go on to the settings.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 140.88,
+"d": 8.92
+},
+{
+"id": "s19",
+"ch": null,
+"cap": "Cannot stat a bridge setting? Load the module: mod probe br underscore netfilter. For conntrack: nf underscore conntrack. Then sysctl dash dash system again.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "modprobe br_netfilter",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "modprobe nf_conntrack",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "sysctl --system",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 151.55,
+"d": 11.7
+},
+{
+"id": "s20",
+"ch": null,
+"cap": "Requires superuser privilege? You are not root. Run sudo dash i, then repeat the step.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 165.0,
+"d": 5.7
+},
+{
+"id": "s21",
+"ch": null,
+"cap": "Unit cri-docker dot service not found? The package is not installed. Repeat the install, and read its errors.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 172.45,
+"d": 7.55
+},
+{
+"id": "s22",
+"ch": null,
+"cap": "On Killercoda, pods stop talking after Part A? Part A set I P forward to zero. Finish the settings, with sysctl dash dash system.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 181.74,
+"d": 9.11
+},
+{
+"id": "s23",
+"ch": "The rule",
+"cap": "The rule: install the package, enable the service, and save settings in a file.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 192.6,
+"d": 4.76
+},
+{
+"id": "s24",
+"ch": null,
+"cap": "Then load them with sysctl dash dash system, and prove them with sysctl.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 198.71,
+"d": 4.73
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "Which command installs a .deb file?",
+"opts": [
+[
+"dpkg -i",
+true,
+"Correct."
+],
+[
+"systemctl enable",
+false,
+"That manages services. It does not install files."
+],
+[
+"sysctl -w",
+false,
+"That sets one kernel value."
+]
+],
+"t": 74.83
+},
+{
+"id": "Q2",
+"q": "What does enable --now do?",
+"opts": [
+[
+"Starts at boot, and starts now too",
+true,
+"Correct."
+],
+[
+"Only starts it now",
+false,
+"Enable also means: start at every boot."
+],
+[
+"Only starts it at boot",
+false,
+"Dash dash now starts it now as well."
+]
+],
+"t": 88.38
+},
+{
+"id": "Q3",
+"q": "Why a file in /etc/sysctl.d, not only sysctl -w?",
+"opts": [
+[
+"The file is read at every boot",
+true,
+"Correct."
+],
+[
+"sysctl -w is not allowed",
+false,
+"It works, but the value is lost at reboot."
+],
+[
+"The file is faster",
+false,
+"Speed is not the point. Surviving a reboot is."
+]
+],
+"t": 120.44
+}
+]
+}

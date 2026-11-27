@@ -1,0 +1,766 @@
+{
+"end": 193.36,
+"goal": [
+"Goal: only",
+"TLSv1.3 works"
+],
+"rule": {
+"title": "ConfigMap change + restart",
+"rows": [
+[
+"edit ssl_protocols",
+"remove TLSv1.2, keep the ;",
+"k edit configmap"
+],
+[
+"k rollout restart",
+"nginx reads config at start",
+"then test with openssl"
+]
+]
+},
+"shapes": {
+"ns": {
+"rect": [
+40,
+420,
+2020,
+1500
+],
+"frame": true,
+"label": "namespace nginx-static"
+},
+"cm": {
+"rect": [
+110,
+620,
+900,
+300
+],
+"label": "ConfigMap",
+"sub": "nginx-config",
+"h": 84
+},
+"dp": {
+"rect": [
+1100,
+620,
+900,
+300
+],
+"label": "Deployment",
+"sub": "nginx-static",
+"h": 84
+},
+"ss": {
+"rect": [
+110,
+1060,
+900,
+260
+],
+"label": "ssl_protocols",
+"sub": "TLSv1.2 TLSv1.3;",
+"h": 80
+},
+"sp": {
+"rect": [
+1100,
+1060,
+900,
+260
+],
+"label": "subPath mount",
+"sub": "the file never updates",
+"h": 70
+},
+"ck": {
+"rect": [
+110,
+1480,
+900,
+260
+],
+"label": "openssl s_client",
+"sub": "1.2 refused, 1.3 works",
+"h": 66
+},
+"np": {
+"rect": [
+1100,
+1480,
+900,
+260
+],
+"label": "new pod",
+"sub": "reads the new config",
+"h": 76
+},
+"a_cd": {
+"arrow": [
+[
+1010,
+770
+],
+[
+1100,
+770
+]
+],
+"both": true,
+"dashed": false,
+"pen": null
+},
+"a_cs": {
+"arrow": [
+[
+560,
+920
+],
+[
+560,
+1060
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_dsp": {
+"arrow": [
+[
+1550,
+920
+],
+[
+1550,
+1060
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_sp": {
+"arrow": [
+[
+1750,
+1320
+],
+[
+1750,
+1480
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 28. In namespace nginx-static, a deployment runs nginx, with TLS.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"ns",
+"dp"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 6.59
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Its configuration comes from the ConfigMap nginx-config.",
+"focus": "cm",
+"pause": 1.2,
+"draw": [
+"cm",
+"a_cd"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 9.14,
+"d": 4.05
+},
+{
+"id": "s3",
+"ch": null,
+"cap": "Today it accepts TLSv1.2 and TLSv1.3.",
+"focus": "ss",
+"pause": 1.2,
+"draw": [
+"ss",
+"a_cs"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 14.75,
+"d": 5.35
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "Your task: accept ONLY TLSv1.3. And make sure the running pods use the new configuration.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 21.64,
+"d": 7.56
+},
+{
+"id": "s5",
+"ch": "How it works",
+"cap": "The setting is one line inside nginx dot conf: ssl_protocols. It lists the TLS versions nginx accepts.",
+"focus": "ss",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 30.96,
+"d": 8.9
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "So the change is small: remove TLSv1.2 from that line.",
+"focus": "ss",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 41.6,
+"d": 4.77
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "But one wrong character breaks nginx. So first, back up the ConfigMap.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get configmap nginx-config -o yaml -n nginx-static > /root/cm-backup.yaml",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "grep ssl_protocols /root/cm-backup.yaml",
+"out": [
+"    ssl_protocols TLSv1.2 TLSv1.3;"
+],
+"next": "controlplane $"
+}
+],
+"hl": "TLSv1.2 TLSv1.3",
+"t": 47.92,
+"d": 4.87
+},
+{
+"id": "s8",
+"ch": null,
+"cap": "The backup holds the old line. Now change the real one.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 54.14,
+"d": 3.32
+},
+{
+"id": "s9",
+"ch": "The mount",
+"cap": "But will the pods ever see the change? The mount decides that. Look at it.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [
+"sp",
+"a_dsp"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get deployment nginx-static -o yaml -n nginx-static | grep subPath",
+"out": [
+"          subPath: nginx.conf"
+],
+"next": "controlplane $"
+}
+],
+"hl": "subPath",
+"t": 59.01,
+"d": 4.26
+},
+{
+"id": "s10",
+"ch": null,
+"cap": "A subPath file never updates. So the pods need a restart.",
+"focus": "sp",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "sn",
+"t": "never updates",
+"x": 1100,
+"y": 1385,
+"h": 54,
+"c": "R",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 64.62,
+"d": 3.83
+},
+{
+"id": "s10b",
+"ch": null,
+"cap": "The ConfigMap is the source. A running pod keeps its own copy until it restarts.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 70.0,
+"d": 5.2
+},
+{
+"id": "s11",
+"ch": "The fix",
+"cap": "Edit the ConfigMap.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k edit configmap/nginx-config -n nginx-static",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 77.35,
+"d": 1.24
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "In vim: type slash ssl_protocols, Enter. Then colon s slash TLSv1.2 space slash slash, Enter. Save with colon w q.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "# in vim: /ssl_protocols Enter, :s/TLSv1.2 //, Enter, :wq",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 79.95,
+"d": 10.94
+},
+{
+"id": "s13",
+"ch": null,
+"cap": "Check the line.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [
+{
+"id": "t3",
+"t": "TLSv1.3; ✓",
+"x": 110,
+"y": 1385,
+"h": 54,
+"c": "G",
+"a": 1.6,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get configmap nginx-config -o yaml -n nginx-static | grep ssl_protocols",
+"out": [
+"    ssl_protocols TLSv1.3;"
+],
+"next": "controlplane $"
+}
+],
+"hl": "TLSv1.3;",
+"t": 92.64,
+"d": 0.88
+},
+{
+"id": "s14",
+"ch": null,
+"cap": "Only TLSv1.3 is left. And the semicolon is still there.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 94.87,
+"d": 4.93
+},
+{
+"id": "s15",
+"ch": null,
+"cap": "Do not delete the semicolon. nginx then fails to start.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 101.35,
+"d": 3.67
+},
+{
+"id": "s16",
+"ch": "Restart",
+"cap": "The ConfigMap changed. But nginx reads its config only when it starts. So restart the pods.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [
+"np",
+"a_sp"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k rollout restart deployment/nginx-static -n nginx-static",
+"out": [
+"deployment.apps/nginx-static restarted"
+],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k rollout status deployment/nginx-static -n nginx-static",
+"out": [
+"deployment \"nginx-static\" successfully rolled out"
+],
+"next": "controlplane $"
+}
+],
+"hl": "successfully",
+"t": 107.37,
+"d": 6.32
+},
+{
+"id": "s17",
+"ch": null,
+"cap": "The restart makes a new pod. The new pod reads the new config.",
+"focus": "np",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 115.24,
+"d": 3.71
+},
+{
+"id": "s18",
+"ch": "Prove it",
+"cap": "Prove it with openssl s client. First the Service address.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [
+"ck"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "IP=$(k get service nginx-static -o jsonpath='{.spec.clusterIP}' -n nginx-static)",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 120.5,
+"d": 4.28
+},
+{
+"id": "s19",
+"ch": null,
+"cap": "Force TLSv1.2. It must fail, with alert protocol version.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "openssl s_client -connect $IP:443 -tls1_2 </dev/null 2>&1 | grep -E 'alert|New,'",
+"out": [
+"...:tlsv1 alert protocol version:...",
+"New, (NONE), Cipher is (NONE)"
+],
+"next": "controlplane $"
+}
+],
+"hl": "alert protocol version",
+"t": 126.33,
+"d": 5.39
+},
+{
+"id": "s20",
+"ch": null,
+"cap": "Force TLSv1.3. It must work: New, TLSv1.3.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"id": "ok",
+"t": "1.2 refused, 1.3 works ✓",
+"x": 110,
+"y": 1810,
+"h": 54,
+"c": "G",
+"a": 2.6,
+"align": null
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 4.5,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "openssl s_client -connect $IP:443 -tls1_3 </dev/null 2>&1 | grep -E 'alert|New,'",
+"out": [
+"New, TLSv1.3, Cipher is ..."
+],
+"next": "controlplane $"
+}
+],
+"hl": "New, TLSv1.3",
+"t": 133.47,
+"d": 6.4
+},
+{
+"id": "s21",
+"ch": "If it fails",
+"cap": "The edit is refused: field is immutable? The ConfigMap has immutable true.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 142.42,
+"d": 5.04
+},
+{
+"id": "s22",
+"ch": null,
+"cap": "Fix the line in the backup file. Then replace with dash dash force, and restart.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "vim /root/cm-backup.yaml",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k replace --force -f /root/cm-backup.yaml",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 149.21,
+"d": 4.73
+},
+{
+"id": "s23",
+"ch": null,
+"cap": "New pod in CrashLoopBackOff? nginx syntax is broken, often a missing semicolon. k logs names the line.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k logs -l app=nginx-static -n nginx-static",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 155.69,
+"d": 7.94
+},
+{
+"id": "s24",
+"ch": null,
+"cap": "Rollout status waits forever? The new pod cannot start. Look with k get pods, and k describe.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 165.37,
+"d": 6.14
+},
+{
+"id": "s24b",
+"ch": null,
+"cap": "Remember the order: back up, edit, restart, test.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 173.26,
+"d": 2.96
+},
+{
+"id": "s25",
+"ch": "The rule",
+"cap": "The rule: a ConfigMap change does not reach a running nginx by itself.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 177.78,
+"d": 4.84
+},
+{
+"id": "s26",
+"ch": null,
+"cap": "Edit the line, restart the deployment, then prove both versions with openssl.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 183.97,
+"d": 5.04
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "The mount uses subPath. What does that mean?",
+"opts": [
+[
+"The file never updates, so the pods need a restart",
+true,
+"Correct."
+],
+[
+"The file updates by itself",
+false,
+"A subPath file never updates."
+],
+[
+"The ConfigMap is immutable",
+false,
+"That is another setting: immutable true."
+]
+],
+"t": 76.75
+},
+{
+"id": "Q2",
+"q": "Why keep the semicolon at the end of the line?",
+"opts": [
+[
+"Without it, nginx fails to start",
+true,
+"Correct."
+],
+[
+"It marks a comment",
+false,
+"In nginx, the semicolon ends a setting."
+],
+[
+"k edit needs it",
+false,
+"k edit does not care. nginx does."
+]
+],
+"t": 106.77
+},
+{
+"id": "Q3",
+"q": "When do you test with openssl?",
+"opts": [
+[
+"After the restart",
+true,
+"Correct. The old pod still accepts TLSv1.2."
+],
+[
+"Before the restart",
+false,
+"The old pod still accepts TLSv1.2."
+],
+[
+"Before the edit",
+false,
+"The server accepts both versions then, as before."
+]
+],
+"t": 141.82
+}
+]
+}

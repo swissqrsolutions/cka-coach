@@ -1,0 +1,783 @@
+{
+"end": 191.11,
+"goal": [
+"Goal: resolve",
+"api.example.com"
+],
+"rule": {
+"title": "CoreDNS rewrite",
+"rows": [
+[
+"rewrite name A B",
+"inside .:53 { }",
+"A is answered as B"
+],
+[
+"restart CoreDNS",
+"new pods load the file",
+"prove: nslookup A = CLUSTER-IP"
+]
+]
+},
+"shapes": {
+"cl": {
+"rect": [
+40,
+420,
+2020,
+1500
+],
+"frame": true,
+"label": "the cluster"
+},
+"tp": {
+"rect": [
+110,
+620,
+520,
+300
+],
+"label": "test pod",
+"sub": "asks for the name",
+"h": 70
+},
+"cd": {
+"rect": [
+740,
+620,
+560,
+300
+],
+"label": "CoreDNS",
+"sub": "answers lookups",
+"h": 80
+},
+"sv": {
+"rect": [
+1410,
+620,
+580,
+300
+],
+"label": "backend-svc",
+"sub": "namespace web",
+"h": 84
+},
+"bk": {
+"rect": [
+110,
+1060,
+560,
+260
+],
+"label": "backup",
+"sub": "coredns-backup.yaml",
+"h": 54
+},
+"cf": {
+"rect": [
+740,
+1060,
+1250,
+260
+],
+"label": "Corefile",
+"sub": "in ConfigMap coredns, namespace kube-system",
+"h": 56
+},
+"rw": {
+"rect": [
+740,
+1480,
+1250,
+260
+],
+"label": "rewrite name",
+"sub": "api.example.com backend-svc.web.svc.cluster.local",
+"h": 44
+},
+"rs": {
+"rect": [
+110,
+1480,
+560,
+260
+],
+"label": "restart",
+"sub": "new pods load it",
+"h": 76
+},
+"a_tc": {
+"arrow": [
+[
+630,
+770
+],
+[
+740,
+770
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_cs": {
+"arrow": [
+[
+1300,
+770
+],
+[
+1410,
+770
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_cc": {
+"arrow": [
+[
+1020,
+920
+],
+[
+1020,
+1060
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_fr": {
+"arrow": [
+[
+1370,
+1320
+],
+[
+1370,
+1480
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_rr": {
+"arrow": [
+[
+740,
+1610
+],
+[
+670,
+1610
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 29. In the cluster, every pod uses CoreDNS to look up names.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"cl",
+"tp",
+"cd",
+"a_tc"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 5.77
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: the name api.example.com must resolve to the service backend-svc, in namespace web.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 8.32,
+"d": 8.07
+},
+{
+"id": "s3",
+"ch": null,
+"cap": "It must work for all pods. And CoreDNS must use the new configuration.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"sv",
+"a_cs"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 18.14,
+"d": 4.87
+},
+{
+"id": "s4",
+"ch": "How it works",
+"cap": "CoreDNS reads its settings from a text called the Corefile. It lives in the ConfigMap coredns, in kube-system.",
+"focus": "cf",
+"pause": 1.4,
+"draw": [
+"cf",
+"a_cc"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 24.56,
+"d": 7.57
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "The main block is called dot colon 53, with braces. Each line inside is a plugin.",
+"focus": "cf",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 33.89,
+"d": 6.0
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "We need one plugin line: rewrite name, A, B.",
+"focus": "rw",
+"pause": 1.2,
+"draw": [
+"rw",
+"a_fr"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 41.43,
+"d": 2.78
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "It means: a question for name A is answered as if it asked for B.",
+"focus": "rw",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 45.77,
+"d": 4.14
+},
+{
+"id": "s7b",
+"ch": null,
+"cap": "So pods that ask for api.example.com get the Service IP. No pod needs a change.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 51.65,
+"d": 6.64
+},
+{
+"id": "s8",
+"ch": "The backup",
+"cap": "One typo breaks DNS for the whole cluster. So back up the Corefile first.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [
+"bk"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get configmap coredns -o yaml -n kube-system > /root/coredns-backup.yaml",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "ls /root/coredns-backup.yaml",
+"out": [
+"/root/coredns-backup.yaml"
+],
+"next": "controlplane $"
+}
+],
+"hl": "coredns-backup",
+"t": 59.84,
+"d": 5.01
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "Now you can always restore the original.",
+"focus": "bk",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 66.21,
+"d": 2.29
+},
+{
+"id": "s10",
+"ch": "The target",
+"cap": "Which IP should the name give? Look at the Service, and note its CLUSTER-IP.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get service backend-svc -n web",
+"out": [
+"NAME         TYPE       CLUSTER-IP",
+"backend-svc  ClusterIP  10.x.x.x"
+],
+"next": "controlplane $"
+}
+],
+"hl": "10.x.x.x",
+"t": 70.05,
+"d": 4.62
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "You need it to judge the test at the end.",
+"focus": "sv",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 76.02,
+"d": 2.18
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "The full name of the Service is backend-svc dot web dot svc dot cluster dot local. That is B.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [
+{
+"id": "fn",
+"t": "B = backend-svc.web.svc.cluster.local",
+"x": 110,
+"y": 1000,
+"h": 46,
+"c": "B",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 79.75,
+"d": 7.44
+},
+{
+"id": "s13",
+"ch": "Add the line",
+"cap": "Edit the ConfigMap coredns. The docs page: Customizing DNS Service.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k edit configmap/coredns -n kube-system",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 89.54,
+"d": 5.33
+},
+{
+"id": "s14",
+"ch": null,
+"cap": "Put the cursor on the line ready. Press o. Add the rewrite line, with the same indent.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"fn"
+],
+"a": 0.2
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "# in vim: cursor on ready, o, type the line, Esc, :wq",
+"out": [
+"        ready",
+"        rewrite name api.example.com backend-svc.web.svc.cluster.local",
+"        kubernetes cluster.local in-addr.arpa ip6.arpa {",
+"configmap/coredns edited"
+],
+"next": "controlplane $"
+}
+],
+"hl": "rewrite name",
+"t": 96.22,
+"d": 5.13
+},
+{
+"id": "s15",
+"ch": null,
+"cap": "Save with Escape, colon w q. The edit is stored.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 103.1,
+"d": 3.59
+},
+{
+"id": "s16",
+"ch": null,
+"cap": "Do not put the line outside the braces. CoreDNS then ignores it, or crashes.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 108.24,
+"d": 5.19
+},
+{
+"id": "s17",
+"ch": "Restart",
+"cap": "New pods load the new Corefile at once. So restart CoreDNS.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [
+"rs",
+"a_rr"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k rollout restart deployment/coredns -n kube-system",
+"out": [
+"deployment.apps/coredns restarted"
+],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k rollout status deployment/coredns -n kube-system",
+"out": [
+"deployment \"coredns\" successfully rolled out"
+],
+"next": "controlplane $"
+}
+],
+"hl": "successfully",
+"t": 115.78,
+"d": 4.56
+},
+{
+"id": "s18",
+"ch": null,
+"cap": "Check the pods. They must be Running.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get pods -l k8s-app=kube-dns -n kube-system",
+"out": [
+"coredns-...   1/1   Running   0   15s",
+"coredns-...   1/1   Running   0   20s"
+],
+"next": "controlplane $"
+}
+],
+"hl": "Running",
+"t": 121.89,
+"d": 1.9
+},
+{
+"id": "s19",
+"ch": null,
+"cap": "CoreDNS now runs with your line.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"dots": "a_tc",
+"a": 0.8,
+"n": 1,
+"color": "G",
+"back": false
+}
+],
+"term": [],
+"hl": null,
+"t": 125.34,
+"d": 2.25
+},
+{
+"id": "s20",
+"ch": "Prove it",
+"cap": "Ask from a normal pod. Look up api.example.com.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"id": "ok",
+"t": "answer = CLUSTER-IP ✓",
+"x": 740,
+"y": 1810,
+"h": 54,
+"c": "G",
+"a": 2.8,
+"align": null
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 4.6,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k run t --image=busybox:1.36 --rm -it --restart=Never -- nslookup api.example.com",
+"out": [
+"...",
+"Address: 10.x.x.x"
+],
+"next": "controlplane $"
+}
+],
+"hl": "Address: 10",
+"t": 129.15,
+"d": 4.03
+},
+{
+"id": "s21",
+"ch": null,
+"cap": "The answer is the Address at the end. It must match the CLUSTER-IP from before.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 135.12,
+"d": 4.7
+},
+{
+"id": "s22",
+"ch": null,
+"cap": "Do not read the first Address line. That one is the DNS server itself.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 141.57,
+"d": 4.57
+},
+{
+"id": "s23",
+"ch": "If it fails",
+"cap": "CoreDNS in CrashLoopBackOff? A typo in the Corefile. Restore the backup with replace dash dash force, restart, and do the edit again.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k replace --force -f /root/coredns-backup.yaml",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 148.5,
+"d": 9.52
+},
+{
+"id": "s24",
+"ch": null,
+"cap": "NXDOMAIN for the name? The line is outside the braces, or the target has a typo. Check the line, and restart.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 159.77,
+"d": 7.24
+},
+{
+"id": "s25",
+"ch": null,
+"cap": "Pods t already exists? An old test pod was left behind. Delete it, and test again.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k delete pod t",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 168.75,
+"d": 5.49
+},
+{
+"id": "s26",
+"ch": "The rule",
+"cap": "The rule: rewrite name A B, inside the braces of the Corefile.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 175.99,
+"d": 4.02
+},
+{
+"id": "s27",
+"ch": null,
+"cap": "Back up first, restart CoreDNS after, and judge the answer by the Service IP.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 181.36,
+"d": 5.4
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "What does rewrite name A B do?",
+"opts": [
+[
+"A question for A is answered as if it asked for B",
+true,
+"Correct."
+],
+[
+"It renames the Service",
+false,
+"The Service keeps its name."
+],
+[
+"It edits the pods",
+false,
+"It only changes how CoreDNS answers."
+]
+],
+"t": 88.94
+},
+{
+"id": "Q2",
+"q": "Where does the rewrite line go?",
+"opts": [
+[
+"Inside .:53 { }, for example after ready",
+true,
+"Correct."
+],
+[
+"At the end of the file, outside the block",
+false,
+"CoreDNS then ignores it, or crashes."
+],
+[
+"In the Service",
+false,
+"The Corefile lives in the ConfigMap coredns."
+]
+],
+"t": 115.18
+},
+{
+"id": "Q3",
+"q": "Which Address line is the answer?",
+"opts": [
+[
+"The last one, the Service IP",
+true,
+"Correct. It matches the CLUSTER-IP."
+],
+[
+"The first Address line",
+false,
+"That is the DNS server itself."
+],
+[
+"Either one",
+false,
+"Only the Service IP is the answer."
+]
+],
+"t": 147.9
+}
+]
+}

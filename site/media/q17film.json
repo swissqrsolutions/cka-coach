@@ -1,0 +1,762 @@
+{
+"end": 169.64,
+"goal": [
+"Goal: kweb has",
+"3 replicas"
+],
+"rule": {
+"title": "Change the plan, not the base",
+"rows": [
+[
+"kustomization.yaml",
+"holds the change: count 3",
+"deploy.yaml stays untouched"
+],
+[
+"k apply -k",
+"reads the plan",
+"-f would ignore it"
+]
+]
+},
+"shapes": {
+"fo": {
+"rect": [
+40,
+420,
+2020,
+1500
+],
+"frame": true,
+"label": "folder /root/kust"
+},
+"dy": {
+"rect": [
+110,
+620,
+900,
+300
+],
+"label": "deploy.yaml",
+"sub": "the base file",
+"h": 84
+},
+"kz": {
+"rect": [
+1100,
+620,
+900,
+300
+],
+"label": "kustomization.yaml",
+"sub": "the plan",
+"h": 70
+},
+"ns": {
+"rect": [
+110,
+1060,
+900,
+260
+],
+"label": "namespace",
+"sub": "kust",
+"h": 90
+},
+"rp": {
+"rect": [
+1100,
+1060,
+900,
+260
+],
+"label": "replicas: kweb",
+"sub": "count: 2",
+"h": 80
+},
+"out": {
+"rect": [
+560,
+1480,
+1000,
+300
+],
+"label": "kweb in kust",
+"sub": "3 pods",
+"h": 90
+},
+"a_kd": {
+"arrow": [
+[
+1100,
+770
+],
+[
+1010,
+770
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_kn": {
+"arrow": [
+[
+1200,
+920
+],
+[
+1010,
+1100
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_kr": {
+"arrow": [
+[
+1650,
+920
+],
+[
+1650,
+1060
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_ro": {
+"arrow": [
+[
+1450,
+1320
+],
+[
+1250,
+1480
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_no": {
+"arrow": [
+[
+560,
+1320
+],
+[
+800,
+1480
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 17. A Kustomize configuration exists in the folder slash root slash kust.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"fo"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 6.35
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: deployment kweb must run with 3 replicas. Then apply it.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 8.9,
+"d": 4.64
+},
+{
+"id": "s3",
+"ch": "How it works",
+"cap": "The folder holds a file named deploy.yaml. It is the base: the plain deployment kweb.",
+"focus": "dy",
+"pause": 1.2,
+"draw": [
+"dy"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 15.29,
+"d": 6.07
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "Do not edit it. The question forbids that.",
+"focus": "dy",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "ne",
+"t": "do not edit",
+"x": 110,
+"y": 990,
+"h": 54,
+"c": "R",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 22.91,
+"d": 2.37
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "Kustomize changes YAML files without editing them. It is built into kubectl.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 26.83,
+"d": 5.37
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "The changes live in a second file: kustomization.yaml. Call it the plan.",
+"focus": "kz",
+"pause": 1.2,
+"draw": [
+"kz",
+"a_kd"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 33.76,
+"d": 4.84
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "The plan lists the base files. And it lists the changes to make.",
+"focus": "kz",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 40.14,
+"d": 3.66
+},
+{
+"id": "s7b",
+"ch": null,
+"cap": "Kustomize reads the plan, then the base, and builds the final YAML.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 45.35,
+"d": 4.15
+},
+{
+"id": "s8",
+"ch": "Look first",
+"cap": "Look at the plan first.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "cat /root/kust/kustomization.yaml",
+"out": [
+"resources:",
+"- deploy.yaml",
+"namespace: kust",
+"replicas:",
+"- name: kweb",
+"  count: 2"
+],
+"next": "controlplane $"
+}
+],
+"hl": "count: 2",
+"t": 51.05,
+"d": 1.27
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "Read it like a sentence: take deploy.yaml, put it in namespace kust, and give kweb 2 replicas.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [
+"ns",
+"a_kn",
+"rp",
+"a_kr"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 53.66,
+"d": 6.49
+},
+{
+"id": "s10",
+"ch": null,
+"cap": "The namespace matters. The plan moves kweb into kust, so it will not appear in default.",
+"focus": "ns",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 61.9,
+"d": 5.44
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "And the count is the number to change.",
+"focus": "rp",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "c2",
+"t": "count: 2",
+"x": 1100,
+"y": 1385,
+"h": 54,
+"c": "R",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 68.89,
+"d": 2.07
+},
+{
+"id": "s11b",
+"ch": "The fix",
+"cap": "The docs page is: Declarative Management of Kubernetes Objects Using Kustomize.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 73.12,
+"d": 5.54
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "Edit the plan, and change the count from 2 to 3.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"c2"
+],
+"a": 2.5
+},
+{
+"id": "c3",
+"t": "count: 3 ✓",
+"x": 1100,
+"y": 1385,
+"h": 54,
+"c": "G",
+"a": 3.2,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "vim /root/kust/kustomization.yaml",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "grep count /root/kust/kustomization.yaml",
+"out": [
+"  count: 3"
+],
+"next": "controlplane $"
+}
+],
+"hl": "count: 3",
+"t": 80.21,
+"d": 2.92
+},
+{
+"id": "s13",
+"ch": null,
+"cap": "In vim: type slash count, Enter, dollar, r 3. Then colon w q, Enter.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "# in vim: /count Enter, $, r3, :wq Enter",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 84.48,
+"d": 5.09
+},
+{
+"id": "s14",
+"ch": null,
+"cap": "Only the count changed. The base file is untouched.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 91.31,
+"d": 3.09
+},
+{
+"id": "s15",
+"ch": "Preview",
+"cap": "Before you apply, preview the result. k kustomize prints the final YAML, and creates nothing.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k kustomize /root/kust | grep -E 'namespace|replicas'",
+"out": [
+"  namespace: kust",
+"  replicas: 3"
+],
+"next": "controlplane $"
+}
+],
+"hl": "replicas: 3",
+"t": 95.95,
+"d": 5.93
+},
+{
+"id": "s16",
+"ch": null,
+"cap": "Namespace kust, replicas 3. The plan is right.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 103.43,
+"d": 3.3
+},
+{
+"id": "s17",
+"ch": "Apply",
+"cap": "Now apply the folder. Use dash k: it reads the plan.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k apply -k /root/kust",
+"out": [
+"deployment.apps/kweb created"
+],
+"next": "controlplane $"
+}
+],
+"hl": "created",
+"t": 108.89,
+"d": 3.49
+},
+{
+"id": "s18",
+"ch": null,
+"cap": "Do not use dash f on the folder. Dash f ignores the plan.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 113.93,
+"d": 3.88
+},
+{
+"id": "s19",
+"ch": null,
+"cap": "It would apply deploy.yaml unchanged, into the default namespace.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 119.36,
+"d": 4.48
+},
+{
+"id": "s20",
+"ch": "Prove it",
+"cap": "Check the deployment, in the namespace the plan sets: kust.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [
+"out",
+"a_ro",
+"a_no"
+],
+"acts": [
+{
+"wipe": [
+"c3"
+],
+"a": 2.6
+},
+{
+"id": "ok",
+"t": "3/3 ✓",
+"x": 1100,
+"y": 1385,
+"h": 54,
+"c": "G",
+"a": 3.3,
+"align": null
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 4.1,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get deployment kweb -n kust",
+"out": [
+"NAME   READY   UP-TO-DATE   AVAILABLE   AGE",
+"kweb   3/3     3            3           20s"
+],
+"next": "controlplane $"
+}
+],
+"hl": "3/3",
+"t": 126.18,
+"d": 3.32
+},
+{
+"id": "s21",
+"ch": null,
+"cap": "1 of 3 at first is normal. Wait 20 seconds.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 131.45,
+"d": 3.13
+},
+{
+"id": "s22",
+"ch": "If it fails",
+"cap": "If you used dash f by mistake, you see created, plus an error: kind not set.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 136.13,
+"d": 4.77
+},
+{
+"id": "s23",
+"ch": null,
+"cap": "The fix: delete the deployment from default. Then apply with dash k.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k delete deployment kweb -n default",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k apply -k /root/kust",
+"out": [
+"deployment.apps/kweb created"
+],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 142.65,
+"d": 4.08
+},
+{
+"id": "s24",
+"ch": null,
+"cap": "No resources found? Wrong namespace. Read namespace in the plan, and use dash n kust.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 148.48,
+"d": 5.98
+},
+{
+"id": "s25",
+"ch": "The rule",
+"cap": "The rule: change the plan, never the base file.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 156.22,
+"d": 2.58
+},
+{
+"id": "s26",
+"ch": null,
+"cap": "Preview with k kustomize. Apply with dash k. Look in the namespace the plan sets.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 160.15,
+"d": 5.14
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "Which file do you edit to get 3 replicas?",
+"opts": [
+[
+"kustomization.yaml, the count",
+true,
+"Correct. The plan holds the change."
+],
+[
+"deploy.yaml",
+false,
+"The question forbids it. It is only the base."
+],
+[
+"The running deployment, by hand",
+false,
+"The change belongs in the plan, so the folder stays the one source."
+]
+],
+"t": 72.52
+},
+{
+"id": "Q2",
+"q": "What does k kustomize do?",
+"opts": [
+[
+"Prints the final YAML, and creates nothing",
+true,
+"Correct."
+],
+[
+"Applies the folder to the cluster",
+false,
+"That is k apply, with dash k."
+],
+[
+"Edits deploy.yaml for you",
+false,
+"Nothing is edited. It only prints."
+]
+],
+"t": 108.29
+},
+{
+"id": "Q3",
+"q": "Which flag applies a folder with a Kustomize plan?",
+"opts": [
+[
+"-k",
+true,
+"Correct. It reads kustomization.yaml."
+],
+[
+"-f",
+false,
+"It applies deploy.yaml unchanged into default."
+],
+[
+"-n",
+false,
+"-n only picks a namespace."
+]
+],
+"t": 125.58
+}
+]
+}

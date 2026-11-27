@@ -1,0 +1,726 @@
+{
+"end": 177.68,
+"goal": [
+"Goal: web-ing",
+"host to svc:80"
+],
+"rule": {
+"title": "k create ingress",
+"rows": [
+[
+"--class=nginx",
+"look up the IngressClass",
+"no class = ignored"
+],
+[
+"--rule host/*=svc:port",
+"the * makes it Prefix",
+"check with describe"
+]
+]
+},
+"shapes": {
+"ns": {
+"rect": [
+40,
+420,
+2020,
+1500
+],
+"frame": true,
+"label": "namespace web"
+},
+"us": {
+"rect": [
+110,
+620,
+560,
+300
+],
+"label": "Request",
+"sub": "shop.example.com /",
+"h": 60
+},
+"ig": {
+"rect": [
+760,
+620,
+560,
+300
+],
+"label": "Ingress web-ing",
+"sub": "host + path to Service",
+"h": 56
+},
+"sv": {
+"rect": [
+1410,
+620,
+580,
+300
+],
+"label": "backend-svc",
+"sub": "Service, port 80",
+"h": 84
+},
+"ic": {
+"rect": [
+110,
+1060,
+900,
+260
+],
+"label": "IngressClass",
+"sub": "nginx",
+"h": 90
+},
+"pd": {
+"rect": [
+1410,
+1060,
+580,
+260
+],
+"label": "backend pods",
+"sub": "192.168.x.x:80",
+"h": 70
+},
+"cm": {
+"rect": [
+110,
+1480,
+900,
+260
+],
+"label": "k create ingress",
+"sub": "--class and --rule",
+"h": 80
+},
+"ad": {
+"rect": [
+1100,
+1480,
+900,
+260
+],
+"label": "ADDRESS stays empty",
+"sub": "no ingress controller here",
+"h": 60
+},
+"a_ui": {
+"arrow": [
+[
+670,
+770
+],
+[
+760,
+770
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_is": {
+"arrow": [
+[
+1320,
+770
+],
+[
+1410,
+770
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_ci": {
+"arrow": [
+[
+500,
+1060
+],
+[
+900,
+920
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_sp": {
+"arrow": [
+[
+1700,
+920
+],
+[
+1700,
+1060
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 24. In namespace web, create an Ingress named web-ing.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"ns"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 4.39
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: requests for host shop.example.com, path slash, must go to the service backend-svc, on port 80.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 6.94,
+"d": 8.84
+},
+{
+"id": "s2b",
+"ch": null,
+"cap": "No YAML is needed. One command writes the whole object.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 17.53,
+"d": 3.59
+},
+{
+"id": "s3",
+"ch": "How it works",
+"cap": "An Ingress is a rule for incoming web traffic. A request comes in with a host, and a path.",
+"focus": "us",
+"pause": 1.2,
+"draw": [
+"us"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 22.67,
+"d": 5.64
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "The rule says: this host and path go to that Service, on that port.",
+"focus": "ig",
+"pause": 1.2,
+"draw": [
+"ig",
+"a_ui"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 29.86,
+"d": 3.79
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "Here the Service is backend-svc. Its pods run nginx on port 80.",
+"focus": "sv",
+"pause": 1.2,
+"draw": [
+"sv",
+"a_is",
+"pd",
+"a_sp"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 35.2,
+"d": 5.3
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "The path type is Prefix. It matches the path, and everything below it. Slash matches every request.",
+"focus": "ig",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 42.05,
+"d": 6.6
+},
+{
+"id": "s7",
+"ch": "The class",
+"cap": "An Ingress also needs a class. The class names the controller that carries out the rules.",
+"focus": "ic",
+"pause": 1.2,
+"draw": [
+"ic",
+"a_ci"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 50.4,
+"d": 5.3
+},
+{
+"id": "s8",
+"ch": null,
+"cap": "The question says: use the existing IngressClass. So look up its name.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get ingressclass",
+"out": [
+"nginx   k8s.io/ingress-nginx   <none>   1m"
+],
+"next": "controlplane $"
+}
+],
+"hl": "nginx   k8s",
+"t": 57.25,
+"d": 4.25
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "The class is nginx. An Ingress without the right class is ignored.",
+"focus": "ic",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "cl",
+"t": "class: nginx",
+"x": 110,
+"y": 1385,
+"h": 54,
+"c": "B",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 62.85,
+"d": 4.15
+},
+{
+"id": "s10",
+"ch": "The port",
+"cap": "Next, the Service port. The rule needs the Service port, not the pod port.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get service backend-svc -n web",
+"out": [
+"NAME         TYPE       PORT(S)",
+"backend-svc  ClusterIP  80/TCP"
+],
+"next": "controlplane $"
+}
+],
+"hl": "80/TCP",
+"t": 69.15,
+"d": 4.5
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "80 slash TCP. So backend-svc on port 80 is a real target.",
+"focus": "sv",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 75.01,
+"d": 5.26
+},
+{
+"id": "s11b",
+"ch": null,
+"cap": "The rule points at the Service, not at a pod. The Service keeps one fixed address for its pods.",
+"focus": "sv",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 81.82,
+"d": 5.64
+},
+{
+"id": "s12",
+"ch": "Create it",
+"cap": "Now create it. k create ingress writes the whole object. No YAML.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [
+"cm"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k create ingress web-ing --class=nginx --rule=\"shop.example.com/*=backend-svc:80\" -n web",
+"out": [
+"ingress.networking.k8s.io/web-ing created"
+],
+"next": "controlplane $"
+}
+],
+"hl": "created",
+"t": 89.21,
+"d": 4.44
+},
+{
+"id": "s13",
+"ch": null,
+"cap": "The rule has the form: host, path, equals, service, colon, port.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 95.2,
+"d": 4.33
+},
+{
+"id": "s14",
+"ch": null,
+"cap": "The star after the slash makes the path type Prefix.",
+"focus": "cm",
+"pause": 1.4,
+"draw": [],
+"acts": [
+{
+"id": "st",
+"t": "path /* = Prefix",
+"x": 110,
+"y": 1810,
+"h": 54,
+"c": "B",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 101.28,
+"d": 2.89
+},
+{
+"id": "s15",
+"ch": null,
+"cap": "Do not drop the star. Without it, the path type is Exact.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 105.93,
+"d": 3.41
+},
+{
+"id": "s16",
+"ch": "Check it",
+"cap": "Check the summary line. One line shows the class and the host.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get ingress web-ing -n web",
+"out": [
+"NAME     CLASS  HOSTS             PORTS",
+"web-ing  nginx  shop.example.com  80"
+],
+"next": "controlplane $"
+}
+],
+"hl": "shop.example.com",
+"t": 111.68,
+"d": 3.58
+},
+{
+"id": "s16b",
+"ch": null,
+"cap": "The summary line shows the class and the host together.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 116.81,
+"d": 2.92
+},
+{
+"id": "s17",
+"ch": null,
+"cap": "ADDRESS stays empty. The playground has no ingress controller. That is fine.",
+"focus": "ad",
+"pause": 1.4,
+"draw": [
+"ad"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 121.28,
+"d": 4.75
+},
+{
+"id": "s18",
+"ch": "Prove it",
+"cap": "Describe it. The backend must show a pod address in brackets.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"id": "ok",
+"t": "backend resolves ✓",
+"x": 1410,
+"y": 1385,
+"h": 54,
+"c": "G",
+"a": 3.0,
+"align": null
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 4.5,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k describe ingress web-ing -n web",
+"out": [
+"Ingress Class:    nginx",
+"...",
+"  shop.example.com",
+"  /   backend-svc:80 (192.168.x.x:80)"
+],
+"next": "controlplane $"
+}
+],
+"hl": "192.168.x.x:80",
+"t": 127.78,
+"d": 3.48
+},
+{
+"id": "s19",
+"ch": null,
+"cap": "The address in brackets is a pod IP. So the Service found its pods.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 133.21,
+"d": 4.22
+},
+{
+"id": "s19b",
+"ch": null,
+"cap": "So the rule reaches real pods, not only a name.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 138.99,
+"d": 2.99
+},
+{
+"id": "s20",
+"ch": "If it fails",
+"cap": "An error, services not found? The Service name has a typo. Delete the Ingress, and create it again.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k delete ingress web-ing -n web",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 144.13,
+"d": 6.09
+},
+{
+"id": "s21",
+"ch": null,
+"cap": "Empty brackets? Check the port in step two. Delete, and create again.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 151.97,
+"d": 4.11
+},
+{
+"id": "s22",
+"ch": null,
+"cap": "Ingress Class none? You forgot dash dash class. Delete, and create again.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 157.83,
+"d": 4.47
+},
+{
+"id": "s23",
+"ch": "The rule",
+"cap": "The rule: an Ingress is host and path to Service and port.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 164.05,
+"d": 3.59
+},
+{
+"id": "s24",
+"ch": null,
+"cap": "Look up the class first. Then k create ingress, with the star for Prefix.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 168.99,
+"d": 4.34
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "Why do you look up the IngressClass name?",
+"opts": [
+[
+"An Ingress without the right class is ignored",
+true,
+"Correct."
+],
+[
+"The class sets the host name",
+false,
+"The host is in the rule."
+],
+[
+"The class sets the Service port",
+false,
+"The port comes from the Service."
+]
+],
+"t": 68.55
+},
+{
+"id": "Q2",
+"q": "What does the star after the slash do?",
+"opts": [
+[
+"It makes the path type Prefix",
+true,
+"Correct."
+],
+[
+"It matches only the exact path",
+false,
+"Without the star, the path type is Exact."
+],
+[
+"It matches every host",
+false,
+"The host is the first part of the rule."
+]
+],
+"t": 111.08
+},
+{
+"id": "Q3",
+"q": "Describe shows empty brackets (). What does it suggest?",
+"opts": [
+[
+"A wrong Service port, or pods not Ready",
+true,
+"Correct. Check PORT(S), then delete and create again."
+],
+[
+"The class is missing",
+false,
+"A missing class shows Ingress Class: <none>."
+],
+[
+"The Service name has a typo",
+false,
+"A wrong name shows an error: services not found."
+]
+],
+"t": 143.53
+}
+]
+}

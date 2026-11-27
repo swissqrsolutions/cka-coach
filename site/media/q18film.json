@@ -1,0 +1,721 @@
+{
+"end": 177.01,
+"goal": [
+"Goal: 2 files",
+"CRDs, subject"
+],
+"rule": {
+"title": "A list and a doc, into files",
+"rows": [
+[
+"k get crd | grep",
+"lists the new kinds",
+"cert-manager: 6 names"
+],
+[
+"k explain a.b.c",
+"docs of one field",
+"no | head in the file"
+]
+]
+},
+"shapes": {
+"cl": {
+"rect": [
+40,
+420,
+2020,
+1500
+],
+"frame": true,
+"label": "the cluster"
+},
+"cm": {
+"rect": [
+110,
+620,
+900,
+300
+],
+"label": "cert-manager",
+"sub": "its CRDs are installed",
+"h": 80
+},
+"crd": {
+"rect": [
+1100,
+620,
+900,
+300
+],
+"label": "CRD",
+"sub": "adds a new kind",
+"h": 90
+},
+"ct": {
+"rect": [
+1100,
+1060,
+900,
+260
+],
+"label": "Certificate",
+"sub": "a new kind",
+"h": 90
+},
+"f1": {
+"rect": [
+110,
+1060,
+900,
+260
+],
+"label": "/root/crds.txt",
+"sub": "the list of CRDs",
+"h": 80
+},
+"f2": {
+"rect": [
+110,
+1480,
+900,
+260
+],
+"label": "/root/subject.txt",
+"sub": "docs of spec.subject",
+"h": 70
+},
+"gr": {
+"rect": [
+1100,
+1480,
+900,
+260
+],
+"label": "grader",
+"sub": "opens both files",
+"h": 84
+},
+"a_cc": {
+"arrow": [
+[
+1550,
+920
+],
+[
+1550,
+1060
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_cf": {
+"arrow": [
+[
+560,
+920
+],
+[
+560,
+1060
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_tf": {
+"arrow": [
+[
+1150,
+1320
+],
+[
+1010,
+1560
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 18. cert-manager is installed in the cluster.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"cl",
+"cm"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 3.72
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: write two files. A grader opens both, and compares them.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal",
+"gr"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 6.27,
+"d": 4.33
+},
+{
+"id": "s3",
+"ch": null,
+"cap": "File one: a list of all cert-manager CRDs, into slash root slash crds dot txt.",
+"focus": "f1",
+"pause": 1.2,
+"draw": [
+"f1",
+"a_cf"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 12.35,
+"d": 7.16
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "File two: the documentation of the field subject, in the spec of a Certificate. It goes into slash root slash subject dot txt.",
+"focus": "f2",
+"pause": 1.4,
+"draw": [
+"f2"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 21.06,
+"d": 8.94
+},
+{
+"id": "s5",
+"ch": "What is a CRD",
+"cap": "A CRD, a CustomResourceDefinition, adds a new kind to Kubernetes.",
+"focus": "crd",
+"pause": 1.2,
+"draw": [
+"crd"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 31.75,
+"d": 4.88
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "Certificate is such a kind. Plain Kubernetes does not have it. cert-manager adds it.",
+"focus": "ct",
+"pause": 1.2,
+"draw": [
+"ct",
+"a_cc"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 38.18,
+"d": 5.41
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "The names of its CRDs end in cert-manager dot io. We expect 6 of them.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 45.14,
+"d": 5.43
+},
+{
+"id": "s7b",
+"ch": null,
+"cap": "Think of the list as a menu: it shows which new kinds the cluster knows.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 52.32,
+"d": 4.05
+},
+{
+"id": "s8",
+"ch": "File one",
+"cap": "Which cert-manager CRDs exist? grep keeps only the lines with that word.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get crd | grep cert-manager",
+"out": [
+"certificaterequests.cert-manager.io   2026-...",
+"certificates.cert-manager.io          2026-...",
+"..."
+],
+"next": "controlplane $"
+}
+],
+"hl": "certificates.cert-manager.io",
+"t": 57.92,
+"d": 4.98
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "Six lines. That is the list the grader wants.",
+"focus": "f1",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "s6",
+"t": "6 lines",
+"x": 110,
+"y": 1385,
+"h": 54,
+"c": "B",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 64.24,
+"d": 2.55
+},
+{
+"id": "s10",
+"ch": null,
+"cap": "Now the same command again. The greater-than sign sends it into the file.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get crd | grep cert-manager > /root/crds.txt",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "wc -l /root/crds.txt",
+"out": [
+"6 /root/crds.txt"
+],
+"next": "controlplane $"
+}
+],
+"hl": "6 /root",
+"t": 68.95,
+"d": 4.12
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "wc dash l counts the lines. Six. File one is done.",
+"focus": "f1",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"wipe": [
+"s6"
+],
+"a": 0.2
+},
+{
+"id": "d1",
+"t": "done ✓",
+"x": 110,
+"y": 1385,
+"h": 54,
+"c": "G",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 74.62,
+"d": 4.2
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "Do not retype the names. Let the command write the file.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 80.37,
+"d": 3.19
+},
+{
+"id": "s13",
+"ch": "File two",
+"cap": "k explain prints the docs of a kind, or of one of its fields.",
+"focus": "f2",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 85.11,
+"d": 3.79
+},
+{
+"id": "s14",
+"ch": null,
+"cap": "It works for new kinds too, like Certificate. The path uses dots, because the field sits inside spec.",
+"focus": "ct",
+"pause": 1.4,
+"draw": [
+"a_tf"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 90.45,
+"d": 6.42
+},
+{
+"id": "s15",
+"ch": null,
+"cap": "First look at the top, with head.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k explain certificate.spec.subject | head -5",
+"out": [
+"GROUP:      cert-manager.io",
+"KIND:       Certificate",
+"VERSION:    v1",
+"FIELD: subject <Object>"
+],
+"next": "controlplane $"
+}
+],
+"hl": "FIELD: subject",
+"t": 98.62,
+"d": 1.68
+},
+{
+"id": "s16",
+"ch": null,
+"cap": "KIND says Certificate. FIELD says subject. The path is right.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 101.65,
+"d": 4.01
+},
+{
+"id": "s16b",
+"ch": null,
+"cap": "This is a cheap test of the path. Do it before you save the file.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 107.2,
+"d": 3.66
+},
+{
+"id": "s17",
+"ch": null,
+"cap": "Now save the full text. The grader reads all of it, not only the head.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k explain certificate.spec.subject > /root/subject.txt",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "head -2 /root/subject.txt",
+"out": [
+"GROUP:      cert-manager.io",
+"KIND:       Certificate"
+],
+"next": "controlplane $"
+}
+],
+"hl": "KIND",
+"t": 112.42,
+"d": 4.22
+},
+{
+"id": "s18",
+"ch": null,
+"cap": "Do not keep head in this command. The file would hold 5 lines only.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "d2",
+"t": "done ✓",
+"x": 110,
+"y": 1805,
+"h": 54,
+"c": "G",
+"a": 0.6,
+"align": null
+}
+],
+"term": [],
+"hl": null,
+"t": 118.18,
+"d": 3.93
+},
+{
+"id": "s19",
+"ch": "Prove it",
+"cap": "The grader reads the files, so read them too.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 2.4,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "cat /root/crds.txt /root/subject.txt",
+"out": [
+"certificaterequests.cert-manager.io   2026-...",
+"...",
+"FIELD: subject <Object>",
+"...",
+"DESCRIPTION:"
+],
+"next": "controlplane $"
+}
+],
+"hl": "DESCRIPTION",
+"t": 124.27,
+"d": 2.46
+},
+{
+"id": "s20",
+"ch": null,
+"cap": "File one holds the 6 names. File two holds the docs of the field.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 128.67,
+"d": 4.41
+},
+{
+"id": "s20b",
+"ch": null,
+"cap": "Each file is checked on its own. Both must hold what the screen showed.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 134.63,
+"d": 3.96
+},
+{
+"id": "s21",
+"ch": "If it fails",
+"cap": "The server does not have a resource type, certficate? The kind name has a typo.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 140.14,
+"d": 4.61
+},
+{
+"id": "s22",
+"ch": null,
+"cap": "List the kinds that cert-manager brought, and use a name from the first column.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k api-resources | grep cert-manager",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 146.5,
+"d": 4.23
+},
+{
+"id": "s23",
+"ch": null,
+"cap": "No cert-manager pods on Killercoda? That is normal. This question needs only the CRDs.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 153.08,
+"d": 6.47
+},
+{
+"id": "s24",
+"ch": "The rule",
+"cap": "The rule: k get crd lists the new kinds. k explain documents a field.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 161.3,
+"d": 5.03
+},
+{
+"id": "s25",
+"ch": null,
+"cap": "Filter with grep, write with the greater-than sign, and never keep head in the file command.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 167.68,
+"d": 4.98
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "How do you list only the cert-manager CRDs?",
+"opts": [
+[
+"k get crd | grep cert-manager",
+true,
+"Correct."
+],
+[
+"k get crd, alone",
+false,
+"It lists every CRD in the cluster."
+],
+[
+"k get certificate",
+false,
+"That lists Certificate objects, not the CRDs."
+]
+],
+"t": 68.35
+},
+{
+"id": "Q2",
+"q": "Why is there no | head in the command that writes the file?",
+"opts": [
+[
+"The file would hold 5 lines only",
+true,
+"Correct. The grader reads the full text."
+],
+[
+"It is a syntax error",
+false,
+"It works. But the file would be cut short."
+],
+[
+"k explain needs a namespace",
+false,
+"It needs none here. The path is the point."
+]
+],
+"t": 123.67
+},
+{
+"id": "Q3",
+"q": "The server doesn't have a resource type \"certficate\". What now?",
+"opts": [
+[
+"k api-resources | grep cert-manager",
+true,
+"Correct. Use a name from the first column."
+],
+[
+"Install cert-manager again",
+false,
+"The CRDs are there. The kind name has a typo."
+],
+[
+"Delete the files",
+false,
+"The files are not the problem."
+]
+],
+"t": 152.48
+}
+]
+}

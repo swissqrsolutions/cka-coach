@@ -1,0 +1,720 @@
+{
+"end": 201.96,
+"goal": [
+"Goal: deny all",
+"but keep DNS"
+],
+"rule": {
+"title": "Default deny, keep DNS",
+"rows": [
+[
+"podSelector {}",
+"all pods; no ingress: part",
+"nothing comes in"
+],
+[
+"egress: port 53",
+"UDP and TCP, no to:",
+"nslookup works, wget fails"
+]
+]
+},
+"shapes": {
+"ns": {
+"rect": [
+40,
+420,
+2020,
+1500
+],
+"frame": true,
+"label": "namespace prod"
+},
+"ap": {
+"rect": [
+110,
+620,
+560,
+300
+],
+"label": "app",
+"sub": "busybox pod",
+"h": 90
+},
+"wb": {
+"rect": [
+1440,
+620,
+560,
+300
+],
+"label": "web",
+"sub": "nginx, Service web",
+"h": 80
+},
+"pl": {
+"rect": [
+110,
+1060,
+900,
+300
+],
+"label": "default-deny",
+"sub": "podSelector {}: all pods",
+"h": 70
+},
+"dn": {
+"rect": [
+1100,
+1060,
+900,
+300
+],
+"label": "CoreDNS",
+"sub": "answers name lookups",
+"h": 80
+},
+"in": {
+"rect": [
+110,
+1500,
+900,
+260
+],
+"label": "ingress: none",
+"sub": "nothing comes in",
+"h": 80
+},
+"p53": {
+"rect": [
+1100,
+1500,
+900,
+260
+],
+"label": "egress: port 53",
+"sub": "UDP and TCP, no to:",
+"h": 76
+},
+"a_aw": {
+"arrow": [
+[
+670,
+770
+],
+[
+1440,
+770
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_ad": {
+"arrow": [
+[
+600,
+920
+],
+[
+1400,
+1060
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 27. In namespace prod, two pods run: app, and web. web has a Service.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"ns",
+"ap",
+"wb",
+"a_aw"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 6.24
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: a NetworkPolicy named default-deny. It blocks all incoming and all outgoing traffic, for every pod.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 8.79,
+"d": 7.8
+},
+{
+"id": "s3",
+"ch": null,
+"cap": "But DNS lookups, on port 53, must still work.",
+"focus": "goal",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 18.34,
+"d": 3.31
+},
+{
+"id": "s4",
+"ch": "How it works",
+"cap": "A NetworkPolicy decides which traffic may reach a pod, or leave it.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 23.2,
+"d": 4.26
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "A policy with podSelector, empty braces, selects all pods. Default deny means: it allows nothing.",
+"focus": "pl",
+"pause": 1.4,
+"draw": [
+"pl"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 29.01,
+"d": 6.76
+},
+{
+"id": "s6",
+"ch": null,
+"cap": "Ingress is traffic coming in. Egress is traffic going out. We block both.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 37.52,
+"d": 4.63
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "But a pod needs DNS to find the name web. Names are answered by CoreDNS, over port 53.",
+"focus": "dn",
+"pause": 1.4,
+"draw": [
+"dn",
+"a_ad"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 43.9,
+"d": 7.32
+},
+{
+"id": "s8",
+"ch": "Look first",
+"cap": "First test before the policy. After it, the same line must fail.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get networkpolicy -n prod",
+"out": [
+"No resources found in prod namespace."
+],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "k exec app -n prod -- wget -qO- -T 3 web",
+"out": [
+"...",
+"<title>Welcome to nginx!</title>",
+"..."
+],
+"next": "controlplane $"
+}
+],
+"hl": "Welcome",
+"t": 52.97,
+"d": 3.99
+},
+{
+"id": "s9",
+"ch": null,
+"cap": "No policy exists, and the nginx page comes back. Remember this line for the end.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [
+{
+"dots": "a_aw",
+"a": 0.8,
+"n": 1,
+"color": "G",
+"back": false
+}
+],
+"term": [],
+"hl": null,
+"t": 58.31,
+"d": 5.3
+},
+{
+"id": "s9b",
+"ch": null,
+"cap": "The policy is named default-deny, and it lives in namespace prod.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 65.36,
+"d": 4.01
+},
+{
+"id": "s10",
+"ch": "Write it",
+"cap": "There is no k create networkpolicy. Copy from the docs, page Network Policies, the box default deny all ingress and all egress.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "vim deny.yaml",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 70.91,
+"d": 9.2
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "Yours are the name, the namespace, and the whole egress part. policyTypes lists Ingress and Egress.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "cat deny.yaml | head -11",
+"out": [
+"kind: NetworkPolicy",
+"metadata:",
+"  name: default-deny",
+"  namespace: prod",
+"spec:",
+"  podSelector: {}",
+"  policyTypes:",
+"  - Ingress",
+"  - Egress"
+],
+"next": "controlplane $"
+}
+],
+"hl": "- Egress",
+"t": 81.66,
+"d": 6.2
+},
+{
+"id": "s12",
+"ch": null,
+"cap": "There is no ingress part. So nothing comes in.",
+"focus": "in",
+"pause": 1.2,
+"draw": [
+"in"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 89.61,
+"d": 2.65
+},
+{
+"id": "s13",
+"ch": null,
+"cap": "Out, only port 53: UDP, and TCP.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [
+"p53"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "cat deny.yaml | tail -6",
+"out": [
+"  egress:",
+"  - ports:",
+"    - protocol: UDP",
+"      port: 53",
+"    - protocol: TCP",
+"      port: 53"
+],
+"next": "controlplane $"
+}
+],
+"hl": "port: 53",
+"t": 93.81,
+"d": 3.52
+},
+{
+"id": "s13b",
+"ch": null,
+"cap": "Read it like a sentence: all pods, nothing in, only port 53 out.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 98.87,
+"d": 4.61
+},
+{
+"id": "s14",
+"ch": null,
+"cap": "Do not add to: under egress. Without to:, port 53 is open to any DNS server.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 105.64,
+"d": 6.14
+},
+{
+"id": "s15",
+"ch": null,
+"cap": "In vim, type colon set paste before you press i and paste. Save with colon w q.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 114.13,
+"d": 5.82
+},
+{
+"id": "s16",
+"ch": "Apply",
+"cap": "Apply it.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k apply -f deny.yaml",
+"out": [
+"networkpolicy.networking.k8s.io/default-deny created"
+],
+"next": "controlplane $"
+}
+],
+"hl": "created",
+"t": 121.7,
+"d": 0.7
+},
+{
+"id": "s17",
+"ch": null,
+"cap": "Read it back with describe. It shows what the policy really allows.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k describe networkpolicy default-deny -n prod",
+"out": [
+"  PodSelector:     <none> (Allowing the ...)",
+"  Allowing ingress traffic:",
+"    <none> (Selected pods are isolated ...)",
+"  Allowing egress traffic:",
+"    To Port: 53/UDP",
+"    To Port: 53/TCP",
+"    To: <any> (traffic not restricted ...)",
+"  Policy Types: Ingress, Egress"
+],
+"next": "controlplane $"
+}
+],
+"hl": "Policy Types",
+"t": 123.75,
+"d": 3.86
+},
+{
+"id": "s18",
+"ch": null,
+"cap": "Three things. PodSelector none: all pods. Ingress none: nothing comes in. Policy types: both directions.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 129.35,
+"d": 7.34
+},
+{
+"id": "s19",
+"ch": "Prove it",
+"cap": "Now two tests. First, a name lookup: it must answer.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k exec app -n prod -- nslookup web.prod.svc.cluster.local",
+"out": [
+"Name:\tweb.prod.svc.cluster.local",
+"..."
+],
+"next": "controlplane $"
+}
+],
+"hl": "Name:",
+"t": 138.45,
+"d": 3.48
+},
+{
+"id": "s20",
+"ch": null,
+"cap": "Second, the same wget as before. It must time out.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"id": "wx",
+"cross": [
+1055,
+770
+],
+"c": "R",
+"a": 0.8
+},
+{
+"id": "ok",
+"t": "DNS yes, rest no ✓",
+"x": 110,
+"y": 1810,
+"h": 54,
+"c": "G",
+"a": 2.6,
+"align": null
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 4.2,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k exec app -n prod -- wget -qO- -T 3 web",
+"out": [
+"wget: download timed out",
+"command terminated with exit code 1"
+],
+"next": "controlplane $"
+}
+],
+"hl": "timed out",
+"t": 143.48,
+"d": 3.4
+},
+{
+"id": "s21",
+"ch": "If it fails",
+"cap": "The wget still prints the page? The network plug-in does not enforce policies. Trust the describe output.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 149.42,
+"d": 6.72
+},
+{
+"id": "s22",
+"ch": null,
+"cap": "nslookup times out too? The egress block is missing, or mis-indented. Egress starts in the same column as policyTypes.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 157.89,
+"d": 8.19
+},
+{
+"id": "s23",
+"ch": null,
+"cap": "k get networkpolicy shows nothing? The policy landed in default. Add namespace prod, and apply again.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 167.83,
+"d": 6.54
+},
+{
+"id": "s24",
+"ch": null,
+"cap": "Error parsing deny dot yaml? Tabs from the paste. Use colon set paste, and retype the spaces.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 176.12,
+"d": 6.31
+},
+{
+"id": "s25",
+"ch": "The rule",
+"cap": "The rule: an empty podSelector picks all pods. No ingress part blocks everything in.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 184.18,
+"d": 5.73
+},
+{
+"id": "s26",
+"ch": null,
+"cap": "Egress, only port 53, keeps DNS alive. Prove it with nslookup, and wget.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 191.26,
+"d": 6.35
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "Which part of the policy blocks all incoming traffic?",
+"opts": [
+[
+"No ingress: part, with Ingress in policyTypes",
+true,
+"Correct. Nothing is allowed in."
+],
+[
+"podSelector: {}",
+false,
+"That only selects all pods."
+],
+[
+"The egress part",
+false,
+"That one allows port 53 going out."
+]
+],
+"t": 105.04
+},
+{
+"id": "Q2",
+"q": "What does the egress rule, with port 53 and no to:, allow?",
+"opts": [
+[
+"Port 53 to any DNS server",
+true,
+"Correct. So lookups work."
+],
+[
+"All outgoing traffic",
+false,
+"Only port 53, on UDP and TCP."
+],
+[
+"Nothing",
+false,
+"It opens port 53, so DNS keeps working."
+]
+],
+"t": 113.53
+},
+{
+"id": "Q3",
+"q": "nslookup answers, but wget times out. What does it prove?",
+"opts": [
+[
+"DNS works, and other traffic is blocked",
+true,
+"Correct."
+],
+[
+"The policy is broken",
+false,
+"It is exactly what the question asks for."
+],
+[
+"CoreDNS is down",
+false,
+"Then nslookup would fail too."
+]
+],
+"t": 148.82
+}
+]
+}

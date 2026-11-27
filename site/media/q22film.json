@@ -1,0 +1,780 @@
+{
+"end": 211.11,
+"goal": [
+"Goal: backup,",
+"restore, use it"
+],
+"rule": {
+"title": "etcd: save, restore, repoint",
+"rows": [
+[
+"etcdctl snapshot save",
+"3 certs, endpoint 2379",
+"file: /opt/etcd-backup.db"
+],
+[
+"etcdutl snapshot restore",
+"into a NEW folder",
+"then change the hostPath only"
+]
+]
+},
+"shapes": {
+"cpf": {
+"rect": [
+40,
+420,
+2020,
+1500
+],
+"frame": true,
+"label": "controlplane"
+},
+"et": {
+"rect": [
+110,
+620,
+820,
+300
+],
+"label": "etcd",
+"sub": "the database",
+"h": 84
+},
+"ma": {
+"rect": [
+1180,
+620,
+820,
+300
+],
+"label": "etcd.yaml",
+"sub": "static pod file",
+"h": 84
+},
+"ce": {
+"rect": [
+110,
+1060,
+820,
+260
+],
+"label": "3 certificates",
+"sub": "in pki/etcd/",
+"h": 80
+},
+"sn": {
+"rect": [
+110,
+1480,
+820,
+260
+],
+"label": "snapshot",
+"sub": "/opt/etcd-backup.db",
+"h": 70
+},
+"rd": {
+"rect": [
+1180,
+1060,
+820,
+260
+],
+"label": "/var/lib/etcd-restored",
+"sub": "the NEW folder",
+"h": 66
+},
+"hp": {
+"rect": [
+1180,
+1480,
+820,
+260
+],
+"label": "etcd-data hostPath",
+"sub": "the one path to change",
+"h": 64
+},
+"a_me": {
+"arrow": [
+[
+1180,
+770
+],
+[
+930,
+770
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_ec": {
+"arrow": [
+[
+520,
+920
+],
+[
+520,
+1060
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_cs": {
+"arrow": [
+[
+520,
+1320
+],
+[
+520,
+1480
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_sr": {
+"arrow": [
+[
+930,
+1560
+],
+[
+1180,
+1290
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+},
+"a_rh": {
+"arrow": [
+[
+1590,
+1320
+],
+[
+1590,
+1480
+]
+],
+"both": false,
+"dashed": false,
+"pen": null
+}
+},
+"phrases": [
+{
+"id": "s1",
+"ch": "Problem",
+"cap": "Question 22. etcd runs at https colon slash slash one twenty-seven dot zero dot zero dot one, port 2379.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [
+"cpf",
+"et"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 1.0,
+"d": 10.37
+},
+{
+"id": "s2",
+"ch": null,
+"cap": "Your task: save a snapshot to slash opt slash etcd dash backup dot db. Then restore it, and make etcd use the restored data.",
+"focus": "goal",
+"pause": 1.4,
+"draw": [
+"goal"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 12.92,
+"d": 9.65
+},
+{
+"id": "s2b",
+"ch": null,
+"cap": "The backup part is safe. The restore changes the cluster, so use a playground you can throw away.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 24.32,
+"d": 5.81
+},
+{
+"id": "s3",
+"ch": "How it works",
+"cap": "etcd is the cluster database. A snapshot is a backup file of it.",
+"focus": "et",
+"pause": 1.2,
+"draw": [
+"sn"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 31.87,
+"d": 4.25
+},
+{
+"id": "s4",
+"ch": null,
+"cap": "etcd runs as a static pod, started from the file etcd dot yaml.",
+"focus": "ma",
+"pause": 1.2,
+"draw": [
+"ma",
+"a_me"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 37.67,
+"d": 4.88
+},
+{
+"id": "s5",
+"ch": null,
+"cap": "etcd only talks to clients that show its certificates. So the save needs three of them.",
+"focus": "ce",
+"pause": 1.4,
+"draw": [
+"ce",
+"a_ec"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 44.1,
+"d": 5.36
+},
+{
+"id": "s6",
+"ch": "Find the certificates",
+"cap": "Read their paths from etcd dot yaml. And check that both tools exist.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "which etcdctl etcdutl",
+"out": [
+".../etcdctl",
+".../etcdutl"
+],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "grep -E \"trusted-ca-file|cert-file|key-file\" /etc/kubernetes/manifests/etcd.yaml",
+"out": [
+"    - --cert-file=/etc/kubernetes/pki/etcd/server.crt",
+"    - --key-file=/etc/kubernetes/pki/etcd/server.key",
+"    - --peer-cert-file=/etc/kubernetes/pki/etcd/peer.crt",
+"    ...",
+"    - --trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt"
+],
+"next": "controlplane $"
+}
+],
+"hl": "trusted-ca-file",
+"t": 51.21,
+"d": 4.61
+},
+{
+"id": "s7",
+"ch": null,
+"cap": "cert-file goes to dash dash cert. key-file goes to dash dash key. trusted-ca-file goes to dash dash cacert.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 57.17,
+"d": 7.61
+},
+{
+"id": "s8",
+"ch": null,
+"cap": "Use the three lines without peer.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 66.53,
+"d": 1.8
+},
+{
+"id": "s9",
+"ch": "Take the snapshot",
+"cap": "etcdctl talks to the running etcd. Save the snapshot.",
+"focus": "TERM",
+"pause": 1.0,
+"draw": [
+"a_cs"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "etcdctl snapshot save /opt/etcd-backup.db --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key",
+"out": [
+"...",
+"Snapshot saved at /opt/etcd-backup.db"
+],
+"next": "controlplane $"
+}
+],
+"hl": "Snapshot saved",
+"t": 70.47,
+"d": 4.11
+},
+{
+"id": "s10",
+"ch": null,
+"cap": "Check the file. Its size must be above zero.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"id": "bk",
+"t": "backup saved ✓",
+"x": 110,
+"y": 1810,
+"h": 54,
+"c": "G",
+"a": 1.0,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "ls -l /opt/etcd-backup.db",
+"out": [
+"-rw------- 1 root root 6094880 ... /opt/etcd-backup.db"
+],
+"next": "controlplane $"
+}
+],
+"hl": "6094880",
+"t": 75.94,
+"d": 2.71
+},
+{
+"id": "s11",
+"ch": null,
+"cap": "A backup-only question? You are finished here.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 80.19,
+"d": 2.46
+},
+{
+"id": "s12",
+"ch": "Restore",
+"cap": "Now restore, into a new folder. The old folder is in use, and a restore does not go into a folder that exists.",
+"focus": "rd",
+"pause": 1.4,
+"draw": [
+"rd",
+"a_sr"
+],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 84.41,
+"d": 7.21
+},
+{
+"id": "s13",
+"ch": null,
+"cap": "etcdutl works on files only. It needs no certificates.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "etcdutl snapshot restore /opt/etcd-backup.db --data-dir=/var/lib/etcd-restored",
+"out": [],
+"next": "controlplane $"
+},
+{
+"p": "controlplane $",
+"cmd": "ls /var/lib/etcd-restored",
+"out": [
+"...",
+"member"
+],
+"next": "controlplane $"
+}
+],
+"hl": "member",
+"t": 93.37,
+"d": 4.49
+},
+{
+"id": "s14",
+"ch": null,
+"cap": "Do not use etcdctl snapshot restore. etcd 3.6, in Kubernetes 1.35, removed it.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 99.41,
+"d": 8.42
+},
+{
+"id": "s15",
+"ch": "Point etcd at it",
+"cap": "The kubelet runs etcd from etcd dot yaml. So change the file. First, back it up.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [
+"hp",
+"a_rh"
+],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "cp /etc/kubernetes/manifests/etcd.yaml /root/etcd.yaml.bak",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 110.18,
+"d": 6.17
+},
+{
+"id": "s16",
+"ch": null,
+"cap": "Edit it. Press capital G to reach the end. Only the path of the etcd-data hostPath changes.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "vim /etc/kubernetes/manifests/etcd.yaml",
+"out": [
+"  - hostPath:",
+"      path: /var/lib/etcd-restored",
+"      type: DirectoryOrCreate",
+"    name: etcd-data"
+],
+"next": "controlplane $"
+}
+],
+"hl": "etcd-restored",
+"t": 117.89,
+"d": 6.43
+},
+{
+"id": "s17",
+"ch": null,
+"cap": "Check it. grep must find exactly one line.",
+"focus": "TERM",
+"pause": 1.2,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "grep etcd-restored /etc/kubernetes/manifests/etcd.yaml",
+"out": [
+"      path: /var/lib/etcd-restored"
+],
+"next": "controlplane $"
+}
+],
+"hl": "etcd-restored",
+"t": 126.07,
+"d": 2.47
+},
+{
+"id": "s18",
+"ch": null,
+"cap": "Do not change dash dash data-dir, or the mountPath. Inside the container, it is still slash var slash lib slash etcd.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 130.1,
+"d": 8.44
+},
+{
+"id": "s19",
+"ch": "Wait",
+"cap": "The kubelet sees the file change, and restarts etcd itself.",
+"focus": "WIDE",
+"pause": 1.2,
+"draw": [],
+"acts": [
+{
+"dots": "a_me",
+"a": 0.6,
+"n": 1,
+"color": "G",
+"back": true
+}
+],
+"term": [],
+"hl": null,
+"t": 140.89,
+"d": 3.73
+},
+{
+"id": "s20",
+"ch": null,
+"cap": "Wait until etcd shows Running. kubectl may not answer for up to 60 seconds. That is normal.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "crictl ps | grep etcd",
+"out": [
+"...   Running   etcd   ..."
+],
+"next": "controlplane $"
+}
+],
+"hl": "Running",
+"t": 146.17,
+"d": 6.44
+},
+{
+"id": "s21",
+"ch": "Prove it",
+"cap": "Now prove the cluster works on the restored data.",
+"focus": "TERM",
+"pause": 1.6,
+"draw": [],
+"acts": [
+{
+"id": "ok",
+"t": "etcd Running ✓",
+"x": 1180,
+"y": 1810,
+"h": 54,
+"c": "G",
+"a": 2.6,
+"align": null
+},
+{
+"id": "gk",
+"t": "✓",
+"x": 1950,
+"y": 250,
+"h": 140,
+"c": "G",
+"a": 4.0,
+"align": null
+}
+],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "k get pods -n kube-system | grep etcd",
+"out": [
+"etcd-controlplane   1/1   Running   ..."
+],
+"next": "controlplane $"
+}
+],
+"hl": "Running",
+"t": 154.36,
+"d": 2.56
+},
+{
+"id": "s22",
+"ch": "If it fails",
+"cap": "Save hangs, or context deadline exceeded? A wrong certificate path, or endpoint. Compare with the first step.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 158.87,
+"d": 7.01
+},
+{
+"id": "s23",
+"ch": null,
+"cap": "kubectl still dead after 2 minutes? A typo in etcd dot yaml. Look with crictl ps dash a, and crictl logs.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 167.63,
+"d": 10.39
+},
+{
+"id": "s24",
+"ch": null,
+"cap": "Or copy the backup file from slash root back into manifests.",
+"focus": "TERM",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [
+{
+"p": "controlplane $",
+"cmd": "cp /root/etcd.yaml.bak /etc/kubernetes/manifests/etcd.yaml",
+"out": [],
+"next": "controlplane $"
+}
+],
+"hl": null,
+"t": 179.77,
+"d": 3.54
+},
+{
+"id": "s25",
+"ch": null,
+"cap": "The restore says the data dir exists? Remove that folder with rm dash rf, or pick a new name.",
+"focus": "WIDE",
+"pause": 1.4,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 185.06,
+"d": 6.55
+},
+{
+"id": "s26",
+"ch": "The rule",
+"cap": "The rule: save with etcdctl, with three certificates. Restore with etcdutl, into a new folder.",
+"focus": "WIDE",
+"pause": 1.0,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 193.35,
+"d": 7.62
+},
+{
+"id": "s27",
+"ch": null,
+"cap": "Then change only the etcd-data hostPath, and wait for the kubelet.",
+"focus": "WIDE",
+"pause": 3.5,
+"draw": [],
+"acts": [],
+"term": [],
+"hl": null,
+"t": 202.32,
+"d": 4.44
+}
+],
+"questions": [
+{
+"id": "Q1",
+"q": "Which certificate lines do you pass to etcdctl?",
+"opts": [
+[
+"cert-file, key-file, trusted-ca-file",
+true,
+"Correct. The three lines without peer."
+],
+[
+"The peer lines",
+false,
+"Use the three lines without peer."
+],
+[
+"None. No certificates needed",
+false,
+"etcd only talks to clients with its certificates."
+]
+],
+"t": 69.87
+},
+{
+"id": "Q2",
+"q": "Which tool restores the snapshot?",
+"opts": [
+[
+"etcdutl",
+true,
+"Correct. It works on files, with no certificates."
+],
+[
+"etcdctl snapshot restore",
+false,
+"etcd 3.6, in Kubernetes v1.35, removed it."
+],
+[
+"kubectl",
+false,
+"k cannot restore a database file."
+]
+],
+"t": 109.58
+},
+{
+"id": "Q3",
+"q": "What do you change in etcd.yaml?",
+"opts": [
+[
+"Only the path of the etcd-data hostPath",
+true,
+"Correct."
+],
+[
+"The --data-dir flag",
+false,
+"Inside the container it is still /var/lib/etcd."
+],
+[
+"The mountPath",
+false,
+"Inside the container it is still /var/lib/etcd."
+]
+],
+"t": 140.29
+}
+]
+}
