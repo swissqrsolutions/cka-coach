@@ -38,8 +38,8 @@
 300
 ],
 "label": "Deployment web",
-"sub": "3 pods, container nginx",
-"h": 58
+"sub": "3 pods, nginx",
+"h": 63
 },
 "sc": {
 "rect": [
@@ -49,8 +49,8 @@
 300
 ],
 "label": "set image",
-"sub": "nginx=nginx:1.28",
-"h": 83
+"sub": "to nginx:1.28",
+"h": 70
 },
 "r1": {
 "rect": [
@@ -61,7 +61,7 @@
 ],
 "label": "revision 1",
 "sub": "nginx:1.27",
-"h": 90
+"h": 80
 },
 "r2": {
 "rect": [
@@ -72,7 +72,7 @@
 ],
 "label": "revision 2",
 "sub": "nginx:1.28",
-"h": 90
+"h": 80
 },
 "un": {
 "rect": [
@@ -82,8 +82,8 @@
 260
 ],
 "label": "rollout undo",
-"sub": "back to revision 1",
-"h": 74
+"sub": "to revision 1",
+"h": 70
 },
 "fl": {
 "rect": [
@@ -94,7 +94,7 @@
 ],
 "label": "/root/image.txt",
 "sub": "nginx:1.27",
-"h": 71
+"h": 62
 },
 "a_sd": {
 "arrow": [
@@ -504,7 +504,7 @@
 "acts": [
 {
 "id": "ok",
-"t": "file says 1.27 ✓",
+"t": "file says 1.27 \u2713",
 "x": 1100,
 "y": 1810,
 "h": 54,
@@ -514,7 +514,7 @@
 },
 {
 "id": "gk",
-"t": "✓",
+"t": "\u2713",
 "x": 1950,
 "y": 250,
 "h": 140,

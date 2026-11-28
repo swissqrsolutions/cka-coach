@@ -28,7 +28,7 @@
 1500
 ],
 "frame": true,
-"label": "the cluster (classes have no namespace)"
+"label": "the cluster"
 },
 "sl": {
 "rect": [
@@ -39,7 +39,7 @@
 ],
 "label": "low-prio",
 "sub": "value 100",
-"h": 83
+"h": 72
 },
 "sm": {
 "rect": [
@@ -50,7 +50,7 @@
 ],
 "label": "mid-prio",
 "sub": "value 1000",
-"h": 83
+"h": 72
 },
 "sy": {
 "rect": [
@@ -59,9 +59,9 @@
 630,
 300
 ],
-"label": "system- classes",
+"label": "system-*",
 "sub": "ignore them",
-"h": 49
+"h": 80
 },
 "nw": {
 "rect": [
@@ -71,8 +71,8 @@
 260
 ],
 "label": "high-priority",
-"sub": "the new class: 999",
-"h": 74
+"sub": "new class: 999",
+"h": 71
 },
 "dp": {
 "rect": [
@@ -83,7 +83,7 @@
 ],
 "label": "Deployment web",
 "sub": "namespace shop",
-"h": 76
+"h": 63
 },
 "pd": {
 "rect": [
@@ -313,8 +313,8 @@
 "id": "v",
 "t": "1000 - 1 = 999",
 "x": 110,
-"y": 1385,
-"h": 54,
+"y": 1425,
+"h": 46,
 "c": "B",
 "a": 0.6,
 "align": null
@@ -497,7 +497,7 @@
 "acts": [
 {
 "id": "ok",
-"t": "class + 999 ✓",
+"t": "class + 999 \u2713",
 "x": 560,
 "y": 1810,
 "h": 54,
@@ -507,7 +507,7 @@
 },
 {
 "id": "gk",
-"t": "✓",
+"t": "\u2713",
 "x": 1950,
 "y": 250,
 "h": 140,

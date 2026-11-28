@@ -34,23 +34,23 @@
 "rect": [
 110,
 620,
-900,
+1000,
 300
 ],
 "label": "ConfigMap app-cfg",
 "sub": "LOG_LEVEL=debug",
-"h": 62
+"h": 54
 },
 "sc": {
 "rect": [
-1100,
+1150,
 620,
-900,
+850,
 300
 ],
 "label": "Secret db-sec",
 "sub": "password=s3cret",
-"h": 80
+"h": 71
 },
 "ev": {
 "rect": [
@@ -60,7 +60,7 @@
 260
 ],
 "label": "envFrom",
-"sub": "all keys become env vars",
+"sub": "keys as env vars",
 "h": 55
 },
 "vo": {
@@ -71,7 +71,7 @@
 260
 ],
 "label": "volume db",
-"sub": "Secret files in /etc/db",
+"sub": "files: /etc/db",
 "h": 58
 },
 "pod": {
@@ -545,7 +545,7 @@
 "acts": [
 {
 "id": "ok",
-"t": "env + file ✓",
+"t": "env + file \u2713",
 "x": 560,
 "y": 1810,
 "h": 54,
@@ -555,7 +555,7 @@
 },
 {
 "id": "gk",
-"t": "✓",
+"t": "\u2713",
 "x": 1950,
 "y": 250,
 "h": 140,

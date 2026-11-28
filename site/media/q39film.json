@@ -28,29 +28,29 @@
 1500
 ],
 "frame": true,
-"label": "the cluster (classes have no namespace)"
+"label": "the cluster"
 },
 "lp": {
 "rect": [
 110,
 620,
-900,
+650,
 300
 ],
 "label": "local-path",
-"sub": "the old default",
-"h": 89
+"sub": "old default",
+"h": 67
 },
 "fa": {
 "rect": [
-1100,
+850,
 620,
-900,
+1150,
 300
 ],
 "label": "StorageClass fast",
 "sub": "rancher.io/local-path",
-"h": 62
+"h": 54
 },
 "pt": {
 "rect": [
@@ -59,8 +59,8 @@
 900,
 260
 ],
-"label": "on local-path: \"false\"",
-"sub": "patch, never delete",
+"label": "local-path: \"false\"",
+"sub": "never delete it",
 "h": 48
 },
 "an": {
@@ -70,9 +70,9 @@
 900,
 260
 ],
-"label": "on fast: \"true\"",
-"sub": "is-default-class annotation",
-"h": 49
+"label": "fast: \"true\"",
+"sub": "is-default-class",
+"h": 62
 },
 "wf": {
 "rect": [
@@ -82,8 +82,8 @@
 260
 ],
 "label": "WaitForFirstConsumer",
-"sub": "disk made on first use",
-"h": 53
+"sub": "on first use",
+"h": 46
 },
 "ok": {
 "rect": [
@@ -94,7 +94,7 @@
 ],
 "label": "only one default",
 "sub": "fast (default)",
-"h": 66
+"h": 58
 },
 "a_lp": {
 "arrow": [
@@ -465,17 +465,17 @@
 "acts": [
 {
 "id": "ok2",
-"t": "only fast ✓",
+"t": "only fast \u2713",
 "x": 110,
-"y": 1385,
-"h": 54,
+"y": 1415,
+"h": 46,
 "c": "G",
 "a": 3.0,
 "align": null
 },
 {
 "id": "gk",
-"t": "✓",
+"t": "\u2713",
 "x": 1950,
 "y": 250,
 "h": 140,

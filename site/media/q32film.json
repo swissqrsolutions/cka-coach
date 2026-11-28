@@ -38,8 +38,8 @@
 300
 ],
 "label": "Deployment web",
-"sub": "requests cpu: 100m",
-"h": 74
+"sub": "cpu req 100m",
+"h": 63
 },
 "hp": {
 "rect": [
@@ -49,7 +49,7 @@
 300
 ],
 "label": "HPA web",
-"sub": "min 2, max 5, cpu 70%",
+"sub": "2 to 5, cpu 70%",
 "h": 63
 },
 "ms": {
@@ -60,8 +60,8 @@
 260
 ],
 "label": "metrics-server",
-"sub": "measures the pod CPU",
-"h": 67
+"sub": "reads pod CPU",
+"h": 63
 },
 "bh": {
 "rect": [
@@ -71,7 +71,7 @@
 260
 ],
 "label": "behavior",
-"sub": "scaleDown window: 30 s",
+"sub": "scaleDown 30 s",
 "h": 60
 },
 "tg": {
@@ -485,17 +485,17 @@
 "acts": [
 {
 "id": "ok",
-"t": "window = 30 ✓",
+"t": "window = 30 \u2713",
 "x": 1100,
-"y": 1385,
-"h": 54,
+"y": 1415,
+"h": 42,
 "c": "G",
 "a": 2.6,
 "align": null
 },
 {
 "id": "gk",
-"t": "✓",
+"t": "\u2713",
 "x": 1950,
 "y": 250,
 "h": 140,
